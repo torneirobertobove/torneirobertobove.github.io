@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Torneo 8 Squadre Amatoriale by Roberto Bove</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui;background:linear-gradient(160deg,#0b1020,#111827);color:var(--text);}
+.container{max-width:1700px;margin:0 auto;padding:18px}
+h1{margin:0 0 10px;text-align:center;}
+.topbar{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;}
+button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:#2563eb;color:#fff;}
+button.reset{background:#dc2626}
+button.manual{background:#059669}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:15px;}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px;}
+th,td{padding:6px;border-bottom:1px solid #1f2a3c;text-align:center;}
+input{width:100%;padding:6px;border-radius:6px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;}
+.legenda{font-size:11px;color:#94a3b8;background:#0f172a;padding:8px;border-radius:6px;border:1px solid #1e293b;margin-top:10px;line-height:1.4;}
+.ko{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.koBox{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px;}
+.match{padding:8px;margin-bottom:8px;border:1px solid #243041;border-radius:8px;text-align:center;}
+.finalContainer{border:2px solid #eab308;padding:20px;margin-top:20px;border-radius:15px;background:#1e293b;}
+.finalTitle{font-size:1.5em;color:#fbbf24;margin-bottom:10px;text-align:center;}
+.finalBox{margin-top:10px;padding:10px;background:rgba(34,197,94,.15);border-radius:8px;font-weight:bold;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🏆 Torneo 8 Squadre Amatoriale by Roberto Bove</h1>
+<div class="topbar">
+<button onclick="init()">Crea torneo</button>
+<button onclick="document.getElementById('file').click()">Import Excel</button>
+<button class="manual" onclick="document.getElementById('manualModal').style.display='block'">📖 Manuale</button>
+<button onclick="window.print()">Stampa</button>
+<button class="reset" onclick="reset()">Reset</button>
+<input type="file" id="file" hidden>
+</div>
+
+<!-- MODALE MANUALE -->
+<div id="manualModal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.85); overflow-y:auto;">
+<div style="background:#111827; margin:5% auto; padding:30px; width:80%; border-radius:12px; border:1px solid #243041; color:#e5e7eb; position:relative;">
+<span onclick="document.getElementById('manualModal').style.display='none'" style="position:absolute; top:15px; right:25px; cursor:pointer; font-size:30px; color:#ef4444;">&times;</span>
+<h2>📖 Manuale Ufficiale: Torneo Green Park</h2>
+<div style="line-height:1.6;">
+<h3>1. Il Formato</h3>
+<p>Il torneo è diviso in due fasi: <strong>Gironi</strong> (ogni coppia gioca 3 partite) e <strong>Fase Finale</strong> (Quarti, Semifinali, Finali).</p>
+<h3>2. Spirito del Torneo: "Top" vs "Banana"</h3>
+<p>Nessuno va a casa! Chi corre per il <strong>Trofeo (TOP)</strong> e chi per la <strong>Coppa Banana</strong>, il torneo del riscatto per divertirsi fino all'ultima sfida.</p>
+<h3>3. Regole</h3>
+<p>Partite da 28 min, <strong>Killer Secco</strong> (punto decisivo sul 40-40). Nei gironi, pareggio = 1 punto. Nelle fasi KO, in caso di parità si gioca un <strong>gioco aggiuntivo</strong>.</p>
+<h3>4. Criteri di Classifica (Spareggi)</h3>
+<p>In caso di parità di punti: 1. <strong>PT</strong> (Punti), 2. <strong>DF</strong> (Differenza Reti), 3. <strong>GF</strong> (Giochi Fatti).</p>
+<h3>5. Guida al Tabellone</h3>
+<p>Inserisci il risultato (es. 6-4) nel campo accanto alla partita. Il sistema aggiornerà tutto automaticamente.</p>
+</div>
+</div>
+</div>
+
+<div class="groups">
+<div class="card">
+<h3>GIRONE A</h3>
+<table><tr><th>CAMPI</th><th>ORA</th><th>Match</th><th>Risultato</th></tr><tbody id="Arows"></tbody></table>
+<h4>Classifica A</h4>
+<table><tr><th>Squadra</th><th>PT</th><th>GF</th><th>GS</th><th>DF</th></tr><tbody id="Aclass"></tbody></table>
+<div class="legenda"><strong>Legenda:</strong> PT: 3(V), 1(P), 0(S). <strong>Parità:</strong> Conta DF, poi GF totali.</div>
+</div>
+<div class="card">
+<h3>GIRONE B</h3>
+<table><tr><th>CAMPI</th><th>ORA</th><th>Match</th><th>Risultato</th></tr><tbody id="Brows"></tbody></table>
+<h4>Classifica B</h4>
+<table><tr><th>Squadra</th><th>PT</th><th>GF</th><th>GS</th><th>DF</th></tr><tbody id="Bclass"></tbody></table>
+<div class="legenda"><strong>Legenda:</strong> PT: 3(V), 1(P), 0(S). <strong>Parità:</strong> Conta DF, poi GF totali.</div>
+</div>
+</div>
+<div class="ko">
+<div class="koBox"><h3>🏁 QUARTI (CAMPI 2–5)</h3><div id="Q"></div></div>
+<div class="koBox"><h3>🔥 SEMIFINALI</h3><div id="S"></div></div>
+</div>
+<div class="finalContainer">
+<h3 class="finalTitle">🏆 FINALI</h3>
+<div id="F"></div>
+<div id="W" class="finalBox">🏆 Campione TOP: -</div>
+<div id="W2" class="finalBox">🍌 Campione BANANA: -</div>
+</div>
+</div>
+<script>
+let state={A:[],B:[],matchesA:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],matchesB:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],Ares:[],Bres:[],Atime:[],Btime:[],Acamp:[],Bcamp:[],rankA:[],rankB:[],prevA:{},prevB:{},quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};
+function init(){state.A=["A1","A2","A3","A4"];state.B=["B1","B2","B3","B4"];render();}
+function render(){renderTables();renderClass();renderKO();}
+function reset(){state={A:[],B:[],matchesA:state.matchesA,matchesB:state.matchesB,Ares:[],Bres:[],Atime:[],Btime:[],Acamp:[],Bcamp:[],rankA:[],rankB:[],prevA:{},prevB:{},quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};render();}
+function calc(teams,res,matches){let t=teams.map((n,idx)=>({n,pt:0,gf:0,gs:0,df:0,id:idx}));matches.forEach((m,i)=>{let r=res[i];if(!r || !r.includes("-")) return;let[a,b]=r.split("-").map(Number);t[m[0]].gf+=a;t[m[0]].gs+=b;t[m[1]].gf+=b;t[m[1]].gs+=a;if(a>b) t[m[0]].pt+=3;else if(b>a) t[m[1]].pt+=3;else {t[m[0]].pt++;t[m[1]].pt++;}});t.forEach(x=>x.df=x.gf-x.gs);return t.sort((a,b)=>b.pt-a.pt||b.df-a.df||b.gf-a.gf||a.gs-b.gs);}
+function renderTables(){let A="",B="";state.matchesA.forEach((m,i)=>{A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value"></td><td><input value="${state.Atime[i]||''}" oninput="state.Atime[${i}]=this.value"></td><td>${state.A[m[0]]} vs ${state.A[m[1]]}</td><td><input value="${state.Ares[i]||''}" oninput="state.Ares[${i}]=this.value;renderClass();renderKO()"></td></tr>`;});state.matchesB.forEach((m,i)=>{B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value"></td><td><input value="${state.Btime[i]||''}" oninput="state.Btime[${i}]=this.value"></td><td>${state.B[m[0]]} vs ${state.B[m[1]]}</td><td><input value="${state.Bres[i]||''}" oninput="state.Bres[${i}]=this.value;renderClass();renderKO()"></td></tr>`;});document.getElementById("Arows").innerHTML=A;document.getElementById("Brows").innerHTML=B;}
+function renderClass(){let newA=calc(state.A,state.Ares,state.matchesA);let newB=calc(state.B,state.Bres,state.matchesB);function getTrend(teamId,newPos,prevMap){if(prevMap[teamId]===undefined){prevMap[teamId]=newPos;return "";}let trend="";let diff=prevMap[teamId]-newPos;if(diff>0) trend='<span style="color:#22c55e"> ▲</span>';else if(diff<0) trend='<span style="color:#ef4444"> ▼</span>';prevMap[teamId]=newPos;return trend;}document.getElementById("Aclass").innerHTML=newA.map((x,i)=>`<tr><td>${x.n}${getTrend(x.id,i,state.prevA)}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");document.getElementById("Bclass").innerHTML=newB.map((x,i)=>`<tr><td>${x.n}${getTrend(x.id,i,state.prevB)}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");state.rankA=newA;state.rankB=newB;}
+function renderKO(){if(state.Ares.length<6 || state.Bres.length<6){document.getElementById("Q").innerHTML="Completa i gironi";return;}let A=state.rankA;let B=state.rankB;state.quarti=[{a:A[0].n,b:B[3].n,w:null,l:null},{a:B[1].n,b:A[2].n,w:null,l:null},{a:B[0].n,b:A[3].n,w:null,l:null},{a:A[1].n,b:B[2].n,w:null,l:null}];state.quarti.forEach((q,i)=>{if(state.qRes[i]) setQuarto(i,state.qRes[i],true);});document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a} vs ${m.b}<br><input value="${state.qRes[i]||''}" placeholder="0-0" oninput="setQuarto(${i},this.value)"></div>`).join("");if(state.quarti.every(q=>q.w)){state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}];state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}];}let topHTML="<h4>TOP</h4>";state.semiTop.forEach((m,i)=>{if(state.sTopRes[i]) setSemiTop(i,state.sTopRes[i],true);topHTML+=`<div class="match">${m.a} vs ${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value)"></div>`;});let flopHTML="<h4>BANANA</h4>";state.semiFlop.forEach((m,i)=>{if(state.sFlopRes[i]) setSemiFlop(i,state.sFlopRes[i],true);flopHTML+=`<div class="match">${m.a} vs ${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value)"></div>`;});document.getElementById("S").innerHTML=topHTML+flopHTML;if(state.semiTop.every(s=>s.w)) state.finalTop=[{a:state.semiTop[0].w,b:state.semiTop[1].w}];if(state.semiFlop.every(s=>s.w)) state.finalFlop=[{a:state.semiFlop[0].w,b:state.semiFlop[1].w}];document.getElementById("F").innerHTML=`<h4>TOP FINAL</h4>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<br><input value="${state.fTopRes||''}" oninput="setFinalTop(this.value)"><h4>BANANA FINAL</h4>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<br><input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value)">`;document.getElementById("W").innerHTML=state.campioneTop ? "🏆 Campione TOP: "+state.campioneTop : "🏆 Campione TOP: -";document.getElementById("W2").innerHTML=state.campioneFlop ? "🍌 Campione BANANA: "+state.campioneFlop : "🍌 Campione BANANA: -";}
+function setQuarto(i,val,internal=false){if(!internal) state.qRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b;state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a;if(!internal) renderKO();}
+function setSemiTop(i,val,internal=false){if(!internal) state.sTopRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b;if(!internal) renderKO();}
+function setSemiFlop(i,val,internal=false){if(!internal) state.sFlopRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b;if(!internal) renderKO();}
+function setFinalTop(val){state.fTopRes=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b;renderKO();}
+function setFinalFlop(val){state.fFlopRes=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b;renderKO();}
+document.getElementById("file").addEventListener("change",function(e){let r=new FileReader();r.onload=function(evt){let wb=XLSX.read(new Uint8Array(evt.target.result),{type:"array"});let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().filter(x=>x);state.A=data.slice(0,4);state.B=data.slice(4,8);render();};r.readAsArrayBuffer(e.target.files[0]);});
+</script>
+</body>
+</html>
