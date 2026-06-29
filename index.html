@@ -36,6 +36,8 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 .winner-box{margin-top:10px;padding:15px;border-radius:8px;text-align:center;font-weight:bold;}
 .top-win{background:rgba(251,191,36,.2);color:#fbbf24;font-size:1.3em;}
 .banana-win{background:rgba(74,222,128,.1);color:#4ade80;font-size:1em;}
+.qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
+.qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 </style>
 </head>
 <body onload="initDefaults()">
@@ -91,21 +93,189 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 </div>
 <script>
 let state={A:[],B:[],matchesA:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],matchesB:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],Ares:[],Bres:[],Atime:[],Btime:[],Acamp:[],Bcamp:[],rankA:[],rankB:[],quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};
-function initDefaults(){state.Acamp=[2,3,2,3,2,3]; state.Bcamp=[4,5,4,5,4,5]; state.Atime=["20:00","20:00","20:00","20:00","20:00","20:00"]; state.Btime=["20:00","20:00","20:00","20:00","20:00","20:00"]; loadSavedTeams();}
+
+function initDefaults(){
+    state.Acamp=[2,3,2,3,2,3];
+    state.Bcamp=[4,5,4,5,4,5];
+    state.Atime=["20:00","20:00","20:00","20:00","20:00","20:00"];
+    state.Btime=["20:00","20:00","20:00","20:00","20:00","20:00"];
+    loadSavedTeams();
+}
+
 function render(){renderTables();renderClass();renderKO()}
+
 function reset(){localStorage.removeItem("savedTeams");location.reload()}
-function saveTeams(){let t=document.getElementById("teamInput").value.split('\n').filter(l=>l.trim()!=="");if(t.length>=8){state.A=t.slice(0,4);state.B=t.slice(4,8);localStorage.setItem("savedTeams",JSON.stringify(t));document.getElementById("teamModal").style.display='none';render()}}
-function loadSavedTeams(){let s=localStorage.getItem("savedTeams");if(s){let t=JSON.parse(s);state.A=t.slice(0,4);state.B=t.slice(4,8);document.getElementById("teamInput").value=t.join('\n');} render()}
-function handleFile(e){let r=new FileReader();r.onload=function(evt){let wb=XLSX.read(new Uint8Array(evt.target.result),{type:"array"});let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().filter(x=>x);state.A=data.slice(0,4);state.B=data.slice(4,8);localStorage.setItem("savedTeams",JSON.stringify(data.slice(0,8)));document.getElementById("teamInput").value=data.slice(0,8).join('\n');render()};r.readAsArrayBuffer(e.target.files[0])}
-function calc(teams,res,matches){let t=teams.map((n,idx)=>({n,pt:0,gf:0,gs:0,df:0,id:idx}));matches.forEach((m,i)=>{let r=res[i];if(!r || !r.includes("-")) return;let[a,b]=r.split("-").map(Number);t[m[0]].gf+=a;t[m[0]].gs+=b;t[m[1]].gf+=b;t[m[1]].gs+=a;if(a>b) t[m[0]].pt+=3;else if(b>a) t[m[1]].pt+=3;else {t[m[0]].pt++;t[m[1]].pt++}});t.forEach(x=>x.df=x.gf-x.gs);return t.sort((a,b)=>b.pt-a.pt||b.df-a.df||b.gf-a.gf||a.gs-b.gs)}
-function renderTables(){let A="",B="";state.matchesA.forEach((m,i)=>{A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value" style="width:40px"></td><td><input value="${state.Atime[i]||''}" oninput="state.Atime[${i}]=this.value" style="width:45px"></td><td>${state.A[m[0]]||'-'}/${state.A[m[1]]||'-'}</td><td><input value="${state.Ares[i]||''}" oninput="state.Ares[${i}]=this.value;renderClass();renderKO()" style="width:45px"></td></tr>`});state.matchesB.forEach((m,i)=>{B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value" style="width:40px"></td><td><input value="${state.Btime[i]||''}" oninput="state.Btime[${i}]=this.value" style="width:45px"></td><td>${state.B[m[0]]||'-'}/${state.B[m[1]]||'-'}</td><td><input value="${state.Bres[i]||''}" oninput="state.Bres[${i}]=this.value;renderClass();renderKO()" style="width:45px"></td></tr>`});document.getElementById("Arows").innerHTML=A;document.getElementById("Brows").innerHTML=B}
-function renderClass(){let newA=calc(state.A,state.Ares,state.matchesA);let newB=calc(state.B,state.Bres,state.matchesB);document.getElementById("Aclass").innerHTML=newA.map((x,i)=>`<tr><td>${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");document.getElementById("Bclass").innerHTML=newB.map((x,i)=>`<tr><td>${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");state.rankA=newA;state.rankB=newB}
-function renderKO(){if(state.Ares.length<6 || state.Bres.length<6){document.getElementById("Q").innerHTML="Completa i gironi";return}let A=state.rankA;let B=state.rankB;state.quarti=[{a:A[0].n,b:B[3].n,w:null,l:null},{a:B[1].n,b:A[2].n,w:null,l:null},{a:B[0].n,b:A[3].n,w:null,l:null},{a:A[1].n,b:B[2].n,w:null,l:null}];state.quarti.forEach((q,i)=>{if(state.qRes[i]) setQuarto(i,state.qRes[i],true)});document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.qRes[i]||''}" placeholder="0-0" oninput="setQuarto(${i},this.value)"></div>`).join("");if(state.quarti.every(q=>q.w)){state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}];state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}]} let topHTML="<h4>TOP</h4>";state.semiTop.forEach((m,i)=>{if(state.sTopRes[i]) setSemiTop(i,state.sTopRes[i],true);topHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value)"></div>`});let flopHTML="<h4>BANANA</h4>";state.semiFlop.forEach((m,i)=>{if(state.sFlopRes[i]) setSemiFlop(i,state.sFlopRes[i],true);flopHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value)"></div>`});document.getElementById("S").innerHTML=topHTML+flopHTML;if(state.semiTop.every(s=>s.w)) state.finalTop=[{a:state.semiTop[0].w,b:state.semiTop[1].w}];if(state.semiFlop.every(s=>s.w)) state.finalFlop=[{a:state.semiFlop[0].w,b:state.semiFlop[1].w}];document.getElementById("F").innerHTML=`<h3>TOP FINAL</h3>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<br><input value="${state.fTopRes||''}" oninput="setFinalTop(this.value)"><div class="winner-box top-win">${state.campioneTop?"🏆 TOP: "+state.campioneTop:""}</div><h3>BANANA FINAL</h3>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<br><input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value)"><div class="winner-box banana-win">${state.campioneFlop?"🍌 BANANA: "+state.campioneFlop:""}</div>`}
-function setQuarto(i,val,internal=false){if(!internal) state.qRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b;state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a;if(!internal) renderKO()}
-function setSemiTop(i,val,internal=false){if(!internal) state.sTopRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b;if(!internal) renderKO()}
-function setSemiFlop(i,val,internal=false){if(!internal) state.sFlopRes[i]=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b;if(!internal) renderKO()}
-function setFinalTop(val){state.fTopRes=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b;renderKO()}
-function setFinalFlop(val){state.fFlopRes=val;if(!val.includes("-")) return;let[a,b]=val.split("-").map(Number);state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b;renderKO()}
+
+function saveTeams(){
+    let t=document.getElementById("teamInput").value.split('\n').filter(l=>l.trim()!=="");
+    if(t.length>=8){
+        state.A=t.slice(0,4);
+        state.B=t.slice(4,8);
+        localStorage.setItem("savedTeams",JSON.stringify(t.slice(0,8)));
+        document.getElementById("teamModal").style.display='none';
+        render();
+    }
+}
+
+function loadSavedTeams(){
+    let s=localStorage.getItem("savedTeams");
+    if(s){
+        let t=JSON.parse(s);
+        state.A=t.slice(0,4);
+        state.B=t.slice(4,8);
+        document.getElementById("teamInput").value=t.join('\n');
+    }
+    render();
+}
+
+function handleFile(e){
+    let r=new FileReader();
+    r.onload=function(evt){
+        let wb=XLSX.read(new Uint8Array(evt.target.result),{type:"array"});
+        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().map(x=>String(x).trim()).filter(x=>x);
+        state.A=data.slice(0,4);
+        state.B=data.slice(4,8);
+        localStorage.setItem("savedTeams",JSON.stringify(data.slice(0,8)));
+        document.getElementById("teamInput").value=data.slice(0,8).join('\n');
+        render();
+    };
+    r.readAsArrayBuffer(e.target.files[0]);
+}
+function calc(teams,res,matches){
+    let t=teams.map((n,idx)=>({n,pt:0,gf:0,gs:0,df:0,id:idx,qual:false}));
+    matches.forEach((m,i)=>{
+        let r=res[i];
+        if(!r || !r.includes("-")) return;
+        let[a,b]=r.split("-").map(Number);
+        t[m[0]].gf+=a;t[m[0]].gs+=b;
+        t[m[1]].gf+=b;t[m[1]].gs+=a;
+        if(a>b) t[m[0]].pt+=3;
+        else if(b>a) t[m[1]].pt+=3;
+        else {t[m[0]].pt++;t[m[1]].pt++}
+    });
+    t.forEach(x=>x.df=x.gf-x.gs);
+    t.sort((a,b)=>b.pt-a.pt||b.df-a.df||b.gf-a.gf||a.gs-b.gs);
+    t.forEach((x,i)=>x.qual=i<2);
+    return t;
+}
+
+function renderTables(){
+    let A="",B="";
+    state.matchesA.forEach((m,i)=>{
+        A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value" style="width:40px"></td><td><input value="${state.Atime[i]||''}" oninput="state.Atime[${i}]=this.value" style="width:45px"></td><td>${state.A[m[0]]||'-'}/${state.A[m[1]]||'-'}</td><td><input value="${state.Ares[i]||''}" oninput="state.Ares[${i}]=this.value;renderClass();renderKO()" style="width:45px"></td></tr>`;
+    });
+    state.matchesB.forEach((m,i)=>{
+        B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value" style="width:40px"></td><td><input value="${state.Btime[i]||''}" oninput="state.Btime[${i}]=this.value" style="width:45px"></td><td>${state.B[m[0]]||'-'}/${state.B[m[1]]||'-'}</td><td><input value="${state.Bres[i]||''}" oninput="state.Bres[${i}]=this.value;renderClass();renderKO()" style="width:45px"></td></tr>`;
+    });
+    document.getElementById("Arows").innerHTML=A;
+    document.getElementById("Brows").innerHTML=B;
+}
+function renderClass(){
+    let newA=calc(state.A,state.Ares,state.matchesA);
+    let newB=calc(state.B,state.Bres,state.matchesB);
+
+    document.getElementById("Aclass").innerHTML=newA.map((x,i)=>{
+        let up=x.qual ? `<span class="qual-arrow-up">▲</span>` : `<span class="qual-arrow-up" style="opacity:.15">▲</span>`;
+        let down=x.qual ? `<span class="qual-arrow-down" style="opacity:.15">▼</span>` : `<span class="qual-arrow-down">▼</span>`;
+        return `<tr><td>${up} ${down} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`;
+    }).join("");
+
+    document.getElementById("Bclass").innerHTML=newB.map((x,i)=>{
+        let up=x.qual ? `<span class="qual-arrow-up">▲</span>` : `<span class="qual-arrow-up" style="opacity:.15">▲</span>`;
+        let down=x.qual ? `<span class="qual-arrow-down" style="opacity:.15">▼</span>` : `<span class="qual-arrow-down">▼</span>`;
+        return `<tr><td>${up} ${down} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`;
+    }).join("");
+
+    state.rankA=newA;
+    state.rankB=newB;
+}
+
+function renderKO(){
+    if(state.Ares.length<6 || state.Bres.length<6){
+        document.getElementById("Q").innerHTML="Completa i gironi";
+        return;
+    }
+
+    let A=state.rankA;
+    let B=state.rankB;
+
+    state.quarti=[
+        {a:A[0].n,b:B[3].n,w:null,l:null},
+        {a:B[1].n,b:A[2].n,w:null,l:null},
+        {a:B[0].n,b:A[3].n,w:null,l:null},
+        {a:A[1].n,b:B[2].n,w:null,l:null}
+    ];
+
+    state.quarti.forEach((q,i)=>{
+        if(state.qRes[i]) setQuarto(i,state.qRes[i],true);
+    });
+
+    document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.qRes[i]||''}" placeholder="0-0" oninput="setQuarto(${i},this.value)"></div>`).join("");
+
+    if(state.quarti.every(q=>q.w)){
+        state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}];
+        state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}];
+    }
+
+    let topHTML="<h4>TOP</h4>";
+    state.semiTop.forEach((m,i)=>{
+        if(state.sTopRes[i]) setSemiTop(i,state.sTopRes[i],true);
+        topHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value)"></div>`;
+    });
+
+    let flopHTML="<h4>BANANA</h4>";
+    state.semiFlop.forEach((m,i)=>{
+        if(state.sFlopRes[i]) setSemiFlop(i,state.sFlopRes[i],true);
+        flopHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value)"></div>`;
+    });
+
+    document.getElementById("S").innerHTML=topHTML+flopHTML;
+
+    if(state.semiTop.every(s=>s.w)) state.finalTop=[{a:state.semiTop[0].w,b:state.semiTop[1].w}];
+    if(state.semiFlop.every(s=>s.w)) state.finalFlop=[{a:state.semiFlop[0].w,b:state.semiFlop[1].w}];
+
+    document.getElementById("F").innerHTML=`<h3>TOP FINAL</h3>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<br><input value="${state.fTopRes||''}" oninput="setFinalTop(this.value)"><div class="winner-box top-win">${state.campioneTop?"🏆 TOP: "+state.campioneTop:""}</div><h3>BANANA FINAL</h3>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<br><input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value)"><div class="winner-box banana-win">${state.campioneFlop?"🍌 BANANA: "+state.campioneFlop:""}</div>`;
+}
+function setQuarto(i,val,internal=false){
+    if(!internal) state.qRes[i]=val;
+    if(!val.includes("-")) return;
+    let[a,b]=val.split("-").map(Number);
+    state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b;
+    state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a;
+    if(!internal) renderKO();
+}
+
+function setSemiTop(i,val,internal=false){
+    if(!internal) state.sTopRes[i]=val;
+    if(!val.includes("-")) return;
+    let[a,b]=val.split("-").map(Number);
+    state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b;
+    if(!internal) renderKO();
+}
+
+function setSemiFlop(i,val,internal=false){
+    if(!internal) state.sFlopRes[i]=val;
+    if(!val.includes("-")) return;
+    let[a,b]=val.split("-").map(Number);
+    state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b;
+    if(!internal) renderKO();
+}
+
+function setFinalTop(val){
+    state.fTopRes=val;
+    if(!val.includes("-")) return;
+    let[a,b]=val.split("-").map(Number);
+    state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b;
+    renderKO();
+}
+
+function setFinalFlop(val){
+    state.fFlopRes=val;
+    if(!val.includes("-")) return;
+    let[a,b]=val.split("-").map(Number);
+    state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b;
+    renderKO();
+}
 </script>
 </body>
 </html>
