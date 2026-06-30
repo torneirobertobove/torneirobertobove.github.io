@@ -29,6 +29,8 @@ textarea{width:100%; height:150px; background:#0b1220; color:#fff; border:1px so
 table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
 th,td{padding:8px 4px;border-bottom:1px solid #1f2a3c;text-align:center;}
 input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;}
+.db-cell{display:flex; gap:2px;}
+.db-cell input{width:50%;}
 .ko{margin-top:10px;display:grid;grid-template-columns:1fr;gap:12px;}
 @media(min-width:600px){.ko{grid-template-columns:1fr 1fr;}}
 .koBox{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px;}
@@ -97,80 +99,54 @@ const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-let state={A:[],B:[],matchesA:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],matchesB:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],Ares:[],Bres:[],Atime:[],Btime:[],Acamp:[],Bcamp:[],rankA:[],rankB:[],quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};
+let state={A:[],B:[],matchesA:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],matchesB:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],Ares:Array(6).fill("-"),Bres:Array(6).fill("-"),Atime:Array(6).fill("-"),Btime:Array(6).fill("-"),Acamp:[2,3,2,3,2,3],Bcamp:[4,5,4,5,4,5],rankA:[],rankB:[],quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};
 
 async function initDefaults(){
-    state.Acamp=[2,3,2,3,2,3];
-    state.Bcamp=[4,5,4,5,4,5];
-    state.Atime=["20:00","20:00","20:00","20:00","20:00","20:00"];
-    state.Btime=["20:00","20:00","20:00","20:00","20:00","20:00"];
     try{
-        let { data, error } = await sb.from('torneo').select('state').eq('id', 1).single();
+        let { data } = await sb.from('torneo').select('state').eq('id', 1).single();
         if(data && data.state) state = data.state;
-    }catch(e){
-        console.error("Errore connessione Supabase:", e);
-    }
-    loadSavedTeams();
-    render();
+    }catch(e){ console.error("Errore:", e); }
+    loadSavedTeams(); render();
 }
 
 function updateAndSync(){
     localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
-    try{
-        sb.from('torneo').upsert({ id: 1, state: state });
-    }catch(e){
-        console.error("Errore sincronizzazione Cloud:", e);
-    }
+    try{ sb.from('torneo').upsert({ id: 1, state: state }); } catch(e){}
     render();
 }
 
-function render(){renderTables();renderClass();renderKO()}
-function reset(){localStorage.removeItem("savedTeams");location.reload()}
+function render(){ renderTables(); renderClass(); renderKO(); }
+function reset(){ localStorage.removeItem("savedTeams"); location.reload(); }
 
 function saveTeams(){
     let t=document.getElementById("teamInput").value.split('\n').filter(l=>l.trim()!=="");
-    if(t.length>=8){
-        state.A=t.slice(0,4);
-        state.B=t.slice(4,8);
-        localStorage.setItem("savedTeams",JSON.stringify(t.slice(0,8)));
-        document.getElementById("teamModal").style.display='none';
-        updateAndSync();
-    }
+    if(t.length>=8){ state.A=t.slice(0,4); state.B=t.slice(4,8); updateAndSync(); document.getElementById("teamModal").style.display='none'; }
 }
 
 function loadSavedTeams(){
     let s=localStorage.getItem("savedTeams");
-    if(s){
-        let t=JSON.parse(s);
-        state.A=t.slice(0,4);
-        state.B=t.slice(4,8);
-        document.getElementById("teamInput").value=t.join('\n');
-    }
+    if(s){ let t=JSON.parse(s); state.A=t.slice(0,4); state.B=t.slice(4,8); }
 }
+
 function handleFile(e){
     let r=new FileReader();
     r.onload=function(evt){
         let wb=XLSX.read(new Uint8Array(evt.target.result),{type:"array"});
-        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().map(x=>String(x).trim()).filter(x=>x);
-        state.A=data.slice(0,4);
-        state.B=data.slice(4,8);
-        localStorage.setItem("savedTeams",JSON.stringify(data.slice(0,8)));
-        document.getElementById("teamInput").value=data.slice(0,8).join('\n');
-        updateAndSync();
+        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().filter(x=>x);
+        state.A=data.slice(0,4); state.B=data.slice(4,8); updateAndSync();
     };
     r.readAsArrayBuffer(e.target.files[0]);
 }
+
 function calc(teams,res,matches){
     let t=teams.map((n,idx)=>({n,pt:0,gf:0,gs:0,df:0,id:idx,qual:false}));
     matches.forEach((m,i)=>{
-        let r=res[i];
-        if(!r || !r.includes("-")) return;
+        let r = res[i]||"-";
+        if(!r.includes("-")) return;
         let[a,b]=r.split("-").map(Number);
-        t[m[0]].gf+=a;t[m[0]].gs+=b;
-        t[m[1]].gf+=b;t[m[1]].gs+=a;
-        if(a>b) t[m[0]].pt+=3;
-        else if(b>a) t[m[1]].pt+=3;
-        else {t[m[0]].pt++;t[m[1]].pt++}
+        if(isNaN(a)||isNaN(b)) return;
+        t[m[0]].gf+=a; t[m[0]].gs+=b; t[m[1]].gf+=b; t[m[1]].gs+=a;
+        if(a>b) t[m[0]].pt+=3; else if(b>a) t[m[1]].pt+=3; else {t[m[0]].pt++; t[m[1]].pt++}
     });
     t.forEach(x=>x.df=x.gf-x.gs);
     t.sort((a,b)=>b.pt-a.pt||b.df-a.df||b.gf-a.gf||a.gs-b.gs);
@@ -179,122 +155,64 @@ function calc(teams,res,matches){
 }
 
 function renderTables(){
-    let A="",B="";
+    let A="", B="";
     state.matchesA.forEach((m,i)=>{
-        A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value;updateAndSync()" style="width:40px"></td><td><input value="${state.Atime[i]||''}" oninput="state.Atime[${i}]=this.value;updateAndSync()" style="width:45px"></td><td>${state.A[m[0]]||'-'}/${state.A[m[1]]||'-'}</td><td><input value="${state.Ares[i]||''}" oninput="state.Ares[${i}]=this.value;renderClass();renderKO();updateAndSync()" style="width:45px"></td></tr>`;
+        let t = (state.Atime[i]||"-").split("-");
+        let r = (state.Ares[i]||"-").split("-");
+        A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
+            <td><div class="db-cell"><input value="${t[0]||''}" oninput="updateTime('A',${i},0,this.value)"><input value="${t[1]||''}" oninput="updateTime('A',${i},1,this.value)"></div></td>
+            <td>${state.A[m[0]]||'-'}/${state.A[m[1]]||'-'}</td>
+            <td><div class="db-cell"><input value="${r[0]||''}" oninput="updateRes('A',${i},0,this.value)"><input value="${r[1]||''}" oninput="updateRes('A',${i},1,this.value)"></div></td></tr>`;
     });
     state.matchesB.forEach((m,i)=>{
-        B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value;updateAndSync()" style="width:40px"></td><td><input value="${state.Btime[i]||''}" oninput="state.Btime[${i}]=this.value;updateAndSync()" style="width:45px"></td><td>${state.B[m[0]]||'-'}/${state.B[m[1]]||'-'}</td><td><input value="${state.Bres[i]||''}" oninput="state.Bres[${i}]=this.value;renderClass();renderKO();updateAndSync()" style="width:45px"></td></tr>`;
+        let t = (state.Btime[i]||"-").split("-");
+        let r = (state.Bres[i]||"-").split("-");
+        B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
+            <td><div class="db-cell"><input value="${t[0]||''}" oninput="updateTime('B',${i},0,this.value)"><input value="${t[1]||''}" oninput="updateTime('B',${i},1,this.value)"></div></td>
+            <td>${state.B[m[0]]||'-'}/${state.B[m[1]]||'-'}</td>
+            <td><div class="db-cell"><input value="${r[0]||''}" oninput="updateRes('B',${i},0,this.value)"><input value="${r[1]||''}" oninput="updateRes('B',${i},1,this.value)"></div></td></tr>`;
     });
-    document.getElementById("Arows").innerHTML=A;
-    document.getElementById("Brows").innerHTML=B;
+    document.getElementById("Arows").innerHTML=A; document.getElementById("Brows").innerHTML=B;
 }
+
+function updateTime(g, i, pos, val){
+    let arr = g=='A'?state.Atime:state.Btime;
+    let parts = (arr[i]||"-").split("-");
+    parts[pos] = val; arr[i] = parts.join("-");
+    updateAndSync();
+}
+function updateRes(g, i, pos, val){
+    let arr = g=='A'?state.Ares:state.Bres;
+    let parts = (arr[i]||"-").split("-");
+    parts[pos] = val; arr[i] = parts.join("-");
+    render();
+}
+
 function renderClass(){
     let newA=calc(state.A,state.Ares,state.matchesA);
     let newB=calc(state.B,state.Bres,state.matchesB);
-
-    document.getElementById("Aclass").innerHTML=newA.map((x)=>{
-        let up=x.qual ? `<span class="qual-arrow-up">▲</span>` : `<span class="qual-arrow-up" style="opacity:.15">▲</span>`;
-        let down=x.qual ? `<span class="qual-arrow-down" style="opacity:.15">▼</span>` : `<span class="qual-arrow-down">▼</span>`;
-        return `<tr><td>${up} ${down} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`;
-    }).join("");
-
-    document.getElementById("Bclass").innerHTML=newB.map((x)=>{
-        let up=x.qual ? `<span class="qual-arrow-up">▲</span>` : `<span class="qual-arrow-up" style="opacity:.15">▲</span>`;
-        let down=x.qual ? `<span class="qual-arrow-down" style="opacity:.15">▼</span>` : `<span class="qual-arrow-down">▼</span>`;
-        return `<tr><td>${up} ${down} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`;
-    }).join("");
-
-    state.rankA=newA;
-    state.rankB=newB;
+    document.getElementById("Aclass").innerHTML=newA.map(x=>`<tr><td>${x.qual?'▲':'▼'} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
+    document.getElementById("Bclass").innerHTML=newB.map(x=>`<tr><td>${x.qual?'▲':'▼'} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
+    state.rankA=newA; state.rankB=newB;
 }
 
 function renderKO(){
-    if(state.Ares.length<6 || state.Bres.length<6){
-        document.getElementById("Q").innerHTML="Completa i gironi";
-        return;
-    }
-
-    let A=state.rankA;
-    let B=state.rankB;
-
-    state.quarti=[
-        {a:A[0].n,b:B[3].n,w:null,l:null},
-        {a:B[1].n,b:A[2].n,w:null,l:null},
-        {a:B[0].n,b:A[3].n,w:null,l:null},
-        {a:A[1].n,b:B[2].n,w:null,l:null}
-    ];
-
-    state.quarti.forEach((q,i)=>{
-        if(state.qRes[i]) setQuarto(i,state.qRes[i],true);
-    });
-
-    document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.qRes[i]||''}" placeholder="0-0" oninput="setQuarto(${i},this.value);updateAndSync()"></div>`).join("");
-
-    if(state.quarti.every(q=>q.w)){
-        state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}];
-        state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}];
-    }
-
-    let topHTML="<h4>TOP</h4>";
-    state.semiTop.forEach((m,i)=>{
-        if(state.sTopRes[i]) setSemiTop(i,state.sTopRes[i],true);
-        topHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value);updateAndSync()"></div>`;
-    });
-
-    let flopHTML="<h4>BANANA</h4>";
-    state.semiFlop.forEach((m,i)=>{
-        if(state.sFlopRes[i]) setSemiFlop(i,state.sFlopRes[i],true);
-        flopHTML+=`<div class="match">${m.a}/${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value);updateAndSync()"></div>`;
-    });
-
-    document.getElementById("S").innerHTML=topHTML+flopHTML;
-
+    let A=state.rankA, B=state.rankB;
+    if(A.length<4 || B.length<4){ document.getElementById("Q").innerHTML="Inserisci squadre"; return; }
+    state.quarti=[{a:A[0].n,b:B[3].n,w:null,l:null},{a:B[1].n,b:A[2].n,w:null,l:null},{a:B[0].n,b:A[3].n,w:null,l:null},{a:A[1].n,b:B[2].n,w:null,l:null}];
+    state.quarti.forEach((q,i)=>{ if(state.qRes[i]) setQuarto(i,state.qRes[i],true); });
+    document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.qRes[i]||''}" oninput="setQuarto(${i},this.value)"></div>`).join("");
+    if(state.quarti.every(q=>q.w)){ state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}]; state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}]; }
+    document.getElementById("S").innerHTML="<h4>TOP</h4>"+(state.semiTop.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value)"></div>`).join(""))+"<h4>BANANA</h4>"+(state.semiFlop.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value)"></div>`).join(""));
     if(state.semiTop.every(s=>s.w)) state.finalTop=[{a:state.semiTop[0].w,b:state.semiTop[1].w}];
     if(state.semiFlop.every(s=>s.w)) state.finalFlop=[{a:state.semiFlop[0].w,b:state.semiFlop[1].w}];
-
-    document.getElementById("F").innerHTML=`<h3>TOP FINAL</h3>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<br><input value="${state.fTopRes||''}" oninput="setFinalTop(this.value);updateAndSync()"><div class="winner-box top-win">${state.campioneTop?"🏆 TOP: "+state.campioneTop:""}</div><h3>BANANA FINAL</h3>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<br><input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value);updateAndSync()"><div class="winner-box banana-win">${state.campioneFlop?"🍌 BANANA: "+state.campioneFlop:""}</div>`;
+    document.getElementById("F").innerHTML=`<h3>TOP</h3>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<input value="${state.fTopRes||''}" oninput="setFinalTop(this.value)"><h3>BANANA</h3>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value)">`;
 }
-function setQuarto(i,val,internal=false){
-    if(!internal) state.qRes[i]=val;
-    if(!val.includes("-")) return;
-    let[a,b]=val.split("-").map(Number);
-    state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b;
-    state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a;
-    if(!internal) renderKO();
-}
-
-function setSemiTop(i,val,internal=false){
-    if(!internal) state.sTopRes[i]=val;
-    if(!val.includes("-")) return;
-    let[a,b]=val.split("-").map(Number);
-    state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b;
-    if(!internal) renderKO();
-}
-
-function setSemiFlop(i,val,internal=false){
-    if(!internal) state.sFlopRes[i]=val;
-    if(!val.includes("-")) return;
-    let[a,b]=val.split("-").map(Number);
-    state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b;
-    if(!internal) renderKO();
-}
-
-function setFinalTop(val){
-    state.fTopRes=val;
-    if(!val.includes("-")) return;
-    let[a,b]=val.split("-").map(Number);
-    state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b;
-    renderKO();
-}
-
-function setFinalFlop(val){
-    state.fFlopRes=val;
-    if(!val.includes("-")) return;
-    let[a,b]=val.split("-").map(Number);
-    state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b;
-    renderKO();
-}
+function setQuarto(i,val,internal=false){ if(!internal) state.qRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b; state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a; updateAndSync(); }
+function setSemiTop(i,val,internal=false){ if(!internal) state.sTopRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b; updateAndSync(); }
+function setSemiFlop(i,val,internal=false){ if(!internal) state.sFlopRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b; updateAndSync(); }
+function setFinalTop(val){ state.fTopRes=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b; updateAndSync(); }
+function setFinalFlop(val){ state.fFlopRes=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b; updateAndSync(); }
 </script>
 </body>
 </html>
