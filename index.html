@@ -99,120 +99,475 @@ const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-let state={A:[],B:[],matchesA:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],matchesB:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]],Ares:Array(6).fill("-"),Bres:Array(6).fill("-"),Atime:Array(6).fill("-"),Btime:Array(6).fill("-"),Acamp:[2,3,2,3,2,3],Bcamp:[4,5,4,5,4,5],rankA:[],rankB:[],quarti:[],qRes:[],semiTop:[],sTopRes:[],semiFlop:[],sFlopRes:[],finalTop:[],fTopRes:"",finalFlop:[],fFlopRes:"",campioneTop:null,campioneFlop:null};
+/* =========================
+   REALTIME SYNC
+   Se un altro dispositivo modifica il torneo, questo client si aggiorna
+   automaticamente senza bisogno di ricaricare la pagina.
+========================= */
+try{
+    sb.channel('torneo-realtime')
+      .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'torneo', filter: 'id=eq.2' },
+          (payload) => {
+              if(payload.new && payload.new.state){
+                  state = payload.new.state;
+                  render();
+              }
+          }
+      )
+      .subscribe();
+}catch(e){ console.error("Realtime non disponibile:", e); }
 
+/* =========================
+   STATE (INVARIATO)
+========================= */
+let state = {
+    A: [], B: [],
+    /* FIX: ordine abbinamenti corretto - girone all'italiana con 2 partite
+       in parallelo (campo2/campo3) che non condividono mai la stessa squadra */
+    matchesA: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]],
+    matchesB: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]],
+    Ares: Array(6).fill("-"),
+    Bres: Array(6).fill("-"),
+    Atime: Array(6).fill("-"),
+    Btime: Array(6).fill("-"),
+    Acamp: [2,3,2,3,2,3],
+    Bcamp: [4,5,4,5,4,5],
+    rankA: [], rankB: [],
+    quarti: [],
+    qRes: [],
+    semiTop: [],
+    sTopRes: [],
+    semiFlop: [],
+    sFlopRes: [],
+    finalTop: [],
+    fTopRes: "",
+    finalFlop: [],
+    fFlopRes: "",
+    campioneTop: null,
+    campioneFlop: null
+};
+
+/* =========================
+   MATCH FIXI (EXCEL STYLE)
+========================= */
+/* FIX: stesso ordine corretto qui, deve combaciare con state.matchesA/B */
+const FIXED_MATCHES = {
+    A: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]],
+    B: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]]
+};
+
+/* =========================
+   INIT
+========================= */
 async function initDefaults(){
     try{
-        let { data } = await sb.from('torneo').select('state').eq('id', 1).single();
+        let { data } = await sb.from('torneo').select('state').eq('id', 2).single();
         if(data && data.state) state = data.state;
-    }catch(e){ console.error("Errore:", e); }
-    loadSavedTeams(); render();
-}
+    }catch(e){ console.error(e); }
 
-function updateAndSync(){
-    localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
-    try{ sb.from('torneo').upsert({ id: 1, state: state }); } catch(e){}
+    loadSavedTeams();
+    autofillTimes();
     render();
 }
 
-function render(){ renderTables(); renderClass(); renderKO(); }
-function reset(){ localStorage.removeItem("savedTeams"); location.reload(); }
+/* =========================
+   ORARI FISSI (EDITABILI)
+   Round 1 (i=0,1): 20:00 | Round 2 (i=2,3): 20:30 | Round 3 (i=4,5): 21:00
+   Non sovrascrive orari gia' inseriti/modificati dall'utente.
+========================= */
+function autofillTimes(){
+    for(let i=0;i<6;i++){
+        let round = Math.floor(i/2);
+        let totalMin = round*30;
+        let hh = 20 + Math.floor(totalMin/60);
+        let mm = totalMin % 60;
+        let hhStr = String(hh).padStart(2,'0');
+        let mmStr = String(mm).padStart(2,'0');
 
+        if(!state.Atime[i] || state.Atime[i]==="-"){
+            state.Atime[i] = hhStr+"-"+mmStr;
+        }
+        if(!state.Btime[i] || state.Btime[i]==="-"){
+            state.Btime[i] = hhStr+"-"+mmStr;
+        }
+    }
+}
+
+/* =========================
+   SYNC
+========================= */
+function updateAndSync(){
+    localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
+    try{ sb.from('torneo').upsert({ id: 2, state }); } catch(e){}
+    render();
+}
+
+/* =========================
+   TEAMS
+========================= */
 function saveTeams(){
-    let t=document.getElementById("teamInput").value.split('\n').filter(l=>l.trim()!=="");
-    if(t.length>=8){ state.A=t.slice(0,4); state.B=t.slice(4,8); updateAndSync(); document.getElementById("teamModal").style.display='none'; }
+    let t = document.getElementById("teamInput")
+        .value.split('\n')
+        .map(x => x.trim())
+        .filter(Boolean);
+
+    if(t.length >= 8){
+        state.A = t.slice(0,4);
+        state.B = t.slice(4,8);
+        updateAndSync();
+        document.getElementById("teamModal").style.display='none';
+    }
 }
 
 function loadSavedTeams(){
-    let s=localStorage.getItem("savedTeams");
-    if(s){ let t=JSON.parse(s); state.A=t.slice(0,4); state.B=t.slice(4,8); }
+    let s = localStorage.getItem("savedTeams");
+    if(s){
+        let t = JSON.parse(s);
+        state.A = t.slice(0,4);
+        state.B = t.slice(4,8);
+    }
 }
 
+/* =========================
+   FILE IMPORT
+========================= */
 function handleFile(e){
-    let r=new FileReader();
-    r.onload=function(evt){
-        let wb=XLSX.read(new Uint8Array(evt.target.result),{type:"array"});
-        let data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}).flat().filter(x=>x);
-        state.A=data.slice(0,4); state.B=data.slice(4,8); updateAndSync();
+    let r = new FileReader();
+
+    r.onload = function(evt){
+        let wb = XLSX.read(new Uint8Array(evt.target.result), {type:"array"});
+        let data = XLSX.utils.sheet_to_json(
+            wb.Sheets[wb.SheetNames[0]],
+            {header:1}
+        ).flat().filter(Boolean);
+
+        state.A = data.slice(0,4);
+        state.B = data.slice(4,8);
+
+        updateAndSync();
     };
+
     r.readAsArrayBuffer(e.target.files[0]);
 }
 
+/* =========================
+   RESET
+========================= */
+function reset(){
+    if(!confirm("Sei sicuro? Questa azione cancella TUTTI i dati del torneo (squadre, risultati, tabellone) per tutti.")) return;
+    state = {
+        A: [], B: [],
+        matchesA: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]],
+        matchesB: [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]],
+        Ares: Array(6).fill("-"),
+        Bres: Array(6).fill("-"),
+        Atime: Array(6).fill("-"),
+        Btime: Array(6).fill("-"),
+        Acamp: [2,3,2,3,2,3],
+        Bcamp: [4,5,4,5,4,5],
+        rankA: [], rankB: [],
+        quarti: [],
+        qRes: [],
+        semiTop: [],
+        sTopRes: [],
+        semiFlop: [],
+        sFlopRes: [],
+        finalTop: [],
+        fTopRes: "",
+        finalFlop: [],
+        fFlopRes: "",
+        campioneTop: null,
+        campioneFlop: null
+    };
+    localStorage.removeItem("savedTeams");
+    autofillTimes();
+    updateAndSync();
+}
+
+/* =========================
+   CALC CLASSIFICA (FIXED)
+========================= */
 function calc(teams,res,matches){
-    let t=teams.map((n,idx)=>({n,pt:0,gf:0,gs:0,df:0,id:idx,qual:false}));
+    let t = teams.map((n,idx)=>({
+        n, pt:0, gf:0, gs:0, df:0, id:idx, qual:false
+    }));
+
     matches.forEach((m,i)=>{
-        let r = res[i]||"-";
-        if(!r.includes("-")) return;
-        let[a,b]=r.split("-").map(Number);
-        if(isNaN(a)||isNaN(b)) return;
-        t[m[0]].gf+=a; t[m[0]].gs+=b; t[m[1]].gf+=b; t[m[1]].gs+=a;
-        if(a>b) t[m[0]].pt+=3; else if(b>a) t[m[1]].pt+=3; else {t[m[0]].pt++; t[m[1]].pt++}
+        let r = res[i];
+        /* FIX: "-" e' solo il segnaposto "non ancora giocata", non un 0-0 */
+        if(!r || r === "-" || !r.includes("-")) return;
+
+        let parts = r.split("-");
+        if(parts.length !== 2) return;
+        if(parts[0].trim()==="" || parts[1].trim()==="") return;
+
+        let a = Number(parts[0]);
+        let b = Number(parts[1]);
+
+        if(isNaN(a) || isNaN(b)) return;
+
+        t[m[0]].gf += a;
+        t[m[0]].gs += b;
+        t[m[1]].gf += b;
+        t[m[1]].gs += a;
+
+        if(a>b) t[m[0]].pt += 3;
+        else if(b>a) t[m[1]].pt += 3;
+        else { t[m[0]].pt++; t[m[1]].pt++; }
     });
-    t.forEach(x=>x.df=x.gf-x.gs);
-    t.sort((a,b)=>b.pt-a.pt||b.df-a.df||b.gf-a.gf||a.gs-b.gs);
-    t.forEach((x,i)=>x.qual=i<2);
+
+    t.forEach(x => x.df = x.gf - x.gs);
+
+    t.sort((a,b)=>
+        b.pt-a.pt ||
+        b.df-a.df ||
+        b.gf-a.gf ||
+        a.gs-b.gs
+    );
+
+    t.forEach((x,i)=>x.qual = i<2);
+
     return t;
 }
 
+/* =========================
+   RENDER TABLES (FIXED MATCHES)
+========================= */
 function renderTables(){
     let A="", B="";
-    state.matchesA.forEach((m,i)=>{
+
+    FIXED_MATCHES.A.forEach((m,i)=>{
         let t = (state.Atime[i]||"-").split("-");
         let r = (state.Ares[i]||"-").split("-");
-        A+=`<tr><td><input value="${state.Acamp[i]||''}" oninput="state.Acamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
-            <td><div class="db-cell"><input value="${t[0]||''}" oninput="updateTime('A',${i},0,this.value)"><input value="${t[1]||''}" oninput="updateTime('A',${i},1,this.value)"></div></td>
+
+        A+=`
+        <tr>
+            <td><input value="${state.Acamp[i]||''}"
+            oninput="state.Acamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
+            <td>
+                <div class="db-cell">
+                    <input value="${t[0]||''}" oninput="updateTime('A',${i},0,this.value)">
+                    <input value="${t[1]||''}" oninput="updateTime('A',${i},1,this.value)">
+                </div>
+            </td>
             <td>${state.A[m[0]]||'-'}/${state.A[m[1]]||'-'}</td>
-            <td><div class="db-cell"><input value="${r[0]||''}" oninput="updateRes('A',${i},0,this.value)"><input value="${r[1]||''}" oninput="updateRes('A',${i},1,this.value)"></div></td></tr>`;
+            <td>
+                <div class="db-cell">
+                    <input value="${r[0]||''}" oninput="updateRes('A',${i},0,this.value)">
+                    <input value="${r[1]||''}" oninput="updateRes('A',${i},1,this.value)">
+                </div>
+            </td>
+        </tr>`;
     });
-    state.matchesB.forEach((m,i)=>{
+
+    FIXED_MATCHES.B.forEach((m,i)=>{
         let t = (state.Btime[i]||"-").split("-");
         let r = (state.Bres[i]||"-").split("-");
-        B+=`<tr><td><input value="${state.Bcamp[i]||''}" oninput="state.Bcamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
-            <td><div class="db-cell"><input value="${t[0]||''}" oninput="updateTime('B',${i},0,this.value)"><input value="${t[1]||''}" oninput="updateTime('B',${i},1,this.value)"></div></td>
+
+        B+=`
+        <tr>
+            <td><input value="${state.Bcamp[i]||''}"
+            oninput="state.Bcamp[${i}]=this.value;updateAndSync()" style="width:40px"></td>
+            <td>
+                <div class="db-cell">
+                    <input value="${t[0]||''}" oninput="updateTime('B',${i},0,this.value)">
+                    <input value="${t[1]||''}" oninput="updateTime('B',${i},1,this.value)">
+                </div>
+            </td>
             <td>${state.B[m[0]]||'-'}/${state.B[m[1]]||'-'}</td>
-            <td><div class="db-cell"><input value="${r[0]||''}" oninput="updateRes('B',${i},0,this.value)"><input value="${r[1]||''}" oninput="updateRes('B',${i},1,this.value)"></div></td></tr>`;
+            <td>
+                <div class="db-cell">
+                    <input value="${r[0]||''}" oninput="updateRes('B',${i},0,this.value)">
+                    <input value="${r[1]||''}" oninput="updateRes('B',${i},1,this.value)">
+                </div>
+            </td>
+        </tr>`;
     });
-    document.getElementById("Arows").innerHTML=A; document.getElementById("Brows").innerHTML=B;
+
+    document.getElementById("Arows").innerHTML=A;
+    document.getElementById("Brows").innerHTML=B;
 }
 
-function updateTime(g, i, pos, val){
+/* =========================
+   RESTO (INVARIATO)
+========================= */
+function updateTime(g,i,pos,val){
     let arr = g=='A'?state.Atime:state.Btime;
     let parts = (arr[i]||"-").split("-");
-    parts[pos] = val; arr[i] = parts.join("-");
+    parts[pos]=val;
+    arr[i]=parts.join("-");
     updateAndSync();
 }
-function updateRes(g, i, pos, val){
+
+function updateRes(g,i,pos,val){
     let arr = g=='A'?state.Ares:state.Bres;
     let parts = (arr[i]||"-").split("-");
-    parts[pos] = val; arr[i] = parts.join("-");
+    parts[pos]=val;
+    arr[i]=parts.join("-");
     render();
 }
 
 function renderClass(){
-    let newA=calc(state.A,state.Ares,state.matchesA);
-    let newB=calc(state.B,state.Bres,state.matchesB);
-    document.getElementById("Aclass").innerHTML=newA.map(x=>`<tr><td>${x.qual?'▲':'▼'} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
-    document.getElementById("Bclass").innerHTML=newB.map(x=>`<tr><td>${x.qual?'▲':'▼'} ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
-    state.rankA=newA; state.rankB=newB;
+    let newA = calc(state.A,state.Ares,state.matchesA);
+    let newB = calc(state.B,state.Bres,state.matchesB);
+
+    document.getElementById("Aclass").innerHTML =
+        newA.map(x=>`<tr><td><span class="${x.qual?'qual-arrow-up':'qual-arrow-down'}">${x.qual?'▲':'▼'}</span> ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
+
+    document.getElementById("Bclass").innerHTML =
+        newB.map(x=>`<tr><td><span class="${x.qual?'qual-arrow-up':'qual-arrow-down'}">${x.qual?'▲':'▼'}</span> ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join("");
+
+    state.rankA=newA;
+    state.rankB=newB;
+}
+
+/* =========================
+   FASE KO: QUARTI -> SEMI TOP/FLOP -> FINALI GOLD/BANANA
+========================= */
+function resolveMatch(home, away, resStr){
+    if(!home || !away) return {winner:null, loser:null};
+    if(!resStr || resStr==="-" || !resStr.includes("-")) return {winner:null, loser:null};
+    let parts = resStr.split("-");
+    if(parts.length!==2) return {winner:null, loser:null};
+    if(parts[0].trim()==="" || parts[1].trim()==="") return {winner:null, loser:null};
+    let a = Number(parts[0]), b = Number(parts[1]);
+    if(isNaN(a) || isNaN(b) || a===b) return {winner:null, loser:null};
+    return a>b ? {winner:home, loser:away} : {winner:away, loser:home};
+}
+
+function matchBox(campo, home, away, resStr, updateFn, idx){
+    let parts = (resStr||"-").split("-");
+    let ready = home && away;
+    let result = resolveMatch(home, away, resStr);
+
+    let homeLabel = home||'In attesa';
+    let awayLabel = away||'In attesa';
+    if(result.winner===home) homeLabel = `<span class="qual-arrow-up">▲</span> ${home}`;
+    if(result.loser===home) homeLabel = `<span class="qual-arrow-down">▼</span> ${home}`;
+    if(result.winner===away) awayLabel = `<span class="qual-arrow-up">▲</span> ${away}`;
+    if(result.loser===away) awayLabel = `<span class="qual-arrow-down">▼</span> ${away}`;
+
+    return `<div class="match">
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">CAMPO ${campo}</div>
+        <div>${homeLabel} vs ${awayLabel}</div>
+        <div class="db-cell" style="margin-top:6px;max-width:120px;margin-left:auto;margin-right:auto;">
+            <input value="${parts[0]||''}" ${ready?'':'disabled'} oninput="${updateFn}(${idx},0,this.value)">
+            <input value="${parts[1]||''}" ${ready?'':'disabled'} oninput="${updateFn}(${idx},1,this.value)">
+        </div>
+    </div>`;
+}
+
+function finalMatchBox(home, away, resStr, which){
+    let parts = (resStr||"-").split("-");
+    let ready = home && away;
+    return `<div class="match">
+        <div>${home||'In attesa'} vs ${away||'In attesa'}</div>
+        <div class="db-cell" style="margin-top:6px;max-width:120px;margin-left:auto;margin-right:auto;">
+            <input value="${parts[0]||''}" ${ready?'':'disabled'} oninput="updateFinalRes('${which}',0,this.value)">
+            <input value="${parts[1]||''}" ${ready?'':'disabled'} oninput="updateFinalRes('${which}',1,this.value)">
+        </div>
+    </div>`;
 }
 
 function renderKO(){
-    let A=state.rankA, B=state.rankB;
-    if(A.length<4 || B.length<4){ document.getElementById("Q").innerHTML="Inserisci squadre"; return; }
-    state.quarti=[{a:A[0].n,b:B[3].n,w:null,l:null},{a:B[1].n,b:A[2].n,w:null,l:null},{a:B[0].n,b:A[3].n,w:null,l:null},{a:A[1].n,b:B[2].n,w:null,l:null}];
-    state.quarti.forEach((q,i)=>{ if(state.qRes[i]) setQuarto(i,state.qRes[i],true); });
-    document.getElementById("Q").innerHTML=state.quarti.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.qRes[i]||''}" oninput="setQuarto(${i},this.value)"></div>`).join("");
-    if(state.quarti.every(q=>q.w)){ state.semiTop=[{a:state.quarti[0].w,b:state.quarti[1].w,w:null},{a:state.quarti[2].w,b:state.quarti[3].w,w:null}]; state.semiFlop=[{a:state.quarti[0].l,b:state.quarti[1].l,w:null},{a:state.quarti[2].l,b:state.quarti[3].l,w:null}]; }
-    document.getElementById("S").innerHTML="<h4>TOP</h4>"+(state.semiTop.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.sTopRes[i]||''}" oninput="setSemiTop(${i},this.value)"></div>`).join(""))+"<h4>BANANA</h4>"+(state.semiFlop.map((m,i)=>`<div class="match">${m.a}/${m.b}<br><input value="${state.sFlopRes[i]||''}" oninput="setSemiFlop(${i},this.value)"></div>`).join(""));
-    if(state.semiTop.every(s=>s.w)) state.finalTop=[{a:state.semiTop[0].w,b:state.semiTop[1].w}];
-    if(state.semiFlop.every(s=>s.w)) state.finalFlop=[{a:state.semiFlop[0].w,b:state.semiFlop[1].w}];
-    document.getElementById("F").innerHTML=`<h3>TOP</h3>${state.finalTop[0]?.a||"-"} vs ${state.finalTop[0]?.b||"-"}<input value="${state.fTopRes||''}" oninput="setFinalTop(this.value)"><h3>BANANA</h3>${state.finalFlop[0]?.a||"-"} vs ${state.finalFlop[0]?.b||"-"}<input value="${state.fFlopRes||''}" oninput="setFinalFlop(this.value)">`;
+    if(!state.rankA || state.rankA.length<4 || !state.rankB || state.rankB.length<4){
+        document.getElementById('Q').innerHTML = '<p style="font-size:13px;color:#94a3b8;">Completa i gironi per generare i Quarti</p>';
+        document.getElementById('S').innerHTML='';
+        document.getElementById('F').innerHTML='';
+        return;
+    }
+
+    if(!state.qRes || state.qRes.length!==4) state.qRes = Array(4).fill('-');
+    if(!state.sTopRes || state.sTopRes.length!==2) state.sTopRes = Array(2).fill('-');
+    if(!state.sFlopRes || state.sFlopRes.length!==2) state.sFlopRes = Array(2).fill('-');
+
+    let quarti = [
+        {campo:2, home:state.rankA[0].n, away:state.rankB[3].n},
+        {campo:3, home:state.rankB[1].n, away:state.rankA[2].n},
+        {campo:4, home:state.rankB[0].n, away:state.rankA[3].n},
+        {campo:5, home:state.rankA[1].n, away:state.rankB[2].n}
+    ];
+
+    document.getElementById('Q').innerHTML = quarti.map((q,i)=>
+        matchBox(q.campo, q.home, q.away, state.qRes[i], 'updateQRes', i)
+    ).join('');
+
+    let qResults = quarti.map((q,i)=> resolveMatch(q.home, q.away, state.qRes[i]));
+
+    let semiTop = [
+        {campo:2, home:qResults[0].winner, away:qResults[1].winner},
+        {campo:3, home:qResults[2].winner, away:qResults[3].winner}
+    ];
+    let semiFlop = [
+        {campo:4, home:qResults[0].loser, away:qResults[1].loser},
+        {campo:5, home:qResults[2].loser, away:qResults[3].loser}
+    ];
+
+    document.getElementById('S').innerHTML = `
+        <div style="margin-bottom:12px;"><b style="color:#fbbf24;">🏆 TOP</b>
+            ${semiTop.map((m,i)=>matchBox(m.campo,m.home,m.away,state.sTopRes[i],'updateSTopRes',i)).join('')}
+        </div>
+        <div><b style="color:#4ade80;">🍌 FLOP</b>
+            ${semiFlop.map((m,i)=>matchBox(m.campo,m.home,m.away,state.sFlopRes[i],'updateSFlopRes',i)).join('')}
+        </div>`;
+
+    let sTopResults = semiTop.map((m,i)=>resolveMatch(m.home,m.away,state.sTopRes[i]));
+    let sFlopResults = semiFlop.map((m,i)=>resolveMatch(m.home,m.away,state.sFlopRes[i]));
+
+    let finalTop = {home:sTopResults[0].winner, away:sTopResults[1].winner};
+    let finalFlop = {home:sFlopResults[0].winner, away:sFlopResults[1].winner};
+
+    let finalTopResolved = resolveMatch(finalTop.home, finalTop.away, state.fTopRes);
+    let finalFlopResolved = resolveMatch(finalFlop.home, finalFlop.away, state.fFlopRes);
+
+    state.campioneTop = finalTopResolved.winner || null;
+    state.campioneFlop = finalFlopResolved.winner || null;
+
+    document.getElementById('F').innerHTML = `
+        <h3 style="text-align:center;margin-top:0;">🥇 FINALE GOLD</h3>
+        ${finalMatchBox(finalTop.home, finalTop.away, state.fTopRes, 'top')}
+        ${state.campioneTop?`<div class="winner-box top-win">🏆 CAMPIONE: ${state.campioneTop}</div>`:''}
+        <h3 style="text-align:center;">🍌 FINALE SILVER (Banana)</h3>
+        ${finalMatchBox(finalFlop.home, finalFlop.away, state.fFlopRes, 'flop')}
+        ${state.campioneFlop?`<div class="winner-box banana-win">🍌 VINCITORE BANANA: ${state.campioneFlop}</div>`:''}
+    `;
 }
-function setQuarto(i,val,internal=false){ if(!internal) state.qRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.quarti[i].w=a>b?state.quarti[i].a:state.quarti[i].b; state.quarti[i].l=a>b?state.quarti[i].b:state.quarti[i].a; updateAndSync(); }
-function setSemiTop(i,val,internal=false){ if(!internal) state.sTopRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.semiTop[i].w=a>b?state.semiTop[i].a:state.semiTop[i].b; updateAndSync(); }
-function setSemiFlop(i,val,internal=false){ if(!internal) state.sFlopRes[i]=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.semiFlop[i].w=a>b?state.semiFlop[i].a:state.semiFlop[i].b; updateAndSync(); }
-function setFinalTop(val){ state.fTopRes=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.campioneTop=a>b?state.finalTop[0].a:state.finalTop[0].b; updateAndSync(); }
-function setFinalFlop(val){ state.fFlopRes=val; if(!val.includes("-")) return; let[a,b]=val.split("-").map(Number); state.campioneFlop=a>b?state.finalFlop[0].a:state.finalFlop[0].b; updateAndSync(); }
+
+function updateQRes(i,pos,val){
+    let parts=(state.qRes[i]||'-').split('-');
+    parts[pos]=val;
+    state.qRes[i]=parts.join('-');
+    updateAndSync();
+}
+function updateSTopRes(i,pos,val){
+    let parts=(state.sTopRes[i]||'-').split('-');
+    parts[pos]=val;
+    state.sTopRes[i]=parts.join('-');
+    updateAndSync();
+}
+function updateSFlopRes(i,pos,val){
+    let parts=(state.sFlopRes[i]||'-').split('-');
+    parts[pos]=val;
+    state.sFlopRes[i]=parts.join('-');
+    updateAndSync();
+}
+function updateFinalRes(which,pos,val){
+    let key = which==='top'?'fTopRes':'fFlopRes';
+    let parts=(state[key]||'-').split('-');
+    parts[pos]=val;
+    state[key]=parts.join('-');
+    updateAndSync();
+}
+
+/* =========================
+   RENDER (mancava: ora collega tutto)
+========================= */
+function render(){
+    renderTables();
+    renderClass();
+    renderKO();
+}
 </script>
 </body>
 </html>
