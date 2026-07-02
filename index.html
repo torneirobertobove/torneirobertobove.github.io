@@ -25,11 +25,11 @@ button.back{background:#475569}
 textarea{width:100%; height:150px; background:#0b1220; color:#fff; border:1px solid #334155; padding:10px; margin-top:10px; border-radius:4px;font-family:system-ui;}
 .groups{display:grid;grid-template-columns:1fr;gap:12px;}
 @media(min-width:600px){.groups{grid-template-columns:1fr 1fr;}}
-.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:15px;overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:5px;}
-th,td{padding:4px 2px;border-bottom:1px solid #1f2a3c;text-align:center;min-width:40px;}
-input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;font-size:11px;}
-.db-cell{display:flex; gap:1px;}
+.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:15px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+th,td{padding:8px 4px;border-bottom:1px solid #1f2a3c;text-align:center;}
+input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;}
+.db-cell{display:flex; gap:2px;}
 .db-cell input{width:50%;}
 .ko{margin-top:10px;display:grid;grid-template-columns:1fr;gap:12px;}
 @media(min-width:600px){.ko{grid-template-columns:1fr 1fr;}}
@@ -41,18 +41,9 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
 .banana-win{background:rgba(74,222,128,.1);color:#4ade80;font-size:1em;}
 .qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 .qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
-@media screen and (max-width: 600px) {
-    table { display: block; overflow-x: auto; white-space: nowrap; }
-    th, td { min-width: 40px; padding: 4px 2px; }
-    .card { padding: 5px; }
-}
 </style>
 </head>
 <body onload="initDefaults()">
-<nav style="padding: 15px; background: #0f172a; text-align: center; border-bottom: 1px solid #243041; margin-bottom: 10px;">
-    <a href="index.html" style="margin: 0 15px; text-decoration: none; color: #60a5fa; font-weight: bold;">Torneo Principale</a>
-    <a href="torneo_8_squadre_TOP.html" style="margin: 0 15px; text-decoration: none; color: #60a5fa; font-weight: bold;">Torneo 8 Squadre TOP</a>
-</nav>
 <div class="container">
     <div class="header-box">
         <div style="text-align: center;">
@@ -73,8 +64,14 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
             <input type="file" id="file" hidden onchange="handleFile(event)">
             <button onclick="document.getElementById('rulesModal').style.display='block'">📖 Regole</button>
         </div>
-        <div class="btn-group"><button onclick="document.getElementById('teamModal').style.display='block'">📝 Squadre</button></div>
-        <div class="btn-group"><button class="reset" onclick="reset()">Reset</button><button onclick="window.print()">Stampa</button><button onclick="updateAndSync()" style="background-color: #4CAF50; color: white;">💾 Salva Torneo</button></div>
+        <div class="btn-group">
+            <button onclick="document.getElementById('teamModal').style.display='block'">📝 Squadre</button>
+        </div>
+        <div class="btn-group">
+            <button class="reset" onclick="reset()">Reset</button>
+            <button onclick="window.print()">Stampa</button>
+            <button onclick="updateAndSync()" style="background-color: #4CAF50; color: white;">💾 Salva Torneo</button>
+        </div>
     </div>
     <div id="rulesModal" class="modal"><div class="modal-content">
         <h3>📖 Regole:</h3>
@@ -107,15 +104,7 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
 const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
-</script>
-</body>
-</html>
 
-// Inizializzazione del client Supabase
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
-
-// Log di controllo
-console.log("Supabase client inizializzato correttamente.");
 /* =========================
    STATE (INVARIATO)
 ========================= */
@@ -159,26 +148,16 @@ const FIXED_MATCHES = {
    INIT
 ========================= */
 async function initDefaults(){
-    // Generiamo la data di oggi per cercare il record corretto
-    const dataOggi = new Date().toISOString().split('T')[0];
-    
     try{
-        // Cerchiamo il record che ha l'ID uguale alla data di oggi
-        let { data, error } = await sb.from('torneo').select('state').eq('id', dataOggi).single();
-        
-        if(data && data.state) {
-            state = data.state;
-        } else {
-            console.log("Nessun torneo trovato per oggi, si parte da zero.");
-        }
-    }catch(e){ 
-        console.error("Errore nel caricamento iniziale:", e); 
-    }
+        let { data } = await sb.from('torneo').select('state').eq('id', 1).single();
+        if(data && data.state) state = data.state;
+    }catch(e){ console.error(e); }
 
     loadSavedTeams();
     autofillTimes();
     render();
 }
+
 /* =========================
    ORARI FISSI (EDITABILI)
    Round 1 (i=0,1): 20:00 | Round 2 (i=2,3): 20:30 | Round 3 (i=4,5): 21:00
@@ -205,19 +184,19 @@ function autofillTimes(){
 /* =========================
    SYNC
 ========================= */
-async function updateAndSync() {
-    // Genera la data odierna (YYYY-MM-DD)
-    const dataOggi = new Date().toISOString().split('T')[0]; 
+async function updateAndSync(){
+    // Genera la data di oggi: es. "2026-07-02"
+    const dataOggi = new Date().toISOString().split('T')[0];
     
     localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
     
     try { 
-        // L'ID sarà la data (es: "2026-07-02") invece di 1
+        // Usiamo dataOggi come ID invece di 1
         await sb.from('torneo').upsert({ id: dataOggi, state: state }); 
-        alert("Torneo salvato per la data: " + dataOggi);
+        alert("Torneo salvato con successo: " + dataOggi);
     } catch(e) {
-        console.error("Errore:", e);
-        alert("Errore nel salvataggio!");
+        console.error("Errore salvataggio:", e);
+        alert("Errore nel salvataggio! Controlla la console F12.");
     }
     render();
 }
