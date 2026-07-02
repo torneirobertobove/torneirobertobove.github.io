@@ -193,16 +193,19 @@ function autofillTimes(){
    SYNC
 ========================= */
 async function updateAndSync() {
-    // Usa la data di oggi in automatico (formato: 2026-07-02)
-    const dataOggi = "2026-07-03"; // Data di test forzata
+    // Otteniamo la data odierna in formato YYYY-MM-DD
+    const dataOggi = new Date().toISOString().split('T')[0]; 
     
     // Salva in locale
     localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
     
     try { 
-        // Salva su Supabase usando la data odierna come ID
-        await sb.from('torneo').upsert({ id: dataOggi, state: state }); 
-        alert("Torneo salvato con successo: " + dataOggi);
+        // Upsert usa la data come ID. Se il torneo di oggi esiste, lo aggiorna.
+        // Se non esiste, ne crea uno nuovo.
+        const { error } = await sb.from('torneo').upsert({ id: dataOggi, state: state });
+        
+        if (error) throw error;
+        alert("Torneo salvato con successo per la data: " + dataOggi);
     } catch(e) {
         console.error("Errore salvataggio:", e);
         alert("Errore nel salvataggio! Controlla la console.");
