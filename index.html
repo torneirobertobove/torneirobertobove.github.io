@@ -156,16 +156,26 @@ const FIXED_MATCHES = {
    INIT
 ========================= */
 async function initDefaults(){
+    // Generiamo la data di oggi per cercare il record corretto
+    const dataOggi = new Date().toISOString().split('T')[0];
+    
     try{
-        let { data } = await sb.from('torneo').select('state').eq('id', 1).single();
-        if(data && data.state) state = data.state;
-    }catch(e){ console.error(e); }
+        // Cerchiamo il record che ha l'ID uguale alla data di oggi
+        let { data, error } = await sb.from('torneo').select('state').eq('id', dataOggi).single();
+        
+        if(data && data.state) {
+            state = data.state;
+        } else {
+            console.log("Nessun torneo trovato per oggi, si parte da zero.");
+        }
+    }catch(e){ 
+        console.error("Errore nel caricamento iniziale:", e); 
+    }
 
     loadSavedTeams();
     autofillTimes();
     render();
 }
-
 /* =========================
    ORARI FISSI (EDITABILI)
    Round 1 (i=0,1): 20:00 | Round 2 (i=2,3): 20:30 | Round 3 (i=4,5): 21:00
