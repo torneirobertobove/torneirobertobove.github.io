@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Torneo 8 Squadre</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
 *{box-sizing:border-box}
@@ -25,11 +25,11 @@ button.back{background:#475569}
 textarea{width:100%; height:150px; background:#0b1220; color:#fff; border:1px solid #334155; padding:10px; margin-top:10px; border-radius:4px;font-family:system-ui;}
 .groups{display:grid;grid-template-columns:1fr;gap:12px;}
 @media(min-width:600px){.groups{grid-template-columns:1fr 1fr;}}
-.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:15px;overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:5px;}
-th,td{padding:4px 2px;border-bottom:1px solid #1f2a3c;text-align:center;min-width:40px;}
-input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;font-size:11px;}
-.db-cell{display:flex; gap:1px;}
+.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:15px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+th,td{padding:8px 4px;border-bottom:1px solid #1f2a3c;text-align:center;}
+input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;}
+.db-cell{display:flex; gap:2px;}
 .db-cell input{width:50%;}
 .ko{margin-top:10px;display:grid;grid-template-columns:1fr;gap:12px;}
 @media(min-width:600px){.ko{grid-template-columns:1fr 1fr;}}
@@ -41,13 +41,6 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
 .banana-win{background:rgba(74,222,128,.1);color:#4ade80;font-size:1em;}
 .qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 .qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
-
-/* Correzione Mobile iPhone ottimizzata */
-@media screen and (max-width: 600px) {
-    table { display: block; overflow-x: auto; white-space: nowrap; }
-    th, td { min-width: 40px; padding: 4px 2px; }
-    .card { padding: 5px; }
-}
 </style>
 </head>
 <body onload="initDefaults()">
@@ -80,16 +73,15 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
             <button onclick="updateAndSync()" style="background-color: #4CAF50; color: white;">💾 Salva Torneo</button>
         </div>
     </div>
-</div>
-<div id="rulesModal" class="modal"><div class="modal-content">
-    <h3>📖 Regole:</h3>
-    <ol>
-        <li>Durata partita 28 minuti</li>
-        <li>Allo scadere dei 28 minuti bisogna finire il gioco in corso</li>
-        <li>Killer secco senza vantaggi</li>
-        <li>Quarti, semifinale e finale in caso di parità gioco aggiuntivo</li>
-        <li>Nella fase a gironi, In caso di pareggio si prende 1 punto a squadra</li>
-    </ol>
+    <div id="rulesModal" class="modal"><div class="modal-content">
+        <h3>📖 Regole:</h3>
+        <ol>
+            <li>Durata partita 28 minuti</li>
+            <li>Allo scadere dei 28 minuti bisogna finire il gioco in corso</li>
+            <li>Killer secco senza vantaggi</li>
+            <li>Quarti, semifinale e finale in caso di parità gioco aggiuntivo</li>
+            <li>Nella fase a gironi, In caso di pareggio si prende 1 punto a squadra</li>
+        </ol>
         <h3>📊 Formula:</h3>
         <ul>
             <li>A) N. 2 Gironi all'italiana formati da quattro squadre</li>
@@ -109,15 +101,10 @@ input{width:100%;padding:3px;border-radius:4px;background:#0b1220;border:1px sol
     <div class="finalContainer" id="F"></div>
 </div>
 <script>
-// Configurazione Supabase
 const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
-
-// Inizializzazione del client Supabase
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Log di controllo
-console.log("Supabase client inizializzato correttamente.");
 /* =========================
    STATE (INVARIATO)
 ========================= */
@@ -161,26 +148,16 @@ const FIXED_MATCHES = {
    INIT
 ========================= */
 async function initDefaults(){
-    // Generiamo la data di oggi per cercare il record corretto
-    const dataOggi = new Date().toISOString().split('T')[0];
-    
     try{
-        // Cerchiamo il record che ha l'ID uguale alla data di oggi
-        let { data, error } = await sb.from('torneo').select('state').eq('id', dataOggi).single();
-        
-        if(data && data.state) {
-            state = data.state;
-        } else {
-            console.log("Nessun torneo trovato per oggi, si parte da zero.");
-        }
-    }catch(e){ 
-        console.error("Errore nel caricamento iniziale:", e); 
-    }
+        let { data } = await sb.from('torneo').select('state').eq('id', 1).single();
+        if(data && data.state) state = data.state;
+    }catch(e){ console.error(e); }
 
     loadSavedTeams();
     autofillTimes();
     render();
 }
+
 /* =========================
    ORARI FISSI (EDITABILI)
    Round 1 (i=0,1): 20:00 | Round 2 (i=2,3): 20:30 | Round 3 (i=4,5): 21:00
@@ -207,19 +184,19 @@ function autofillTimes(){
 /* =========================
    SYNC
 ========================= */
-async function updateAndSync() {
-    // Genera la data odierna (YYYY-MM-DD)
-    const dataOggi = new Date().toISOString().split('T')[0]; 
+async function updateAndSync(){
+    // Genera la data di oggi: es. "2026-07-02"
+    const dataOggi = new Date().toISOString().split('T')[0];
     
     localStorage.setItem("savedTeams", JSON.stringify((state.A||[]).concat(state.B||[])));
     
     try { 
-        // L'ID sarà la data (es: "2026-07-02") invece di 1
+        // Usiamo dataOggi come ID invece di 1
         await sb.from('torneo').upsert({ id: dataOggi, state: state }); 
-        alert("Torneo salvato per la data: " + dataOggi);
+        alert("Torneo salvato con successo: " + dataOggi);
     } catch(e) {
-        console.error("Errore:", e);
-        alert("Errore nel salvataggio!");
+        console.error("Errore salvataggio:", e);
+        alert("Errore nel salvataggio! Controlla la console F12.");
     }
     render();
 }
