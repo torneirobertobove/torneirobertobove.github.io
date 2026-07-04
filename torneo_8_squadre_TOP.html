@@ -51,20 +51,25 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
         </div>
         <div style="text-align: center;">
            <h1 style="margin:0;font-size:1.4rem;">🏆 Torneo 8 Squadre</h1>
-         <input type="text" id="nomeTorneoInput" placeholder="Nome Torneo" onblur="state.nomeTorneo=this.value" class="date-input-field" style="width:200px; margin: 10px auto 0; display:block;">
+         <input type="text" id="nomeTorneoInput" placeholder="Nome Torneo" onblur="state.nomeTorneo=this.value; updateAndSyncSilent();" class="date-input-field" style="width:200px; margin: 10px auto 0; display:block;">
 <div style="display:flex; justify-content:center; gap:15px; margin-top:5px;">
-    <div style="text-align:center;"><div style="font-size:0.7rem; color:#94a3b8; margin-bottom:2px;">Data prevista:</div><input type="date" class="date-input-field"></div>
-    <div style="text-align:center;"><div style="font-size:0.7rem; color:#94a3b8; margin-bottom:2px;">Start ore:</div><input type="time" class="date-input-field" value="20:00" style="width:80px"></div>
-</div>
-        </div>
+    <div style="text-align:center;">
+        <div style="font-size:0.7rem; color:#94a3b8; margin-bottom:2px;">Data prevista:</div>
+        <input type="date" class="date-input-field" onchange="updateAndSyncSilent()">
     </div>
-
-    <div class="topbar">
+    <div style="text-align:center;">
+        <div style="font-size:0.7rem; color:#94a3b8; margin-bottom:2px;">Start ore:</div>
+        <input type="time" class="date-input-field" value="20:00" style="width:80px" onchange="updateAndSyncSilent()">
+    </div>
+</div>
+</div> <!-- Chiude header-box -->
+</div> <!-- Chiude container -->
+<div class="topbar">
         <div class="btn-group">
             <button onclick="document.getElementById('file').click()">Import Excel</button>
             <input type="file" id="file" hidden onchange="handleFile(event)">
             <button onclick="document.getElementById('rulesModal').style.display='block'">📖 Regole</button>
-            <button onclick="updateAndSync()">💾 Salva</button>
+            <button onclick="updateAndSyncSilent()">💾 Salva</button>
         </div>
         <div class="btn-group">
             <button onclick="document.getElementById('teamModal').style.display='block'">📝 Squadre</button>
@@ -95,7 +100,32 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
     <div id="F" style="margin-top:20px;"></div>
 </div>
 </div>
-  <script>
+
+<div id="teamModal" class="modal">
+    <div class="modal-content">
+        <h2>Gestione Squadre</h2>
+        <div id="manualTeamInputs">
+            <input type="text" placeholder="Squadra A1" onchange="state.A[0]=this.value">
+            <input type="text" placeholder="Squadra A2" onchange="state.A[1]=this.value">
+            <input type="text" placeholder="Squadra A3" onchange="state.A[2]=this.value">
+            <input type="text" placeholder="Squadra A4" onchange="state.A[3]=this.value">
+            <input type="text" placeholder="Squadra B1" onchange="state.B[0]=this.value">
+            <input type="text" placeholder="Squadra B2" onchange="state.B[1]=this.value">
+            <input type="text" placeholder="Squadra B3" onchange="state.B[2]=this.value">
+            <input type="text" placeholder="Squadra B4" onchange="state.B[3]=this.value">
+        </div>
+        <button style="margin-top:10px; width:100%;" onclick="document.getElementById('teamModal').style.display='none'; render();">Salva e Chiudi</button>
+    </div>
+</div>
+
+<div id="rulesModal" class="modal">
+    <div class="modal-content">
+        <h2>Regole del Torneo</h2>
+        <p>Inserisci qui le tue regole...</p>
+        <button onclick="document.getElementById('rulesModal').style.display='none'">Chiudi</button>
+    </div>
+</div>
+<script>
 const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
 
@@ -137,34 +167,41 @@ function autofillTimes(){
         if(!state.Btime[i] || state.Btime[i]==="-") state.Btime[i] = hhStr+"-"+mmStr;
     }
 }
-
-async function updateAndSync(){
-    console.log("Tentativo di salvataggio...");
-    try { 
-        const { data, error } = await sb.from('torneo').upsert({ id: 'torneo_data', state: state }); 
-        if (error) throw error;
-        console.log("Salvato con successo!");
-        alert("Salvato!");
-    } catch(e){ 
-        console.error("Errore salvataggio:", e);
-        // Questa riga ti dirà esattamente cosa c'è che non va
-        alert("Errore salvataggio: " + (e.message || "Errore sconosciuto"));
+async function updateAndSyncSilent() {
+    try {
+        // 1. Salva lo stato attuale su Supabase
+        await sb.from('torneo').upsert({ id: 'torneo_data', state: state });
+    } catch (e) {
+        console.error("Sync error:", e);
     }
     render();
+}
+
+async function loadData() {
+    try {
+        // 2. Scarica i dati salvati da Supabase all'avvio
+        const { data, error } = await sb.from('torneo').select('state').eq('id', 'torneo_data').single();
+        if (data && data.state) {
+            state = data.state; // Sovrascrive lo stato locale con quello del DB
+            render();
+        }
+    } catch (e) {
+        console.error("Load error:", e);
+    }
 }
 function handleFile(e){
     let r = new FileReader();
     r.onload = function(evt){
         let wb = XLSX.read(new Uint8Array(evt.target.result), {type:"array"});
         let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1}).flat().filter(Boolean);
-        state.A = data.slice(0,4); state.B = data.slice(4,8); updateAndSync();
+        state.A = data.slice(0,4); state.B = data.slice(4,8); updateAndSyncSilent();
     }; r.readAsArrayBuffer(e.target.files[0]);
 }
 
 function reset(){
     state.A=[]; state.B=[]; state.Ares=Array(6).fill("-"); state.Bres=Array(6).fill("-");
     state.qRes=Array(4).fill("-"); state.sTopRes=Array(2).fill("-"); state.fTopRes="-";
-    autofillTimes(); updateAndSync();
+    autofillTimes(); updateAndSyncSilent();
 }
 
 function calc(teams,res,matches){
@@ -182,14 +219,13 @@ function calc(teams,res,matches){
 
 function updateRes(g,i,pos,val){
     let r = (g==='A'?state.Ares:state.Bres); let parts = (r[i]||"-").split("-");
-    parts[pos]=val; r[i]=parts.join("-"); updateAndSync();
+    parts[pos]=val; r[i]=parts.join("-"); updateAndSyncSilent();
 }
 
 function updateTime(g,i,pos,val){
     let t = (g==='A'?state.Atime:state.Btime); let parts = (t[i]||"-").split("-");
-    parts[pos]=val; t[i]=parts.join("-"); updateAndSync();
+    parts[pos]=val; t[i]=parts.join("-"); updateAndSyncSilent();
 }
-
 function renderTables(){
     let A="", B="";
     [[state.A, state.Ares, state.Atime, 'A'], [state.B, state.Bres, state.Btime, 'B']].forEach((d,idx)=>{
@@ -214,14 +250,11 @@ function renderKO(){
     if(!state.A.length || !state.B.length) return;
     let rA = calc(state.A,state.Ares,state.matchesA), rB = calc(state.B,state.Bres,state.matchesB);
     if(rA.length<4 || rB.length<4) { document.getElementById('Q').innerHTML = '<p>Completa gironi</p>'; return; }
-    
     let quarti = [{c:2, h:rA[0].n, a:rB[3].n}, {c:3, h:rB[1].n, a:rA[2].n}, {c:4, h:rB[0].n, a:rA[3].n}, {c:5, h:rA[1].n, a:rB[2].n}];
     document.getElementById('Q').innerHTML = quarti.map((q,i)=>matchBox(q.c, q.h, q.a, state.qRes[i], 'updateQRes', i)).join('');
-    
     let qRes = quarti.map((q,i)=> resolveMatch(q.h, q.a, state.qRes[i]));
     let semi = [{c:2, h:qRes[0].winner, a:qRes[1].winner}, {c:3, h:qRes[2].winner, a:qRes[3].winner}];
     document.getElementById('S').innerHTML = semi.map((m,i)=>matchBox(m.c, m.h, m.a, state.sTopRes[i], 'updateSTopRes', i)).join('');
-    
     let sRes = semi.map((m,i)=>resolveMatch(m.h, m.a, state.sTopRes[i]));
     state.campioneTop = resolveMatch(sRes[0].winner, sRes[1].winner, state.fTopRes).winner;
     document.getElementById('F').innerHTML = `<h3 style="text-align:center;">🏆 FINALE</h3>` + matchBox('F', sRes[0].winner, sRes[1].winner, state.fTopRes, 'updateFinalRes', 0) + (state.campioneTop ? `<div class="winner-box top-win">CAMPIONE: ${state.campioneTop}</div>` : '');
@@ -238,10 +271,9 @@ function resolveMatch(home, away, resStr){
     return (a>b) ? {winner:home} : {winner:away};
 }
 
-function updateQRes(i,pos,val){ let p=(state.qRes[i]||'-').split('-'); p[pos]=val; state.qRes[i]=p.join('-'); updateAndSync(); }
-function updateSTopRes(i,pos,val){ let p=(state.sTopRes[i]||'-').split('-'); p[pos]=val; state.sTopRes[i]=p.join('-'); updateAndSync(); }
-function updateFinalRes(i,pos,val){ let p=(state.fTopRes||'-').split('-'); p[pos]=val; state.fTopRes=p.join('-'); updateAndSync(); }
-
+function updateQRes(i,pos,val){ let p=(state.qRes[i]||'-').split('-'); p[pos]=val; state.qRes[i]=p.join('-'); updateAndSyncSilent(); }
+function updateSTopRes(i,pos,val){ let p=(state.sTopRes[i]||'-').split('-'); p[pos]=val; state.sTopRes[i]=p.join('-'); updateAndSyncSilent(); }
+function updateFinalRes(i,pos,val){ let p=(state.fTopRes||'-').split('-'); p[pos]=val; state.fTopRes=p.join('-'); updateAndSyncSilent(); }
 function render(){ renderTables(); renderClass(); renderKO(); }
 </script>
 </body>
