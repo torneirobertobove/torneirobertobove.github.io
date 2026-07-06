@@ -41,7 +41,6 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 .qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 .qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 </style>
-
 <script>
     const client = supabase.createClient(
         "https://iybjvtmfaupgthqqsngd.supabase.co", 
@@ -54,10 +53,24 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
             window.location.href = "index.html";
         }
     }
+
+    async function verifyAccess() {
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) return;
+        const adminEmail = "tua-email@esempio.it"; // CAMBIA QUESTA MAIL
+        if (session.user.email !== adminEmail) {
+            document.querySelectorAll('input, button, textarea').forEach(el => {
+                if (el.innerText !== "Stampa" && el.className !== "back") {
+                    el.disabled = true;
+                    el.style.opacity = "0.5";
+                    el.style.cursor = "not-allowed";
+                }
+            });
+        }
+    }
 </script>
 </head>
-<body onload="checkAuth(); initDefaults()">
-
+<body onload="checkAuth(); initDefaults(); verifyAccess()">
 <div id="teamModal" class="modal">
   <div class="modal-content">
     <h3>Inserisci Squadre</h3>
@@ -70,25 +83,20 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 <div id="rulesModal" class="modal">
   <div class="modal-content">
     <h3>⚙️ Regolamento e Criteri</h3>
-    
     <label>Criterio Classifica Principale:</label>
     <select id="crit1" style="width:100%; padding:8px; margin-bottom:10px; background:#0b1220; color:#fff; border:1px solid #334155;">
       <option value="df">Differenza Giochi</option>
       <option value="gf">Maggiori Giochi Vinti</option>
       <option value="gs">Minor Giochi Persi</option>
     </select>
-
     <div style="margin-top:10px;"><label>Punti Vittoria</label><input id="wP" type="number" value="3"></div>
     <div style="margin-top:10px;"><label>Punti Pareggio</label><input id="dP" type="number" value="1"></div>
-    
     <label style="display:block; margin-top:10px;">Note Regolamento (Durata, Quota, etc):</label>
     <textarea id="noteRegole" style="width:100%; height:80px; background:#0b1220; color:#fff; border:1px solid #334155;"></textarea>
-
     <button onclick="applyRules()" style="width:100%; margin-top:15px; background:#2563eb;">💾 Salva Regole</button>
     <button class="back" onclick="closeRules()" style="width:100%; margin-top:5px;">Chiudi</button>
   </div>
 </div>
-
 <div id="formatModal" class="modal">
   <div class="modal-content"><h3>Seleziona Formato</h3>
     <button onclick="setFormat(8)" style="width:100%; margin:5px 0;">8 Squadre</button>
@@ -113,8 +121,7 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       </div>
     </div>
   </div>
-
-  <div class="topbar">
+<div class="topbar">
     <div class="btn-group">
       <button onclick="document.getElementById('formatModal').style.display='block'">⚙️ Formato</button>
       <button onclick="document.getElementById('file').click()">Import Excel</button>
@@ -149,8 +156,7 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       <table style="margin-top:20px;"><thead><tr><th>Girone D</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Dclass"></tbody></table>
     </div>
   </div>
-
-  <div class="finalContainer">
+<div class="finalContainer">
     <h2 style="text-align:center;margin-top:0;">Fase Finale</h2>
     <div class="ko"><div class="koBox"><h3 style="text-align:center;">QUARTI</h3><div id="Q"></div></div><div class="koBox"><h3 style="text-align:center;">SEMIFINALI</h3><div id="S"></div></div></div>
     <div id="F" style="margin-top:20px;"></div>
@@ -158,59 +164,25 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 </div>
 
 <script>
-// ... (Tutto il tuo script rimane invariato, è corretto) ...
 const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-let state = {
-    nomeTorneo:"", rules:{w:3,d:1,start:"20:00",duration:30},
-    A:[], B:[], C:[], D:[],
-    Ares:Array(6).fill("-"), Bres:Array(6).fill("-"), Cres:Array(6).fill("-"), Dres:Array(6).fill("-"),
-    Atime:Array(6).fill("-"), Btime:Array(6).fill("-"), Ctime:Array(6).fill("-"), Dtime:Array(6).fill("-"),
-    Acamp:[2,3,2,3,2,3], Bcamp:[4,5,4,5,4,5], Ccamp:[6,7,6,7,6,7], Dcamp:[8,9,8,9,8,9],
-    qRes:Array(4).fill("-"), sTopRes:Array(2).fill("-"), fTopRes:"-", campioneTop:null
-};
+let state = { nomeTorneo:"", rules:{w:3,d:1,start:"20:00",duration:30}, A:[], B:[], C:[], D:[], Ares:Array(6).fill("-"), Bres:Array(6).fill("-"), Cres:Array(6).fill("-"), Dres:Array(6).fill("-"), Atime:Array(6).fill("-"), Btime:Array(6).fill("-"), Ctime:Array(6).fill("-"), Dtime:Array(6).fill("-"), Acamp:[2,3,2,3,2,3], Bcamp:[4,5,4,5,4,5], Ccamp:[6,7,6,7,6,7], Dcamp:[8,9,8,9,8,9], qRes:Array(4).fill("-"), sTopRes:Array(2).fill("-"), fTopRes:"-", campioneTop:null };
 
 function ensureRules(){ if(!state.rules) state.rules = {w:3,d:1,start:"20:00",duration:30}; }
-function openRules(){ ensureRules(); document.getElementById("rulesModal").style.display="block"; document.getElementById("wP").value = state.rules.w; document.getElementById("dP").value = state.rules.d; document.getElementById("startTime").value = state.rules.start; document.getElementById("matchDuration").value = state.rules.duration; }
+function openRules(){ ensureRules(); document.getElementById("rulesModal").style.display="block"; }
 function closeRules(){ document.getElementById("rulesModal").style.display="none"; }
-function applyRules(){ ensureRules(); state.rules.w = Number(document.getElementById("wP").value || 3); state.rules.d = Number(document.getElementById("dP").value || 1); state.rules.start = document.getElementById("startTime").value || "20:00"; state.rules.duration = Number(document.getElementById("matchDuration").value || 30); closeRules(); render(); updateAndSync(); }
-
-function saveTeams() {
-    let input = document.getElementById('teamInput').value;
-    let teams = input.split('\n').filter(Boolean);
-    state.A = teams.slice(0, 4);
-    state.B = teams.slice(4, 8);
-    if(teams.length > 8) state.C = teams.slice(8, 12);
-    if(teams.length > 12) state.D = teams.slice(12, 16);
-    document.getElementById('teamModal').style.display = 'none';
-    updateAndSync();
-}
-
-function setFormat(n) {
-    state.A=Array(4).fill(""); state.B=Array(4).fill("");
-    state.C = (n >= 12) ? Array(4).fill("") : [];
-    state.D = (n >= 16) ? Array(4).fill("") : [];
-    document.getElementById('cardC').style.display = (n >= 12 ? 'block' : 'none');
-    document.getElementById('cardD').style.display = (n >= 16 ? 'block' : 'none');
-    alert("Formato impostato a " + n + " squadre");
-    document.getElementById('formatModal').style.display='none';
-    render(); updateAndSync();
-}
-
-function autofillTimes(){ for(let i=0;i<6;i++){ [state.Atime, state.Btime, state.Ctime, state.Dtime].forEach(t=>{ if(!t[i] || t[i]==="-") t[i] = state.rules.start; }); } }
-async function updateAndSync(){ try { await sb.from('torneo').upsert({ id: 'torneo_data', state: state }); } catch(e){ console.error(e); } render(); }
-function handleFile(e){ let r = new FileReader(); r.onload = function(evt){ let wb = XLSX.read(new Uint8Array(evt.target.result), {type:"array"}); let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1}).flat().filter(Boolean); state.A=data.slice(0,4); state.B=data.slice(4,8); state.C=data.slice(8,12); state.D=data.slice(12,16); updateAndSync(); }; r.readAsArrayBuffer(e.target.files[0]); }
+function applyRules(){ ensureRules(); state.rules.w = Number(document.getElementById("wP").value); state.rules.d = Number(document.getElementById("dP").value); closeRules(); updateAndSync(); }
+function saveTeams() { let input = document.getElementById('teamInput').value; let teams = input.split('\n').filter(Boolean); state.A = teams.slice(0, 4); state.B = teams.slice(4, 8); document.getElementById('teamModal').style.display = 'none'; updateAndSync(); }
+function setFormat(n) { document.getElementById('cardC').style.display = (n >= 12 ? 'block' : 'none'); document.getElementById('cardD').style.display = (n >= 16 ? 'block' : 'none'); document.getElementById('formatModal').style.display='none'; render(); }
+function updateAndSync(){ sb.from('torneo').upsert({ id: 'torneo_data', state: state }); render(); }
+function handleFile(e){ let r = new FileReader(); r.onload = function(evt){ let wb = XLSX.read(new Uint8Array(evt.target.result), {type:"array"}); let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1}).flat().filter(Boolean); state.A=data.slice(0,4); state.B=data.slice(4,8); updateAndSync(); }; r.readAsArrayBuffer(e.target.files[0]); }
 function reset(){ location.reload(); }
-function calc(teams,res){ ensureRules(); let matches=[[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]]; let t = teams.map((n,idx)=>({ n, pt:0, gf:0, gs:0, df:0, id:idx, qual:false })); matches.forEach((m,i)=>{ let r = (res[i]||"-").split("-"); let a=Number(r[0]), b=Number(r[1]); if(!isNaN(a)&&!isNaN(b)){ t[m[0]].gf+=a; t[m[0]].gs+=b; t[m[1]].gf+=b; t[m[1]].gs+=a; if(a>b) t[m[0]].pt+=state.rules.w; else if(b>a) t[m[1]].pt+=state.rules.w; else { t[m[0]].pt+=state.rules.d; t[m[1]].pt+=state.rules.d; } } }); t.forEach(x=>x.df=x.gf-x.gs); return t.sort((a,b)=>b.pt-a.pt || b.df-a.df).map((x,i)=>({...x, qual:i<2})); }
-function updateRes(g,i,pos,val){ let s=(g==='A'?state.Ares:(g==='B'?state.Bres:(g==='C'?state.Cres:state.Dres))); let p=s[i].split('-'); p[pos]=val; s[i]=p.join('-'); updateAndSync(); }
-function updateTime(g,i,pos,val){ let s=(g==='A'?state.Atime:(g==='B'?state.Btime:(g==='C'?state.Ctime:state.Dtime))); let p=s[i].split('-'); p[pos]=val; s[i]=p.join('-'); updateAndSync(); }
-function renderTables(){ ['A','B','C','D'].forEach(tag=>{ if(tag==='C'&&state.C.length===0)return; if(tag==='D'&&state.D.length===0)return; let rows="", list=state[tag], res=state[tag+'res'], time=state[tag+'time'], matches=[[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]]; matches.forEach((m,i)=>{ let t=(time[i]||"-").split("-"), r=(res[i]||"-").split("-"); rows+=`<tr><td>${i+1}</td><td><div class="db-cell"><input value="${t[0]||''}" oninput="updateTime('${tag}',${i},0,this.value)"><input value="${t[1]||''}" oninput="updateTime('${tag}',${i},1,this.value)"></div></td><td>${list[m[0]]||'-'}/${list[m[1]]||'-'}</td><td><div class="db-cell"><input value="${r[0]||''}" oninput="updateRes('${tag}',${i},0,this.value)"><input value="${r[1]||''}" oninput="updateRes('${tag}',${i},1,this.value)"></div></td></tr>`; }); document.getElementById(tag+"rows").innerHTML=rows; }); }
-function renderClass(){ ['A','B','C','D'].forEach(tag=>{ if(tag==='C'&&state.C.length===0)return; if(tag==='D'&&state.D.length===0)return; let d = calc(state[tag], state[tag+'res']); document.getElementById(tag+"class").innerHTML = d.map(x=>`<tr><td><span class="${x.qual?'qual-arrow-up':'qual-arrow-down'}">${x.qual?'▲':'▼'}</span> ${x.n}</td><td>${x.pt}</td><td>${x.gf}</td><td>${x.gs}</td><td>${x.df}</td></tr>`).join(""); }); }
-function renderKO(){ /* Logica fase finale */ }
-function render(){ renderTables(); renderClass(); renderKO(); }
-function initDefaults() { ensureRules(); autofillTimes(); render(); }
+function calc(teams,res){ let matches=[[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]]; let t = teams.map((n,idx)=>({ n, pt:0, gf:0, gs:0, df:0, id:idx, qual:false })); matches.forEach((m,i)=>{ let r = (res[i]||"-").split("-"); if(r.length==2){ t[m[0]].gf+=Number(r[0]); t[m[1]].gf+=Number(r[1]); if(r[0]>r[1]) t[m[0]].pt+=3; else if(r[1]>r[0]) t[m[1]].pt+=3; else { t[m[0]].pt+=1; t[m[1]].pt+=1; } } }); return t.sort((a,b)=>b.pt-a.pt); }
+function renderTables(){ ['A','B'].forEach(tag=>{ let rows="", list=state[tag], res=state[tag+'res']; list.forEach((name,i)=>{ rows+=`<tr><td>${i+1}</td><td>-</td><td>${name}</td><td><input value="${res[i]||''}" oninput="state['${tag}res'][${i}]=this.value"></td></tr>`; }); document.getElementById(tag+"rows").innerHTML=rows; }); }
+function render(){ renderTables(); }
+function initDefaults() { render(); }
 </script>
 </body>
 </html>
