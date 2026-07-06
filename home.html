@@ -3,40 +3,172 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
     body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
-    /* Sostituisci l'URL qui sotto con il tuo sfondo */
-    body { background: url('TUA_IMMAGINE_SFONDO.jpg') no-repeat center center fixed; background-size: cover; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    
-    .top-menu { position: absolute; top: 20px; display: flex; gap: 20px; color: white; font-size: 16px; font-weight: bold; }
-    
-    .glass-panel { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(15px); padding: 40px; border-radius: 20px; text-align: center; width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    
-    .logo-placeholder { width: 100px; height: 100px; background: #ddd; margin: 0 auto 20px; border-radius: 10px; }
-    
-    input { width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; box-sizing: border-box; }
-    
-    .btn-link { color: #fff; text-decoration: none; display: block; margin: 10px 0; font-size: 14px; }
+
+    body {
+        background: url('TUA_IMMAGINE_SFONDO.jpg') no-repeat center center fixed;
+        background-size: cover;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .top-menu {
+        position: absolute;
+        top: 20px;
+        display: flex;
+        gap: 20px;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(15px);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        width: 320px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .logo-placeholder {
+        width: 100px;
+        height: 100px;
+        background: #ddd;
+        margin: 0 auto 20px;
+        border-radius: 10px;
+    }
+
+    input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        box-sizing: border-box;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-login {
+        background: #ffffff;
+    }
+
+    .btn-register {
+        background: #222;
+        color: white;
+    }
+
+    .btn-link {
+        color: #fff;
+        text-decoration: none;
+        display: block;
+        margin: 10px 0;
+        font-size: 14px;
+    }
 </style>
+
+<!-- Supabase CDN (GRATIS) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
+
 <body>
 
-    <div class="top-menu">
-        <span>Accedi</span>
-        <span>Registrati</span>
-    </div>
+<div class="top-menu">
+    <span id="menuLogin">Accedi</span>
+    <span onclick="goRegister()">Registrati</span>
+    <span id="menuUser" style="display:none;"></span>
+    <span id="logoutBtn" style="display:none; cursor:pointer;">Logout</span>
+</div>
 
-    <div class="glass-panel">
-        <div class="logo-placeholder">Inserisci Logo</div>
-        <h2 style="color: white;">NOME DEL TUO CLUB</h2>
-        <p style="color: white;">ACCESSO UTENTI</p>
-        
-        <input type="text" placeholder="Email o cellulare">
-        <input type="password" placeholder="Password">
-        
-        <a href="#" class="btn-link">Hai dimenticato la password?</a>
-        <a href="#" class="btn-link">Non sei iscritto? Registrati</a>
-    </div>
+<div class="glass-panel">
+
+    <div class="logo-placeholder">Logo</div>
+    <h2 style="color:white;">NOME DEL TUO CLUB</h2>
+    <p style="color:white;">ACCESSO UTENTI</p>
+
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+
+    <button class="btn btn-login" onclick="login()">ACCEDI</button>
+
+    <a href="#" class="btn-link" onclick="goRegister()">Non sei iscritto? Registrati</a>
+
+    <p id="status" style="color:white;"></p>
+
+</div>
+
+<script>
+/* 🔴 CONFIGURA QUI SUPABASE */
+const SUPABASE_URL = "INCOLLA_URL_PROGETTO";
+const SUPABASE_ANON_KEY = "INCOLLA_ANON_KEY";
+
+/* inizializzazione */
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* LOGIN */
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+        document.getElementById("status").innerText = "Errore: " + error.message;
+    } else {
+        document.getElementById("status").innerText = "Accesso effettuato!";
+        checkUser();
+    }
+}
+
+/* UTENTE LOGGATO */
+async function checkUser() {
+    const { data } = await supabase.auth.getUser();
+
+    if (data.user) {
+        document.getElementById("menuUser").style.display = "inline";
+        document.getElementById("menuUser").innerText = data.user.email;
+
+        document.getElementById("logoutBtn").style.display = "inline";
+        document.getElementById("menuLogin").style.display = "none";
+    }
+}
+
+/* LOGOUT */
+async function logout() {
+    await supabase.auth.signOut();
+    location.reload();
+}
+
+/* REGISTRAZIONE PAGINA */
+function goRegister() {
+    window.location.href = "registrazione.html";
+}
+
+/* EVENTI */
+document.getElementById("logoutBtn").addEventListener("click", logout);
+
+/* controllo iniziale */
+checkUser();
+</script>
 
 </body>
 </html>
