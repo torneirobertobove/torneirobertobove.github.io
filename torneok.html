@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Torneo 8 Squadre</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
+        body{background:var(--bg);color:var(--text);font-family:system-ui;margin:0;padding:20px;}
+        .container{max-width:900px;margin:0 auto;}
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;}
+        .modal-content{background:var(--card);margin:10% auto;padding:20px;width:90%;max-width:400px;border-radius:10px;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;}
+        th,td{padding:8px;border-bottom:1px solid var(--line);text-align:center;}
+        input{width:100%;background:#0b1220;border:1px solid #334155;color:white;text-align:center;padding:4px;}
+        .db-cell{display:flex;gap:2px;}
+    </style>
+</head>
+<body onload="initApp()">
+
+<div id="teamModal" class="modal"><div class="modal-content">
+    <h3>Squadre</h3>
+    <textarea id="teamInput" style="width:100%;height:100px;"></textarea>
+    <button onclick="saveTeams()">Salva</button>
+</div></div>
+
+<div id="rulesModal" class="modal"><div class="modal-content">
+    <h3>Regolamento</h3>
+    <label>Vittoria:</label><input id="wP" type="number" value="3">
+    <label>Pareggio:</label><input id="dP" type="number" value="1">
+    <button onclick="applyRules()">Salva</button>
+</div></div>
+
+<div class="container">
+    <input type="text" id="nomeTorneoInput" placeholder="Nome Torneo" onblur="saveNome(this.value)">
+    <div class="btn-group">
+        <button onclick="document.getElementById('teamModal').style.display='block'">Squadre</button>
+        <button onclick="document.getElementById('rulesModal').style.display='block'">Regole</button>
+    </div>
+
+    <div class="groups">
+        <div class="card">
+            <table id="A"><thead><tr><th>Match</th><th>Risultato</th></tr></thead><tbody id="Arows"></tbody></table>
+            <table><thead><tr><th>Squadra</th><th>PT</th></tr></thead><tbody id="Aclass"></tbody></table>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://iybjvtmfaupgthqqsngd.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0');
+
+let state = {
+    nomeTorneo: "",
+    rules: {w:3, d:1},
+    A: [], Ares: Array(6).fill("-"),
+    B: [], Bres: Array(6).fill("-")
+};
+
+async function initApp() {
+    const { data } = await sb.from('torneo').select('state').eq('id', 'torneo_data').single();
+    if(data) state = data.state;
+    render();
+}
+
+function calc(teams, res) {
+    let t = teams.map((n, i) => ({ n, pt: 0 }));
+    let matches = [[0,1],[2,3],[0,3],[1,2],[0,2],[1,3]];
+    matches.forEach((m, i) => {
+        let r = (res[i] || "-").split("-");
+        let a = parseInt(r[0]), b = parseInt(r[1]);
+        if(!isNaN(a) && !isNaN(b)) { // Solo se ci sono numeri!
+            if(a > b) t[m[0]].pt += state.rules.w;
+            else if(b > a) t[m[1]].pt += state.rules.w;
+            else { t[m[0]].pt += state.rules.d; t[m[1]].pt += state.rules.d; }
+        }
+    });
+    return t.sort((a,b) => b.pt - a.pt);
+}
+
+function updateRes(tag, i, val) {
+    let s = (tag === 'A' ? state.Ares : state.Bres);
+    s[i] = val;
+    updateAndSync();
+}
+
+function updateAndSync() {
+    sb.from('torneo').upsert({ id: 'torneo_data', state: state }).then(() => render());
+}
+
+function render() {
+    // Logica di rendering semplificata per test
+    let rows = "";
+    state.Ares.forEach((r, i) => {
+        rows += `<tr><td>Match ${i+1}</td><td><input value="${r}" onchange="updateRes('A', ${i}, this.value)"></td></tr>`;
+    });
+    document.getElementById('Arows').innerHTML = rows;
+    
+    let ranking = calc(state.A, state.Ares);
+    document.getElementById('Aclass').innerHTML = ranking.map(s => `<tr><td>${s.n}</td><td>${s.pt}</td></tr>`).join('');
+}
+
+function saveTeams() {
+    state.A = document.getElementById('teamInput').value.split('\n');
+    updateAndSync();
+}
+
+function saveNome(val) { state.nomeTorneo = val; updateAndSync(); }
+function applyRules() { 
+    state.rules.w = Number(document.getElementById('wP').value);
+    state.rules.d = Number(document.getElementById('dP').value);
+    document.getElementById('rulesModal').style.display = 'none';
+    updateAndSync();
+}
+</script>
+</body>
+</html>
