@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Greenpark Bari</title>
+
     <style>
         :root {
             --bg-image: url('sfondo.jpg'); 
         }
+
         body { 
             margin: 0; 
             background-color: #004a99;
@@ -24,7 +26,14 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             color: white;
         }
-        .header-title { font-size: 1.8rem; margin-bottom: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+
+        .header-title { 
+            font-size: 1.8rem; 
+            margin-bottom: 20px; 
+            font-weight: bold; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5); 
+        }
+
         .box { 
             background: rgba(255, 255, 255, 0.15); 
             backdrop-filter: blur(10px); 
@@ -36,8 +45,10 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.18);
         }
+
         .logo { width: 150px; margin-bottom: 10px; }
         .firma { font-style: italic; font-size: 0.85rem; margin-bottom: 20px; display: block; opacity: 0.9; }
+
         .btn { 
             display: block; 
             background: rgba(255, 255, 255, 0.2); 
@@ -51,27 +62,135 @@
             letter-spacing: 1px;
             transition: 0.3s;
             border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
         }
-        .btn:hover { background: rgba(255, 255, 255, 0.4); }
-        .footer-link { margin-top: 30px; font-size: 0.8rem; color: rgba(255,255,255,0.7); text-decoration: none; }
-    </style>
-</head>
-<body>
-    <script>
-    const passInserita = prompt("Inserisci la password:");
-    if (passInserita !== "010268") {
-        alert("Password errata");
-        window.location.href = "about:blank";
-    }
-</script>
 
-    <div class="header-title">Tornei Padel Green</div>
-    <div class="box">
-        <img src="logo.jpg" alt="Logo" class="logo">
-        <span class="firma">Roberto Bove<br>Director & Event Organizer</span>
+        .btn:hover { background: rgba(255, 255, 255, 0.4); }
+
+        .footer-link { 
+            margin-top: 30px; 
+            font-size: 0.8rem; 
+            color: rgba(255,255,255,0.7); 
+            text-decoration: none; 
+        }
+
+        /* LOGIN BOX */
+        .login-box {
+            margin-top: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+
+    <!-- SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+
+<body>
+
+<div class="header-title">Tornei Padel Green</div>
+
+<div class="box">
+
+    <img src="logo.jpg" alt="Logo" class="logo">
+
+    <span class="firma">
+        Roberto Bove<br>
+        Director & Event Organizer
+    </span>
+
+    <!-- BOTTONI TORNEI (VISIBILI SOLO DOPO LOGIN) -->
+    <div id="tornei" class="hidden">
         <a href="torneo_8_squadre_TOP.html" class="btn">TORNEO TOP</a>
         <a href="Torneo_8_squadre_TOP_SILVER.html" class="btn">TORNEO SILVER</a>
     </div>
-    <a href="https://torneirobertobove.github.io/" class="footer-link">https://torneirobertobove.github.io/</a>
+
+    <!-- LOGIN -->
+    <div id="loginBox" class="login-box">
+
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+
+        <button class="btn" onclick="login()">ACCEDI</button>
+
+        <button class="btn" onclick="register()">REGISTRATI</button>
+
+        <p id="status"></p>
+    </div>
+
+</div>
+
+<a href="https://torneirobertobove.github.io/" class="footer-link">
+    https://torneirobertobove.github.io/
+</a>
+
+<script>
+/* 🔑 SUPABASE CONFIG */
+const SUPABASE_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
+
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* LOGIN */
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+        document.getElementById("status").innerText = error.message;
+    } else {
+        checkUser();
+    }
+}
+
+/* REGISTRAZIONE */
+async function register() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { error } = await supabase.auth.signUp({
+        email,
+        password
+    });
+
+    if (error) {
+        document.getElementById("status").innerText = error.message;
+    } else {
+        document.getElementById("status").innerText = "Controlla la tua email per confermare!";
+    }
+}
+
+/* CHECK USER */
+async function checkUser() {
+    const { data } = await supabase.auth.getUser();
+
+    if (data.user) {
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("tornei").classList.remove("hidden");
+    }
+}
+
+/* INIT */
+checkUser();
+</script>
+
 </body>
 </html>
