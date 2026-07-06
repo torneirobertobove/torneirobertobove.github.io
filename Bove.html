@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
-<head>
+    
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Torneo 8 Squadre</title>
@@ -41,8 +41,28 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
 .qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 .qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
 </style>
+<script>
+    const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function verifyAccess() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) return;
+        // Inserisci qui l'email dell'admin per abilitare le funzioni
+        const adminEmail = "tua-email@esempio.it";
+        if (session.user.email !== adminEmail) {
+            document.querySelectorAll('input, button, textarea, select').forEach(el => {
+                if (!el.classList.contains('back') && el.innerText !== "Stampa") {
+                    el.disabled = true;
+                    el.style.opacity = "0.6";
+                }
+            });
+        }
+    }
+</script>
 </head>
-<body onload="initDefaults()">
+<body onload="initDefaults(); verifyAccess()">
 
 <div id="teamModal" class="modal">
   <div class="modal-content">
@@ -52,24 +72,19 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
     <button class="back" onclick="document.getElementById('teamModal').style.display='none'" style="width:100%; margin-top:5px;">Chiudi</button>
   </div>
 </div>
-
 <div id="rulesModal" class="modal">
   <div class="modal-content">
     <h3>⚙️ Regolamento e Criteri</h3>
-    
     <label>Criterio Classifica Principale:</label>
     <select id="crit1" style="width:100%; padding:8px; margin-bottom:10px; background:#0b1220; color:#fff; border:1px solid #334155;">
       <option value="df">Differenza Giochi</option>
       <option value="gf">Maggiori Giochi Vinti</option>
       <option value="gs">Minor Giochi Persi</option>
     </select>
-
     <div style="margin-top:10px;"><label>Punti Vittoria</label><input id="wP" type="number" value="3"></div>
     <div style="margin-top:10px;"><label>Punti Pareggio</label><input id="dP" type="number" value="1"></div>
-    
     <label style="display:block; margin-top:10px;">Note Regolamento (Durata, Quota, etc):</label>
     <textarea id="noteRegole" style="width:100%; height:80px; background:#0b1220; color:#fff; border:1px solid #334155;"></textarea>
-
     <button onclick="applyRules()" style="width:100%; margin-top:15px; background:#2563eb;">💾 Salva Regole</button>
     <button class="back" onclick="closeRules()" style="width:100%; margin-top:5px;">Chiudi</button>
   </div>
@@ -83,7 +98,6 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
     <button class="back" onclick="document.getElementById('formatModal').style.display='none'" style="width:100%; margin:5px 0;">Chiudi</button>
   </div>
 </div>
-
 <div class="container">
   <div class="header-box">
     <div style="text-align: center;">
@@ -116,7 +130,6 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       <button onclick="window.print()">Stampa</button>
     </div>
   </div>
-
   <div class="groups">
     <div class="card" id="cardA">
       <table id="A"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Arows"></tbody></table>
@@ -142,13 +155,7 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
     <div id="F" style="margin-top:20px;"></div>
   </div>
 </div>
-
 <script>
-// ... (Tutto il tuo script rimane invariato, è corretto) ...
-const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
-
 let state = {
     nomeTorneo:"", rules:{w:3,d:1,start:"20:00",duration:30},
     A:[], B:[], C:[], D:[],
@@ -159,9 +166,9 @@ let state = {
 };
 
 function ensureRules(){ if(!state.rules) state.rules = {w:3,d:1,start:"20:00",duration:30}; }
-function openRules(){ ensureRules(); document.getElementById("rulesModal").style.display="block"; document.getElementById("wP").value = state.rules.w; document.getElementById("dP").value = state.rules.d; document.getElementById("startTime").value = state.rules.start; document.getElementById("matchDuration").value = state.rules.duration; }
+function openRules(){ ensureRules(); document.getElementById("rulesModal").style.display="block"; document.getElementById("wP").value = state.rules.w; document.getElementById("dP").value = state.rules.d; }
 function closeRules(){ document.getElementById("rulesModal").style.display="none"; }
-function applyRules(){ ensureRules(); state.rules.w = Number(document.getElementById("wP").value || 3); state.rules.d = Number(document.getElementById("dP").value || 1); state.rules.start = document.getElementById("startTime").value || "20:00"; state.rules.duration = Number(document.getElementById("matchDuration").value || 30); closeRules(); render(); updateAndSync(); }
+function applyRules(){ ensureRules(); state.rules.w = Number(document.getElementById("wP").value || 3); state.rules.d = Number(document.getElementById("dP").value || 1); closeRules(); render(); updateAndSync(); }
 
 function saveTeams() {
     let input = document.getElementById('teamInput').value;
@@ -180,7 +187,6 @@ function setFormat(n) {
     state.D = (n >= 16) ? Array(4).fill("") : [];
     document.getElementById('cardC').style.display = (n >= 12 ? 'block' : 'none');
     document.getElementById('cardD').style.display = (n >= 16 ? 'block' : 'none');
-    alert("Formato impostato a " + n + " squadre");
     document.getElementById('formatModal').style.display='none';
     render(); updateAndSync();
 }
