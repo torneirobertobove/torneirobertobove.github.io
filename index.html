@@ -1,73 +1,3140 @@
 <!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Greenpark Bari - Login</title>
-    <style>
-        :root { --bg-image: url('sfondo.jpg'); }
-        body { margin:0; background-color:#004a99; background-image:var(--bg-image); background-size:cover; background-position:center; background-attachment:fixed; font-family:sans-serif; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
-        .box { background:rgba(255,255,255,0.15); backdrop-filter: blur(10px); padding:30px; border-radius:25px; width:320px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
-        .logo { width:140px; margin-bottom:10px; }
-        .firma { font-style:italic; font-size:0.85rem; margin-bottom:20px; opacity:0.9; display:block; }
-        input { width:100%; padding:10px; margin:8px 0; border-radius:8px; border:none; box-sizing:border-box; color: #333; }
-        .buttons { display:flex; gap:10px; }
-        .btn { flex:1; padding:14px; border:none; border-radius:10px; cursor:pointer; font-weight:bold; text-transform:uppercase; background: #fff; color: #004a99; }
-        #status { margin-top:15px; font-size:13px; min-height: 20px; color: #ffeb3b; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<html lang="it">   
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Torneo 8 Squadre</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui;background:linear-gradient(160deg,#0b1020,#111827);color:var(--text);padding-bottom:50px}
+.container{max-width:1000px;margin:0 auto;padding:10px}
+.header-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;margin-bottom:20px}
+@media(min-width:600px){.header-box{flex-direction:row;gap:30px;}}
+.subtitle{font-size:0.7rem;color:#94a3b8;line-height:1.1;text-align:center;margin-top:5px}
+.date-input-field{background:#0b1220; border:1px solid #334155; color:#fff; padding:2px 5px; border-radius:4px; font-family:system-ui; font-size:0.9rem; cursor:pointer; width:110px; text-align:center;}
+.topbar{display:flex;justify-content:center;gap:20px;margin-bottom:15px;flex-wrap:wrap;}
+.btn-group{display:flex;gap:4px;}
+button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:#2563eb;color:#fff;font-size:14px;font-family:system-ui;}
+button.reset{background:#dc2626}
+button.back{background:#475569}
+.modal{display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); padding:20px;}
+.modal-content{background:#111827; margin:auto; padding:20px; max-width:500px; border-radius:12px; border:1px solid #243041; color:#e5e7eb; overflow-y:auto; max-height:90vh;}
+textarea{width:100%; height:150px; background:#0b1220; color:#fff; border:1px solid #334155; padding:10px; margin-top:10px; border-radius:4px;font-family:system-ui;}
+.groups{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:600px){.groups{grid-template-columns:1fr 1fr;}}
+.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:15px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-sizef:13px;margin-top:10px;}
+th,td{padding:8px 4px;border-bottom:1px solid #1f2a3c;text-align:center;}
+input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;}
+.db-cell{display:flex; gap:2px;}
+.db-cell input{width:50%;}
+.ko{margin-top:10px;display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:600px){.ko{grid-template-columns:1fr 1fr;}}
+.koBox{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px;}
+.match{padding:8px;margin-bottom:8px;border:1px solid #243041;border-radius:8px;text-align:center;font-size:13px;}
+.finalContainer{border:2px solid #eab308;padding:15px;margin-top:20px;border-radius:15px;background:#1e293b;}
+.winner-box{margin-top:10px;padding:15px;border-radius:8px;text-align:center;font-weight:bold;}
+.top-win{background:rgba(251,191,36,.2);color:#fbbf24;font-size:1.3em;}
+.qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
+.qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
+</style>
+<script>
+    const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+    async function verifyAccess() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) return;
+        // Inserisci qui l'email dell'admin per abilitare le funzioni
+        const adminEmail = "giose.rizzi@gmail.com";
+        if (session.user.email !== adminEmail) {
+            document.querySelectorAll('input, button, textarea, select').forEach(el => {
+                if (!el.classList.contains('back') && el.innerText !== "Stampa") {
+                    el.disabled = true;
+                    el.style.opacity = "0.6";
+                }
+            });
+        }
+    }
+</script>
 </head>
-<body>
-    <div class="box">
-        <img src="logo.jpg" class="logo">
-        <span class="firma">Roberto Bove<br>Director & Event Organizer</span>
-        <input id="email" type="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Password">
-        <div class="buttons">
-            <button class="btn" id="loginBtn">Accedi</button>
-            <button class="btn" id="registerBtn">Registrati</button>
-        </div>
-        <div id="status"></div>
+<body onload="initDefaults(); verifyAccess()">
+<div id="teamModal" class="modal">
+  <div class="modal-content">
+    <h3>Inserisci Squadre</h3>
+    <textarea id="teamInput" placeholder="Inserisci i nomi delle squadre, uno per riga"></textarea>
+    <button onclick="saveTeams()" style="width:100%; margin-top:10px;">💾 Salva Squadre</button>
+    <button class="back" onclick="document.getElementById('teamModal').style.display='none'" style="width:100%; margin-top:5px;">Chiudi</button>
+  </div>
+</div>
+<div id="rulesModal" class="modal">
+<div class="modal-content">
+
+<h3>
+⚙️ Regolamento e Criteri
+
+<button 
+onclick="
+let m=document.getElementById('manualeRegole');
+m.style.display = m.style.display==='none' ? 'block' : 'none';
+"
+style="
+background:none;
+border:none;
+cursor:pointer;
+font-size:20px;
+padding:0;
+margin-left:8px;
+">
+💡
+</button>
+
+</h3>
+
+
+<div id="manualeRegole"
+style="
+display:none;
+margin:15px 0;
+padding:12px;
+background:#0b1220;
+border:1px solid #2563eb;
+border-radius:8px;
+font-size:13px;
+line-height:1.5;
+">
+
+
+<h4>💡 Manuale Istruzioni Torneo</h4>
+
+
+<p>
+<b>Configurazione automatica:</b><br>
+Il sistema crea automaticamente gironi, calendario, classifiche e fase finale in base al formato scelto (8, 12 o 16 squadre).
+</p>
+
+
+<p>
+<b>Inserimento squadre:</b><br>
+Aprire il pulsante 📝 Squadre e inserire una squadra per ogni riga.
+Il programma distribuirà automaticamente le squadre nei gironi.
+</p>
+
+
+<p>
+<b>Gestione risultati:</b><br>
+Inserendo i risultati delle partite il sistema aggiorna automaticamente:
+</p>
+
+<ul>
+<li>Punti classifica</li>
+<li>Giochi fatti</li>
+<li>Giochi subiti</li>
+<li>Differenza giochi</li>
+<li>Qualificate alla fase finale</li>
+</ul>
+
+
+<p>
+<b>Regole manuali organizzatore:</b><br>
+L'organizzatore può modificare completamente la formula del torneo:
+</p>
+
+<ul>
+<li>Punti vittoria e pareggio</li>
+<li>Criteri di classifica</li>
+<li>Numero squadre qualificate</li>
+<li>Numero squadre fase finale</li>
+<li>Uso di quarti, semifinali e finale</li>
+<li>Ripescaggi</li>
+<li>Killer Point negli spareggi</li>
+</ul>
+
+
+<p>
+<b>Procedura consigliata:</b><br>
+1) Scegli formato torneo<br>
+2) Inserisci squadre<br>
+3) Imposta regole personalizzate<br>
+4) Salva configurazione<br>
+5) Inserisci risultati durante il torneo
+</p>
+
+
+<p style="color:#60a5fa;">
+💡 Consiglio: impostare tutte le regole prima dell'inizio delle partite.
+</p>
+
+
+</div>
+
+
+<label>Criterio Classifica Principale:</label>
+
+
+<select id="crit1"
+style="width:100%; padding:8px; margin-bottom:10px; background:#0b1220; color:#fff; border:1px solid #334155;">
+
+
+<option value="df">Differenza Giochi</option>
+<option value="gf">Maggiori Giochi Vinti</option>
+<option value="gs">Minor Giochi Persi</option>
+
+
+</select>
+
+
+<div style="margin-top:10px;">
+<label>Punti Vittoria</label>
+<input id="wP" type="number" value="3">
+</div>
+
+
+<div style="margin-top:10px;">
+<label>Punti Pareggio</label>
+<input id="dP" type="number" value="1">
+</div>
+
+
+<hr style="margin:15px 0;">
+
+
+<h4>🏆 Qualificazioni</h4>
+
+<label>Squadre qualificate per ogni girone:</label>
+
+<input id="qualificatePerGirone" type="number" min="1" value="2">
+
+
+<label style="display:block;margin-top:10px;">
+Numero totale squadre fase finale:
+</label>
+
+<input id="numeroQualificateFinali" type="number" min="2" value="8">
+
+
+<hr style="margin:15px 0;">
+
+
+<h4>⚔️ Fase Eliminazione Diretta</h4>
+
+
+<label style="display:block;">
+<input id="usaQuarti" type="checkbox" checked>
+ Usa Quarti di Finale
+</label>
+
+
+<label style="display:block;margin-top:8px;">
+<input id="usaSemifinali" type="checkbox" checked>
+ Usa Semifinali
+</label>
+
+
+<label style="display:block;margin-top:8px;">
+<input id="usaFinale" type="checkbox" checked>
+ Usa Finale
+</label>
+
+
+<hr style="margin:15px 0;">
+
+
+<h4>🔄 Ripescaggi</h4>
+
+
+<label style="display:block;">
+<input id="ripescaggio" type="checkbox">
+ Attiva ripescaggio
+</label>
+
+
+<label style="display:block;margin-top:8px;">
+Numero squadre ripescate:
+</label>
+
+<input id="numeroRipescate" type="number" min="0" value="0">
+
+
+<hr style="margin:15px 0;">
+
+
+<h4>🏓 Spareggio</h4>
+
+
+<select id="killerPointSelect"
+style="width:100%; padding:8px; background:#0b1220; color:#fff; border:1px solid #334155;">
+
+<option value="true">
+Attiva Killer Point
+</option>
+
+<option value="false">
+Disattiva Killer Point
+</option>
+
+</select>
+
+
+<label style="display:block;margin-top:15px;">
+Quarti visibili:
+</label>
+
+
+<select id="mostraQuartiSelect"
+style="width:100%; padding:8px; background:#0b1220; color:#fff; border:1px solid #334155;">
+
+<option value="true">
+Mostra Quarti
+</option>
+
+<option value="false">
+Nascondi Quarti
+</option>
+
+</select>
+
+
+<label style="display:block;margin-top:15px;">
+Note Regolamento:
+</label>
+
+
+<textarea 
+id="noteRegole"
+style="width:100%;height:80px;background:#0b1220;color:#fff;border:1px solid #334155;">
+</textarea>
+
+
+<button 
+onclick="applyRules()"
+style="width:100%;margin-top:15px;background:#2563eb;">
+💾 Salva Regole
+</button>
+
+
+<button 
+class="back"
+onclick="closeRules()"
+style="width:100%;margin-top:5px;">
+Chiudi
+</button>
+
+
+</div>
+</div>
+
+
+
+<!-- INSERITO: MODAL FORMATO MANCANTE -->
+
+<div id="formatModal" class="modal">
+
+<div class="modal-content">
+
+<h3>Seleziona Formato</h3>
+
+
+<button 
+onclick="setFormat(8)"
+style="width:100%;margin:5px 0;">
+8 Squadre
+</button>
+
+
+<button 
+onclick="setFormat(12)"
+style="width:100%;margin:5px 0;">
+12 Squadre
+</button>
+
+
+<button 
+onclick="setFormat(16)"
+style="width:100%;margin:5px 0;">
+16 Squadre
+</button>
+
+
+<button 
+class="back"
+onclick="document.getElementById('formatModal').style.display='none'"
+style="width:100%;margin:5px 0;">
+Chiudi
+</button>
+
+
+</div>
+
+</div>
+
+
+<div class="container">
+
+<div class="header-box">
+
+<div style="text-align:center;">
+
+<img 
+src="logo.jpg" 
+alt="Logo" 
+style="
+width:60px;
+height:60px;
+border-radius:50%;
+object-fit:cover;
+border:2px solid #2563eb;
+">
+
+
+<div class="subtitle">
+Roberto Bove<br>
+Director & Event Organizer
+</div>
+
+</div>
+
+
+<div style="text-align:center;">
+
+<h1 style="margin:0;font-size:1.4rem;">
+🏆 Torneo 8 Squadre
+</h1>
+
+
+<input 
+type="text"
+id="nomeTorneoInput"
+placeholder="Nome Torneo"
+onblur="state.nomeTorneo=this.value"
+class="date-input-field"
+style="
+width:200px;
+margin:10px auto 0;
+display:block;
+">
+
+
+<div 
+style="
+display:flex;
+justify-content:center;
+gap:15px;
+margin-top:5px;
+">
+
+
+<div style="text-align:center;">
+
+<div 
+style="
+font-size:0.7rem;
+color:#94a3b8;
+margin-bottom:2px;
+">
+Data prevista:
+</div>
+
+
+<input 
+type="date"
+class="date-input-field">
+
+</div>
+
+
+<div style="text-align:center;">
+
+<div 
+style="
+font-size:0.7rem;
+color:#94a3b8;
+margin-bottom:2px;
+">
+Start ore:
+</div>
+
+
+<input 
+type="time"
+class="date-input-field"
+value="20:00"
+style="width:80px">
+
+</div>
+
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<div class="topbar">
+
+    <div class="btn-group">
+
+      <button onclick="document.getElementById('formatModal').style.display='block'">
+        ⚙️ Formato
+      </button>
+
+      <button onclick="document.getElementById('file').click()">
+        Import Excel
+      </button>
+
+      <input type="file" id="file" hidden onchange="handleFile(event)">
+
+      <button onclick="openRules()">
+        📖 Regole
+      </button>
+
+      <button onclick="updateAndSync()">
+        💾 Salva
+      </button>
+
     </div>
 
-    <script>
-        const supabaseUrl = "https://iybjvtmfaupgthqqsngd.supabase.co";
-        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI";
 
-        const client = supabase.createClient(supabaseUrl, supabaseKey);
-        const status = document.getElementById("status");
+    <div class="btn-group">
 
-        // Registrazione
-        document.getElementById("registerBtn").addEventListener("click", async () => {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            if(!email || !password) { status.innerText = "Inserisci email e password"; return; }
-            
-            status.innerText = "Registrazione in corso...";
-            const { error } = await client.auth.signUp({ email, password });
-            
-            if (error) {
-                status.innerText = "Errore: " + error.message;
-            } else {
-                status.innerText = "Registrazione ok! Ora puoi accedere.";
-            }
+      <button onclick="document.getElementById('teamModal').style.display='block'">
+        📝 Squadre
+      </button>
+
+    </div>
+
+
+    <div class="btn-group">
+
+      <button class="reset" onclick="reset()">
+        Reset
+      </button>
+
+      <button onclick="window.print()">
+        Stampa
+      </button>
+
+    </div>
+
+</div>
+  <div class="groups">
+    <div class="card" id="cardA">
+      <table id="A"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Arows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone A</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Aclass"></tbody></table>
+    </div>
+    <div class="card" id="cardB">
+      <table id="B"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Brows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone B</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Bclass"></tbody></table>
+    </div>
+    <div class="card" id="cardC" style="display:none;">
+      <table id="C"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Crows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone C</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Cclass"></tbody></table>
+    </div>
+    <div class="card" id="cardD" style="display:none;">
+      <table id="D"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Drows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone D</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Dclass"></tbody></table>
+    </div>
+  </div>
+  <div class="finalContainer">
+    <h2 style="text-align:center;margin-top:0;">Fase Finale</h2>
+    <div class="ko"><div class="koBox"><h3 style="text-align:center;">QUARTI</h3><div id="Q"></div></div><div class="koBox"><h3 style="text-align:center;">SEMIFINALI</h3><div id="S"></div></div></div>
+    <div id="F" style="margin-top:20px;"></div>
+  </div>
+</div>
+<script>
+let state = {
+
+
+    nomeTorneo: "",
+    dataTorneo: "",
+    quota: "",
+    premi: "",
+
+    rules: {
+
+        // ============================
+        // SISTEMA PUNTEGGI
+        // ============================
+
+        w: 3,
+        d: 1,
+        l: 0,
+
+
+        // ============================
+        // STRUTTURA TORNEO
+        // ============================
+
+        formatoTorneo: "gironi",
+
+        numeroSquadre: 8,
+
+        numeroGironi: 2,
+
+        squadrePerGirone: 4,
+
+
+        // Formule future predisposte
+
+        formulaGironi: "italiana",
+
+        formulaFinale: "eliminazione_diretta",
+
+
+        // ============================
+        // QUALIFICAZIONI
+        // ============================
+
+        qualificatePerGirone: 2,
+
+        numeroQualificateFinali: 8,
+
+
+        // Possibilità future
+
+        ripescaggio: false,
+
+        numeroRipescate: 0,
+
+
+
+        // ============================
+        // CRITERI CLASSIFICA
+        // ============================
+
+        criteriClassifica: [
+
+            "pt",
+            "df",
+            "gf",
+            "gs"
+
+        ],
+
+
+        crit1: "df",
+
+        crit2: "gf",
+
+        crit3: "gs",
+
+
+
+        // ============================
+        // FASE ELIMINAZIONE
+        // ============================
+
+        usaQuarti: true,
+
+        usaSemifinali: true,
+
+        usaFinale: true,
+
+
+        // Future formule
+
+        doppiaEliminazione:false,
+
+        playoff:false,
+
+        faseGold:false,
+
+        faseSilver:false,
+
+
+
+        // ============================
+        // REGOLE SPECIALI
+        // ============================
+
+        killerPoint:true,
+
+        rigori:true,
+
+        tempoSupplementare:false,
+
+
+        // ============================
+        // TEMPI TORNEO
+        // ============================
+
+        start:"20:00",
+
+        duration:30,
+
+
+        // ============================
+        // PARITA'
+        // ============================
+
+        criterioParitaExtra:"sorteggio",
+
+
+        // ============================
+        // NOTE ORGANIZZATORE
+        // ============================
+
+        note:""
+
+    },
+
+
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+
+
+    Ares: Array(6).fill("-"),
+    Bres: Array(6).fill("-"),
+    Cres: Array(6).fill("-"),
+    Dres: Array(6).fill("-"),
+
+
+    Atime: Array(6).fill("-"),
+    Btime: Array(6).fill("-"),
+    Ctime: Array(6).fill("-"),
+    Dtime: Array(6).fill("-"),
+
+
+    Acamp: Array(6).fill(""),
+    Bcamp: Array(6).fill(""),
+    Ccamp: Array(6).fill(""),
+    Dcamp: Array(6).fill(""),
+
+
+    qRes: Array(4).fill("-"),
+    sTopRes: Array(2).fill("-"),
+    fTopRes: "-",
+
+
+    qKiller: Array(4).fill("-"),
+    sKiller: Array(2).fill("-"),
+    fKiller: "-",
+
+
+    campioneTop: null,
+
+
+    formato: 8,
+
+    mostraQuarti: true
+
+};
+function closeRules(){
+
+    let modal =
+        document.getElementById(
+            "rulesModal"
+        );
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+}
+function openRules(){
+
+    ensureRules();
+
+
+    let modal=document.getElementById("rulesModal");
+
+    if(modal)
+        modal.style.display="block";
+
+
+
+    // ============================
+    // PUNTEGGI
+    // ============================
+
+    if(document.getElementById("wP"))
+        document.getElementById("wP").value =
+            state.rules.w;
+
+
+    if(document.getElementById("dP"))
+        document.getElementById("dP").value =
+            state.rules.d;
+
+
+
+    // ============================
+    // CRITERI CLASSIFICA
+    // ============================
+
+    if(document.getElementById("crit1"))
+        document.getElementById("crit1").value =
+            state.rules.crit1;
+
+
+    if(document.getElementById("crit2"))
+        document.getElementById("crit2").value =
+            state.rules.crit2;
+
+
+    if(document.getElementById("crit3"))
+        document.getElementById("crit3").value =
+            state.rules.crit3;
+
+
+
+    // ============================
+    // QUALIFICAZIONI
+    // ============================
+
+    if(document.getElementById("qualificatePerGirone"))
+        document.getElementById("qualificatePerGirone").value =
+            state.rules.qualificatePerGirone;
+
+
+    if(document.getElementById("numeroQualificateFinali"))
+        document.getElementById("numeroQualificateFinali").value =
+            state.rules.numeroQualificateFinali;
+
+
+
+    // ============================
+    // FASI FINALI
+    // ============================
+
+    if(document.getElementById("usaQuarti"))
+        document.getElementById("usaQuarti").checked =
+            state.rules.usaQuarti;
+
+
+    if(document.getElementById("usaSemifinali"))
+        document.getElementById("usaSemifinali").checked =
+            state.rules.usaSemifinali;
+
+
+    if(document.getElementById("usaFinale"))
+        document.getElementById("usaFinale").checked =
+            state.rules.usaFinale;
+
+
+
+    // ============================
+    // RIPESCAGGIO
+    // ============================
+
+    if(document.getElementById("ripescaggio"))
+        document.getElementById("ripescaggio").checked =
+            state.rules.ripescaggio;
+
+
+    if(document.getElementById("numeroRipescate"))
+        document.getElementById("numeroRipescate").value =
+            state.rules.numeroRipescate;
+
+
+
+    // ============================
+    // KILLER POINT
+    // ============================
+
+    if(document.getElementById("killerPointSelect"))
+        document.getElementById("killerPointSelect").value =
+            String(state.rules.killerPoint);
+
+
+
+    // ============================
+    // VISIBILITA QUARTI
+    // ============================
+
+    if(document.getElementById("mostraQuartiSelect"))
+        document.getElementById("mostraQuartiSelect").value =
+            String(state.mostraQuarti);
+
+
+
+    // ============================
+    // NOTE
+    // ============================
+
+    if(document.getElementById("noteRegole"))
+        document.getElementById("noteRegole").value =
+            state.rules.note;
+
+
+
+    // ============================
+    // PARAMETRI FUTURI
+    // ============================
+
+    if(document.getElementById("formulaGironi"))
+        document.getElementById("formulaGironi").value =
+            state.rules.formulaGironi;
+
+
+    if(document.getElementById("formulaFinale"))
+        document.getElementById("formulaFinale").value =
+            state.rules.formulaFinale;
+
+
+    if(document.getElementById("criterioParitaExtra"))
+        document.getElementById("criterioParitaExtra").value =
+            state.rules.criterioParitaExtra;
+
+
+    if(document.getElementById("garaAndataRitorno"))
+        document.getElementById("garaAndataRitorno").checked =
+            state.rules.garaAndataRitorno;
+
+
+    if(document.getElementById("tempoSupplementare"))
+        document.getElementById("tempoSupplementare").checked =
+            state.rules.tempoSupplementare;
+
+
+    if(document.getElementById("rigori"))
+        document.getElementById("rigori").checked =
+            state.rules.rigori;
+
+
+    if(document.getElementById("numeroGironi"))
+        document.getElementById("numeroGironi").value =
+            state.rules.numeroGironi || "";
+
+
+    if(document.getElementById("numeroSquadre"))
+        document.getElementById("numeroSquadre").value =
+            state.rules.numeroSquadre || "";
+
+}
+function setFormat(n){
+
+    state.formato = n;
+
+
+
+    // GIRONE A e B sempre presenti
+
+    state.A = Array(4).fill("");
+
+    state.B = Array(4).fill("");
+
+
+
+    // GIRONE C solo per 12 o 16 squadre
+
+    if(n >= 12){
+
+        state.C = Array(4).fill("");
+
+    }else{
+
+        state.C = [];
+
+    }
+
+
+
+    // GIRONE D solo per 16 squadre
+
+    if(n >= 16){
+
+        state.D = Array(4).fill("");
+
+    }else{
+
+        state.D = [];
+
+    }
+
+
+
+
+    // risultati gironi
+
+    state.Ares = Array(6).fill("-");
+
+    state.Bres = Array(6).fill("-");
+
+    state.Cres = Array(6).fill("-");
+
+    state.Dres = Array(6).fill("-");
+
+
+
+
+    // orari
+
+    state.Atime = Array(6).fill("-");
+
+    state.Btime = Array(6).fill("-");
+
+    state.Ctime = Array(6).fill("-");
+
+    state.Dtime = Array(6).fill("-");
+
+
+
+
+    // campi
+
+    state.Acamp = Array(6).fill("");
+
+    state.Bcamp = Array(6).fill("");
+
+    state.Ccamp = Array(6).fill("");
+
+    state.Dcamp = Array(6).fill("");
+
+
+
+
+    // fase finale
+
+    state.qRes = Array(4).fill("-");
+
+    state.sTopRes = Array(2).fill("-");
+
+    state.fTopRes = "-";
+
+    state.campioneTop = null;
+
+
+
+
+    let cardC=document.getElementById("cardC");
+
+    let cardD=document.getElementById("cardD");
+
+
+
+    if(cardC)
+
+        cardC.style.display =
+            n >= 12 ? "block" : "none";
+
+
+
+    if(cardD)
+
+        cardD.style.display =
+            n >= 16 ? "block" : "none";
+
+
+
+
+    let modal=document.getElementById("formatModal");
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+
+
+    updateAndSync();
+
+}
+function ensureRules(){
+
+    if(!state.rules)
+        state.rules={};
+
+
+
+    // ============================
+    // PUNTEGGI
+    // ============================
+
+    if(state.rules.w===undefined)
+        state.rules.w=3;
+
+    if(state.rules.d===undefined)
+        state.rules.d=1;
+
+    if(state.rules.l===undefined)
+        state.rules.l=0;
+
+
+
+    // ============================
+    // STRUTTURA TORNEO
+    // ============================
+
+    if(state.rules.formatoTorneo===undefined)
+        state.rules.formatoTorneo="gironi";
+
+
+    if(state.rules.numeroSquadre===undefined)
+        state.rules.numeroSquadre =
+            state.formato || 8;
+
+
+    if(
+    state.rules.numeroGironi===undefined ||
+    state.rules.numeroGironi===null
+){
+
+    if(state.formato===16)
+
+        state.rules.numeroGironi=4;
+
+
+    else if(state.formato===12)
+
+        state.rules.numeroGironi=3;
+
+
+    else
+
+        state.rules.numeroGironi=2;
+
+}
+
+    if(state.rules.squadrePerGirone===undefined)
+
+        state.rules.squadrePerGirone=4;
+
+
+
+    // ============================
+    // FORMULE
+    // ============================
+
+    if(state.rules.formulaGironi===undefined)
+
+        state.rules.formulaGironi="italiana";
+
+
+    if(state.rules.formulaFinale===undefined)
+
+        state.rules.formulaFinale=
+            "eliminazione_diretta";
+
+
+
+    // ============================
+    // QUALIFICAZIONI
+    // ============================
+
+    if(state.rules.qualificatePerGirone===undefined)
+
+        state.rules.qualificatePerGirone=2;
+
+
+    if(state.rules.numeroQualificateFinali===undefined)
+
+        state.rules.numeroQualificateFinali=8;
+
+
+
+    if(state.rules.ripescaggio===undefined)
+
+        state.rules.ripescaggio=false;
+
+
+    if(state.rules.numeroRipescate===undefined)
+
+        state.rules.numeroRipescate=0;
+
+
+
+    // ============================
+    // CRITERI CLASSIFICA
+    // ============================
+
+    if(!Array.isArray(state.rules.criteriClassifica)){
+
+        state.rules.criteriClassifica=[
+
+            "pt",
+            "df",
+            "gf",
+            "gs"
+
+        ];
+
+    }
+
+
+
+    if(state.rules.crit1===undefined)
+
+        state.rules.crit1="df";
+
+
+    if(state.rules.crit2===undefined)
+
+        state.rules.crit2="gf";
+
+
+    if(state.rules.crit3===undefined)
+
+        state.rules.crit3="gs";
+
+
+
+    // ============================
+    // FASE FINALE
+    // ============================
+
+    if(state.rules.usaQuarti===undefined)
+
+        state.rules.usaQuarti=true;
+
+
+    if(state.rules.usaSemifinali===undefined)
+
+        state.rules.usaSemifinali=true;
+
+
+    if(state.rules.usaFinale===undefined)
+
+        state.rules.usaFinale=true;
+
+
+
+    // ============================
+    // FORMULE FUTURE
+    // ============================
+
+    if(state.rules.doppiaEliminazione===undefined)
+
+        state.rules.doppiaEliminazione=false;
+
+
+    if(state.rules.playoff===undefined)
+
+        state.rules.playoff=false;
+
+
+    if(state.rules.faseGold===undefined)
+
+        state.rules.faseGold=false;
+
+
+    if(state.rules.faseSilver===undefined)
+
+        state.rules.faseSilver=false;
+
+
+
+    // ============================
+    // REGOLE SPECIALI
+    // ============================
+
+    if(state.rules.killerPoint===undefined)
+
+        state.rules.killerPoint=true;
+
+
+    if(state.rules.rigori===undefined)
+
+        state.rules.rigori=true;
+
+
+    if(state.rules.tempoSupplementare===undefined)
+
+        state.rules.tempoSupplementare=false;
+
+
+
+    // ============================
+    // TEMPI
+    // ============================
+
+    if(state.rules.start===undefined)
+
+        state.rules.start="20:00";
+
+
+    if(state.rules.duration===undefined)
+
+        state.rules.duration=30;
+
+
+
+    // ============================
+    // PARITA'
+    // ============================
+
+    if(state.rules.criterioParitaExtra===undefined)
+
+        state.rules.criterioParitaExtra="sorteggio";
+
+
+
+    // ============================
+    // NOTE
+    // ============================
+
+    if(state.rules.note===undefined)
+
+        state.rules.note="";
+
+
+}
+function openRules(){
+
+
+    ensureRules();
+
+    document.getElementById("rulesModal").style.display = "block";
+
+
+
+    // punti classifica
+
+    if(document.getElementById("wP"))
+        document.getElementById("wP").value =
+            state.rules.w;
+
+
+    if(document.getElementById("dP"))
+        document.getElementById("dP").value =
+            state.rules.d;
+
+
+
+    // criteri classifica
+
+    if(document.getElementById("crit1"))
+        document.getElementById("crit1").value =
+            state.rules.crit1;
+
+
+    if(document.getElementById("crit2"))
+        document.getElementById("crit2").value =
+            state.rules.crit2;
+
+
+    if(document.getElementById("crit3"))
+        document.getElementById("crit3").value =
+            state.rules.crit3;
+
+
+
+    // qualificazioni
+
+    if(document.getElementById("qualificatePerGirone"))
+        document.getElementById("qualificatePerGirone").value =
+            state.rules.qualificatePerGirone;
+
+
+    if(document.getElementById("numeroQualificateFinali"))
+        document.getElementById("numeroQualificateFinali").value =
+            state.rules.numeroQualificateFinali;
+
+
+
+    // fase finale
+
+    if(document.getElementById("usaQuarti"))
+        document.getElementById("usaQuarti").checked =
+            state.rules.usaQuarti;
+
+
+    if(document.getElementById("usaSemifinali"))
+        document.getElementById("usaSemifinali").checked =
+            state.rules.usaSemifinali;
+
+
+    if(document.getElementById("usaFinale"))
+        document.getElementById("usaFinale").checked =
+            state.rules.usaFinale;
+
+
+
+    // ripescaggi
+
+    if(document.getElementById("ripescaggio"))
+        document.getElementById("ripescaggio").checked =
+            state.rules.ripescaggio;
+
+
+    if(document.getElementById("numeroRipescate"))
+        document.getElementById("numeroRipescate").value =
+            state.rules.numeroRipescate;
+
+
+
+    // killer point
+
+    if(document.getElementById("killerPointSelect"))
+        document.getElementById("killerPointSelect").value =
+            state.rules.killerPoint;
+
+
+
+    // visualizzazione quarti
+
+    if(document.getElementById("mostraQuartiSelect"))
+        document.getElementById("mostraQuartiSelect").value =
+            state.mostraQuarti;
+
+
+
+    // note
+
+    if(document.getElementById("noteRegole"))
+        document.getElementById("noteRegole").value =
+            state.rules.note;
+
+
+
+
+    /*
+        NUOVI PARAMETRI APERTI
+        (vengono caricati solo se il pannello possiede
+        già gli elementi corrispondenti)
+    */
+
+
+    if(document.getElementById("formulaGironi"))
+        document.getElementById("formulaGironi").value =
+            state.rules.formulaGironi;
+
+
+    if(document.getElementById("formulaFinale"))
+        document.getElementById("formulaFinale").value =
+            state.rules.formulaFinale;
+
+
+    if(document.getElementById("criterioParitaExtra"))
+        document.getElementById("criterioParitaExtra").value =
+            state.rules.criterioParitaExtra;
+
+
+    if(document.getElementById("garaAndataRitorno"))
+        document.getElementById("garaAndataRitorno").checked =
+            state.rules.garaAndataRitorno;
+
+
+    if(document.getElementById("tempoSupplementare"))
+        document.getElementById("tempoSupplementare").checked =
+            state.rules.tempoSupplementare;
+
+
+    if(document.getElementById("rigori"))
+        document.getElementById("rigori").checked =
+            state.rules.rigori;
+
+
+    if(document.getElementById("numeroGironi"))
+        document.getElementById("numeroGironi").value =
+            state.rules.numeroGironi || "";
+
+
+    if(document.getElementById("numeroSquadre"))
+        document.getElementById("numeroSquadre").value =
+            state.rules.numeroSquadre || "";
+
+}
+function applyRules(){
+
+    ensureRules();
+
+
+
+    // ============================
+    // PUNTEGGI
+    // ============================
+
+    if(document.getElementById("wP"))
+
+        state.rules.w =
+            Number(
+                document.getElementById("wP").value
+            );
+
+
+    if(document.getElementById("dP"))
+
+        state.rules.d =
+            Number(
+                document.getElementById("dP").value
+            );
+
+
+
+    // ============================
+    // CRITERI CLASSIFICA
+    // ============================
+
+    if(document.getElementById("crit1"))
+
+        state.rules.crit1 =
+            document.getElementById("crit1").value;
+
+
+    if(document.getElementById("crit2"))
+
+        state.rules.crit2 =
+            document.getElementById("crit2").value;
+
+
+    if(document.getElementById("crit3"))
+
+        state.rules.crit3 =
+            document.getElementById("crit3").value;
+
+
+
+    // ============================
+    // QUALIFICAZIONI
+    // ============================
+
+    if(document.getElementById("qualificatePerGirone"))
+
+        state.rules.qualificatePerGirone =
+            Number(
+                document.getElementById(
+                    "qualificatePerGirone"
+                ).value
+            );
+
+
+    if(document.getElementById("numeroQualificateFinali"))
+
+        state.rules.numeroQualificateFinali =
+            Number(
+                document.getElementById(
+                    "numeroQualificateFinali"
+                ).value
+            );
+
+
+
+    // ============================
+    // SINCRONIZZAZIONE AUTOMATICA
+    // ============================
+
+    let formatoAttuale =
+        Number(
+            state.formato ||
+            state.rules.numeroSquadre ||
+            8
+        );
+
+
+
+    if(formatoAttuale===8){
+
+
+        if(state.rules.numeroQualificateFinali===8)
+
+            state.rules.qualificatePerGirone=4;
+
+
+        else
+
+            state.rules.qualificatePerGirone=2;
+
+
+    }
+
+
+
+    if(formatoAttuale===12){
+
+
+        state.rules.qualificatePerGirone =
+            Math.ceil(
+                state.rules.numeroQualificateFinali / 3
+            );
+
+
+    }
+
+
+
+    if(formatoAttuale===16){
+
+
+        state.rules.qualificatePerGirone =
+            Math.ceil(
+                state.rules.numeroQualificateFinali / 4
+            );
+
+
+    }
+
+
+
+    // aggiorno anche il valore interno
+
+    state.rules.numeroSquadre =
+        formatoAttuale;
+
+
+
+    // ============================
+    // FASE FINALE
+    // ============================
+
+    if(document.getElementById("usaQuarti"))
+
+        state.rules.usaQuarti =
+            document.getElementById(
+                "usaQuarti"
+            ).checked;
+
+
+    if(document.getElementById("usaSemifinali"))
+
+        state.rules.usaSemifinali =
+            document.getElementById(
+                "usaSemifinali"
+            ).checked;
+
+
+    if(document.getElementById("usaFinale"))
+
+        state.rules.usaFinale =
+            document.getElementById(
+                "usaFinale"
+            ).checked;
+
+
+
+    // ============================
+    // RIPESCAGGIO
+    // ============================
+
+    if(document.getElementById("ripescaggio"))
+
+        state.rules.ripescaggio =
+            document.getElementById(
+                "ripescaggio"
+            ).checked;
+
+
+    if(document.getElementById("numeroRipescate"))
+
+        state.rules.numeroRipescate =
+            Number(
+                document.getElementById(
+                    "numeroRipescate"
+                ).value
+            );
+
+
+
+    // ============================
+    // KILLER POINT
+    // ============================
+
+    if(document.getElementById("killerPointSelect"))
+
+        state.rules.killerPoint =
+            document.getElementById(
+                "killerPointSelect"
+            ).value === "true";
+
+
+
+    // ============================
+    // VISIBILITA QUARTI
+    // ============================
+
+    if(document.getElementById("mostraQuartiSelect"))
+
+        state.mostraQuarti =
+            document.getElementById(
+                "mostraQuartiSelect"
+            ).value === "true";
+
+
+
+    // ============================
+    // NOTE
+    // ============================
+
+    if(document.getElementById("noteRegole"))
+
+        state.rules.note =
+            document.getElementById(
+                "noteRegole"
+            ).value;
+
+
+
+    // ============================
+    // CHIUSURA MODALE
+    // ============================
+
+    let modal =
+        document.getElementById(
+            "rulesModal"
+        );
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+
+    updateAndSync();
+
+}
+function loadSavedTeams(){
+
+    let s = localStorage.getItem("savedTeams");
+
+    if(s){
+
+        let t = JSON.parse(s);
+
+        state.A = t.slice(0,4);
+        state.B = t.slice(4,8);
+
+        if(state.formato >= 12){
+            state.C = t.slice(8,12);
+        }else{
+            state.C = [];
+        }
+
+        if(state.formato >= 16){
+            state.D = t.slice(12,16);
+        }else{
+            state.D = [];
+        }
+
+    }else{
+
+        if(state.formato < 12)
+            state.C=[];
+
+        if(state.formato < 16)
+            state.D=[];
+
+    }
+
+}
+function saveTeams(){
+
+    let txt =
+        document.getElementById("teamInput").value;
+
+
+    let teams =
+        txt
+        .split("\n")
+        .map(x=>x.trim())
+        .filter(Boolean);
+
+
+
+    // ============================
+    // CONTROLLO NUMERO SQUADRE
+    // ============================
+
+    let richieste =
+        Number(state.formato || 8);
+
+
+
+    if(teams.length !== richieste){
+
+        alert(
+            "Il torneo è impostato a " +
+            richieste +
+            " squadre.\n\n" +
+            "Hai inserito " +
+            teams.length +
+            " squadre."
+        );
+
+        return;
+
+    }
+
+
+
+    localStorage.setItem(
+        "savedTeams",
+        JSON.stringify(teams)
+    );
+
+
+
+    // ============================
+    // ASSEGNAZIONE GIRONI
+    // ============================
+
+    state.A = teams.slice(0,4);
+
+    state.B = teams.slice(4,8);
+
+
+
+    if(state.formato >= 12){
+
+        state.C =
+            teams.slice(8,12);
+
+    }else{
+
+        state.C=[];
+
+    }
+
+
+
+    if(state.formato >=16){
+
+        state.D =
+            teams.slice(12,16);
+
+    }else{
+
+        state.D=[];
+
+    }
+
+
+
+    state.rules.numeroSquadre =
+        state.formato;
+
+
+
+    let modal =
+        document.getElementById("teamModal");
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+
+    updateAndSync();
+
+}
+function autofillTimes(){
+
+    for(let i = 0; i < 6; i++){
+
+        [
+            state.Atime,
+            state.Btime,
+            state.Ctime,
+            state.Dtime
+
+        ].forEach(t => {
+
+            if(t && (!t[i] || t[i] === "-"))
+                t[i] = state.rules.start;
+
         });
 
-        // Login
-        document.getElementById("loginBtn").addEventListener("click", async () => {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            if(!email || !password) { status.innerText = "Inserisci email e password"; return; }
-            
-            status.innerText = "Accesso in corso...";
-            const { error } = await client.auth.signInWithPassword({ email, password });
-            
-            if (error) {
-                status.innerText = error.message;
-            } else {
-                window.location.href = "2Page.html";
-            }
+    }
+
+}
+async function updateAndSync(){
+    try{
+        let nome=document.getElementById("nomeTorneoInput");
+        if(nome)
+            state.nomeTorneo=nome.value;
+        await sb.from("torneo").upsert({
+            id:"torneo_data",
+            state:state
         });
-    </script>
+    }catch(e){
+        console.error(e);
+    }
+    render();
+}
+async function loadState(){
+
+    try{
+
+        let {data}=await sb
+            .from("torneo")
+            .select("state")
+            .eq("id","torneo_data")
+            .single();
+
+
+        if(data && data.state){
+
+            state = {
+                ...state,
+                ...data.state
+            };
+
+
+            if(!state.rules)
+                ensureRules();
+
+
+            if(!state.A)
+                state.A=[];
+
+            if(!state.B)
+                state.B=[];
+
+            if(!state.C)
+                state.C=[];
+
+            if(!state.D)
+                state.D=[];
+
+
+            if(!state.Ares)
+                state.Ares=Array(6).fill("-");
+
+            if(!state.Bres)
+                state.Bres=Array(6).fill("-");
+
+            if(!state.Cres)
+                state.Cres=Array(6).fill("-");
+
+            if(!state.Dres)
+                state.Dres=Array(6).fill("-");
+
+
+            if(!state.Atime)
+                state.Atime=Array(6).fill("-");
+
+            if(!state.Btime)
+                state.Btime=Array(6).fill("-");
+
+            if(!state.Ctime)
+                state.Ctime=Array(6).fill("-");
+
+            if(!state.Dtime)
+                state.Dtime=Array(6).fill("-");
+
+
+            if(!state.Acamp)
+                state.Acamp=Array(6).fill("");
+
+            if(!state.Bcamp)
+                state.Bcamp=Array(6).fill("");
+
+            if(!state.Ccamp)
+                state.Ccamp=Array(6).fill("");
+
+            if(!state.Dcamp)
+                state.Dcamp=Array(6).fill("");
+
+
+            if(!state.qRes)
+                state.qRes=Array(4).fill("-");
+
+            if(!state.sTopRes)
+                state.sTopRes=Array(2).fill("-");
+
+            if(!state.fTopRes)
+                state.fTopRes="-";
+
+
+            if(state.mostraQuarti===undefined)
+                state.mostraQuarti=true;
+
+
+            if(state.formato===undefined)
+                state.formato=8;
+
+
+            ensureRules();
+
+        }
+
+
+    }catch(e){
+
+        console.error(e);
+
+    }
+
+
+    render();
+
+}
+function handleFile(e){
+    let r=new FileReader();
+    r.onload=function(evt){
+        let wb=XLSX.read(
+            new Uint8Array(evt.target.result),
+            {type:"array"}
+        );
+        let data=XLSX
+        .utils
+        .sheet_to_json(
+            wb.Sheets[wb.SheetNames[0]],
+            {header:1}
+        )
+        .flat()
+        .filter(Boolean);
+        state.A=data.slice(0,4);
+        state.B=data.slice(4,8);
+        state.C=data.slice(8,12);
+        state.D=data.slice(12,16);
+        updateAndSync();
+    };
+    r.readAsArrayBuffer(e.target.files[0]);
+}
+function reset(){
+    state={
+        ...state,
+        nomeTorneo:"",
+        A:[],
+        B:[],
+        C:[],
+        D:[],
+        Ares:Array(6).fill("-"),
+        Bres:Array(6).fill("-"),
+        Cres:Array(6).fill("-"),
+        Dres:Array(6).fill("-"),
+        Atime:Array(6).fill("-"),
+        Btime:Array(6).fill("-"),
+        Ctime:Array(6).fill("-"),
+        Dtime:Array(6).fill("-"),
+        qRes:Array(4).fill("-"),
+        sTopRes:Array(2).fill("-"),
+        fTopRes:"-",
+        campioneTop:null
+    };
+    updateAndSync();
+}
+function calc(teams,res){
+
+    ensureRules();
+
+
+    // ============================
+    // CONTROLLO GIRONE VALIDO
+    // ============================
+
+    if(!Array.isArray(teams) || teams.length < 4){
+
+        return [];
+
+    }
+
+
+
+    if(!Array.isArray(res)){
+
+        res=[];
+
+    }
+
+
+
+    if(!state.rules){
+
+        return [];
+
+    }
+
+
+
+    let matches=[
+
+        [0,1],
+        [2,3],
+        [0,3],
+        [1,2],
+        [0,2],
+        [1,3]
+
+    ];
+
+
+
+    let t=teams.map((n,idx)=>({
+
+        n:n || "",
+        pt:0,
+        gf:0,
+        gs:0,
+        df:0,
+        id:idx,
+        qual:false
+
+    }));
+
+
+
+    matches.forEach((m,i)=>{
+
+
+        let risultato=res[i];
+
+
+        if(
+            !risultato ||
+            risultato==="-" ||
+            typeof risultato!=="string" ||
+            risultato.trim()===""
+        )
+
+            return;
+
+
+
+        let r=risultato.split("-");
+
+
+        let a=Number(r[0]);
+        let b=Number(r[1]);
+
+
+
+        if(isNaN(a)||isNaN(b))
+
+            return;
+
+
+
+        if(!t[m[0]] || !t[m[1]])
+
+            return;
+
+
+
+        t[m[0]].gf+=a;
+        t[m[0]].gs+=b;
+
+
+        t[m[1]].gf+=b;
+        t[m[1]].gs+=a;
+
+
+
+        if(a>b){
+
+
+            t[m[0]].pt += state.rules.w;
+
+
+        }else if(b>a){
+
+
+            t[m[1]].pt += state.rules.w;
+
+
+        }else{
+
+
+            t[m[0]].pt += state.rules.d;
+            t[m[1]].pt += state.rules.d;
+
+
+        }
+
+
+    });
+
+
+
+
+    t.forEach(x=>{
+
+
+        x.df=x.gf-x.gs;
+
+
+    });
+
+
+
+
+
+    /*
+        ORDINE CRITERI SCELTO DALL'ORGANIZZATORE
+    */
+
+
+    let criteri=[
+
+        state.rules.crit1,
+        state.rules.crit2,
+        state.rules.crit3
+
+    ];
+
+
+
+
+    function confronto(a,b,criterio){
+
+
+        switch(criterio){
+
+
+            case "gf":
+
+                return b.gf-a.gf;
+
+
+
+            case "gs":
+
+                return a.gs-b.gs;
+
+
+
+            case "df":
+
+                return b.df-a.df;
+
+
+
+            case "pt":
+
+                return b.pt-a.pt;
+
+
+
+            default:
+
+                return 0;
+
+
+        }
+
+    }
+
+
+
+
+
+    t.sort((a,b)=>{
+
+
+        if(b.pt!==a.pt)
+
+            return b.pt-a.pt;
+
+
+
+        for(let i=0;i<criteri.length;i++){
+
+
+            let risultato =
+                confronto(
+                    a,
+                    b,
+                    criteri[i]
+                );
+
+
+            if(risultato!==0)
+
+                return risultato;
+
+
+        }
+
+
+
+        return a.id-b.id;
+
+
+    });
+
+
+
+
+
+    let numeroQualificati =
+
+        Number(
+            state.rules.qualificatePerGirone || 2
+        );
+
+
+
+
+
+    t.forEach((x,i)=>{
+
+
+        x.qual =
+            i < numeroQualificati;
+
+
+    });
+
+
+
+
+
+    return t;
+
+}
+function renderClass(){
+
+    ["A","B","C","D"].forEach(tag=>{
+
+        if(tag==="C" && (!state.C || state.C.length===0))
+            return;
+
+        if(tag==="D" && (!state.D || state.D.length===0))
+            return;
+
+
+        let box=document.getElementById(tag+"class");
+
+
+        if(!box)
+            return;
+
+
+        let classifica = calc(
+            state[tag],
+            state[tag+"res"]
+        );
+
+
+        box.innerHTML = classifica.map(x=>`
+
+<tr>
+
+<td>
+
+<span class="${x.qual?'qual-arrow-up':'qual-arrow-down'}">
+
+${x.qual?"▲":"▼"}
+
+</span>
+
+${x.n}
+
+</td>
+
+<td>${x.pt}</td>
+
+<td>${x.gf}</td>
+
+<td>${x.gs}</td>
+
+<td>${x.df}</td>
+
+</tr>
+
+`).join("");
+
+    });
+
+}
+function updateRes(g,i,pos,val){ 
+let s=g==='A'?state.Ares:g==='B'?state.Bres:g==='C'?state.Cres:state.Dres; 
+let p=s[i].split("-"); 
+p[pos]=val; 
+s[i]=p.join("-"); 
+updateAndSync(); 
+}
+function updateTime(g,i,pos,val){
+let s=g==="A"?state.Atime:g==="B"?state.Btime:g==="C"?state.Ctime:state.Dtime;
+if(!s[i])s[i]="-";
+let p=s[i].split("-");
+p[pos]=val;
+s[i]=p.join("-");
+updateAndSync();
+}
+function updateCamp(g,i,val){
+let s=g==="A"?state.Acamp:g==="B"?state.Bcamp:g==="C"?state.Ccamp:state.Dcamp;
+s[i]=val;
+updateAndSync();
+}
+function renderTables(){
+
+    let matches=[
+        [0,1],
+        [2,3],
+        [0,3],
+        [1,2],
+        [0,2],
+        [1,3]
+    ];
+
+
+    ["A","B","C","D"].forEach(tag=>{
+
+
+        if(!state[tag])
+            return;
+
+
+        if(tag==="C" && state.C.length===0)
+            return;
+
+
+        if(tag==="D" && state.D.length===0)
+            return;
+
+
+        let rows="";
+
+
+        let list = state[tag] || [];
+
+        let res = state[tag+"res"] || Array(6).fill("-");
+
+        let time = state[tag+"time"] || Array(6).fill("-");
+
+        let camp = state[tag+"camp"] || Array(6).fill("");
+
+
+
+        matches.forEach((m,i)=>{
+
+
+            let t=(time[i]||"-").split("-");
+
+            let r=(res[i]||"-").split("-");
+
+
+
+            rows+=`
+
+<tr>
+
+
+<td>
+
+<input 
+value="${camp[i] || ""}"
+oninput="updateCamp('${tag}',${i},this.value)"
+style="width:40px">
+
+</td>
+
+
+
+<td>
+
+<div class="db-cell">
+
+<input 
+value="${t[0]==="-"?"":t[0]}"
+oninput="updateTime('${tag}',${i},0,this.value)">
+
+
+<input 
+value="${t[1]==="-"?"":t[1]}"
+oninput="updateTime('${tag}',${i},1,this.value)">
+
+</div>
+
+</td>
+
+
+
+<td>
+
+${list[m[0]]||"-"} / ${list[m[1]]||"-"}
+
+</td>
+
+
+
+<td>
+
+<div class="db-cell">
+
+
+<input 
+value="${r[0]==="-"?"":r[0]}"
+oninput="updateRes('${tag}',${i},0,this.value)">
+
+
+
+<input 
+value="${r[1]==="-"?"":r[1]}"
+oninput="updateRes('${tag}',${i},1,this.value)">
+
+
+</div>
+
+</td>
+
+
+</tr>
+
+`;
+
+        });
+
+
+
+        let box=document.getElementById(tag+"rows");
+
+
+        if(box)
+            box.innerHTML=rows;
+
+
+    });
+
+}
+function getFinalQualified(){
+
+    ensureRules();
+
+
+    let qualificate=[];
+
+
+    ["A","B","C","D"].forEach(tag=>{
+
+
+        let squadre = state[tag];
+
+
+        if(!squadre || squadre.length===0)
+            return;
+
+
+
+        let classifica = calc(
+
+            squadre,
+
+            state[tag+"res"]
+
+        );
+
+
+
+        classifica
+
+        .filter(x=>x.qual)
+
+        .forEach(x=>{
+
+
+            if(x.n && x.n.trim()!=="")
+                qualificate.push(x.n);
+
+
+        });
+
+
+    });
+
+
+
+    /*
+        RIPESCAGGIO FUTURO
+    */
+
+
+    if(
+
+        state.rules.ripescaggio &&
+
+        Number(state.rules.numeroRipescate)>0
+
+    ){
+
+        // predisposto per sviluppo successivo
+
+    }
+
+
+
+    /*
+        LIMITE FASE FINALE
+
+    */
+
+
+    let limite = Number(
+
+        state.rules.numeroQualificateFinali
+
+    );
+
+
+
+    if(!limite || limite<=0)
+
+        limite=qualificate.length;
+
+
+
+    return qualificate.slice(0,limite);
+
+
+}
+function getFinalPhaseType(){
+
+    let n = Number(
+        state.rules.numeroQualificateFinali
+    );
+
+
+    if(n >= 8)
+        return "quarti";
+
+
+    if(n === 4)
+        return "semifinali";
+
+
+    if(n === 2)
+        return "finale";
+
+
+    return "quarti";
+
+}
+function updateKOResult(type,index,pos,val){
+    let arr;
+    if(type==="Q")
+        arr=state.qRes;
+    if(type==="S")
+        arr=state.sTopRes;
+    if(type==="F")
+        state.fTopRes=val;
+    if(arr){
+        if(!arr[index])
+            arr[index]="-";
+        let p=arr[index].split("-");
+        p[pos]=val;
+        arr[index]=p.join("-");
+    }
+    updateAndSync();
+}
+function renderKO(){
+
+    ensureRules();
+
+
+    let q = document.getElementById("Q");
+    let s = document.getElementById("S");
+    let f = document.getElementById("F");
+
+
+    if(!q || !s || !f)
+        return;
+
+
+
+    let teams = getFinalQualified();
+
+
+
+    q.innerHTML = "";
+    s.innerHTML = "";
+    f.innerHTML = "";
+
+
+
+    if(teams.length < 2){
+
+        q.innerHTML =
+        "<div class='match'>In attesa delle squadre qualificate</div>";
+
+        return;
+
+    }
+
+
+
+    let semifinali=[];
+
+
+
+    /*
+        ===========================
+        QUARTI DI FINALE
+        ===========================
+
+        I quarti vengono creati solo se:
+        - flag attivo
+        - almeno 8 squadre qualificate
+
+    */
+
+
+    if(
+
+    state.rules.usaQuarti === true &&
+
+    getFinalPhaseType()==="quarti" &&
+
+    teams.length >= 8
+
+){
+
+    let quarti=[
+
+        [teams[0],teams[7]],
+        [teams[3],teams[4]],
+        [teams[1],teams[6]],
+        [teams[2],teams[5]]
+
+    ];
+
+
+        quarti.forEach((m,i)=>{
+
+
+            let r=(state.qRes[i] || "-").split("-");
+
+
+
+            q.innerHTML += `
+
+<div class="match">
+
+<b>QUARTO ${i+1}</b><br>
+
+${m[0]}<br>
+
+<input 
+value="${r[0]==="-" ? "" : r[0]}"
+oninput="updateKOResult('Q',${i},0,this.value)">
+
+vs
+
+<input 
+value="${r[1]==="-" ? "" : r[1]}"
+oninput="updateKOResult('Q',${i},1,this.value)">
+
+<br>
+
+${m[1]}
+
+</div>
+
+`;
+
+        });
+
+
+
+        quarti.forEach((m,i)=>{
+
+
+            let w=getWinner(
+                m,
+                state.qRes[i]
+            );
+
+
+            if(w)
+                semifinali.push(w);
+
+
+        });
+
+
+
+        if(semifinali.length===4){
+
+
+            semifinali=[
+
+                [semifinali[0],semifinali[1]],
+                [semifinali[2],semifinali[3]]
+
+            ];
+
+
+        }else{
+
+
+            return;
+
+        }
+
+
+
+    }else{
+
+
+        /*
+            NIENTE QUARTI
+
+            Accesso diretto alle semifinali
+
+        */
+
+
+        if(teams.length >= 4){
+
+
+            semifinali=[
+
+                [teams[0],teams[3]],
+                [teams[1],teams[2]]
+
+            ];
+
+        }
+
+    }
+
+
+
+
+
+    /*
+        ===========================
+        SEMIFINALI
+        ===========================
+    */
+
+
+    if(state.rules.usaSemifinali){
+
+
+        semifinali.forEach((m,i)=>{
+
+
+            let r=(state.sTopRes[i] || "-").split("-");
+
+
+
+            s.innerHTML += `
+
+<div class="match">
+
+<b>SEMIFINALE ${i+1}</b><br>
+
+${m[0]}<br>
+
+<input
+value="${r[0]==="-" ? "" : r[0]}"
+oninput="updateKOResult('S',${i},0,this.value)">
+
+vs
+
+<input
+value="${r[1]==="-" ? "" : r[1]}"
+oninput="updateKOResult('S',${i},1,this.value)">
+
+<br>
+
+${m[1]}
+
+</div>
+
+`;
+
+        });
+
+
+    }else{
+
+
+        semifinali=[
+
+            [teams[0],teams[1]]
+
+        ];
+
+    }
+
+
+
+
+
+    /*
+        ===========================
+        FINALE
+        ===========================
+    */
+
+
+    if(!state.rules.usaFinale)
+        return;
+
+
+
+    let finalisti=[];
+
+
+
+    semifinali.forEach((m,i)=>{
+
+
+        let w=getWinner(
+            m,
+            state.sTopRes[i]
+        );
+
+
+        if(w)
+            finalisti.push(w);
+
+
+    });
+
+
+
+    if(finalisti.length===2){
+
+
+
+        let r=(state.fTopRes || "-").split("-");
+
+
+
+        f.innerHTML = `
+
+<div class="match">
+
+<h3>🏆 FINALE</h3>
+
+${finalisti[0]}<br>
+
+<input
+value="${r[0]==="-" ? "" : r[0]}"
+oninput="updateKOResult('F',0,0,this.value)">
+
+vs
+
+<input
+value="${r[1]==="-" ? "" : r[1]}"
+oninput="updateKOResult('F',0,1,this.value)">
+
+<br>
+
+${finalisti[1]}
+
+</div>
+
+`;
+
+
+
+        let campione=getWinner(
+            finalisti,
+            state.fTopRes
+        );
+
+
+
+        if(campione){
+
+
+            state.campioneTop=campione;
+
+
+
+            f.innerHTML += `
+
+<div class="winner-box top-win">
+
+🏆 CAMPIONE TORNEO:<br>
+
+${campione}
+
+</div>
+
+`;
+
+        }
+
+
+    }
+
+
+}
+function getWinner(match,res){
+
+    ensureRules();
+
+
+    if(!match || !res)
+        return null;
+
+
+    if(res==="-" || res.trim()==="")
+        return null;
+
+
+
+    let r=res.split("-");
+
+
+    let a=Number(r[0]);
+    let b=Number(r[1]);
+
+
+
+    if(isNaN(a) || isNaN(b))
+        return null;
+
+
+
+    if(a>b)
+        return match[0];
+
+
+
+    if(b>a)
+        return match[1];
+
+
+
+    /*
+        Pareggio nella fase KO
+
+        La decisione viene presa dalle regole
+    */
+
+
+
+    if(state.rules.killerPoint){
+
+
+        /*
+            In caso di killer point
+            il vincitore viene deciso
+            dal campo aggiuntivo se presente.
+
+            Per ora mantiene il pareggio
+            come non deciso perché il formato
+            risultato non contiene ancora il dato extra.
+        */
+
+
+        return null;
+
+    }
+
+
+
+    if(state.rules.rigori){
+
+
+        /*
+            Il formato attuale è:
+            "3-3"
+
+            Mancando il risultato rigori
+            non possiamo assegnare un vincitore.
+        */
+
+
+        return null;
+
+    }
+
+
+
+    return null;
+
+}
+function creaFinale(semifinali){
+
+    let f=document.getElementById("F");
+
+    let finalisti=[];
+
+
+    semifinali.forEach((m,i)=>{
+
+        let w=getWinner(
+            m,
+            state.sTopRes[i]
+        );
+
+        if(w)
+            finalisti.push(w);
+
+    });
+
+
+
+    if(finalisti.length!==2)
+        return;
+
+
+
+    let r=(state.fTopRes||"-").split("-");
+
+
+    f.innerHTML=`
+
+<div class="match">
+
+<h3>🏆 FINALE</h3>
+
+${finalisti[0]}<br>
+
+<input
+value="${r[0]==="-"?"":r[0]}"
+oninput="updateKOResult('F',0,0,this.value)">
+
+vs
+
+<input
+value="${r[1]==="-"?"":r[1]}"
+oninput="updateKOResult('F',0,1,this.value)">
+
+<br>
+
+${finalisti[1]}
+
+</div>
+
+`;
+
+
+
+    let campione=getWinner(
+        finalisti,
+        state.fTopRes
+    );
+
+
+    if(campione){
+
+        state.campioneTop=campione;
+
+
+        f.innerHTML+=`
+
+<div class="winner-box top-win">
+
+🏆 CAMPIONE TORNEO:<br>
+
+${campione}
+
+</div>
+
+`;
+
+    }
+
+}
+function render(){
+    renderTables();
+    renderClass();
+    renderKO();
+}
+async function initDefaults(){
+
+    ensureRules();
+
+    autofillTimes();
+
+    await loadState();
+
+}
+window.addEventListener("load",()=>{
+    if(typeof loadState==="function")
+        loadState();
+    if(typeof verifyAccess==="function")
+        verifyAccess();
+});
+</script>
 </body>
 </html>
