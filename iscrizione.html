@@ -15,35 +15,30 @@
 
 body{
     font-family:Arial,sans-serif;
-    background:#f3f4f6;
+    background:#0f172a;
+    color:white;
     margin:0;
     padding:20px;
 }
 
 .container{
-    max-width:750px;
+    max-width:800px;
     margin:auto;
 }
 
 h1{
     text-align:center;
+    color:#10b981;
 }
+
 
 .card{
 
-    background:white;
+    background:#111827;
+    border:1px solid #243041;
     padding:20px;
-    margin:15px 0;
-    border-radius:10px;
-    box-shadow:0 2px 8px #ccc;
-
-}
-
-
-.titolo{
-
-    font-size:22px;
-    font-weight:bold;
+    border-radius:12px;
+    margin-bottom:20px;
 
 }
 
@@ -51,17 +46,26 @@ h1{
 .info{
 
     margin:8px 0;
-    color:#555;
 
 }
 
 
 .lista{
 
-    background:#f9fafb;
-    padding:10px;
+    background:#0b1220;
+    padding:12px;
     border-radius:8px;
     margin-top:10px;
+
+}
+
+
+.squadra{
+
+    background:#064e3b;
+    padding:8px;
+    border-radius:6px;
+    margin:5px 0;
 
 }
 
@@ -70,44 +74,28 @@ button{
 
     width:100%;
     padding:12px;
+    margin-top:10px;
+    border:0;
+    border-radius:8px;
     background:#2563eb;
     color:white;
-    border:0;
-    border-radius:6px;
-    cursor:pointer;
     font-size:16px;
-
-}
-
-
-button:hover{
-
-    background:#1d4ed8;
+    cursor:pointer;
 
 }
 
 
 button:disabled{
 
-    background:#999;
+    background:#555;
     cursor:not-allowed;
-
-}
-
-
-input{
-
-    width:100%;
-    padding:10px;
-    margin:5px 0 10px;
-    box-sizing:border-box;
 
 }
 
 
 .errore{
 
-    color:red;
+    color:#ef4444;
     text-align:center;
 
 }
@@ -115,18 +103,8 @@ input{
 
 .successo{
 
-    color:green;
+    color:#22c55e;
     text-align:center;
-
-}
-
-
-.squadra{
-
-    background:#e0f2fe;
-    padding:8px;
-    margin:5px 0;
-    border-radius:6px;
 
 }
 
@@ -143,7 +121,7 @@ input{
 
 
 <h1>
-🏆 Iscrizione Tornei
+🏆 Tornei disponibili
 </h1>
 
 
@@ -152,7 +130,7 @@ input{
 
 <div id="listaTornei">
 
-Caricamento...
+Caricamento tornei...
 
 </div>
 
@@ -165,38 +143,36 @@ Caricamento...
 
 
 /*
-==============================
+================================
 SUPABASE
-==============================
+================================
 */
 
 
 const supabaseUrl =
-'https://iybjvtmfaupgthqqsngd.supabase.co';
-
+"https://iybjvtmfaupgthqqsngd.supabase.co";
 
 
 const supabaseKey =
-'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
-
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI";
 
 
 const sb =
 supabase.createClient(
-supabaseUrl,
-supabaseKey
+    supabaseUrl,
+    supabaseKey
 );
 
 
 
-let torneoSelezionato = null;
+let torneoCorrente = null;
 
 
- 
+
 /*
-==============================
-CARICAMENTO TORNEI
-==============================
+================================
+CARICA TORNEI
+================================
 */
 
 
@@ -213,18 +189,14 @@ document.getElementById(
 const {data,error}=
 
 await sb
-
 .from("tornei")
-
 .select(
 "id,nome,data,posti"
 )
-
 .eq(
 "pubblicato",
 true
 )
-
 .order(
 "data",
 {
@@ -234,45 +206,27 @@ ascending:true
 
 
 
-
-
 if(error){
 
-
-console.error(
-"Errore caricamento tornei:",
-error
-);
-
+console.error(error);
 
 box.innerHTML =
 "<p class='errore'>Errore caricamento tornei</p>";
 
-
 return;
 
-
 }
-
-
-
 
 
 
 if(!data || data.length===0){
 
-
 box.innerHTML =
 "<p>Nessun torneo disponibile</p>";
 
-
 return;
 
-
 }
-
-
-
 
 
 
@@ -280,19 +234,134 @@ box.innerHTML="";
 
 
 
-
-
-
 for(const torneo of data){
 
+await mostraTorneo(torneo);
 
-
-await creaCardTorneo(torneo);
-
+}
 
 
 }
 
+
+/*
+================================
+MOSTRA TORNEO
+================================
+*/
+
+
+async function mostraTorneo(torneo){
+
+
+const box =
+document.getElementById(
+"listaTornei"
+);
+
+
+
+
+const {data:iscritti,error}=
+
+await sb
+.from("iscrizioni")
+.select(
+"id,nome_giocatore,nome_completo"
+)
+.eq(
+"torneo_id",
+torneo.id
+)
+.order(
+"id",
+{
+ascending:true
+}
+);
+
+
+
+
+if(error){
+
+console.error(
+"Errore iscritti:",
+error
+);
+
+return;
+
+}
+
+
+
+
+
+/*
+1 squadra = 2 giocatori
+*/
+
+const numeroSquadre =
+Number(torneo.posti)||0;
+
+
+const massimoGiocatori =
+numeroSquadre * 2;
+
+
+
+const totaleIscritti =
+iscritti ?
+iscritti.length :
+0;
+
+
+
+const disponibili =
+massimoGiocatori - totaleIscritti;
+
+
+
+const chiuso =
+totaleIscritti >= massimoGiocatori;
+
+
+
+
+
+
+
+let elenco = "";
+
+
+
+if(totaleIscritti===0){
+
+
+elenco =
+"Nessun iscritto";
+
+
+}else{
+
+
+iscritti.forEach(
+(g,i)=>{
+
+
+elenco +=
+`
+
+<div>
+${i+1}. ${g.nome_completo}
+</div>
+
+`;
+
+
+
+});
 
 
 }
@@ -305,141 +374,11 @@ await creaCardTorneo(torneo);
 
 
 /*
-==============================
-CREA CARD TORNEO
-==============================
+CREAZIONE COPPIE
 */
 
 
-async function creaCardTorneo(torneo){
-
-
-
-const box =
-document.getElementById(
-"listaTornei"
-);
-
-
-
-
-const {
-
-data:iscritti
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select(
-"id,nome_giocatore,nome_completo"
-)
-
-.eq(
-"torneo_id",
-torneo.id
-)
-
-.order(
-"id",
-{
-ascending:true
-}
-);
-
-
-
-
-
-const numeroSquadre =
-Number(torneo.posti)||0;
-
-
-
-const limiteGiocatori =
-numeroSquadre * 2;
-
-
-
-const numeroIscritti =
-iscritti ?
-iscritti.length :
-0;
-
-
-
-
-const postiLiberi =
-limiteGiocatori - numeroIscritti;
-
-
-
-
-const torneoChiuso =
-numeroIscritti >= limiteGiocatori;
-
-
-
-
-
-
-
-let elenco="";
-
-
-
-
-
-if(numeroIscritti===0){
-
-
-elenco =
-"Nessun iscritto";
-
-
-}else{
-
-
-
-iscritti.forEach(
-(g,i)=>{
-
-
-elenco +=
-
-`
-
-<div>
-
-${i+1}. 
-${g.nome_giocatore}
-
-</div>
-
-`;
-
-
-}
-
-);
-
-
-}
-
-
-
-
-
-
-
-
 let squadre="";
-
-
 
 
 for(
@@ -449,18 +388,18 @@ i+=2
 ){
 
 
+
 if(
 iscritti[i+1]
 ){
 
 
-let numero =
+const numero =
 (i/2)+1;
 
 
 
 squadre +=
-
 
 `
 
@@ -478,7 +417,6 @@ ${iscritti[i+1].nome_giocatore}
 
 </div>
 
-
 `;
 
 
@@ -486,10 +424,7 @@ ${iscritti[i+1].nome_giocatore}
 }
 
 
-
 }
-
-
 
 
 
@@ -501,17 +436,17 @@ ${iscritti[i+1].nome_giocatore}
 box.innerHTML +=
 
 
-
 `
 
 <div class="card">
 
 
-<div class="titolo">
+<h2>
 
 🏆 ${torneo.nome}
 
-</div>
+</h2>
+
 
 
 <div class="info">
@@ -519,6 +454,7 @@ box.innerHTML +=
 📅 ${torneo.data}
 
 </div>
+
 
 
 
@@ -536,7 +472,7 @@ ${numeroSquadre} squadre
 
 👥 Iscritti:
 
-${numeroIscritti}/${limiteGiocatori}
+${totaleIscritti}/${massimoGiocatori}
 
 giocatori
 
@@ -549,7 +485,9 @@ giocatori
 <div class="lista">
 
 <b>
+
 Lista iscritti:
+
 </b>
 
 <br><br>
@@ -573,7 +511,11 @@ Squadre formate:
 
 <br>
 
-${squadre || "In attesa di giocatori"}
+${
+squadre ||
+"In attesa di giocatori"
+}
+
 
 </div>
 
@@ -585,7 +527,7 @@ ${squadre || "In attesa di giocatori"}
 
 
 ${
-torneoChiuso
+chiuso
 
 ?
 
@@ -593,7 +535,7 @@ torneoChiuso
 
 :
 
-"🟢 Posti disponibili: "+postiLiberi+" giocatori"
+"🟢 Posti disponibili: "+disponibili+" giocatori"
 
 }
 
@@ -607,50 +549,44 @@ torneoChiuso
 
 <button
 
-onclick="apriIscrizione(${torneo.id})"
+onclick="iscriviti(${torneo.id})"
 
-${torneoChiuso ? "disabled":""}
+${chiuso ? "disabled":""}
 
 >
 
 ${
-torneoChiuso
+chiuso
 ?
 "CHIUSO"
 :
 "ISCRIVITI"
 }
 
-</button>
 
+</button>
 
 
 
 </div>
 
 
-
 `;
 
 
 
-
-
 }
-
-    
-
-/*
-==============================
-APERTURA ISCRIZIONE
-==============================
+ /*
+================================
+ISCRIZIONE GIOCATORE
+================================
 */
 
 
-function apriIscrizione(id){
+async function iscriviti(torneoId){
 
 
-torneoSelezionato = id;
+torneoCorrente = torneoId;
 
 
 
@@ -661,11 +597,12 @@ prompt(
 
 
 
-if(!nome){
+if(!nome || nome.trim()===""){
 
 return;
 
 }
+
 
 
 
@@ -676,7 +613,7 @@ prompt(
 
 
 
-if(!cognome){
+if(!cognome || cognome.trim()===""){
 
 return;
 
@@ -685,39 +622,11 @@ return;
 
 
 
-salvaIscrizione(
-nome,
-cognome
-);
-
-
-
-}
-
-
-
-
-
-
-
-
-/*
-==============================
-SALVA ISCRIZIONE
-==============================
-*/
-
-
-async function salvaIscrizione(
-nome,
-cognome
-){
-
-
 
 
 
 const nomeCompleto =
+
 nome.trim()
 +
 " "
@@ -726,6 +635,14 @@ cognome.trim();
 
 
 
+
+
+
+/*
+ALIAS:
+prime 6 lettere cognome
+MAIUSCOLO
+*/
 
 
 const alias =
@@ -750,77 +667,8 @@ cognome
 
 
 /*
-CONTROLLO UTENTE
-GIÀ ISCRITTO
-*/
-
-
-const {
-
-data:esistente
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select(
-"id"
-)
-
-.eq(
-"torneo_id",
-torneoSelezionato
-)
-
-.eq(
-"nome_completo",
-nomeCompleto
-);
-
-
-
-
-
-
-
-
-if(
-esistente &&
-esistente.length>0
-){
-
-
-
-mostraMessaggio(
-
-"⚠️ Giocatore già iscritto"
-
-,
-"errore"
-
-);
-
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-
-
-/*
-CONTROLLO POSTI
+CONTROLLO TORNEO
+E POSTI DISPONIBILI
 */
 
 
@@ -842,12 +690,10 @@ await sb
 
 .eq(
 "id",
-torneoSelezionato
+torneoId
 )
 
 .single();
-
-
 
 
 
@@ -872,16 +718,13 @@ return;
 
 
 
-
-
-const massimoGiocatori =
+const limite =
 
 Number(torneo.posti)
 
 *
 
 2;
-
 
 
 
@@ -907,7 +750,7 @@ await sb
 
 .eq(
 "torneo_id",
-torneoSelezionato
+torneoId
 );
 
 
@@ -916,10 +759,8 @@ torneoSelezionato
 
 
 
-
-
 if(
-iscritti.length >= massimoGiocatori
+iscritti.length >= limite
 ){
 
 
@@ -949,7 +790,75 @@ return;
 
 
 /*
-INSERIMENTO
+CONTROLLO DOPPIO
+STESSO GIOCATORE
+NELLO STESSO TORNEO
+*/
+
+
+const {
+
+data:giaIscritto
+
+}
+
+=
+
+await sb
+
+.from("iscrizioni")
+
+.select(
+"id"
+)
+
+.eq(
+"torneo_id",
+torneoId
+)
+
+.eq(
+"nome_completo",
+nomeCompleto
+);
+
+
+
+
+
+
+
+if(
+giaIscritto &&
+giaIscritto.length>0
+){
+
+
+mostraMessaggio(
+
+"⚠️ Giocatore già iscritto"
+
+,
+"errore"
+
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+
+
+
+/*
+SALVATAGGIO
 */
 
 
@@ -968,7 +877,7 @@ await sb
 .insert({
 
 torneo_id:
-torneoSelezionato,
+torneoId,
 
 
 nome_giocatore:
@@ -987,11 +896,7 @@ data_iscrizione:
 new Date()
 .toISOString()
 
-
 });
-
-
-
 
 
 
@@ -1003,10 +908,9 @@ if(error){
 
 
 console.error(
-"Errore iscrizione:",
+"Errore inserimento:",
 error
 );
-
 
 
 mostraMessaggio(
@@ -1017,7 +921,6 @@ mostraMessaggio(
 "errore"
 
 );
-
 
 
 return;
@@ -1033,11 +936,9 @@ return;
 
 
 
-
 mostraMessaggio(
 
 "✅ Iscrizione completata: "
-
 +
 alias
 
@@ -1056,8 +957,6 @@ caricaTornei();
 
 
 
-
-
 }
 
 
@@ -1066,12 +965,10 @@ caricaTornei();
 
 
 
-
-
 /*
-==============================
+================================
 MESSAGGI
-==============================
+================================
 */
 
 
@@ -1108,6 +1005,7 @@ ${testo}
 
 
 
+
 setTimeout(()=>{
 
 
@@ -1122,38 +1020,14 @@ box.innerHTML="";
 
 
 
-
-/*
-==============================
-AGGIORNAMENTO AUTOMATICO
-==============================
-*/
-
-
-async function aggiornaIscrizioni(){
-
-
-await caricaTornei();
-
-
-}
-
-
-
-
-
-
-
-
-/*
-==============================
+    /*
+================================
 AVVIO PAGINA
-==============================
+================================
 */
 
 
 caricaTornei();
-
 
 
 
@@ -1163,5 +1037,4 @@ caricaTornei();
 </body>
 
 </html>
-
     
