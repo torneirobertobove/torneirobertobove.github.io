@@ -159,9 +159,7 @@ input{
 
 </style>
 
-
 </head>
-
 
 
 <body>
@@ -188,8 +186,6 @@ Caricamento tornei...
 </div>
 
 
-
-<!-- MODALE ISCRIZIONE -->
 
 
 <div id="modalIscrizione" class="modal">
@@ -238,13 +234,6 @@ Annulla
 <script>
 
 
-/*
-================================
-SUPABASE
-================================
-*/
-
-
 const supabaseUrl =
 
 "https://iybjvtmfaupgthqqsngd.supabase.co";
@@ -257,9 +246,7 @@ const supabaseKey =
 
 
 
-const sb =
-
-supabase.createClient(
+const sb = supabase.createClient(
 
 supabaseUrl,
 
@@ -272,7 +259,9 @@ supabaseKey
 let torneoSelezionato = null;
 
 
-  /*
+let invioInCorso = false;
+
+/*
 ================================
 CARICAMENTO TORNEI PUBBLICATI
 ================================
@@ -290,6 +279,7 @@ document.getElementById(
 
 
 
+
 const {
 
 data,
@@ -304,20 +294,31 @@ await sb
 .from("tornei")
 
 .select(
-"id,nome,data,posti"
+
+"id,nome,data,configurazione"
+
 )
 
 .eq(
+
 "pubblicato",
+
 true
+
 )
 
 .order(
+
 "data",
+
 {
+
 ascending:true
+
 }
+
 );
+
 
 
 
@@ -327,8 +328,11 @@ if(error){
 
 
 console.error(
+
 "Errore caricamento tornei:",
+
 error
+
 );
 
 
@@ -351,7 +355,6 @@ return;
 
 
 }
-
 
 
 
@@ -385,9 +388,7 @@ return;
 
 
 
-
 box.innerHTML="";
-
 
 
 
@@ -397,9 +398,10 @@ box.innerHTML="";
 for(const torneo of data){
 
 
-
 await creaSchedaTorneo(
+
 torneo
+
 );
 
 
@@ -409,6 +411,7 @@ torneo
 
 
 }
+
 
 
 
@@ -418,22 +421,93 @@ torneo
 
 /*
 ================================
+CALCOLO NUMERO SQUADRE
+DAL MODELLO TORNEO
+================================
+*/
+
+
+function getNumeroSquadre(
+
+torneo
+
+){
+
+
+
+return Number(
+
+torneo
+
+.configurazione
+
+?.rules
+
+?.numeroSquadre
+
+)
+
+||
+
+
+
+Number(
+
+torneo
+
+.configurazione
+
+?.numeroSquadre
+
+)
+
+||
+
+
+
+Number(
+
+torneo
+
+.configurazione
+
+?.formato
+
+)
+
+||
+
+
+
+0;
+
+
+
+}
+
+    /*
+================================
 CREA SCHEDA TORNEO
+ISCRITTI + POSTI + STATO
 ================================
 */
 
 
 async function creaSchedaTorneo(
+
 torneo
+
 ){
+
 
 
 const box =
 
 document.getElementById(
-"listaTornei"
-);
 
+"listaTornei"
+
+);
 
 
 
@@ -442,6 +516,7 @@ document.getElementById(
 const {
 
 data:iscritti,
+
 error
 
 }
@@ -453,19 +528,29 @@ await sb
 .from("iscrizioni")
 
 .select(
+
 "id,nome_giocatore,nome_completo"
+
 )
 
 .eq(
+
 "torneo_id",
+
 torneo.id
+
 )
 
 .order(
+
 "id",
+
 {
+
 ascending:true
+
 }
+
 );
 
 
@@ -477,9 +562,13 @@ if(error){
 
 
 console.error(
+
 "Errore lettura iscritti:",
+
 error
+
 );
+
 
 
 return;
@@ -494,7 +583,11 @@ return;
 
 const squadreTotali =
 
-Number(torneo.posti) || 0;
+getNumeroSquadre(
+
+torneo
+
+);
 
 
 
@@ -503,15 +596,16 @@ Number(torneo.posti) || 0;
 
 /*
 
-ATTENZIONE:
 PADel:
+
 1 squadra = 2 giocatori
 
 */
 
-const giocatoriMassimi =
+const massimoGiocatori =
 
 squadreTotali * 2;
+
 
 
 
@@ -528,7 +622,7 @@ iscritti.length;
 
 const postiLiberi =
 
-giocatoriMassimi - iscrittiAttuali;
+massimoGiocatori - iscrittiAttuali;
 
 
 
@@ -537,7 +631,7 @@ giocatoriMassimi - iscrittiAttuali;
 
 const chiuso =
 
-iscrittiAttuali >= giocatoriMassimi;
+iscrittiAttuali >= massimoGiocatori;
 
 
 
@@ -562,11 +656,15 @@ box.innerHTML +=
 
 
 
+
 <div class="info">
 
-📅 ${torneo.data}
+📅 Data:
+
+${torneo.data}
 
 </div>
+
 
 
 
@@ -584,15 +682,47 @@ squadre
 
 
 
+
 <div class="info">
 
 👥 Iscritti:
 
-${iscrittiAttuali}/${giocatoriMassimi}
+${iscrittiAttuali}/${massimoGiocatori}
 
 giocatori
 
 </div>
+
+
+
+
+
+<div class="info">
+
+${
+
+chiuso
+
+?
+
+"❌ ISCRIZIONI CHIUSE - TORNEO COMPLETO"
+
+:
+
+"🟢 Posti disponibili: "
+
++
+
+postiLiberi
+
++
+
+" giocatori"
+
+}
+
+</div>
+
 
 
 
@@ -605,13 +735,14 @@ ${chiuso ? "disabled":""}
 
 >
 
+
 ${
 
 chiuso
 
 ?
 
-"❌ ISCRIZIONI CHIUSE"
+"TORNEO COMPLETO"
 
 :
 
@@ -620,12 +751,14 @@ chiuso
 }
 
 
+
 </button>
 
 
 
-<div id="lista-${torneo.id}">
 
+
+<div id="lista-${torneo.id}">
 
 </div>
 
@@ -656,10 +789,12 @@ chiuso
 
 }
 
-   /*
+  /*
 ================================
-DETTAGLIO TORNEO
-ISCRITTI + COPPIE
+DETTAGLI TORNEO
+LISTA ISCRITTI
+ALIAS
+COPPIE AUTOMATICHE PADEL
 ================================
 */
 
@@ -677,13 +812,16 @@ chiuso
 ){
 
 
+
 const area =
 
 document.getElementById(
 
-"lista-"+torneoId
+"lista-" + torneoId
 
 );
+
+
 
 
 
@@ -704,7 +842,8 @@ let lista = "";
 
 
 
-if(iscritti.length===0){
+if(iscritti.length === 0){
+
 
 
 lista =
@@ -721,13 +860,16 @@ Nessun giocatore iscritto
 
 
 
-}else{
+}
+
+else{
 
 
 
 iscritti.forEach(
 
 (giocatore,index)=>{
+
 
 
 lista +=
@@ -737,7 +879,11 @@ lista +=
 
 <div>
 
-${index+1}.
+<b>
+
+${index + 1}.
+
+</b>
 
 ${giocatore.nome_completo}
 
@@ -753,11 +899,14 @@ ${giocatore.nome_giocatore}
 
 </div>
 
+<hr>
+
 `;
 
 
 
 });
+
 
 
 }
@@ -768,14 +917,14 @@ ${giocatore.nome_giocatore}
 
 
 
-
 /*
 ================================
 CREAZIONE COPPIE AUTOMATICHE
-1 squadra = 2 giocatori
+
+Ogni 2 giocatori = 1 squadra
+
 ================================
 */
-
 
 
 let coppie = "";
@@ -786,27 +935,24 @@ let coppie = "";
 
 for(
 
-let i=0;
+let i = 0;
 
-i<iscritti.length;
+i < iscritti.length;
 
-i+=2
-
-){
-
-
-
-if(
-
-iscritti[i+1]
+i += 2
 
 ){
 
 
 
-const numeroSquadra =
+if(iscritti[i+1]){
 
-(i/2)+1;
+
+
+const numero =
+
+(i / 2) + 1;
+
 
 
 
@@ -818,14 +964,16 @@ coppie +=
 <div class="squadra">
 
 
-🎾 Squadra ${numeroSquadra}
+🎾 Squadra ${numero}
 
 
-<br>
+<br><br>
 
 
 ${iscritti[i].nome_completo}
 
+
+<br>
 
 +
 
@@ -854,20 +1002,17 @@ ${iscritti[i+1].nome_completo}
 
 
 
-
 area.innerHTML =
 
 
 `
-
-
 
 <div class="lista">
 
 
 <h3>
 
-Lista iscritti
+👥 Lista iscritti
 
 </h3>
 
@@ -887,7 +1032,6 @@ ${lista}
 ${
 
 chiuso
-
 
 ?
 
@@ -912,10 +1056,7 @@ postiLiberi
 }
 
 
-
 </div>
-
-
 
 
 
@@ -926,26 +1067,23 @@ postiLiberi
 
 <h3>
 
-Squadre create
+🎾 Squadre create
 
 </h3>
 
 
 ${
 
-
 coppie ||
 
 
-"Ancora nessuna coppia completa"
-
-
+"Attesa formazione coppie"
 
 }
 
 
-</div>
 
+</div>
 
 
 
@@ -954,87 +1092,9 @@ coppie ||
 
 
 }
-
-
-
-
-
-
 /*
 ================================
-APERTURA MODALE ISCRIZIONE
-================================
-*/
-
-
-function apriIscrizione(
-
-id
-
-){
-
-
-torneoSelezionato = id;
-
-
-
-document.getElementById(
-
-"nome"
-
-).value="";
-
-
-
-document.getElementById(
-
-"cognome"
-
-).value="";
-
-
-
-
-document.getElementById(
-
-"modalIscrizione"
-
-).style.display =
-
-"flex";
-
-
-
-}
-
-
-
-
-
-/*
-================================
-CHIUDI MODALE
-================================
-*/
-
-
-function chiudiModal(){
-
-
-document.getElementById(
-
-"modalIscrizione"
-
-).style.display =
-
-"none";
-
-
-
-}
-/*
-================================
-CONFERMA ISCRIZIONE
+CONFERMA ISCRIZIONE GIOCATORE
 ================================
 */
 
@@ -1043,24 +1103,48 @@ async function confermaIscrizione(){
 
 
 
+if(invioInCorso){
+
+return;
+
+}
+
+
+
+invioInCorso = true;
+
+
+
+
+
+try{
+
+
+
 const nome =
 
-document.getElementById(
-"nome"
-)
+document
+
+.getElementById("nome")
+
 .value
+
 .trim();
+
 
 
 
 
 const cognome =
 
-document.getElementById(
-"cognome"
-)
+document
+
+.getElementById("cognome")
+
 .value
+
 .trim();
+
 
 
 
@@ -1068,6 +1152,7 @@ document.getElementById(
 
 
 if(!nome || !cognome){
+
 
 
 mostraMessaggio(
@@ -1079,7 +1164,9 @@ mostraMessaggio(
 );
 
 
+
 return;
+
 
 
 }
@@ -1090,24 +1177,27 @@ return;
 
 
 
-
 /*
 ================================
 CREAZIONE ALIAS
+
 prime 6 lettere cognome
 MAIUSCOLO
+
 ================================
 */
 
 
 const alias =
 
-
 cognome
 
 .substring(
+
 0,
+
 6
+
 )
 
 .toUpperCase();
@@ -1117,16 +1207,12 @@ cognome
 
 
 
+
 const nomeCompleto =
 
+nome +
 
-nome
-
-+
-
-" "
-
-+
+" " +
 
 cognome;
 
@@ -1136,9 +1222,15 @@ cognome;
 
 
 
+
+
 /*
 ================================
-CONTROLLO TORNEO
+LETTURA TORNEO
+
+PRENDE NUMERO SQUADRE
+DAL CONFIGURATORE
+
 ================================
 */
 
@@ -1158,7 +1250,9 @@ await sb
 .from("tornei")
 
 .select(
-"id,posti,nome"
+
+"id,nome,configurazione"
+
 )
 
 .eq(
@@ -1177,7 +1271,9 @@ torneoSelezionato
 
 
 
+
 if(erroreTorneo || !torneo){
+
 
 
 mostraMessaggio(
@@ -1189,7 +1285,9 @@ mostraMessaggio(
 );
 
 
+
 return;
+
 
 
 }
@@ -1200,31 +1298,45 @@ return;
 
 
 
-/*
-================================
-NUMERO MASSIMO GIOCATORI
 
-posti = squadre
+const squadreTotali =
+
+getNumeroSquadre(
+
+torneo
+
+);
+
+
+
+
+
+
+
+/*
+PADEL:
 
 1 squadra = 2 giocatori
 
-================================
 */
-
 
 const massimoGiocatori =
 
-
-Number(torneo.posti)
-
-*
-
-2;
+squadreTotali * 2;
 
 
 
 
 
+
+
+
+
+/*
+================================
+CONTROLLO POSTI DISPONIBILI
+================================
+*/
 
 
 const {
@@ -1266,6 +1378,7 @@ iscritti.length >= massimoGiocatori
 ){
 
 
+
 chiudiModal();
 
 
@@ -1279,7 +1392,9 @@ mostraMessaggio(
 );
 
 
+
 return;
+
 
 
 }
@@ -1294,14 +1409,14 @@ return;
 
 /*
 ================================
-CONTROLLO DOPPIONE
+CONTROLLO DOPPIO ISCRITTO
 ================================
 */
 
 
 const {
 
-data:giaPresente
+data:presente
 
 }
 
@@ -1313,7 +1428,7 @@ await sb
 
 .select(
 
-"id,nome_completo"
+"id"
 
 )
 
@@ -1339,15 +1454,9 @@ nomeCompleto
 
 
 
-
-
 if(
 
-giaPresente
-
-&&
-
-giaPresente.length>0
+presente && presente.length > 0
 
 ){
 
@@ -1355,7 +1464,7 @@ giaPresente.length>0
 
 mostraMessaggio(
 
-"⚠️ Giocatore già iscritto a questo torneo",
+"⚠️ Giocatore già iscritto",
 
 "errore"
 
@@ -1364,6 +1473,7 @@ mostraMessaggio(
 
 
 return;
+
 
 
 }
@@ -1378,7 +1488,7 @@ return;
 
 /*
 ================================
-SALVATAGGIO ISCRIZIONE
+SALVATAGGIO
 ================================
 */
 
@@ -1396,6 +1506,7 @@ await sb
 .from("iscrizioni")
 
 .insert({
+
 
 
 torneo_id:
@@ -1439,8 +1550,8 @@ new Date()
 
 
 
-
 if(error){
+
 
 
 console.error(
@@ -1466,8 +1577,8 @@ mostraMessaggio(
 return;
 
 
-}
 
+}
 
 
 
@@ -1481,13 +1592,10 @@ chiudiModal();
 
 
 
+
 mostraMessaggio(
 
-"✅ Iscrizione effettuata: "
-
-+
-
-alias,
+"✅ Iscritto: " + alias,
 
 "successo"
 
@@ -1499,8 +1607,7 @@ alias,
 
 
 
-
-caricaTornei();
+await caricaTornei();
 
 
 
@@ -1508,6 +1615,109 @@ caricaTornei();
 
 
 }
+
+finally{
+
+
+
+invioInCorso = false;
+
+
+
+}
+
+
+
+}
+/*
+================================
+APERTURA MODALE ISCRIZIONE
+================================
+*/
+
+
+function apriIscrizione(
+
+id
+
+){
+
+
+
+torneoSelezionato = id;
+
+
+
+
+
+
+document
+
+.getElementById("nome")
+
+.value = "";
+
+
+
+
+
+document
+
+.getElementById("cognome")
+
+.value = "";
+
+
+
+
+
+
+
+document
+
+.getElementById("modalIscrizione")
+
+.style.display = "flex";
+
+
+
+}
+
+
+
+
+
+
+
+
+/*
+================================
+CHIUSURA MODALE
+================================
+*/
+
+
+function chiudiModal(){
+
+
+
+document
+
+.getElementById("modalIscrizione")
+
+.style.display = "none";
+
+
+
+}
+
+
+
+
+
+
+
+
 /*
 ================================
 MESSAGGI UTENTE
@@ -1527,15 +1737,18 @@ tipo
 
 const box =
 
-document.getElementById(
+document
 
-"messaggio"
+.getElementById("messaggio");
 
-);
+
+
 
 
 
 box.className = tipo;
+
+
 
 
 
@@ -1551,6 +1764,8 @@ ${testo}
 </p>
 
 `;
+
+
 
 
 
@@ -1577,14 +1792,16 @@ box.className="";
 
 
 
+
 /*
 ================================
-RICARICA AUTOMATICA TORNEI
+AGGIORNAMENTO LISTA
 ================================
 */
 
 
 async function aggiornaLista(){
+
 
 
 await caricaTornei();
@@ -1600,14 +1817,37 @@ await caricaTornei();
 
 
 
+
 /*
 ================================
-CONTROLLO STATO TORNEO
+AVVIO PAGINA
 ================================
 */
 
 
-async function controllaPosti(
+document.addEventListener(
+
+"DOMContentLoaded",
+
+()=>{
+
+
+caricaTornei();
+
+
+
+}
+
+);
+
+/*
+================================
+CONTROLLO CHIUSURA TORNEO
+================================
+*/
+
+
+async function verificaChiusuraTorneo(
 
 torneoId
 
@@ -1617,7 +1857,9 @@ torneoId
 
 const {
 
-data:torneo
+data:torneo,
+
+error
 
 }
 
@@ -1629,7 +1871,7 @@ await sb
 
 .select(
 
-"posti"
+"configurazione"
 
 )
 
@@ -1649,11 +1891,38 @@ torneoId
 
 
 
-if(!torneo){
+if(error || !torneo){
 
-return false;
+
+return;
+
+
 
 }
+
+
+
+
+
+
+
+const squadreTotali =
+
+getNumeroSquadre(
+
+torneo
+
+);
+
+
+
+
+
+
+const limiteGiocatori =
+
+squadreTotali * 2;
+
 
 
 
@@ -1692,51 +1961,30 @@ torneoId
 
 
 
-const limite =
 
+if(
 
-Number(torneo.posti)
-
-*
-
-2;
-
-
-
-
-
-
-return iscritti.length >= limite;
-
-
-
-}
-
-
-
-
-
-
-
-
-/*
-================================
-AGGIORNAMENTO SINGOLO TORNEO
-================================
-*/
-
-
-async function aggiornaTorneo(
-
-torneoId
+iscritti.length >= limiteGiocatori
 
 ){
 
 
 
-const chiuso =
+await sb
 
-await controllaPosti(
+.from("tornei")
+
+.update({
+
+stato:
+
+"chiuso"
+
+})
+
+.eq(
+
+"id",
 
 torneoId
 
@@ -1744,95 +1992,11 @@ torneoId
 
 
 
-
-
-if(chiuso){
-
-
-caricaTornei();
-
-
 }
 
 
 
 }
-/*
-================================
-SOSTITUZIONE CONFERMA ISCRIZIONE
-CON CONTROLLO COMPLETO
-================================
-*/
-
-
-const confermaOriginale = confermaIscrizione;
-
-
-
-confermaIscrizione = async function(){
-
-
-
-if(invioInCorso){
-
-
-return;
-
-
-}
-
-
-
-invioInCorso = true;
-
-
-
-
-
-
-try{
-
-
-await confermaOriginale();
-
-
-
-
-
-if(torneoSelezionato){
-
-
-
-await verificaChiusuraTorneo(
-
-torneoSelezionato
-
-);
-
-
-
-await aggiornaLista();
-
-
-
-}
-
-
-
-}
-
-finally{
-
-
-invioInCorso = false;
-
-
-}
-
-
-
-};
-
 
 
 
@@ -1843,12 +2007,12 @@ invioInCorso = false;
 
 /*
 ================================
-CONTROLLO RIEPILOGO TORNEO
+CONTROLLO POSTI DISPONIBILI
 ================================
 */
 
 
-async function riepilogoTorneo(
+async function controllaPosti(
 
 torneoId
 
@@ -1870,7 +2034,7 @@ await sb
 
 .select(
 
-"nome,posti,data"
+"configurazione"
 
 )
 
@@ -1883,6 +2047,37 @@ torneoId
 )
 
 .single();
+
+
+
+
+
+
+
+if(!torneo){
+
+return false;
+
+}
+
+
+
+
+
+
+
+const limite =
+
+getNumeroSquadre(
+
+torneo
+
+)
+
+*
+
+2;
+
 
 
 
@@ -1903,7 +2098,7 @@ await sb
 
 .select(
 
-"nome_completo"
+"id"
 
 )
 
@@ -1913,18 +2108,6 @@ await sb
 
 torneoId
 
-)
-
-.order(
-
-"id",
-
-{
-
-ascending:true
-
-}
-
 );
 
 
@@ -1933,7 +2116,35 @@ ascending:true
 
 
 
-if(!torneo){
+return (
+
+iscritti.length >= limite
+
+);
+
+
+
+}
+
+
+
+
+
+
+
+
+/*
+================================
+AGGIORNAMENTO DOPO ISCRIZIONE
+================================
+*/
+
+
+async function aggiornaDopoIscrizione(){
+
+
+
+if(!torneoSelezionato){
 
 return;
 
@@ -1945,11 +2156,9 @@ return;
 
 
 
-console.log(
+await verificaChiusuraTorneo(
 
-"TORNEO",
-
-torneo.nome
+torneoSelezionato
 
 );
 
@@ -1957,42 +2166,44 @@ torneo.nome
 
 
 
-console.log(
 
-"DATA",
-
-torneo.data
-
-);
-
-
-
-
-
-console.log(
-
-"ISCRITTI",
-
-iscritti
-
-);
-
-
+await caricaTornei();
 
 
 
 }
 
+ /*
+================================
+ULTIMO CONTROLLO AVVIO
+================================
+*/
 
-</script>
+
+window.addEventListener(
+
+"load",
+
+async ()=>{
 
 
+await caricaTornei();
+
+
+
+}
+
+);
+
+
+
+
+/*
+================================
+FINE SCRIPT
+================================
+*/
+  </script>
 </body>
-
-
-</html>
-
-
+</html>  
     
-    
-
