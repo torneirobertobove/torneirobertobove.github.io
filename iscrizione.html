@@ -21,7 +21,7 @@ body{
 }
 
 .container{
-    max-width:700px;
+    max-width:750px;
     margin:auto;
 }
 
@@ -30,14 +30,44 @@ h1{
 }
 
 .card{
+
     background:white;
     padding:20px;
     margin:15px 0;
     border-radius:10px;
     box-shadow:0 2px 8px #ccc;
+
 }
 
+
+.titolo{
+
+    font-size:22px;
+    font-weight:bold;
+
+}
+
+
+.info{
+
+    margin:8px 0;
+    color:#555;
+
+}
+
+
+.lista{
+
+    background:#f9fafb;
+    padding:10px;
+    border-radius:8px;
+    margin-top:10px;
+
+}
+
+
 button{
+
     width:100%;
     padding:12px;
     background:#2563eb;
@@ -46,35 +76,60 @@ button{
     border-radius:6px;
     cursor:pointer;
     font-size:16px;
+
 }
+
+
+button:hover{
+
+    background:#1d4ed8;
+
+}
+
 
 button:disabled{
+
     background:#999;
     cursor:not-allowed;
+
 }
 
-input,select{
+
+input{
+
     width:100%;
     padding:10px;
     margin:5px 0 10px;
     box-sizing:border-box;
+
 }
 
-.info{
-    margin:8px 0;
-    color:#555;
-}
 
 .errore{
+
     color:red;
     text-align:center;
+
 }
 
-.lista{
-    background:#f9fafb;
-    padding:10px;
-    border-radius:8px;
+
+.successo{
+
+    color:green;
+    text-align:center;
+
 }
+
+
+.squadra{
+
+    background:#e0f2fe;
+    padding:8px;
+    margin:5px 0;
+    border-radius:6px;
+
+}
+
 
 </style>
 
@@ -88,15 +143,17 @@ input,select{
 
 
 <h1>
-🏆 Tornei disponibili
+🏆 Iscrizione Tornei
 </h1>
 
 
-<div id="errore" class="errore"></div>
+<div id="messaggio"></div>
 
 
 <div id="listaTornei">
+
 Caricamento...
+
 </div>
 
 
@@ -107,38 +164,67 @@ Caricamento...
 <script>
 
 
+/*
+==============================
+SUPABASE
+==============================
+*/
+
+
+const supabaseUrl =
+'https://iybjvtmfaupgthqqsngd.supabase.co';
+
+
+
+const supabaseKey =
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
+
+
+
 const sb =
 supabase.createClient(
-
-'https://iybjvtmfaupgthqqsngd.supabase.co',
-
-'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI'
-
+supabaseUrl,
+supabaseKey
 );
 
 
 
+let torneoSelezionato = null;
+
+
+ 
+/*
+==============================
+CARICAMENTO TORNEI
+==============================
+*/
 
 
 async function caricaTornei(){
 
 
 const box =
-document.getElementById("listaTornei");
+document.getElementById(
+"listaTornei"
+);
 
 
 
 const {data,error}=
 
 await sb
+
 .from("tornei")
+
 .select(
 "id,nome,data,posti"
 )
+
 .eq(
 "pubblicato",
 true
 )
+
 .order(
 "data",
 {
@@ -148,13 +234,45 @@ ascending:true
 
 
 
+
+
 if(error){
 
-box.innerHTML="Errore caricamento tornei";
+
+console.error(
+"Errore caricamento tornei:",
+error
+);
+
+
+box.innerHTML =
+"<p class='errore'>Errore caricamento tornei</p>";
+
 
 return;
 
+
 }
+
+
+
+
+
+
+if(!data || data.length===0){
+
+
+box.innerHTML =
+"<p>Nessun torneo disponibile</p>";
+
+
+return;
+
+
+}
+
+
+
 
 
 
@@ -162,36 +280,110 @@ box.innerHTML="";
 
 
 
+
+
+
 for(const torneo of data){
 
 
 
-const {data:iscritti}=
+await creaCardTorneo(torneo);
 
-await sb
-.from("iscrizioni")
-.select(
-"nome_giocatore,nome_completo"
-)
-.eq(
-"torneo_id",
-torneo.id
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+
+/*
+==============================
+CREA CARD TORNEO
+==============================
+*/
+
+
+async function creaCardTorneo(torneo){
+
+
+
+const box =
+document.getElementById(
+"listaTornei"
 );
 
 
 
-const totalePosti =
-(Number(torneo.posti)||0)*2;
+
+const {
+
+data:iscritti
+
+}
+
+=
+
+await sb
+
+.from("iscrizioni")
+
+.select(
+"id,nome_giocatore,nome_completo"
+)
+
+.eq(
+"torneo_id",
+torneo.id
+)
+
+.order(
+"id",
+{
+ascending:true
+}
+);
+
+
+
+
+
+const numeroSquadre =
+Number(torneo.posti)||0;
+
+
+
+const limiteGiocatori =
+numeroSquadre * 2;
+
 
 
 const numeroIscritti =
-iscritti ? iscritti.length : 0;
+iscritti ?
+iscritti.length :
+0;
 
 
 
-const chiuso =
-totalePosti > 0 &&
-numeroIscritti >= totalePosti;
+
+const postiLiberi =
+limiteGiocatori - numeroIscritti;
+
+
+
+
+const torneoChiuso =
+numeroIscritti >= limiteGiocatori;
+
+
+
 
 
 
@@ -200,28 +392,40 @@ let elenco="";
 
 
 
-if(iscritti && iscritti.length){
 
 
-iscritti.forEach((g,i)=>{
+if(numeroIscritti===0){
 
 
-elenco +=
-`
-<div>
-${i+1}. ${g.nome_giocatore}
-</div>
-`;
-
-
-});
+elenco =
+"Nessun iscritto";
 
 
 }else{
 
 
-elenco =
-"Nessun iscritto";
+
+iscritti.forEach(
+(g,i)=>{
+
+
+elenco +=
+
+`
+
+<div>
+
+${i+1}. 
+${g.nome_giocatore}
+
+</div>
+
+`;
+
+
+}
+
+);
 
 
 }
@@ -230,33 +434,116 @@ elenco =
 
 
 
-box.innerHTML += `
 
+
+
+let squadre="";
+
+
+
+
+for(
+let i=0;
+i<iscritti.length;
+i+=2
+){
+
+
+if(
+iscritti[i+1]
+){
+
+
+let numero =
+(i/2)+1;
+
+
+
+squadre +=
+
+
+`
+
+<div class="squadra">
+
+🎾 Squadra ${numero}
+
+<br>
+
+${iscritti[i].nome_giocatore}
+
++
+
+${iscritti[i+1].nome_giocatore}
+
+</div>
+
+
+`;
+
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+box.innerHTML +=
+
+
+
+`
 
 <div class="card">
 
 
-<h2>
+<div class="titolo">
+
 🏆 ${torneo.nome}
-</h2>
+
+</div>
 
 
 <div class="info">
+
 📅 ${torneo.data}
+
 </div>
+
 
 
 <div class="info">
-🎾 Formato: ${torneo.posti} squadre
+
+🎾 Formato:
+${numeroSquadre} squadre
+
 </div>
+
+
 
 
 <div class="info">
 
 👥 Iscritti:
-${numeroIscritti}/${totalePosti} giocatori
+
+${numeroIscritti}/${limiteGiocatori}
+
+giocatori
 
 </div>
+
+
+
 
 
 <div class="lista">
@@ -273,17 +560,41 @@ ${elenco}
 
 
 
+
+
+<div class="lista">
+
+<b>
+
+Squadre formate:
+
+</b>
+
+
 <br>
+
+${squadre || "In attesa di giocatori"}
+
+</div>
+
+
+
 
 
 <div class="info">
 
+
 ${
-chiuso
+torneoChiuso
+
 ?
-"❌ TORNEO CHIUSO - POSTI ESAURITI"
+
+"❌ ISCRIZIONI CHIUSE - TORNEO COMPLETO"
+
 :
-"🟢 Posti disponibili: "+(totalePosti-numeroIscritti)+" giocatori"
+
+"🟢 Posti disponibili: "+postiLiberi+" giocatori"
+
 }
 
 
@@ -291,72 +602,142 @@ chiuso
 
 
 
+
+
+
 <button
 
-onclick="iscriviti(${torneo.id})"
+onclick="apriIscrizione(${torneo.id})"
 
-${chiuso ? "disabled":""}
+${torneoChiuso ? "disabled":""}
 
 >
 
-${chiuso ? "CHIUSO":"Iscriviti"}
+${
+torneoChiuso
+?
+"CHIUSO"
+:
+"ISCRIVITI"
+}
 
 </button>
 
 
+
+
 </div>
+
 
 
 `;
 
 
 
+
+
 }
 
+    
+
+/*
+==============================
+APERTURA ISCRIZIONE
+==============================
+*/
 
 
-}
+function apriIscrizione(id){
+
+
+torneoSelezionato = id;
 
 
 
-
-
-
-
-
-async function iscriviti(id){
-
-
-
-let nome =
+const nome =
 prompt(
 "Inserisci nome:"
 );
 
 
 
-if(!nome)return;
+if(!nome){
+
+return;
+
+}
 
 
 
-
-let cognome =
+const cognome =
 prompt(
 "Inserisci cognome:"
 );
 
 
 
-if(!cognome)return;
+if(!cognome){
+
+return;
+
+}
 
 
 
 
-let alias =
+salvaIscrizione(
+nome,
+cognome
+);
+
+
+
+}
+
+
+
+
+
+
+
+
+/*
+==============================
+SALVA ISCRIZIONE
+==============================
+*/
+
+
+async function salvaIscrizione(
+nome,
+cognome
+){
+
+
+
+
+
+const nomeCompleto =
+nome.trim()
++
+" "
++
+cognome.trim();
+
+
+
+
+
+const alias =
 
 cognome
 
-.substring(0,6)
+.trim()
+
+.substring(
+0,
+6
+)
 
 .toUpperCase();
 
@@ -365,9 +746,18 @@ cognome
 
 
 
+
+
+
+/*
+CONTROLLO UTENTE
+GIÀ ISCRITTO
+*/
+
+
 const {
 
-data:gia
+data:esistente
 
 }
 
@@ -377,16 +767,18 @@ await sb
 
 .from("iscrizioni")
 
-.select("id")
+.select(
+"id"
+)
 
 .eq(
 "torneo_id",
-id
+torneoSelezionato
 )
 
 .eq(
 "nome_completo",
-nome+" "+cognome
+nomeCompleto
 );
 
 
@@ -394,12 +786,24 @@ nome+" "+cognome
 
 
 
-if(gia && gia.length){
 
 
-alert(
-"Sei già iscritto a questo torneo"
+if(
+esistente &&
+esistente.length>0
+){
+
+
+
+mostraMessaggio(
+
+"⚠️ Giocatore già iscritto"
+
+,
+"errore"
+
 );
+
 
 
 return;
@@ -411,6 +815,13 @@ return;
 
 
 
+
+
+
+
+/*
+CONTROLLO POSTI
+*/
 
 
 const {
@@ -425,14 +836,52 @@ await sb
 
 .from("tornei")
 
-.select("posti")
+.select(
+"posti"
+)
 
 .eq(
 "id",
-id
+torneoSelezionato
 )
 
 .single();
+
+
+
+
+
+
+
+if(!torneo){
+
+
+mostraMessaggio(
+"Errore torneo",
+"errore"
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+
+
+const massimoGiocatori =
+
+Number(torneo.posti)
+
+*
+
+2;
+
 
 
 
@@ -452,11 +901,13 @@ await sb
 
 .from("iscrizioni")
 
-.select("id")
+.select(
+"id"
+)
 
 .eq(
 "torneo_id",
-id
+torneoSelezionato
 );
 
 
@@ -464,21 +915,21 @@ id
 
 
 
-const limite =
-(Number(torneo.posti)||0)*2;
-
-
 
 
 
 if(
-limite &&
-iscritti.length>=limite
+iscritti.length >= massimoGiocatori
 ){
 
 
-alert(
-"Torneo chiuso: posti esauriti"
+mostraMessaggio(
+
+"❌ Torneo completo"
+
+,
+"errore"
+
 );
 
 
@@ -493,7 +944,22 @@ return;
 
 
 
-const {error}=
+
+
+
+
+/*
+INSERIMENTO
+*/
+
+
+const {
+
+error
+
+}
+
+=
 
 await sb
 
@@ -501,20 +967,32 @@ await sb
 
 .insert({
 
-torneo_id:id,
+torneo_id:
+torneoSelezionato,
 
-nome_giocatore:alias,
+
+nome_giocatore:
+alias,
+
 
 nome_completo:
-nome+" "+cognome,
+nomeCompleto,
 
-categoria:"Open",
+
+categoria:
+"Open",
+
 
 data_iscrizione:
 new Date()
 .toISOString()
 
+
 });
+
+
+
+
 
 
 
@@ -524,12 +1002,22 @@ new Date()
 if(error){
 
 
-console.error(error);
-
-
-alert(
-"Errore iscrizione"
+console.error(
+"Errore iscrizione:",
+error
 );
+
+
+
+mostraMessaggio(
+
+"Errore durante iscrizione"
+
+,
+"errore"
+
+);
+
 
 
 return;
@@ -539,13 +1027,34 @@ return;
 
 
 
-alert(
-"Iscrizione completata!"
+
+
+
+
+
+
+
+mostraMessaggio(
+
+"✅ Iscrizione completata: "
+
++
+alias
+
+,
+"successo"
+
 );
 
 
 
+
+
+
+
 caricaTornei();
+
+
 
 
 
@@ -556,7 +1065,95 @@ caricaTornei();
 
 
 
+
+
+
+/*
+==============================
+MESSAGGI
+==============================
+*/
+
+
+function mostraMessaggio(
+testo,
+tipo
+){
+
+
+
+const box =
+document.getElementById(
+"messaggio"
+);
+
+
+
+box.className =
+tipo;
+
+
+
+box.innerHTML =
+`
+
+<p>
+
+${testo}
+
+</p>
+
+`;
+
+
+
+
+setTimeout(()=>{
+
+
+box.innerHTML="";
+
+
+},4000);
+
+
+
+}
+
+
+
+
+/*
+==============================
+AGGIORNAMENTO AUTOMATICO
+==============================
+*/
+
+
+async function aggiornaIscrizioni(){
+
+
+await caricaTornei();
+
+
+}
+
+
+
+
+
+
+
+
+/*
+==============================
+AVVIO PAGINA
+==============================
+*/
+
+
 caricaTornei();
+
 
 
 
@@ -566,3 +1163,5 @@ caricaTornei();
 </body>
 
 </html>
+
+    
