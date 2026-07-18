@@ -72,6 +72,19 @@
             text-align: center;
             font-weight: bold;
         }
+
+        .info-box {
+            background: #1e293b;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .info-box strong {
+            color: #10b981;
+        }
     </style>
 </head>
 
@@ -94,6 +107,8 @@
         </button>
 
         <div id="messaggio"></div>
+
+        <div id="infoTabella" class="info-box"></div>
     </div>
 
     <script>
@@ -107,8 +122,32 @@
         let torneo = null;
         let utente = null;
         let profilo = null;
+        let colonneIscrizioni = [];
 
         async function inizializza() {
+            // Mostra info tabella
+            const infoBox = document.getElementById("infoTabella");
+            infoBox.innerHTML = "🔍 Rilevamento colonne tabella...";
+
+            // Rileva colonne tabella iscrizioni
+            const { data: sample, error: errSample } = await sb
+                .from("iscrizioni")
+                .select("*")
+                .limit(1);
+
+            if (errSample) {
+                infoBox.innerHTML = `❌ Errore: ${errSample.message}`;
+            } else if (sample && sample.length > 0) {
+                colonneIscrizioni = Object.keys(sample[0]);
+                infoBox.innerHTML = `
+                    <strong>✅ Colonne tabella "iscrizioni":</strong><br>
+                    ${colonneIscrizioni.join(", ")}
+                `;
+            } else {
+                // Tabella vuota, prova con insert per vedere errore
+                infoBox.innerHTML = "⚠️ Tabella vuota, colonne sconosciute";
+            }
+
             if (!torneoId) {
                 mostraMessaggio("❌ Torneo non selezionato", "errore");
                 return;
@@ -123,7 +162,6 @@
 
             utente = user;
 
-            // Carica torneo
             const { data: torneoLetto, error: erroreTorneo } = await sb
                 .from("tornei")
                 .select("id,nome,data,configurazione,posti")
@@ -138,7 +176,6 @@
 
             torneo = torneoLetto;
 
-            // Carica profilo utente - CORRETTO: solo "nome" (non esiste "cognome")
             const { data: profiloLetto, error: erroreProfilo } = await sb
                 .from("profili")
                 .select("nome,ruolo")
@@ -208,7 +245,14 @@
             }
             const limite = squadre * 2;
 
-            // STEP 1: Controlla iscrizioni esistenti - CORRETTO: solo "id" (non esiste "nome_completo")
+            // Controlla colonne disponibili
+            const haNome = colonneIscrizioni.includes("nome");
+            const haNomeGiocatore = colonneIscrizioni.includes("nome_giocatore");
+            const haNomeCompleto = colonneIscrizioni.includes("nome_completo");
+
+            console.log("Colonne disponibili:", { haNome, haNomeGiocatore, haNomeCompleto });
+
+            // STEP 1: Controlla iscrizioni esistenti
             const { data: iscritti, error: erroreLista } = await sb
                 .from("iscrizioni")
                 .select("id")
@@ -227,12 +271,12 @@
                 return;
             }
 
-            // Prepara dati - CORRETTO: usa solo "nome" dal profilo
+            // Prepara dati
             const nomeGiocatore = profilo && profilo.nome
                 ? profilo.nome.trim()
                 : utente.email.split('@')[0].toUpperCase();
 
-            // STEP 2: Controllo se già iscritto usando "nome"
+            // STEP 2: Controllo se già iscritto
             const { data: giaIscritto, error: erroreControllo } = await sb
                 .from("iscrizioni")
                 .select("id")
@@ -250,15 +294,26 @@
                 return;
             }
 
-            // STEP 3: Inserimento - CORRETTO: usa "nome" invece di "nome_completo" e "nome_giocatore"
+            // STEP 3: Inserimento - uso le colonne che esistono davvero
+            const datiInserimento = {
+                torneo_id: torneoId,
+                categoria: "Open",
+                data_iscrizione: new Date().toISOString()
+            };
+
+            if (haNome) {
+                datiInserimento.nome = nomeGiocatore;
+            } else if (haNomeGiocatore) {
+                datiInserimento.nome_giocatore = nomeGiocatore;
+            } else if (haNomeCompleto) {
+                datiInserimento.nome_completo = nomeGiocatore;
+            }
+
+            console.log("Dati inserimento:", datiInserimento);
+
             const { error: erroreInsert } = await sb
                 .from("iscrizioni")
-                .insert({
-                    torneo_id: torneoId,
-                    nome: nomeGiocatore,
-                    categoria: "Open",
-                    data_iscrizione: new Date().toISOString()
-                });
+                .insert(datiInserimento);
 
             if (erroreInsert) {
                 console.error("ERRORE INSERIMENTO:", erroreInsert);
