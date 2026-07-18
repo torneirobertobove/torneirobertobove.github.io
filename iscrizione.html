@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Iscrizione Tornei</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f3f4f6;
+    margin:0;
+    padding:20px;
+}
+
+.container{
+    max-width:700px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    margin:15px 0;
+    border-radius:10px;
+    box-shadow:0 2px 8px #ccc;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    background:#2563eb;
+    color:white;
+    border:0;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:16px;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+.info{
+    margin:8px 0;
+    color:#555;
+}
+
+.errore{
+    color:red;
+    text-align:center;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<h1>
+🏆 Tornei disponibili
+</h1>
+
+
+<div id="errore" class="errore"></div>
+
+
+<div id="listaTornei">
+Caricamento...
+</div>
+
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+<script>
+
+
+/*
+============================
+SUPABASE
+============================
+*/
+
+
+const supabaseUrl =
+'https://iybjvtmfaupgthqqsngd.supabase.co';
+
+
+
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
+
+
+
+
+const sb =
+supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+);
+
+
+
+
+/*
+============================
+CARICA TORNEI PUBBLICATI
+============================
+*/
+
+
+async function caricaTornei(){
+
+
+const box =
+document.getElementById(
+"listaTornei"
+);
+
+
+
+const {data,error}=
+
+await sb
+.from("tornei")
+.select(
+"id,nome,data,posti"
+)
+.eq(
+"pubblicato",
+true
+)
+.order(
+"data",
+{
+ascending:true
+}
+);
+
+
+
+
+
+if(error){
+
+console.error(
+error
+);
+
+document.getElementById(
+"errore"
+).innerHTML =
+"Errore caricamento tornei";
+
+
+box.innerHTML="";
+
+
+return;
+
+}
+
+
+
+
+
+if(!data || data.length===0){
+
+
+box.innerHTML =
+"<p>Nessun torneo pubblicato</p>";
+
+
+return;
+
+
+}
+
+
+
+
+box.innerHTML="";
+
+
+
+
+data.forEach(t=>{
+
+
+let card =
+document.createElement(
+"div"
+);
+
+
+card.className="card";
+
+
+
+card.innerHTML=`
+
+<h2>
+🏆 ${t.nome}
+</h2>
+
+
+<div class="info">
+📅 Data: ${t.data}
+</div>
+
+
+<div class="info">
+👥 Posti: ${t.posti ?? "liberi"}
+</div>
+
+
+<br>
+
+
+<button onclick="iscriviti(${t.id})">
+
+Iscriviti
+
+</button>
+
+
+`;
+
+
+
+box.appendChild(card);
+
+
+
+});
+
+
+}
+
+
+
+
+
+/*
+============================
+ISCRIZIONE GIOCATORE
+============================
+*/
+
+
+async function iscriviti(id){
+
+
+
+let nome =
+prompt(
+"Nome e cognome giocatore:"
+);
+
+
+
+if(!nome){
+
+return;
+
+}
+
+
+
+
+let categoria =
+prompt(
+"Categoria:",
+"Open"
+);
+
+
+
+if(!categoria){
+
+categoria="Open";
+
+}
+
+
+
+
+
+const {data,error}=
+
+await sb
+.from("iscrizioni")
+.insert({
+
+torneo_id:id,
+
+nome_giocatore:
+nome,
+
+categoria:
+categoria,
+
+data_iscrizione:
+new Date()
+.toISOString()
+
+})
+.select();
+
+
+
+
+
+
+if(error){
+
+
+console.error(
+"Errore iscrizione:",
+error
+);
+
+
+alert(
+"Errore durante iscrizione"
+);
+
+
+return;
+
+}
+
+
+
+
+console.log(
+"ISCRIZIONE:",
+data
+);
+
+
+
+alert(
+"Iscrizione completata!"
+);
+
+
+
+}
+
+
+
+
+
+caricaTornei();
+
+
+</script>
+
+
+</body>
+
+</html>
