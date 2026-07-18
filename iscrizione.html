@@ -69,9 +69,7 @@ text-align:center;
 
 <div class="card">
 
-<h2>
-🏆 Iscrizione torneo
-</h2>
+<h2>🏆 Iscrizione torneo</h2>
 
 <div id="datiTorneo">
 Caricamento...
@@ -94,33 +92,51 @@ Torna ai tornei
 <script>
 
 const sb = supabase.createClient(
+
 "https://iybjvtmfaupgthqqsngd.supabase.co",
+
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI"
+
 );
 
 
+
 const torneoId = new URLSearchParams(
+
 window.location.search
+
 ).get("torneo");
 
 
+
 let torneo=null;
+
 let utente=null;
+
 let profilo=null;
+
+
 
 
 
 async function inizializza(){
 
 
+
 if(!torneoId){
 
+
 mostraMessaggio(
+
 "Torneo non selezionato",
+
 "errore"
+
 );
 
+
 return;
+
 
 }
 
@@ -129,10 +145,7 @@ return;
 
 const {
 
-data:{
-user
-
-}
+data:{user}
 
 }
 
@@ -142,10 +155,13 @@ await sb.auth.getUser();
 
 
 
+
+
 if(!user){
 
 
 window.location.href="index.html";
+
 
 return;
 
@@ -153,7 +169,12 @@ return;
 }
 
 
+
+
 utente=user;
+
+
+
 
 
 
@@ -161,6 +182,7 @@ utente=user;
 const {
 
 data:torneoLetto,
+
 error:erroreTorneo
 
 }
@@ -172,12 +194,17 @@ await sb
 .from("tornei")
 
 .select(
+
 "id,nome,data,configurazione,posti"
+
 )
 
 .eq(
+
 "id",
+
 torneoId
+
 )
 
 .single();
@@ -185,22 +212,31 @@ torneoId
 
 
 
+
 if(erroreTorneo || !torneoLetto){
 
 
+
 mostraMessaggio(
+
 "Errore caricamento torneo",
+
 "errore"
+
 );
 
+
+
 return;
+
 
 
 }
 
 
+
 torneo=torneoLetto;
-console.log("DATI TORNEO LETTI:", torneoLetto, erroreTorneo);  
+
 
 
 
@@ -218,38 +254,27 @@ await sb
 .from("profili")
 
 .select(
+
 "nome,cognome,ruolo"
-)
 
-const {
-
-data:giaIscritto
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select("id")
-
-.eq(
-"torneo_id",
-torneoId
 )
 
 .eq(
-"nome_completo",
-nomeCompleto
-);
+
+"user_id",
+
+user.id
+
+)
 
 .single();
 
 
 
+
+
 profilo=profiloLetto || null;
+
 
 
 
@@ -266,7 +291,8 @@ const boxTorneo=document.getElementById(
 );
 
 
-let squadre=torneo.posti || 0;
+let squadre=Number(torneo.posti)||0;
+
 
 
 if(
@@ -276,14 +302,13 @@ torneo.configurazione.rules.numeroSquadre
 ){
 
 squadre=
-torneo.configurazione.rules.numeroSquadre;
+Number(torneo.configurazione.rules.numeroSquadre);
 
 }
 
 
 
-const massimo=
-Number(squadre)*2;
+const massimo=squadre*2;
 
 
 
@@ -310,7 +335,6 @@ boxTorneo.innerHTML=
 </div>
 
 `;
-
 
 
 
@@ -370,7 +394,6 @@ boxUtente.innerHTML=
 }
 
 
-
 }
 
 
@@ -384,7 +407,9 @@ async function confermaIscrizione(){
 
 const {
 
-data:iscrizioni
+data:iscritti,
+
+error:erroreLista
 
 }
 
@@ -397,16 +422,46 @@ await sb
 .select("id")
 
 .eq(
+
 "torneo_id",
+
 torneoId
+
 );
 
 
 
 
 
+if(erroreLista){
 
-let squadre=torneo.posti || 0;
+
+console.error(
+erroreLista
+);
+
+
+mostraMessaggio(
+
+"Errore lettura iscrizioni",
+
+"errore"
+
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+let squadre=Number(torneo.posti)||0;
+
 
 
 if(
@@ -416,37 +471,45 @@ torneo.configurazione.rules.numeroSquadre
 ){
 
 squadre=
-torneo.configurazione.rules.numeroSquadre;
+Number(torneo.configurazione.rules.numeroSquadre);
 
 }
 
 
 
-const limite=
-Number(squadre)*2;
 
+const limite=squadre*2;
 
 
 
 
 if(
-iscrizioni &&
-iscrizioni.length>=limite
+
+iscritti.length >= limite
+
 ){
 
+
 mostraMessaggio(
+
 "❌ Torneo completo",
+
 "errore"
+
 );
 
+
 return;
+
 
 }
 
 
 const nomeCompleto =
 
-profilo
+profilo &&
+
+(profilo.nome || profilo.cognome)
 
 ?
 
@@ -458,18 +521,26 @@ utente.email;
 
 
 
+
 const alias =
 
 profilo && profilo.cognome
 
 ?
 
-profilo.cognome.substring(0,6).toUpperCase()
+profilo.cognome
+
+.substring(0,6)
+
+.toUpperCase()
 
 :
 
-utente.email.substring(0,6).toUpperCase();
+utente.email
 
+.substring(0,6)
+
+.toUpperCase();
 
 
 
@@ -478,7 +549,9 @@ utente.email.substring(0,6).toUpperCase();
 
 const {
 
-data:giaIscritto
+data:giaIscritto,
+
+error:erroreControllo
 
 }
 
@@ -491,13 +564,19 @@ await sb
 .select("id")
 
 .eq(
+
 "torneo_id",
+
 torneoId
+
 )
 
 .eq(
-"user_id",
-utente.id
+
+"nome_completo",
+
+nomeCompleto
+
 );
 
 
@@ -506,15 +585,49 @@ utente.id
 
 
 
+if(erroreControllo){
+
+
+console.error(
+erroreControllo
+);
+
+
+mostraMessaggio(
+
+"Errore controllo iscrizione",
+
+"errore"
+
+);
+
+
+return;
+
+
+}
+
+
+
+
+
+
+
 if(
+
 giaIscritto &&
+
 giaIscritto.length>0
+
 ){
 
 
 mostraMessaggio(
+
 "⚠️ Sei già iscritto a questo torneo",
+
 "errore"
+
 );
 
 
@@ -543,19 +656,26 @@ await sb
 
 .insert({
 
+
 torneo_id:torneoId,
 
-user_id:utente.id,
 
 nome_giocatore:alias,
 
+
 nome_completo:nomeCompleto,
+
 
 categoria:"Open",
 
-data_iscrizione:new Date().toISOString()
+
+data_iscrizione:new Date()
+
+.toISOString()
+
 
 });
+
 
 
 
@@ -566,13 +686,20 @@ if(error){
 
 
 console.error(
+
+"ERRORE INSERIMENTO:",
+
 error
+
 );
 
 
 mostraMessaggio(
-"Errore durante iscrizione",
+
+error.message,
+
 "errore"
+
 );
 
 
@@ -586,16 +713,24 @@ return;
 
 
 
+
 mostraMessaggio(
+
 "✅ Iscrizione completata",
+
 "successo"
+
 );
+
+
 
 
 
 setTimeout(()=>{
 
+
 window.location.href="visitatore.html";
+
 
 },1500);
 
@@ -605,21 +740,24 @@ window.location.href="visitatore.html";
 
 
 
+
 function tornaTornei(){
+
 
 window.location.href="visitatore.html";
 
+
 }
-
-
-
 function mostraMessaggio(testo,tipo){
+
 
 const box=document.getElementById(
 "messaggio"
 );
 
+
 box.className=tipo;
+
 
 box.innerHTML=
 
@@ -629,6 +767,8 @@ box.innerHTML=
 
 `;
 
+
+
 }
 
 
@@ -637,6 +777,7 @@ window.addEventListener(
 "load",
 inizializza
 );
+
 
 </script>
 
