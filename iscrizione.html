@@ -9,6 +9,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 
@@ -47,8 +48,16 @@ button{
     font-size:16px;
 }
 
-button:hover{
-    background:#1d4ed8;
+button:disabled{
+    background:#999;
+    cursor:not-allowed;
+}
+
+input,select{
+    width:100%;
+    padding:10px;
+    margin:5px 0 10px;
+    box-sizing:border-box;
 }
 
 .info{
@@ -59,6 +68,12 @@ button:hover{
 .errore{
     color:red;
     text-align:center;
+}
+
+.lista{
+    background:#f9fafb;
+    padding:10px;
+    border-radius:8px;
 }
 
 </style>
@@ -89,52 +104,27 @@ Caricamento...
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-
 <script>
-
-
-/*
-============================
-SUPABASE
-============================
-*/
-
-
-const supabaseUrl =
-'https://iybjvtmfaupgthqqsngd.supabase.co';
-
-
-
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
-
-
 
 
 const sb =
 supabase.createClient(
-    supabaseUrl,
-    supabaseKey
+
+'https://iybjvtmfaupgthqqsngd.supabase.co',
+
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI'
+
 );
 
 
 
-
-/*
-============================
-CARICA TORNEI PUBBLICATI
-============================
-*/
 
 
 async function caricaTornei(){
 
 
 const box =
-document.getElementById(
-"listaTornei"
-);
+document.getElementById("listaTornei");
 
 
 
@@ -158,22 +148,9 @@ ascending:true
 
 
 
-
-
 if(error){
 
-console.error(
-error
-);
-
-document.getElementById(
-"errore"
-).innerHTML =
-"Errore caricamento tornei";
-
-
-box.innerHTML="";
-
+box.innerHTML="Errore caricamento tornei";
 
 return;
 
@@ -181,16 +158,70 @@ return;
 
 
 
+box.innerHTML="";
 
 
-if(!data || data.length===0){
+
+for(const torneo of data){
 
 
-box.innerHTML =
-"<p>Nessun torneo pubblicato</p>";
+
+const {data:iscritti}=
+
+await sb
+.from("iscrizioni")
+.select(
+"nome_giocatore,nome_completo"
+)
+.eq(
+"torneo_id",
+torneo.id
+);
 
 
-return;
+
+const totalePosti =
+(Number(torneo.posti)||0)*2;
+
+
+const numeroIscritti =
+iscritti ? iscritti.length : 0;
+
+
+
+const chiuso =
+totalePosti > 0 &&
+numeroIscritti >= totalePosti;
+
+
+
+
+let elenco="";
+
+
+
+if(iscritti && iscritti.length){
+
+
+iscritti.forEach((g,i)=>{
+
+
+elenco +=
+`
+<div>
+${i+1}. ${g.nome_giocatore}
+</div>
+`;
+
+
+});
+
+
+}else{
+
+
+elenco =
+"Nessun iscritto";
 
 
 }
@@ -198,60 +229,90 @@ return;
 
 
 
-box.innerHTML="";
+
+box.innerHTML += `
 
 
+<div class="card">
 
-
-data.forEach(t=>{
-
-
-let card =
-document.createElement(
-"div"
-);
-
-
-card.className="card";
-
-
-
-card.innerHTML=`
 
 <h2>
-🏆 ${t.nome}
+🏆 ${torneo.nome}
 </h2>
 
 
 <div class="info">
-📅 Data: ${t.data}
+📅 ${torneo.data}
 </div>
 
 
 <div class="info">
-👥 Posti: ${t.posti ?? "liberi"}
+🎾 Formato: ${torneo.posti} squadre
 </div>
+
+
+<div class="info">
+
+👥 Iscritti:
+${numeroIscritti}/${totalePosti} giocatori
+
+</div>
+
+
+<div class="lista">
+
+<b>
+Lista iscritti:
+</b>
+
+<br><br>
+
+${elenco}
+
+</div>
+
 
 
 <br>
 
 
-<button onclick="iscriviti(${t.id})">
+<div class="info">
 
-Iscriviti
+${
+chiuso
+?
+"❌ TORNEO CHIUSO - POSTI ESAURITI"
+:
+"🟢 Posti disponibili: "+(totalePosti-numeroIscritti)+" giocatori"
+}
+
+
+</div>
+
+
+
+<button
+
+onclick="iscriviti(${torneo.id})"
+
+${chiuso ? "disabled":""}
+
+>
+
+${chiuso ? "CHIUSO":"Iscriviti"}
 
 </button>
+
+
+</div>
 
 
 `;
 
 
 
-box.appendChild(card);
+}
 
-
-
-});
 
 
 }
@@ -260,11 +321,7 @@ box.appendChild(card);
 
 
 
-/*
-============================
-ISCRIZIONE GIOCATORE
-============================
-*/
+
 
 
 async function iscriviti(id){
@@ -273,31 +330,160 @@ async function iscriviti(id){
 
 let nome =
 prompt(
-"Nome e cognome giocatore:"
+"Inserisci nome:"
 );
 
 
 
-if(!nome){
+if(!nome)return;
+
+
+
+
+let cognome =
+prompt(
+"Inserisci cognome:"
+);
+
+
+
+if(!cognome)return;
+
+
+
+
+let alias =
+
+cognome
+
+.substring(0,6)
+
+.toUpperCase();
+
+
+
+
+
+
+const {
+
+data:gia
+
+}
+
+=
+
+await sb
+
+.from("iscrizioni")
+
+.select("id")
+
+.eq(
+"torneo_id",
+id
+)
+
+.eq(
+"nome_completo",
+nome+" "+cognome
+);
+
+
+
+
+
+
+if(gia && gia.length){
+
+
+alert(
+"Sei già iscritto a questo torneo"
+);
+
 
 return;
 
+
 }
 
 
 
 
-let categoria =
-prompt(
-"Categoria:",
-"Open"
+
+
+
+const {
+
+data:torneo
+
+}
+
+=
+
+await sb
+
+.from("tornei")
+
+.select("posti")
+
+.eq(
+"id",
+id
+)
+
+.single();
+
+
+
+
+
+
+
+const {
+
+data:iscritti
+
+}
+
+=
+
+await sb
+
+.from("iscrizioni")
+
+.select("id")
+
+.eq(
+"torneo_id",
+id
 );
 
 
 
-if(!categoria){
 
-categoria="Open";
+
+
+const limite =
+(Number(torneo.posti)||0)*2;
+
+
+
+
+
+if(
+limite &&
+iscritti.length>=limite
+){
+
+
+alert(
+"Torneo chiuso: posti esauriti"
+);
+
+
+return;
+
 
 }
 
@@ -305,26 +491,30 @@ categoria="Open";
 
 
 
-const {data,error}=
+
+
+const {error}=
 
 await sb
+
 .from("iscrizioni")
+
 .insert({
 
 torneo_id:id,
 
-nome_giocatore:
-nome,
+nome_giocatore:alias,
 
-categoria:
-categoria,
+nome_completo:
+nome+" "+cognome,
+
+categoria:"Open",
 
 data_iscrizione:
 new Date()
 .toISOString()
 
-})
-.select();
+});
 
 
 
@@ -334,28 +524,18 @@ new Date()
 if(error){
 
 
-console.error(
-"Errore iscrizione:",
-error
-);
+console.error(error);
 
 
 alert(
-"Errore durante iscrizione"
+"Errore iscrizione"
 );
 
 
 return;
 
+
 }
-
-
-
-
-console.log(
-"ISCRIZIONE:",
-data
-);
 
 
 
@@ -365,13 +545,19 @@ alert(
 
 
 
+caricaTornei();
+
+
+
 }
 
 
 
 
 
+
 caricaTornei();
+
 
 
 </script>
