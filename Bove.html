@@ -1082,9 +1082,9 @@ style="width:80px">
       </button>
 
 
-      <button onclick="updateAndSync()">
+      <button onclick="salvaTorneoSupabase()">
         💾 Salva
-      </button>
+</button>
 
     </div>
 
@@ -2304,6 +2304,258 @@ function openRules(){
 
         aggiornaPannelloRegole();
 
+
+     // ============================
+// ARCHIVIO TORNEI
+// ============================
+
+if(!document.getElementById("btnArchivioTornei")){
+
+    let titolo =
+        document.querySelector("#rulesModal .modal-content h3");
+
+
+    if(titolo){
+
+        let btn =
+            document.createElement("button");
+
+        btn.id =
+            "btnArchivioTornei";
+
+        btn.innerHTML =
+            "📂 Archivio Tornei";
+
+        btn.style.cssText =
+            `
+            margin-left:15px;
+            padding:6px 10px;
+            border-radius:8px;
+            cursor:pointer;
+            background:#2563eb;
+            color:white;
+            border:none;
+            font-size:14px;
+            `;
+
+
+        btn.onclick =
+            apriArchivioTornei;
+
+
+        titolo.appendChild(btn);
+
+    }
+
+}   
+
+
+
+}
+async function apriArchivioTornei(){
+
+
+    if(typeof sb==="undefined"){
+
+        alert("Supabase non disponibile");
+        return;
+
+    }
+
+
+    let {data,error}=
+
+        await sb
+        .from("tornei")
+        .select("*")
+        .order("data",{ascending:false});
+
+
+
+    if(error){
+
+        console.error(error);
+        alert("Errore caricamento archivio");
+        return;
+
+    }
+
+
+
+    let html = `
+
+    <div id="archivioTorneiModal"
+    style="
+    position:fixed;
+    top:10%;
+    left:10%;
+    width:80%;
+    max-height:80%;
+    overflow:auto;
+    background:#111827;
+    color:white;
+    padding:20px;
+    border-radius:12px;
+    z-index:9999;
+    ">
+
+    <h2>📂 Archivio Tornei</h2>
+
+    `;
+
+
+    data.forEach(t=>{
+
+
+        html += `
+
+        <div style="
+        background:#1f2937;
+        padding:12px;
+        margin:10px;
+        border-radius:8px;
+        ">
+
+        <b>${t.nome}</b><br>
+
+        📅 ${t.data}
+
+        <br><br>
+
+        <button onclick="caricaTorneoArchivio(${t.id})">
+        Apri torneo
+        </button>
+
+        </div>
+
+        `;
+
+
+    });
+
+
+
+    html += `
+
+    <button onclick="
+    document.getElementById('archivioTorneiModal').remove()
+    ">
+    Chiudi
+    </button>
+
+    </div>`;
+
+
+    document.body.insertAdjacentHTML(
+        "beforeend",
+        html
+    );
+
+
+}
+async function caricaTorneoArchivio(id){
+
+
+    let {data,error}=
+
+        await sb
+        .from("tornei")
+        .select("*")
+        .eq("id",id)
+        .single();
+
+
+
+    if(error){
+
+        console.error(error);
+        return;
+
+    }
+
+
+
+    state =
+    data.configurazione;
+
+
+// ============================
+// AGGIORNA TESTATA TORNEO
+// ============================
+
+
+// NOME TORNEO
+
+let nomeInput =
+    document.getElementById("nomeTorneoInput");
+
+if(nomeInput){
+
+    nomeInput.value =
+        data.nome;
+
+}
+
+
+
+// DATA TORNEO
+
+let campiDate =
+    document.querySelectorAll(
+        'input[type="date"]'
+    );
+
+if(campiDate.length > 0){
+
+    campiDate[0].value =
+        data.data;
+
+}
+
+
+
+// ORA TORNEO
+
+let oraInput =
+    document.getElementById("startTime");
+
+if(oraInput){
+
+    oraInput.value =
+        (
+            data.configurazione.rules &&
+            data.configurazione.rules.start
+        )
+        ?
+        data.configurazione.rules.start
+        :
+        "20:00";
+
+}
+
+
+
+    localStorage.setItem(
+        "torneoState",
+        JSON.stringify(state)
+    );
+
+
+
+    document
+    .getElementById("archivioTorneiModal")
+    ?.remove();
+
+
+
+    if(typeof render==="function")
+        render();
+
+
+    alert(
+        "Torneo caricato: "
+        + data.nome
+    );
 
 
 }
@@ -4914,45 +5166,50 @@ function saveTeams(){
 }
 async function updateAndSync(){
 
-
     try{
 
 
-
         /*
-            ============================
-            NOME TORNEO
-            ============================
+        ============================
+        AGGIORNA NOME TORNEO
+        ============================
         */
 
-
-        let nome =
-            document.getElementById(
-                "nomeTorneoInput"
-            );
+        const inputNome =
+            document.getElementById("nomeTorneoInput");
 
 
-
-        if(nome)
+        if(inputNome && inputNome.value.trim()){
 
             state.nomeTorneo =
-                nome.value;
+                inputNome.value.trim();
 
-
-
-
-
-
+        }
 
 
 
         /*
-            ============================
-            SALVATAGGIO LOCALE
-            SEMPRE DISPONIBILE
-            ============================
+        ============================
+        DATA TORNEO
+        ============================
         */
 
+        if(!state.dataTorneo){
+
+            state.dataTorneo =
+                new Date()
+                .toISOString()
+                .split("T")[0];
+
+        }
+
+
+
+        /*
+        ============================
+        SOLO SALVATAGGIO LOCALE
+        ============================
+        */
 
         localStorage.setItem(
 
@@ -4964,46 +5221,164 @@ async function updateAndSync(){
 
 
 
+    }
+
+
+    catch(e){
+
+        console.error(
+            "Errore sincronizzazione locale:",
+            e
+        );
+
+    }
 
 
 
+    /*
+    ============================
+    RENDER
+    ============================
+    */
+
+    if(typeof render==="function")
+
+        render();
+
+
+}
+async function salvaTorneoSupabase(){
+
+
+    try{
+
+
+        /*
+        ============================
+        NOME TORNEO
+        ============================
+        */
+
+        const inputNome =
+            document.getElementById("nomeTorneoInput");
+
+
+        if(inputNome && inputNome.value.trim()){
+
+            state.nomeTorneo =
+                inputNome.value.trim();
+
+        }
+
+
+        if(
+            !state.nomeTorneo ||
+            state.nomeTorneo.trim()===""
+        ){
+
+            alert(
+                "Inserisci prima il nome del torneo"
+            );
+
+            return;
+
+        }
 
 
 
         /*
-            ============================
-            SUPABASE
-            SOLO SE DISPONIBILE
-            ============================
+        ============================
+        ID TORNEO
+        ============================
         */
 
+        if(!state.idTorneo){
 
-        if(typeof sb !== "undefined"){
-
-
-
-            let risultato =
-                await sb
-                .from("torneo")
-                .upsert({
-
-                    id:"torneo_data",
-
-                    state:state
-
-                });
-
-
-
-            if(risultato.error)
-
-                console.error(
-                    "Errore Supabase:",
-                    risultato.error
-                );
+            state.idTorneo =
+                Date.now();
 
         }
 
+
+
+        /*
+        ============================
+        DATA
+        ============================
+        */
+
+        if(!state.dataTorneo){
+
+            state.dataTorneo =
+                new Date()
+                .toISOString()
+                .split("T")[0];
+
+        }
+
+
+
+        /*
+        ============================
+        SALVATAGGIO SUPABASE
+        ============================
+        */
+
+        const {data,error}=
+
+            await sb
+            .from("tornei")
+            .upsert({
+
+                id:
+                    state.idTorneo,
+
+                nome:
+                    state.nomeTorneo,
+
+                data:
+                    state.dataTorneo,
+
+                stato:
+                    "attivo",
+
+                configurazione:
+                    state
+
+            })
+            .select();
+
+
+
+        if(error){
+
+            console.error(
+                "Errore salvataggio torneo:",
+                error
+            );
+
+            return;
+
+        }
+
+
+
+        console.log(
+            "TORNEO SALVATO:",
+            data
+        );
+
+
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+
+
+
+        alert(
+            "Torneo salvato correttamente"
+        );
 
 
     }
@@ -5011,36 +5386,12 @@ async function updateAndSync(){
 
     catch(e){
 
-
         console.error(
-
-            "Errore sincronizzazione:",
-
+            "Errore salvaTorneoSupabase:",
             e
-
         );
 
-
     }
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        RENDER FINALE
-        ============================
-    */
-
-
-    if(typeof render==="function")
-
-        render();
 
 
 }
