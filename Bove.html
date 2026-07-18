@@ -121,20 +121,129 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
     const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2NzE4NSwiZXhwIjoyMDk4MjQzMTg1fQ.HNCXcSpzjfXxjsIhhEODJIkVkZwIcUmXBu1Cgxy7ID0';
     const sb = supabase.createClient(supabaseUrl, supabaseKey);
-    async function verifyAccess() {
-        const { data: { session } } = await sb.auth.getSession();
-        if (!session) return;
-        // Inserisci qui l'email dell'admin per abilitare le funzioni
-        const adminEmail = "giose.rizzi@gmail.com";
-        if (session.user.email !== adminEmail) {
-            document.querySelectorAll('input, button, textarea, select').forEach(el => {
-                if (!el.classList.contains('back') && el.innerText !== "Stampa") {
-                    el.disabled = true;
-                    el.style.opacity = "0.6";
-                }
-            });
+    async function verifyAccess(){
+
+    const {
+        data:{
+            session
         }
+    } = await sb.auth.getSession();
+
+
+    if(!session){
+
+        console.warn(
+            "Nessun utente autenticato"
+        );
+
+        bloccaGestionale();
+
+        return;
+
     }
+
+
+
+    const userId =
+        session.user.id;
+
+
+
+    const {
+        data:profilo,
+        error
+    } =
+    await sb
+    .from("profili")
+    .select(
+        "nome,ruolo"
+    )
+    .eq(
+        "user_id",
+        userId
+    )
+    .single();
+
+
+
+
+    if(error || !profilo){
+
+        console.warn(
+            "Profilo amministratore non trovato"
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+
+
+    if(
+        profilo.ruolo !== "admin"
+    ){
+
+        console.warn(
+            "Utente senza permessi admin:",
+            profilo
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+
+
+    console.log(
+        "ACCESSO ADMIN:",
+        profilo.nome
+    );
+
+
+}
+
+
+
+
+
+function bloccaGestionale(){
+
+
+    document
+    .querySelectorAll(
+        'input, button, textarea, select'
+    )
+    .forEach(el=>{
+
+
+        if(
+            !el.classList.contains("back")
+            &&
+            el.innerText !== "Stampa"
+        ){
+
+            el.disabled = true;
+
+            el.style.opacity = "0.6";
+
+        }
+
+
+    });
+
+
+    console.warn(
+        "Gestionale bloccato: serve un amministratore"
+    );
+
+
+}
 </script>
 </head>
 <body onload="initDefaults(); verifyAccess()">
@@ -1056,20 +1165,23 @@ style="width:80px">
 
 
       <button onclick="salvaTorneoSupabase()">
-        💾 Salva
+    💾 Salva
 </button>
 
-    </div>
+<button onclick="pubblicaTorneo()">
+    🌍 Pubblica
+</button>
+
+</div>
 
 
-    <div class="btn-group">
+<div class="btn-group">
 
-      <button onclick="document.getElementById('teamModal').style.display='block'">
-        📝 Squadre
-      </button>
+<button onclick="document.getElementById('teamModal').style.display='block'">
+    📝 Squadre
+</button>
 
-    </div>
-
+</div>
 
     <div class="btn-group">
 
@@ -2448,64 +2560,98 @@ async function caricaTorneoArchivio(id){
 
 
 
-    state =
-    data.configurazione;
+    /*
+    ============================
+    RIPRISTINO STATO TORNEO
+    ============================
+    */
 
 
-// ============================
-// AGGIORNA TESTATA TORNEO
-// ============================
+    state = {
 
+        ...data.configurazione,
 
-// NOME TORNEO
+        idTorneo:
+            data.id,
 
-let nomeInput =
-    document.getElementById("nomeTorneoInput");
+        nomeTorneo:
+            data.nome,
 
-if(nomeInput){
+        dataTorneo:
+            data.data,
 
-    nomeInput.value =
-        data.nome;
+        pubblicato:
+            data.pubblicato || false
 
-}
-
-
-
-// DATA TORNEO
-
-let campiDate =
-    document.querySelectorAll(
-        'input[type="date"]'
-    );
-
-if(campiDate.length > 0){
-
-    campiDate[0].value =
-        data.data;
-
-}
+    };
 
 
 
-// ORA TORNEO
+    /*
+    ============================
+    AGGIORNA TESTATA
+    ============================
+    */
 
-let oraInput =
-    document.getElementById("startTime");
 
-if(oraInput){
+    let nomeInput =
+        document.getElementById("nomeTorneoInput");
 
-    oraInput.value =
-        (
-            data.configurazione.rules &&
-            data.configurazione.rules.start
-        )
-        ?
-        data.configurazione.rules.start
-        :
-        "20:00";
 
-}
+    if(nomeInput){
 
+        nomeInput.value =
+            data.nome;
+
+    }
+
+
+
+    let campiDate =
+        document.querySelectorAll(
+            'input[type="date"]'
+        );
+
+
+    if(campiDate.length > 0){
+
+        campiDate[0].value =
+            data.data;
+
+    }
+
+
+
+    let oraInput =
+        document.getElementById("startTime");
+
+
+    if(oraInput){
+
+        oraInput.value =
+
+            (
+                state.rules &&
+                state.rules.start
+            )
+
+            ?
+
+            state.rules.start
+
+            :
+
+            "20:00";
+
+    }
+
+
+
+    /*
+    ============================
+    SALVATAGGIO LOCALE
+    ============================
+    */
 
 
     localStorage.setItem(
@@ -2522,7 +2668,9 @@ if(oraInput){
 
 
     if(typeof render==="function")
+
         render();
+
 
 
     alert(
@@ -4395,7 +4543,6 @@ function loadSavedTeams(){
 
 
 
-
     let teams;
 
 
@@ -4431,7 +4578,6 @@ function loadSavedTeams(){
 
 
 
-
     let richieste =
         Number(
             state.rules.numeroSquadre
@@ -4441,12 +4587,35 @@ function loadSavedTeams(){
 
 
 
-    if(teams.length!==richieste){
+    /*
+        ============================
+        CONTROLLO COMPATIBILITA'
+        ============================
+    */
+
+
+    if(
+        teams.length === 0
+    ){
+
+        return;
+
+    }
+
+
+
+
+    if(
+        teams.length !== richieste
+    ){
 
 
         console.warn(
 
-            "Numero squadre salvate incompatibile."
+            "Numero squadre salvate incompatibile:",
+            teams.length,
+            "richieste:",
+            richieste
 
         );
 
@@ -4481,6 +4650,7 @@ function loadSavedTeams(){
 
 
 
+
     let numeroGironi =
         Number(
             state.rules.numeroGironi
@@ -4492,6 +4662,8 @@ function loadSavedTeams(){
         Number(
             state.rules.squadrePerGirone
         ) || 4;
+
+
 
 
 
@@ -4526,7 +4698,7 @@ function loadSavedTeams(){
 
     /*
         ============================
-        RICOSTRUZIONE
+        RICOSTRUZIONE GIRONI
         ============================
     */
 
@@ -4541,20 +4713,20 @@ function loadSavedTeams(){
     ].forEach((g,i)=>{
 
 
-        if(i<numeroGironi){
+        if(i < numeroGironi){
 
 
             let start =
-                i*squadrePerGirone;
+                i * squadrePerGirone;
 
 
 
             let end =
-                start+squadrePerGirone;
+                start + squadrePerGirone;
 
 
 
-            state[g]=
+            state[g] =
                 teams.slice(
                     start,
                     end
@@ -4574,22 +4746,26 @@ function loadSavedTeams(){
 
 
 
+
+
     /*
         ============================
-        PULIZIA
+        PULIZIA GIRONI NON USATI
         ============================
     */
 
 
-    if(numeroGironi<3)
+    if(numeroGironi < 3)
 
         state.C=[];
 
 
 
-    if(numeroGironi<4)
+    if(numeroGironi < 4)
 
         state.D=[];
+
+
 
 
 
@@ -4610,6 +4786,7 @@ function loadSavedTeams(){
 
 
         let totale=0;
+
 
 
         let n =
@@ -4635,11 +4812,14 @@ function loadSavedTeams(){
 
 
 
+
+
         if(
             !Array.isArray(
                 state[nome+"res"]
-            ) ||
-            state[nome+"res"].length!==totale
+            )
+            ||
+            state[nome+"res"].length !== totale
         )
 
             state[nome+"res"] =
@@ -4648,11 +4828,14 @@ function loadSavedTeams(){
 
 
 
+
+
         if(
             !Array.isArray(
                 state[nome+"time"]
-            ) ||
-            state[nome+"time"].length!==totale
+            )
+            ||
+            state[nome+"time"].length !== totale
         )
 
             state[nome+"time"] =
@@ -4661,17 +4844,22 @@ function loadSavedTeams(){
 
 
 
+
+
         if(
             !Array.isArray(
                 state[nome+"camp"]
-            ) ||
-            state[nome+"camp"].length!==totale
+            )
+            ||
+            state[nome+"camp"].length !== totale
         )
 
             state[nome+"camp"] =
                 Array(totale).fill("");
 
     }
+
+
 
 
 
@@ -4721,6 +4909,7 @@ function loadSavedTeams(){
 
 
 }
+
 function saveTeams(){
 
     ensureRules();
