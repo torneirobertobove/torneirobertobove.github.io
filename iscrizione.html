@@ -72,16 +72,6 @@
             text-align: center;
             font-weight: bold;
         }
-
-        .debug {
-            background: #1e293b;
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #94a3b8;
-        }
     </style>
 </head>
 
@@ -104,8 +94,6 @@
         </button>
 
         <div id="messaggio"></div>
-
-        <div id="debug" class="debug"></div>
     </div>
 
     <script>
@@ -120,23 +108,13 @@
         let utente = null;
         let profilo = null;
 
-        function logDebug(msg) {
-            const debugBox = document.getElementById("debug");
-            debugBox.innerHTML += `<div>> ${msg}</div>`;
-            console.log("[DEBUG]", msg);
-        }
-
         async function inizializza() {
-            logDebug("Inizio inizializzazione...");
-            logDebug("Torneo ID: " + torneoId);
-
             if (!torneoId) {
                 mostraMessaggio("❌ Torneo non selezionato", "errore");
                 return;
             }
 
             const { data: { user } } = await sb.auth.getUser();
-            logDebug("User ID: " + (user ? user.id : "NULL"));
 
             if (!user) {
                 window.location.href = "index.html";
@@ -145,6 +123,7 @@
 
             utente = user;
 
+            // Carica torneo
             const { data: torneoLetto, error: erroreTorneo } = await sb
                 .from("tornei")
                 .select("id,nome,data,configurazione,posti")
@@ -152,24 +131,22 @@
                 .single();
 
             if (erroreTorneo || !torneoLetto) {
-                logDebug("Errore torneo: " + JSON.stringify(erroreTorneo));
+                console.error("Errore caricamento torneo:", erroreTorneo);
                 mostraMessaggio("❌ Errore caricamento torneo", "errore");
                 return;
             }
 
             torneo = torneoLetto;
-            logDebug("Torneo caricato: " + torneo.nome);
 
+            // Carica profilo utente - CORRETTO: solo "nome" (non esiste "cognome")
             const { data: profiloLetto, error: erroreProfilo } = await sb
                 .from("profili")
-                .select("nome,cognome,ruolo")
+                .select("nome,ruolo")
                 .eq("user_id", user.id)
                 .single();
 
             if (erroreProfilo) {
-                logDebug("Profilo non trovato o errore: " + JSON.stringify(erroreProfilo));
-            } else {
-                logDebug("Profilo caricato");
+                console.warn("Profilo non trovato:", erroreProfilo);
             }
 
             profilo = profiloLetto || null;
@@ -204,7 +181,7 @@
                 boxUtente.innerHTML = `
                     <div class="info">
                         👤 Giocatore:
-                        <b>${profilo.nome || ""} ${profilo.cognome || ""}</b>
+                        <b>${profilo.nome || "Anonimo"}</b>
                         <br>
                         📧 ${utente.email}
                     </div>
@@ -220,8 +197,6 @@
         }
 
         async function confermaIscrizione() {
-            logDebug("=== INIZIO ISCRIZIONE ===");
-            
             if (!torneo) {
                 mostraMessaggio("❌ Errore: torneo non trovato", "errore");
                 return;
@@ -233,85 +208,64 @@
             }
             const limite = squadre * 2;
 
-            logDebug("Torneo ID: " + torneoId);
-            logDebug("User ID: " + utente.id);
-            logDebug("Limite giocatori: " + limite);
-
-            // STEP 1: Controlla iscrizioni esistenti
-            logDebug("STEP 1: Controllo iscrizioni esistenti...");
+            // STEP 1: Controlla iscrizioni esistenti - CORRETTO: solo "id" (non esiste "nome_completo")
             const { data: iscritti, error: erroreLista } = await sb
                 .from("iscrizioni")
-                .select("id, nome_giocatore, nome_completo, torneo_id")
+                .select("id")
                 .eq("torneo_id", torneoId);
 
             if (erroreLista) {
-                logDebug("ERRORE STEP 1: " + JSON.stringify(erroreLista));
+                console.error("Errore lettura iscrizioni:", erroreLista);
                 mostraMessaggio("❌ Errore lettura iscrizioni<br><small>" + erroreLista.message + "</small>", "errore");
                 return;
             }
 
             const iscrittiCorrenti = iscritti ? iscritti.length : 0;
-            logDebug("Iscritti correnti: " + iscrittiCorrenti);
 
             if (iscrittiCorrenti >= limite) {
                 mostraMessaggio("❌ Torneo completo", "errore");
                 return;
             }
 
-            // STEP 2: Controllo se già iscritto
-            logDebug("STEP 2: Controllo se già iscritto...");
+            // Prepara dati - CORRETTO: usa solo "nome" dal profilo
+            const nomeGiocatore = profilo && profilo.nome
+                ? profilo.nome.trim()
+                : utente.email.split('@')[0].toUpperCase();
+
+            // STEP 2: Controllo se già iscritto usando "nome"
             const { data: giaIscritto, error: erroreControllo } = await sb
                 .from("iscrizioni")
                 .select("id")
                 .eq("torneo_id", torneoId)
-                .eq("nome_completo", utente.email);
+                .eq("nome", nomeGiocatore);
 
             if (erroreControllo) {
-                logDebug("ERRORE STEP 2: " + JSON.stringify(erroreControllo));
-                mostraMessaggio("❌ Errore controllo iscrizione<br><small>" + erroreControllo.message + "</small>", "errore");
+                console.error("Errore controllo iscrizione:", erroreControllo);
+                mostraMessaggio("❌ Errore controllo iscrizione", "errore");
                 return;
             }
 
-            const giaPresente = giaIscritto && giaIscritto.length > 0;
-            logDebug("Già iscritto: " + giaPresente);
-
-            if (giaPresente) {
+            if (giaIscritto && giaIscritto.length > 0) {
                 mostraMessaggio("⚠️ Sei già iscritto a questo torneo", "errore");
                 return;
             }
 
-            // Prepara dati
-            const nomeCompleto = profilo && (profilo.nome || profilo.cognome)
-                ? `${profilo.nome || ""} ${profilo.cognome || ""}`.trim()
-                : utente.email;
-
-            const alias = profilo && profilo.cognome
-                ? profilo.cognome.substring(0, 6).toUpperCase()
-                : utente.email.substring(0, 6).toUpperCase();
-
-            logDebug("Nome completo: " + nomeCompleto);
-            logDebug("Alias: " + alias);
-
-            // STEP 3: Inserimento
-            logDebug("STEP 3: Inserimento iscrizione...");
-            const { data: insertResult, error: erroreInsert } = await sb
+            // STEP 3: Inserimento - CORRETTO: usa "nome" invece di "nome_completo" e "nome_giocatore"
+            const { error: erroreInsert } = await sb
                 .from("iscrizioni")
                 .insert({
                     torneo_id: torneoId,
-                    nome_giocatore: alias,
-                    nome_completo: nomeCompleto,
+                    nome: nomeGiocatore,
                     categoria: "Open",
                     data_iscrizione: new Date().toISOString()
-                })
-                .select();
+                });
 
             if (erroreInsert) {
-                logDebug("ERRORE STEP 3: " + JSON.stringify(erroreInsert));
-                mostraMessaggio("❌ Errore inserimento<br><small style='font-size:11px'>" + erroreInsert.message + "</small>", "errore");
+                console.error("ERRORE INSERIMENTO:", erroreInsert);
+                mostraMessaggio("❌ " + erroreInsert.message, "errore");
                 return;
             }
 
-            logDebug("INSERIMENTO RIUSCITO! ID: " + (insertResult ? insertResult[0]?.id : "OK"));
             mostraMessaggio("✅ Iscrizione completata!", "successo");
 
             setTimeout(() => {
