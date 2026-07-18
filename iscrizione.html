@@ -1,18 +1,13 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Iscrizione Torneo</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
 body{
 background:#0f172a;
 color:white;
@@ -35,16 +30,10 @@ color:#10b981;
 }
 
 .info{
-margin:10px 0;
-}
-
-input{
-width:100%;
+background:#0b1220;
 padding:12px;
-margin-top:10px;
-box-sizing:border-box;
 border-radius:8px;
-border:0;
+margin:10px 0;
 }
 
 button{
@@ -72,117 +61,64 @@ text-align:center;
 color:#ef4444;
 text-align:center;
 }
-
 </style>
 
 </head>
 
 <body>
 
-
 <div class="card">
-
 
 <h2>
 🏆 Iscrizione torneo
 </h2>
 
-
-<div id="infoTorneo">
-
-Caricamento torneo...
-
+<div id="datiTorneo">
+Caricamento...
 </div>
 
-
-<input id="nome" placeholder="Nome">
-
-
-<input id="cognome" placeholder="Cognome">
-
+<div id="datiUtente">
+</div>
 
 <button onclick="confermaIscrizione()">
-
 Conferma iscrizione
-
 </button>
 
-
-<button class="back" onclick="tornaIndietro()">
-
+<button class="back" onclick="tornaTornei()">
 Torna ai tornei
-
 </button>
-
 
 <div id="messaggio"></div>
 
-
 </div>
-
-
 <script>
- // BLOCCO 2/8
 
 const sb = supabase.createClient(
-
 "https://iybjvtmfaupgthqqsngd.supabase.co",
-
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI"
-
 );
 
 
-
-const params = new URLSearchParams(
+const torneoId = new URLSearchParams(
 window.location.search
-);
+).get("torneo");
+
+
+let torneo=null;
+let utente=null;
+let profilo=null;
 
 
 
-const torneoId = params.get("torneo");
-
-
-
-let torneoCorrente=null;
-
-
-
-let massimoGiocatori=0;
-
-
-
-console.log(
-"TORNEO SELEZIONATO:",
-torneoId
-);
-
-
-
-
-
-async function caricaTorneo(){
-
-
-
-const box=document.getElementById(
-"infoTorneo"
-);
-
-
+async function inizializza(){
 
 
 if(!torneoId){
 
-
-box.innerHTML=
-`
-<p class="errore">
-
-Torneo non selezionato
-
-</p>
-`;
+mostraMessaggio(
+"Torneo non selezionato",
+"errore"
+);
 
 return;
 
@@ -193,9 +129,39 @@ return;
 
 const {
 
-data:torneo,
+data:{
+user
 
-error
+}
+
+}
+
+=
+
+await sb.auth.getUser();
+
+
+
+if(!user){
+
+
+window.location.href="index.html";
+
+return;
+
+
+}
+
+
+utente=user;
+
+
+
+
+const {
+
+data:torneoLetto,
+error:erroreTorneo
 
 }
 
@@ -206,17 +172,12 @@ await sb
 .from("tornei")
 
 .select(
-
 "id,nome,data,configurazione,posti"
-
 )
 
 .eq(
-
 "id",
-
 torneoId
-
 )
 
 .single();
@@ -224,96 +185,28 @@ torneoId
 
 
 
+if(erroreTorneo || !torneoLetto){
 
 
-
-if(error || !torneo){
-
-
-console.error(
-"Errore caricamento torneo:",
-error
+mostraMessaggio(
+"Errore caricamento torneo",
+"errore"
 );
-
-
-box.innerHTML=
-`
-<p class="errore">
-
-Errore caricamento torneo
-
-</p>
-`;
 
 return;
 
-}
-
-
-
-
-
-
-
-torneoCorrente=torneo;
-
-
-
-
-
-let squadre=8;
-
-
-
-
-
-if(
-
-torneo.configurazione &&
-
-torneo.configurazione.rules &&
-
-torneo.configurazione.rules.numeroSquadre
-
-){
-
-
-squadre=
-
-Number(
-
-torneo.configurazione.rules.numeroSquadre
-
-);
-
-
-}
-
-else if(torneo.posti){
-
-
-squadre=
-
-Number(torneo.posti);
-
 
 }
 
 
-
-
-
-massimoGiocatori=
-
-squadre*2;
-
+torneo=torneoLetto;
 
 
 
 
 const {
 
-data:iscritti
+data:profiloLetto
 
 }
 
@@ -321,35 +214,61 @@ data:iscritti
 
 await sb
 
-.from("iscrizioni")
+.from("profili")
 
-.select("id")
+.select(
+"nome,cognome,ruolo"
+)
 
 .eq(
+"user_id",
+user.id
+)
 
-"torneo_id",
+.single();
 
-torneoId
 
+
+profilo=profiloLetto || null;
+
+
+
+mostraDati();
+
+
+
+}
+
+function mostraDati(){
+
+
+const boxTorneo=document.getElementById(
+"datiTorneo"
 );
 
 
+let squadre=torneo.posti || 0;
+
+
+if(
+torneo.configurazione &&
+torneo.configurazione.rules &&
+torneo.configurazione.rules.numeroSquadre
+){
+
+squadre=
+torneo.configurazione.rules.numeroSquadre;
+
+}
 
 
 
-const numeroIscritti=
-
-iscritti ?
-
-iscritti.length :
-
-0;
+const massimo=
+Number(squadre)*2;
 
 
 
-
-
-box.innerHTML=
+boxTorneo.innerHTML=
 
 `
 
@@ -357,138 +276,96 @@ box.innerHTML=
 
 🏆 <b>${torneo.nome}</b>
 
-</div>
-
-
-<div class="info">
+<br>
 
 📅 Data: ${torneo.data}
 
-</div>
-
-
-<div class="info">
+<br>
 
 🎾 Formato: ${squadre} squadre
 
-(${massimoGiocatori} giocatori max)
+<br>
+
+👥 Capacità: ${massimo} giocatori
 
 </div>
 
+`;
+
+
+
+
+
+const boxUtente=document.getElementById(
+"datiUtente"
+);
+
+
+
+if(profilo){
+
+
+boxUtente.innerHTML=
+
+`
 
 <div class="info">
 
-👥 Iscritti:
+👤 Giocatore:
 
-${numeroIscritti}/${massimoGiocatori}
+<b>
+
+${profilo.nome || ""} ${profilo.cognome || ""}
+
+</b>
+
+<br>
+
+📧 ${utente.email}
 
 </div>
 
+`;
+
+
+
+}else{
+
+
+boxUtente.innerHTML=
+
+`
+
+<div class="info">
+
+👤 Utente:
+
+<b>${utente.email}</b>
+
+</div>
 
 `;
 
 
 
 }
- // BLOCCO 3/8
+
+
+
+}
+
+
+
+
 
 
 async function confermaIscrizione(){
 
 
 
-const nome=document
-
-.getElementById("nome")
-
-.value
-
-.trim();
-
-
-
-const cognome=document
-
-.getElementById("cognome")
-
-.value
-
-.trim();
-
-
-
-
-
-if(!nome || !cognome){
-
-
-mostraMessaggio(
-
-"Inserire nome e cognome",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-if(!torneoCorrente){
-
-
-mostraMessaggio(
-
-"Torneo non caricato",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-const nomeCompleto=
-
-nome+" "+cognome;
-
-
-
-
-
-
-
-const alias=
-
-cognome
-
-.substring(0,6)
-
-.toUpperCase();
-
-
-
-
-
-
-
 const {
 
-data:iscritti
+data:iscrizioni
 
 }
 
@@ -501,42 +378,78 @@ await sb
 .select("id")
 
 .eq(
-
 "torneo_id",
-
 torneoId
-
 );
 
 
+
+
+
+
+let squadre=torneo.posti || 0;
+
+
+if(
+torneo.configurazione &&
+torneo.configurazione.rules &&
+torneo.configurazione.rules.numeroSquadre
+){
+
+squadre=
+torneo.configurazione.rules.numeroSquadre;
+
+}
+
+
+
+const limite=
+Number(squadre)*2;
 
 
 
 
 
 if(
-
-iscritti &&
-
-iscritti.length >= massimoGiocatori
-
+iscrizioni &&
+iscrizioni.length>=limite
 ){
 
-
 mostraMessaggio(
-
 "❌ Torneo completo",
-
 "errore"
-
 );
-
 
 return;
 
-
 }
 
+
+const nomeCompleto =
+
+profilo
+
+?
+
+`${profilo.nome || ""} ${profilo.cognome || ""}`.trim()
+
+:
+
+utente.email;
+
+
+
+const alias =
+
+profilo && profilo.cognome
+
+?
+
+profilo.cognome.substring(0,6).toUpperCase()
+
+:
+
+utente.email.substring(0,6).toUpperCase();
 
 
 
@@ -546,7 +459,7 @@ return;
 
 const {
 
-data:giaPresente
+data:giaIscritto
 
 }
 
@@ -559,19 +472,13 @@ await sb
 .select("id")
 
 .eq(
-
 "torneo_id",
-
 torneoId
-
 )
 
-.ilike(
-
-"nome_completo",
-
-nomeCompleto
-
+.eq(
+"user_id",
+utente.id
 );
 
 
@@ -581,20 +488,14 @@ nomeCompleto
 
 
 if(
-
-giaPresente &&
-
-giaPresente.length>0
-
+giaIscritto &&
+giaIscritto.length>0
 ){
 
 
 mostraMessaggio(
-
-"⚠️ Giocatore già iscritto",
-
+"⚠️ Sei già iscritto a questo torneo",
 "errore"
-
 );
 
 
@@ -623,41 +524,19 @@ await sb
 
 .insert({
 
+torneo_id:torneoId,
 
-torneo_id:
+user_id:utente.id,
 
-torneoId,
+nome_giocatore:alias,
 
+nome_completo:nomeCompleto,
 
+categoria:"Open",
 
-nome_giocatore:
-
-alias,
-
-
-
-nome_completo:
-
-nomeCompleto,
-
-
-
-categoria:
-
-"Open",
-
-
-
-data_iscrizione:
-
-new Date()
-
-.toISOString()
-
-
+data_iscrizione:new Date().toISOString()
 
 });
-
 
 
 
@@ -668,21 +547,13 @@ if(error){
 
 
 console.error(
-
-"Errore salvataggio iscrizione:",
-
 error
-
 );
 
 
-
 mostraMessaggio(
-
 "Errore durante iscrizione",
-
 "errore"
-
 );
 
 
@@ -696,37 +567,31 @@ return;
 
 
 
-
 mostraMessaggio(
-
-"✅ Iscrizione effettuata: "+alias,
-
+"✅ Iscrizione completata",
 "successo"
-
 );
-
-
-
-
 
 
 
 setTimeout(()=>{
 
-
-window.location.href=
-
-"visitatore.html";
-
+window.location.href="visitatore.html";
 
 },1500);
 
 
 
+}
 
+
+
+function tornaTornei(){
+
+window.location.href="visitatore.html";
 
 }
-// BLOCCO 4/8
+
 
 
 function mostraMessaggio(testo,tipo){
@@ -737,553 +602,29 @@ const box=document.getElementById(
 );
 
 
-
 box.className=tipo;
-
 
 
 box.innerHTML=
 
 `
 
-<p>
-
-${testo}
-
-</p>
+<p>${testo}</p>
 
 `;
 
 
 
-setTimeout(()=>{
-
-
-box.innerHTML="";
-
-box.className="";
-
-
-},4000);
-
-
-
 }
 
-
-
-
-
-
-function tornaIndietro(){
-
-
-window.location.href=
-
-"visitatore.html";
-
-
-}
-
-
-
-
-
-async function aggiornaContatore(){
-
-
-
-if(!torneoId){
-
-return;
-
-}
-
-
-
-
-const {
-
-data:iscritti
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select("id")
-
-.eq(
-
-"torneo_id",
-
-torneoId
-
-);
-
-
-
-
-if(!torneoCorrente){
-
-return;
-
-}
-
-
-
-
-const box=document.getElementById(
-"infoTorneo"
-);
-
-
-
-if(!box){
-
-return;
-
-}
-
-
-
-
-const numeroIscritti=
-
-iscritti ?
-
-iscritti.length :
-
-0;
-
-
-
-
-let squadre=8;
-
-
-
-
-if(
-
-torneoCorrente.configurazione &&
-
-torneoCorrente.configurazione.rules &&
-
-torneoCorrente.configurazione.rules.numeroSquadre
-
-){
-
-
-squadre=
-
-Number(
-
-torneoCorrente.configurazione.rules.numeroSquadre
-
-);
-
-
-}
-
-
-
-
-
-
-massimoGiocatori=squadre*2;
-
-
-
-
-
-box.innerHTML+=
-
-`
-
-<div class="info">
-
-👥 Aggiornamento:
-
-${numeroIscritti}/${massimoGiocatori}
-
-giocatori
-
-</div>
-
-`;
-
-
-
-}
- // BLOCCO 5/8
-
-
-async function controllaUtente(){
-
-
-const {
-
-data:{
-user
-
-}
-
-}
-
-=
-
-await sb.auth.getUser();
-
-
-
-
-
-if(!user){
-
-
-console.log(
-
-"Utente non autenticato"
-
-);
-
-
-}
-
-
-
-
-
-}
-
-
-
-
-async function controlloFinalePosti(){
-
-
-
-const {
-
-data:torneo
-
-}
-
-=
-
-await sb
-
-.from("tornei")
-
-.select(
-
-"posti,configurazione"
-
-)
-
-.eq(
-
-"id",
-
-torneoId
-
-)
-
-.single();
-
-
-
-
-
-
-
-if(!torneo){
-
-return false;
-
-}
-
-
-
-
-
-
-let squadre=8;
-
-
-
-
-
-if(
-
-torneo.configurazione &&
-
-torneo.configurazione.rules &&
-
-torneo.configurazione.rules.numeroSquadre
-
-){
-
-
-squadre=
-
-Number(
-
-torneo.configurazione.rules.numeroSquadre
-
-);
-
-
-}
-
-else if(torneo.posti){
-
-
-squadre=
-
-Number(torneo.posti);
-
-
-}
-
-
-
-
-
-const limite=squadre*2;
-
-
-
-
-
-
-const {
-
-data:iscritti
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select("id")
-
-.eq(
-
-"torneo_id",
-
-torneoId
-
-);
-
-
-
-
-
-
-return (
-
-iscritti &&
-
-iscritti.length>=limite
-
-);
-
-
-
-}
-
-
-
-
-
-
-
-async function verificaPrimaDiIscrivere(){
-
-
-
-const completo=
-
-await controlloFinalePosti();
-
-
-
-
-
-if(completo){
-
-
-mostraMessaggio(
-
-"❌ Il torneo è completo",
-
-"errore"
-
-);
-
-
-return false;
-
-
-}
-
-
-
-
-return true;
-
-
-
-}
-
-
-// BLOCCO 6/8
-
-
-async function inizializzaPagina(){
-
-
-
-await controllaUtente();
-
-
-
-await caricaTorneo();
-
-
-
-await aggiornaContatore();
-
-
-
-}
-
-
-
+<script>
 
 window.addEventListener(
-
 "load",
-
-()=>{
-
-inizializzaPagina();
-
-}
-
+inizializza
 );
- // BLOCCO 7/8
-
-
-// Protezione doppio click sul pulsante iscrizione
-
-let invioInCorso=false;
-
-
-
-const confermaBase=confermaIscrizione;
-
-
-
-confermaIscrizione=async function(){
-
-
-
-if(invioInCorso){
-
-return;
-
-}
-
-
-
-invioInCorso=true;
-
-
-
-try{
-
-
-
-const ok=
-
-await verificaPrimaDiIscrivere();
-
-
-
-if(!ok){
-
-return;
-
-}
-
-
-
-await confermaBase();
-
-
-
-}
-
-
-
-catch(e){
-
-
-
-console.error(
-
-"Errore iscrizione:",
-
-e
-
-);
-
-
-
-mostraMessaggio(
-
-"Errore inatteso durante iscrizione",
-
-"errore"
-
-);
-
-
-
-}
-
-
-
-finally{
-
-
-
-invioInCorso=false;
-
-
-
-}
-
-
-
-};
-
-
-// BLOCCO 8/8
-
 
 </script>
 
-
 </body>
-
 </html>
