@@ -151,14 +151,10 @@ document.getElementById(
 
 
 
-
 const {
-
 data,
 error
-
 }
-
 =
 await sb
 
@@ -184,25 +180,19 @@ ascending:true
 
 
 
-
 if(error){
-
 
 console.error(
 "Errore caricamento tornei:",
 error
 );
 
-
 box.innerHTML =
 "<p>Errore caricamento tornei</p>";
 
-
 return;
 
-
 }
-
 
 
 
@@ -210,16 +200,12 @@ return;
 
 if(!data || data.length===0){
 
-
 box.innerHTML =
 "<p>Nessun torneo disponibile</p>";
 
-
 return;
 
-
 }
-
 
 
 
@@ -231,8 +217,52 @@ box.innerHTML="";
 
 
 
+for(const t of data){
 
-data.forEach(t=>{
+
+
+const {
+data:iscritti
+}
+=
+await sb
+
+.from("iscrizioni")
+
+.select(
+"id"
+)
+
+.eq(
+"torneo_id",
+t.id
+);
+
+
+
+const numeroIscritti =
+iscritti
+?
+iscritti.length
+:
+0;
+
+
+
+const posti =
+t.posti
+?
+t.posti
+:
+0;
+
+
+
+const chiuso =
+posti > 0 &&
+numeroIscritti >= posti;
+
+
 
 
 
@@ -254,18 +284,35 @@ box.innerHTML += `
 
 <br>
 
-👥 Posti:
-${t.posti ?? "liberi"}
+👥 Iscritti:
+${numeroIscritti}/${posti || "liberi"}
+
+<br>
+
+${
+chiuso
+?
+"❌ Posti esauriti"
+:
+"✅ Posti disponibili: " + (posti-numeroIscritti)
+}
 
 </div>
 
 
 
-<button
-class="btn-iscriviti"
-onclick="iscriviti(${t.id})">
 
-Iscriviti
+<button
+
+class="btn-iscriviti"
+
+onclick="iscriviti(${t.id})"
+
+${chiuso ? "disabled" : ""}
+
+>
+
+${chiuso ? "Chiuso" : "Iscriviti"}
 
 </button>
 
@@ -277,11 +324,11 @@ Iscriviti
 
 
 
-});
-
+}
 
 
 }
+
 
 
 
@@ -304,18 +351,17 @@ await sb.auth.getUser();
 
 
 
-if(!user){
 
+if(!user){
 
 alert(
 "Devi effettuare il login"
 );
 
-
 return;
 
-
 }
+
 
 
 
@@ -323,11 +369,111 @@ return;
 
 
 const {
+data:giaIscritto
+}
+=
+await sb
 
-error
+.from("iscrizioni")
+
+.select(
+"id"
+)
+
+.eq(
+"torneo_id",
+id
+)
+
+.eq(
+"nome_giocatore",
+user.email
+);
+
+
+
+
+
+if(giaIscritto && giaIscritto.length>0){
+
+alert(
+"Sei già iscritto a questo torneo"
+);
+
+return;
 
 }
 
+
+
+
+
+const {
+data:torneo
+}
+=
+await sb
+
+.from("tornei")
+
+.select(
+"posti"
+)
+
+.eq(
+"id",
+id
+)
+
+.single();
+
+
+
+
+
+
+const {
+data:iscritti
+}
+=
+await sb
+
+.from("iscrizioni")
+
+.select(
+"id"
+)
+
+.eq(
+"torneo_id",
+id
+);
+
+
+
+
+
+
+if(
+torneo.posti &&
+iscritti.length >= torneo.posti
+){
+
+alert(
+"❌ Torneo chiuso: posti esauriti"
+);
+
+return;
+
+}
+
+
+
+
+
+const {
+error
+}
 =
 await sb
 
@@ -337,11 +483,9 @@ await sb
 
 torneo_id:id,
 
-nome_giocatore:
-user.email,
+nome_giocatore:user.email,
 
-categoria:
-"Open"
+categoria:"Open"
 
 });
 
@@ -352,35 +496,35 @@ categoria:
 
 if(error){
 
-
 console.error(
 "Errore iscrizione:",
 error
 );
 
-
 alert(
-"Errore durante l'iscrizione"
+"Errore durante iscrizione"
 );
-
 
 return;
 
-
 }
-
 
 
 
 
 
 alert(
-"Iscrizione effettuata correttamente!"
+"✅ Iscrizione effettuata correttamente!"
 );
 
 
 
+caricaTornei();
+
+
+
 }
+
 
 
 
