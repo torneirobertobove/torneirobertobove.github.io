@@ -8416,6 +8416,7 @@ function renderTables(){
     ensureRules();
 
 
+
     function generaMatch(n){
 
         let partite=[];
@@ -8458,6 +8459,7 @@ function renderTables(){
         return partite;
 
     }
+
 
 
 
@@ -8509,23 +8511,19 @@ function renderTables(){
 
 
     /*
-        NUMERO CAMPI UTILIZZABILI
+        PREPARAZIONE CALENDARIO GLOBALE
+
+        Ogni slot rappresenta un turno.
+        Esempio:
+
+        slot 0 = 20:00
+        slot 1 = 20:30
+        slot 2 = 21:00
+
     */
 
-    let numeroCampi =
-        campiDisponibili.length;
 
-
-
-    /*
-        TUTTI I GIRONI VENGONO
-        INSERITI NELLO STESSO
-        CALENDARIO TEMPORALE
-    */
-
-    let calendario = [];
-
-
+    let calendario=[];
 
 
 
@@ -8536,10 +8534,72 @@ function renderTables(){
             state[tag];
 
 
+        if(
+            !Array.isArray(girone) ||
+            girone.length<2
+        )
+            return;
+
+
+
+        let matches =
+            generaMatch(
+                girone.length
+            );
+
+
+
+        matches.forEach((m,i)=>{
+
+
+            calendario.push({
+
+                tag:tag,
+
+                indice:i,
+
+                slot:
+                    Math.floor(
+                        calendario.length /
+                        campiDisponibili.length
+                    ),
+
+                campo:
+
+                    campiDisponibili[
+                        calendario.length %
+                        campiDisponibili.length
+                    ]
+
+            });
+
+
+        });
+
+
+    });
+
+
+
+
+
+
+
+    /*
+        RENDER TABELLE
+    */
+
+
+    lettereGironi.forEach(tag=>{
+
+
+        let girone =
+            state[tag];
+
 
         if(
             !Array.isArray(girone) ||
-            girone.length < 2
+            girone.length<2
         )
             return;
 
@@ -8557,142 +8617,43 @@ function renderTables(){
 
 
 
-        if(
-            !Array.isArray(state[tag+"res"])
-        )
+
+        if(!Array.isArray(state[tag+"res"]))
             state[tag+"res"]=[];
 
 
-
-        if(
-            !Array.isArray(state[tag+"time"])
-        )
+        if(!Array.isArray(state[tag+"time"]))
             state[tag+"time"]=[];
 
 
-
-        if(
-            !Array.isArray(state[tag+"camp"])
-        )
+        if(!Array.isArray(state[tag+"camp"]))
             state[tag+"camp"]=[];
 
 
 
 
+
         while(
-            state[tag+"res"].length < totale
+            state[tag+"res"].length<totale
         )
             state[tag+"res"].push("-");
 
 
 
         while(
-            state[tag+"time"].length < totale
+            state[tag+"time"].length<totale
         )
             state[tag+"time"].push("");
 
 
 
         while(
-            state[tag+"camp"].length < totale
+            state[tag+"camp"].length<totale
         )
             state[tag+"camp"].push("");
 
 
 
-
-
-
-        /*
-            CREAZIONE CALENDARIO
-            A TURNI
-
-            Esempio:
-            ore 20:00
-            campo 2 partita 1
-            campo 3 partita 2
-
-            ore 20:30
-            campo 2 partita 3
-            campo 3 partita 4
-
-        */
-
-
-
-        matches.forEach((m,i)=>{
-
-
-            let turno =
-
-                Math.floor(
-                    i / numeroCampi
-                );
-
-
-
-            let campoIndice =
-
-                i %
-                numeroCampi;
-
-
-
-            calendario.push({
-
-                tag:tag,
-
-                indice:i,
-
-                campo:
-                    campiDisponibili[campoIndice],
-
-                minuti:
-                    turno * durata,
-
-                match:m
-
-            });
-
-
-        });
-
-
-
-    });
-
-
-
-
-
-
-
-
-    /*
-        DISEGNO TABELLE
-    */
-
-
-    lettereGironi.forEach(tag=>{
-
-
-        let girone =
-            state[tag];
-
-
-
-        if(
-            !Array.isArray(girone) ||
-            girone.length < 2
-        )
-            return;
-
-
-
-        let matches =
-            generaMatch(
-                girone.length
-            );
 
 
 
@@ -8702,7 +8663,6 @@ function renderTables(){
 
 
         matches.forEach((m,i)=>{
-
 
 
             let evento =
@@ -8716,68 +8676,64 @@ function renderTables(){
 
 
 
-
-            let minuti =
-
-                evento
-                ?
-                evento.minuti
-                :
-                0;
+            if(evento){
 
 
+                let minuti =
 
-            let ora =
-
-                baseOra +
-                Math.floor(
-                    minuti/60
-                );
+                    evento.slot *
+                    durata;
 
 
 
-            let min =
+                let ora =
 
-                minuti % 60;
-
-
-
-            if(
-                !state[tag+"time"][i]
-                ||
-                state[tag+"time"][i]==="-"
-            ){
-
-                state[tag+"time"][i]=
-
-                    String(ora)
-                    .padStart(2,"0")
-                    +
-                    ":"
-                    +
-                    String(min)
-                    .padStart(2,"0");
-
-            }
+                    baseOra +
+                    Math.floor(
+                        minuti/60
+                    );
 
 
 
-            if(
-                !state[tag+"camp"][i]
-            ){
+                let min =
 
-                state[tag+"camp"][i]=
+                    minuti % 60;
 
-                    evento
-                    ?
-                    evento.campo
-                    :
-                    campiDisponibili[
-                        i %
-                        campiDisponibili.length
-                    ];
+
+
+                if(
+                    !state[tag+"time"][i]
+                    ||
+                    state[tag+"time"][i]==="-"
+                ){
+
+                    state[tag+"time"][i] =
+
+                        String(ora)
+                        .padStart(2,"0")
+                        +
+                        ":"
+                        +
+                        String(min)
+                        .padStart(2,"0");
+
+                }
+
+
+
+
+                if(
+                    !state[tag+"camp"][i]
+                ){
+
+                    state[tag+"camp"][i] =
+                        evento.campo;
+
+                }
+
 
             }
+
 
 
 
@@ -8795,9 +8751,11 @@ function renderTables(){
 
 
 
-            rows += `
+
+            rows+=`
 
 <tr>
+
 
 <td>
 
@@ -8814,6 +8772,8 @@ style="width:45px"
 </td>
 
 
+
+
 <td>
 
 <input
@@ -8825,6 +8785,7 @@ oninput="updateTime('${tag}',${i},0,this.value)"
 >
 
 </td>
+
 
 
 
@@ -8844,9 +8805,11 @@ ${girone[m[1]] || "-"}
 
 
 
+
 <td>
 
 <div class="db-cell">
+
 
 <input
 
@@ -8877,9 +8840,12 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 >
 
+
 </div>
 
+
 </td>
+
 
 
 </tr>
@@ -8909,7 +8875,6 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
     });
-
 
 
 }
