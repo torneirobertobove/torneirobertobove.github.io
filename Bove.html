@@ -8415,468 +8415,191 @@ function renderTables(){
 
     ensureRules();
 
-
-
     function generaMatch(n){
-
         let partite=[];
 
-
         for(let i=0;i<n;i++){
-
             for(let j=i+1;j<n;j++){
-
                 partite.push([i,j]);
-
             }
-
         }
 
-
-        if(
-            state.rules.garaAndataRitorno===true
-        ){
-
+        if(state.rules.garaAndataRitorno===true){
             let ritorno=[];
-
-
             partite.forEach(m=>{
-
-                ritorno.push([
-                    m[1],
-                    m[0]
-                ]);
-
+                ritorno.push([m[1], m[0]]);
             });
-
-
-            partite =
-                partite.concat(ritorno);
-
+            partite = partite.concat(ritorno);
         }
-
 
         return partite;
-
     }
 
-
-
-
-
-    let campiDisponibili = [
-
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13
-
-    ];
-
-
-
-    let durata =
-
-        Number(
-            state.rules.duration
-            ||
-            30
-        );
-
-
-
+    let campiDisponibili = [2,3,4,5,6,7,8,9,10,11,12,13];
+    let durata = Number(state.rules.duration || 30);
     let baseOra = 20;
-
-
-
-    let lettereGironi=[
-
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
-
-    ];
-
-
+    let lettereGironi=["A","B","C","D","E","F"];
 
     /*
         PREPARAZIONE CALENDARIO GLOBALE
-
         Ogni slot rappresenta un turno.
         Esempio:
-
         slot 0 = 20:00
         slot 1 = 20:30
         slot 2 = 21:00
-
     */
-
 
     let calendario=[];
 
-
-
     lettereGironi.forEach(tag=>{
+        let girone = state[tag];
 
-
-        let girone =
-            state[tag];
-
-
-        if(
-            !Array.isArray(girone) ||
-            girone.length<2
-        )
+        if(!Array.isArray(girone) || girone.length<2)
             return;
 
+        let matches = generaMatch(girone.length);
 
-
-        let matches =
-            generaMatch(
-                girone.length
-            );
-
-
+        // Traccia le squadre già usate in ogni slot per questo girone
+        let slotOccupato = {};
 
         matches.forEach((m,i)=>{
+            let squadra1 = girone[m[0]];
+            let squadra2 = girone[m[1]];
 
+            // Trova il primo slot disponibile dove NESSUNA delle due squadre sta già giocando
+            let slotTrovato = -1;
+            let campoTrovato = -1;
+
+            for(let s=0; s<100; s++){
+                if(!slotOccupato[s]){
+                    slotOccupato[s] = new Set();
+                }
+
+                // Verifica se entrambe le squadre sono libere in questo slot
+                if(!slotOccupato[s].has(squadra1) && !slotOccupato[s].has(squadra2)){
+                    slotTrovato = s;
+
+                    // Trova un campo disponibile in questo slot per questo girone
+                    for(let c of campiDisponibili){
+                        let campoOccupato = calendario.some(x=>
+                            x.tag===tag && x.slot===s && x.campo===c
+                        );
+
+                        if(!campoOccupato){
+                            campoTrovato = c;
+                            break;
+                        }
+                    }
+
+                    if(campoTrovato!==-1)
+                        break;
+                }
+            }
+
+            // Fallback: se non trova posto, calcola slot e campo in sequenza
+            if(slotTrovato===-1 || campoTrovato===-1){
+                let matchGirone = calendario.filter(x=>x.tag===tag);
+                slotTrovato = Math.floor(matchGirone.length / campiDisponibili.length);
+                campoTrovato = campiDisponibili[matchGirone.filter(x=>x.slot===slotTrovato).length % campiDisponibili.length];
+            }
+
+            // Aggiungi le squadre allo slot
+            if(!slotOccupato[slotTrovato])
+                slotOccupato[slotTrovato] = new Set();
+            
+            slotOccupato[slotTrovato].add(squadra1);
+            slotOccupato[slotTrovato].add(squadra2);
 
             calendario.push({
-
                 tag:tag,
-
                 indice:i,
-
-                slot:
-                    Math.floor(
-                        calendario.length /
-                        campiDisponibili.length
-                    ),
-
-                campo:
-
-                    campiDisponibili[
-                        calendario.length %
-                        campiDisponibili.length
-                    ]
-
+                slot:slotTrovato,
+                campo:campoTrovato
             });
-
-
         });
-
-
     });
-
-
-
-
-
-
 
     /*
         RENDER TABELLE
     */
 
-
     lettereGironi.forEach(tag=>{
+        let girone = state[tag];
 
-
-        let girone =
-            state[tag];
-
-
-        if(
-            !Array.isArray(girone) ||
-            girone.length<2
-        )
+        if(!Array.isArray(girone) || girone.length<2)
             return;
 
-
-
-        let matches =
-            generaMatch(
-                girone.length
-            );
-
-
-
-        let totale =
-            matches.length;
-
-
-
+        let matches = generaMatch(girone.length);
+        let totale = matches.length;
 
         if(!Array.isArray(state[tag+"res"]))
             state[tag+"res"]=[];
 
-
         if(!Array.isArray(state[tag+"time"]))
             state[tag+"time"]=[];
-
 
         if(!Array.isArray(state[tag+"camp"]))
             state[tag+"camp"]=[];
 
-
-
-
-
-        while(
-            state[tag+"res"].length<totale
-        )
+        while(state[tag+"res"].length<totale)
             state[tag+"res"].push("-");
 
-
-
-        while(
-            state[tag+"time"].length<totale
-        )
+        while(state[tag+"time"].length<totale)
             state[tag+"time"].push("");
 
-
-
-        while(
-            state[tag+"camp"].length<totale
-        )
+        while(state[tag+"camp"].length<totale)
             state[tag+"camp"].push("");
-
-
-
-
-
 
         let rows="";
 
-
-
-
         matches.forEach((m,i)=>{
-
-
-            let evento =
-
-                calendario.find(x=>
-
-                    x.tag===tag &&
-                    x.indice===i
-
-                );
-
-
+            let evento = calendario.find(x=> x.tag===tag && x.indice===i);
 
             if(evento){
+                let minuti = evento.slot * durata;
+                let ora = baseOra + Math.floor(minuti/60);
+                let min = minuti % 60;
 
-
-                let minuti =
-
-                    evento.slot *
-                    durata;
-
-
-
-                let ora =
-
-                    baseOra +
-                    Math.floor(
-                        minuti/60
-                    );
-
-
-
-                let min =
-
-                    minuti % 60;
-
-
-
-                if(
-                    !state[tag+"time"][i]
-                    ||
-                    state[tag+"time"][i]==="-"
-                ){
-
-                    state[tag+"time"][i] =
-
-                        String(ora)
-                        .padStart(2,"0")
-                        +
-                        ":"
-                        +
-                        String(min)
-                        .padStart(2,"0");
-
+                if(!state[tag+"time"][i] || state[tag+"time"][i]==="-"){
+                    state[tag+"time"][i] = String(ora).padStart(2,"0") + ":" + String(min).padStart(2,"0");
                 }
 
-
-
-
-                if(
-                    !state[tag+"camp"][i]
-                ){
-
-                    state[tag+"camp"][i] =
-                        evento.campo;
-
+                if(!state[tag+"camp"][i]){
+                    state[tag+"camp"][i] = evento.campo;
                 }
-
-
             }
 
-
-
-
-
-            let risultato =
-
-                String(
-                    state[tag+"res"][i]
-                    ||
-                    "-"
-                )
-                .split("-");
-
-
-
-
-
+            let risultato = String(state[tag+"res"][i] || "-").split("-");
 
             rows+=`
-
 <tr>
-
-
 <td>
-
-<input
-
-value="${state[tag+"camp"][i]}"
-
-oninput="updateCamp('${tag}',${i},this.value)"
-
-style="width:45px"
-
->
-
+<input value="${state[tag+"camp"][i]}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px">
 </td>
-
-
-
-
 <td>
-
-<input
-
-value="${state[tag+"time"][i]}"
-
-oninput="updateTime('${tag}',${i},0,this.value)"
-
->
-
+<input value="${state[tag+"time"][i]}" oninput="updateTime('${tag}',${i},0,this.value)">
 </td>
-
-
-
-
 <td>
-
 ${girone[m[0]] || "-"}
-
 <br>
-
 <b>VS</b>
-
 <br>
-
 ${girone[m[1]] || "-"}
-
 </td>
-
-
-
-
 <td>
-
 <div class="db-cell">
-
-
-<input
-
-value="${
-risultato[0]==="-"
-?
-""
-:
-risultato[0]
-}"
-
-oninput="updateRes('${tag}',${i},0,this.value)"
-
->
-
-
-<input
-
-value="${
-risultato[1]==="-"
-?
-""
-:
-risultato[1]
-}"
-
-oninput="updateRes('${tag}',${i},1,this.value)"
-
->
-
-
+<input value="${risultato[0]==="-" ? "" : risultato[0]}" oninput="updateRes('${tag}',${i},0,this.value)">
+<input value="${risultato[1]==="-" ? "" : risultato[1]}" oninput="updateRes('${tag}',${i},1,this.value)">
 </div>
-
-
 </td>
-
-
-
 </tr>
-
 `;
-
-
-
         });
 
-
-
-
-        let box =
-
-            document.getElementById(
-                tag+"rows"
-            );
-
-
-
+        let box = document.getElementById(tag+"rows");
         if(box)
-
-            box.innerHTML =
-                rows;
-
-
-
+            box.innerHTML = rows;
     });
-
-
 }
 function getFinalQualified(){
 
