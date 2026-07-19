@@ -8426,11 +8426,17 @@ function renderTables(){
 
 
 
+    /*
+        ============================
+        GENERATORE PARTITE
+        ============================
+    */
+
+
     function generaMatch(n){
 
 
         let partite=[];
-
 
 
         for(let i=0;i<n;i++){
@@ -8448,11 +8454,12 @@ function renderTables(){
 
 
 
-        if(state.rules.garaAndataRitorno===true){
+        if(
+            state.rules.garaAndataRitorno===true
+        ){
 
 
             let ritorno=[];
-
 
 
             partite.forEach(m=>{
@@ -8490,6 +8497,62 @@ function renderTables(){
 
 
 
+
+    /*
+        ============================
+        CONFIGURAZIONE CAMPI
+        ============================
+    */
+
+
+    let campiDisponibili = [
+
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+
+    ];
+
+
+
+    let durata =
+
+        Number(
+            state.rules.duration
+            ||
+            30
+        );
+
+
+
+    let baseOra = 20;
+
+
+
+    let calendarioGlobale = 0;
+
+
+
+
+
+
+
+    /*
+        ============================
+        ORDINE GIRONI
+        ============================
+    */
+
+
     let lettereGironi=[
 
         "A",
@@ -8500,6 +8563,7 @@ function renderTables(){
         "F"
 
     ];
+
 
 
 
@@ -8525,9 +8589,11 @@ function renderTables(){
 
 
         let matches =
+
             generaMatch(
                 girone.length
             );
+
 
 
 
@@ -8539,72 +8605,69 @@ function renderTables(){
 
 
 
+
+        /*
+            GARANTISCE ARRAY
+        */
+
+
         if(
             !Array.isArray(
                 state[tag+"res"]
-            ) ||
-            state[tag+"res"].length!==totale
+            )
         )
 
-
-            state[tag+"res"] =
-                Array(totale).fill("-");
-
-
-
+            state[tag+"res"]=
+                [];
 
 
 
         if(
             !Array.isArray(
                 state[tag+"time"]
-            ) ||
-            state[tag+"time"].length!==totale
+            )
         )
 
-
-            state[tag+"time"] =
-                Array(totale).fill("-");
-
-
-
+            state[tag+"time"]=
+                [];
 
 
 
         if(
             !Array.isArray(
                 state[tag+"camp"]
-            ) ||
-            state[tag+"camp"].length!==totale
+            )
         )
 
-
-            state[tag+"camp"] =
-                Array(totale).fill("");
-
+            state[tag+"camp"]=
+                [];
 
 
 
 
 
 
-        let campi={
+        while(
+            state[tag+"res"].length<totale
+        )
+
+            state[tag+"res"].push("-");
 
 
-            A:[2,3],
 
-            B:[4,5],
+        while(
+            state[tag+"time"].length<totale
+        )
 
-            C:[6,7],
-
-            D:[8,9],
-
-            E:[10,11],
-
-            F:[12,13]
+            state[tag+"time"].push("");
 
 
-        }[tag];
+
+        while(
+            state[tag+"camp"].length<totale
+        )
+
+            state[tag+"camp"].push("");
 
 
 
@@ -8621,36 +8684,58 @@ function renderTables(){
 
 
 
+            /*
+                ============================
+                ORARIO GLOBALE CORRETTO
+                ============================
+
+                NON PIU':
+                partita 0 di ogni girone = 20:00
+
+
+                Ora:
+                ogni partita occupa
+                una posizione globale
+                del calendario.
+            */
+
+
             if(
-                state[tag+"time"][i]==="-" ||
                 !state[tag+"time"][i]
+                ||
+                state[tag+"time"][i]==="-"
             ){
 
 
+                let slot =
+
+                    calendarioGlobale;
+
+
+
                 let minuti =
-                    i *
-                    Number(
-                        state.rules.duration
-                        ||
-                        30
-                    );
+
+                    slot *
+                    durata;
 
 
 
                 let ora =
-                    20 +
+
+                    baseOra +
                     Math.floor(
-                        minuti/60
+                        minuti / 60
                     );
 
 
 
                 let min =
-                    minuti%60;
+
+                    minuti % 60;
 
 
 
-                state[tag+"time"][i]=
+                state[tag+"time"][i] =
 
                     String(ora)
                     .padStart(2,"0")
@@ -8661,22 +8746,43 @@ function renderTables(){
                     .padStart(2,"0");
 
 
+
             }
 
 
 
 
+            calendarioGlobale++;
 
-            if(!state[tag+"camp"][i])
+
+
+
+
+
+
+
+            /*
+                CAMPO AUTOMATICO
+            */
+
+
+            if(
+                !state[tag+"camp"][i]
+            ){
 
 
                 state[tag+"camp"][i]=
 
-                    campi[
+                    campiDisponibili[
+
                         i %
-                        campi.length
+
+                        campiDisponibili.length
+
                     ];
 
+
+            }
 
 
 
@@ -8687,11 +8793,16 @@ function renderTables(){
             let risultato =
 
                 String(
+
                     state[tag+"res"][i]
+
                     ||
+
                     "-"
+
                 )
                 .split("-");
+
 
 
 
@@ -8702,6 +8813,7 @@ function renderTables(){
             rows+=`
 
 <tr>
+
 
 <td>
 
@@ -8719,6 +8831,8 @@ style="width:45px"
 
 
 
+
+
 <td>
 
 <input
@@ -8730,6 +8844,8 @@ oninput="updateTime('${tag}',${i},0,this.value)"
 >
 
 </td>
+
+
 
 
 
@@ -8753,6 +8869,8 @@ ${girone[m[1]] || "-"}
 
 
 
+
+
 <td>
 
 
@@ -8761,16 +8879,30 @@ ${girone[m[1]] || "-"}
 
 <input
 
-value="${risultato[0]==="-"?"":risultato[0]}"
+value="${
+risultato[0]==="-"
+?
+""
+:
+risultato[0]
+}"
 
 oninput="updateRes('${tag}',${i},0,this.value)"
 
 >
 
 
+
+
 <input
 
-value="${risultato[1]==="-"?"":risultato[1]}"
+value="${
+risultato[1]==="-"
+?
+""
+:
+risultato[1]
+}"
 
 oninput="updateRes('${tag}',${i},1,this.value)"
 
@@ -8783,7 +8915,9 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 </td>
 
 
+
 </tr>
+
 
 `;
 
@@ -8796,7 +8930,10 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
 
+
+
         let box =
+
             document.getElementById(
                 tag+"rows"
             );
@@ -8805,11 +8942,15 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
         if(box)
 
-            box.innerHTML=rows;
+            box.innerHTML =
+                rows;
 
 
 
     });
+
+
+
 
 
 }
