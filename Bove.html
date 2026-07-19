@@ -8411,178 +8411,142 @@ function updateCamp(g,i,val){
     updateAndSync();
 
 }
-function renderTables(){
+function renderTables() {
 
     ensureRules();
 
-    function generaMatch(n){
-        let partite = [];
-        for(let i = 0; i < n; i++){
-            for(let j = i + 1; j < n; j++){
-                partite.push([i, j]);
+    function generaRoundRobin(n) {
+        let teams = Array.from({ length: n }, (_, i) => i);
+        let hasBye = false;
+
+        if (teams.length % 2 === 1) {
+            teams.push(null);
+            hasBye = true;
+        }
+
+        let rounds = [];
+        let numTeams = teams.length;
+        let numRounds = numTeams - 1;
+        let half = numTeams / 2;
+
+        for (let r = 0; r < numRounds; r++) {
+            let round = [];
+            for (let i = 0; i < half; i++) {
+                let t1 = teams[i];
+                let t2 = teams[numTeams - 1 - i];
+                if (t1 !== null && t2 !== null) {
+                    round.push([t1, t2]);
+                }
             }
+
+            rounds.push(round);
+
+            let fixed = teams[0];
+            let rest = teams.slice(1);
+            rest.unshift(rest.pop());
+            teams = [fixed].concat(rest);
         }
-        if (state.rules.garaAndataRitorno === true){
-            let ritorno = [];
-            partite.forEach(m => ritorno.push([m[1], m[0]]));
-            partite = partite.concat(ritorno);
+
+        if (state.rules.garaAndataRitorno === true) {
+            let ritorno = rounds.map(round =>
+                round.map(m => [m[1], m[0]])
+            );
+            rounds = rounds.concat(ritorno);
         }
-        return partite;
+
+        return rounds;
     }
 
     let campiDisponibili = [2,3,4,5,6,7,8,9,10,11,12,13];
     let durata = Number(state.rules.duration || 30);
-    // baseOra è in formato HHMM (es. 2000) nel tuo stato; per semplicità useremo baseOraHour = 20
-    let startTime = String(state.rules?.start ?? "2000").padStart(4,"0");
-    let baseOraHour = Number(startTime.slice(0,2)) || 20;
+    let startTime = String(state.rules.start || "2000").padStart(4, "0");
+    let baseOra = Number(startTime.slice(0, 2)) || 20;
+    let baseMin = Number(startTime.slice(2, 4)) || 0;
 
     let lettereGironi = ["A","B","C","D","E","F"];
 
-    // costruisco calendario per tutti i gironi
     let calendario = [];
 
     lettereGironi.forEach(tag => {
         let girone = state[tag];
-        if(!Array.isArray(girone) || girone.length < 2) return;
+        if (!Array.isArray(girone) || girone.length < 2) return;
 
-        let matches = generaMatch(girone.length);
+        let rounds = generaRoundRobin(girone.length);
 
-        // slotOccupato: per slot tiene set di nomi squadre che giocano in quel turno (per evitare collisioni)
-        let slotOccupato = []; // array di Set
-        // campoOccupato[slot] = Set(campi usati)
-        let campoOccupato = [];
-
-        // assegna ogni match al primo slot disponibile con campo libero e squadre libere
-        matches.forEach((m, indiceMatch) => {
-            let sq1 = girone[m[0]];
-            let sq2 = girone[m[1]];
-            let slotTrovato = -1;
-            let campoTrovato = -1;
-
-            for (let s = 0; s < 200; s++) { // limite di sicurezza
-                if (!slotOccupato[s]) slotOccupato[s] = new Set();
-                if (!campoOccupato[s]) campoOccupato[s] = new Set();
-
-                // se entrambe le squadre libere in questo slot
-                if (!slotOccupato[s].has(sq1) && !slotOccupato[s].has(sq2)) {
-                    // trova campo libero nello slot
-                    for (let c of campiDisponibili) {
-                        if (!campoOccupato[s].has(c)) {
-                            slotTrovato = s;
-                            campoTrovato = c;
-                            break;
-                        }
-                    }
-                    if (campoTrovato !== -1) break;
-                }
-            }
-
-            // fallback (non dovrebbe servire, ma protegge da errori)
-            if (slotTrovato === -1 || campoTrovato === -1) {
-                // assegna in sequenza dopo gli slot già usati per quel girone
-                let existing = calendario.filter(x => x.tag === tag);
-                slotTrovato = Math.floor(existing.length / campiDisponibili.length);
-                let usedInSlot = existing.filter(x => x.slot === slotTrovato).length;
-                campoTrovato = campiDisponibili[ usedInSlot % campiDisponibili.length ];
-            }
-
-            slotOccupato[slotTrovato].add(sq1);
-            slotOccupato[slotTrovato].add(sq2);
-            campoOccupato[slotTrovato].add(campoTrovato);
-
-            calendario.push({
-                tag: tag,
-                indice: indiceMatch,
-                slot: slotTrovato,
-                campo: campoTrovato
+        rounds.forEach((round, slot) => {
+            round.forEach((m, indexInRound) => {
+                calendario.push({
+                    tag: tag,
+                    indice: calendario.filter(x => x.tag === tag).length,
+                    slot: slot,
+                    campo: campiDisponibili[indexInRound]
+                });
             });
         });
     });
 
-    // Ora render: per ogni girone resetto state[xres/time/camp] e genero righe ordinate per slot->campo
     lettereGironi.forEach(tag => {
         let girone = state[tag];
-        if(!Array.isArray(girone) || girone.length < 2) return;
+        if (!Array.isArray(girone) || girone.length < 2) return;
 
-        let matches = generaMatch(girone.length);
+        let rounds = generaRoundRobin(girone.length);
+
+        let matches = [];
+        rounds.forEach(round => round.forEach(m => matches.push(m)));
+
         let totale = matches.length;
 
-        // reset completo (sovrascrive orari e campi salvati)
-        state[tag + "res"] = Array(totale).fill("-");
-        state[tag + "time"] = Array(totale).fill("");
-        state[tag + "camp"] = Array(totale).fill("");
+        state[tag + "res"] = Array.isArray(state[tag + "res"]) ? state[tag + "res"] : [];
+        state[tag + "time"] = Array.isArray(state[tag + "time"]) ? state[tag + "time"] : [];
+        state[tag + "camp"] = Array.isArray(state[tag + "camp"]) ? state[tag + "camp"] : [];
 
-        // raccolgo gli eventi del girone e li ordino per slot, poi per campo
-        let eventi = calendario
-            .filter(x => x.tag === tag)
-            .slice() // clone
-            .sort((a,b) => a.slot - b.slot || a.campo - b.campo);
+        while (state[tag + "res"].length < totale) state[tag + "res"].push("-");
+        while (state[tag + "time"].length < totale) state[tag + "time"].push("");
+        while (state[tag + "camp"].length < totale) state[tag + "camp"].push("");
 
-        // imposto time/camp in base agli eventi (slot -> orario)
-        eventi.forEach(ev => {
-            let i = ev.indice;
-            let minuti = ev.slot * durata;
-            let ora = baseOraHour + Math.floor(minuti / 60);
-            let min = minuti % 60;
-            state[tag + "time"][i] = String(ora).padStart(2,"0") + ":" + String(min).padStart(2,"0");
-            state[tag + "camp"][i] = ev.campo;
-        });
-
-        // Per visualizzare raggruppato per slot e campo, costruisco una lista ordinata di rows usando l'ordine eventi
         let rows = "";
-        // Per ogni evento ordinato mostro la riga corrispondente al match (con index = ev.indice)
-        eventi.forEach(ev => {
-            let i = ev.indice;
-            let m = matches[i];
+
+        matches.forEach((m, i) => {
+            let slot = Math.floor(i / Math.max(1, campiDisponibili.length));
+            let campo = campiDisponibili[i % campiDisponibili.length];
+            let minuti = slot * durata;
+            let ora = baseOra + Math.floor((baseMin + minuti) / 60);
+            let min = (baseMin + minuti) % 60;
+
+            if (!state[tag + "time"][i]) {
+                state[tag + "time"][i] = String(ora).padStart(2, "0") + ":" + String(min).padStart(2, "0");
+            }
+
+            if (!state[tag + "camp"][i]) {
+                state[tag + "camp"][i] = campo;
+            }
+
             let risultato = String(state[tag + "res"][i] || "-").split("-");
+
             rows += `
 <tr>
 <td>
-<input value="${state[tag+"camp"][i] || ""}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px">
+<input value="${state[tag + "camp"][i]}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px">
 </td>
 <td>
-<input value="${state[tag+"time"][i] || ""}" oninput="updateTime('${tag}',${i},0,this.value)">
+<input value="${state[tag + "time"][i]}" oninput="updateTime('${tag}',${i},0,this.value)">
 </td>
 <td>
-${girone[m[0]] || "-"}<br><b>VS</b><br>${girone[m[1]] || "-"}
+${girone[m[0]] || "-"}
+<br>
+<b>VS</b>
+<br>
+${girone[m[1]] || "-"}
 </td>
 <td>
 <div class="db-cell">
-<input value="${(risultato[0] === "-" ? "" : risultato[0])}" oninput="updateRes('${tag}',${i},0,this.value)">
-<input value="${(risultato[1] === "-" ? "" : risultato[1])}" oninput="updateRes('${tag}',${i},1,this.value)">
+<input value="${risultato[0] === "-" ? "" : risultato[0]}" oninput="updateRes('${tag}',${i},0,this.value)">
+<input value="${risultato[1] === "-" ? "" : risultato[1]}" oninput="updateRes('${tag}',${i},1,this.value)">
 </div>
 </td>
 </tr>
 `;
         });
-
-        // Se per qualche motivo ci sono match rimasti non assegnati (es. fallback), li aggiungo in coda
-        let assegnati = new Set(eventi.map(e => e.indice));
-        for (let i = 0; i < totale; i++) {
-            if (!assegnati.has(i)) {
-                let m = matches[i];
-                let risultato = String(state[tag + "res"][i] || "-").split("-");
-                rows += `
-<tr>
-<td>
-<input value="${state[tag+"camp"][i] || ""}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px">
-</td>
-<td>
-<input value="${state[tag+"time"][i] || ""}" oninput="updateTime('${tag}',${i},0,this.value)">
-</td>
-<td>
-${girone[m[0]] || "-"}<br><b>VS</b><br>${girone[m[1]] || "-"}
-</td>
-<td>
-<div class="db-cell">
-<input value="${(risultato[0] === "-" ? "" : risultato[0])}" oninput="updateRes('${tag}',${i},0,this.value)">
-<input value="${(risultato[1] === "-" ? "" : risultato[1])}" oninput="updateRes('${tag}',${i},1,this.value)">
-</div>
-</td>
-</tr>
-`;
-            }
-        }
 
         let box = document.getElementById(tag + "rows");
         if (box) box.innerHTML = rows;
