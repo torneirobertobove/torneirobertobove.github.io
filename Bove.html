@@ -8442,11 +8442,6 @@ function renderTables(){
 
     /*
         PREPARAZIONE CALENDARIO GLOBALE
-        Ogni slot rappresenta un turno.
-        Esempio:
-        slot 0 = 20:00
-        slot 1 = 20:30
-        slot 2 = 21:00
     */
 
     let calendario=[];
@@ -8459,14 +8454,12 @@ function renderTables(){
 
         let matches = generaMatch(girone.length);
 
-        // Traccia le squadre già usate in ogni slot per questo girone
         let slotOccupato = {};
 
         matches.forEach((m,i)=>{
             let squadra1 = girone[m[0]];
             let squadra2 = girone[m[1]];
 
-            // Trova il primo slot disponibile dove NESSUNA delle due squadre sta già giocando
             let slotTrovato = -1;
             let campoTrovato = -1;
 
@@ -8475,11 +8468,9 @@ function renderTables(){
                     slotOccupato[s] = new Set();
                 }
 
-                // Verifica se entrambe le squadre sono libere in questo slot
                 if(!slotOccupato[s].has(squadra1) && !slotOccupato[s].has(squadra2)){
                     slotTrovato = s;
 
-                    // Trova un campo disponibile in questo slot per questo girone
                     for(let c of campiDisponibili){
                         let campoOccupato = calendario.some(x=>
                             x.tag===tag && x.slot===s && x.campo===c
@@ -8496,14 +8487,12 @@ function renderTables(){
                 }
             }
 
-            // Fallback: se non trova posto, calcola slot e campo in sequenza
             if(slotTrovato===-1 || campoTrovato===-1){
                 let matchGirone = calendario.filter(x=>x.tag===tag);
                 slotTrovato = Math.floor(matchGirone.length / campiDisponibili.length);
                 campoTrovato = campiDisponibili[matchGirone.filter(x=>x.slot===slotTrovato).length % campiDisponibili.length];
             }
 
-            // Aggiungi le squadre allo slot
             if(!slotOccupato[slotTrovato])
                 slotOccupato[slotTrovato] = new Set();
             
@@ -8532,23 +8521,16 @@ function renderTables(){
         let matches = generaMatch(girone.length);
         let totale = matches.length;
 
-        if(!Array.isArray(state[tag+"res"]))
-            state[tag+"res"]=[];
+        // RESETTA orari e campi ad ogni render
+        state[tag+"res"] = [];
+        state[tag+"time"] = [];
+        state[tag+"camp"] = [];
 
-        if(!Array.isArray(state[tag+"time"]))
-            state[tag+"time"]=[];
-
-        if(!Array.isArray(state[tag+"camp"]))
-            state[tag+"camp"]=[];
-
-        while(state[tag+"res"].length<totale)
+        for(let i=0;i<totale;i++){
             state[tag+"res"].push("-");
-
-        while(state[tag+"time"].length<totale)
             state[tag+"time"].push("");
-
-        while(state[tag+"camp"].length<totale)
             state[tag+"camp"].push("");
+        }
 
         let rows="";
 
@@ -8560,13 +8542,8 @@ function renderTables(){
                 let ora = baseOra + Math.floor(minuti/60);
                 let min = minuti % 60;
 
-                if(!state[tag+"time"][i] || state[tag+"time"][i]==="-"){
-                    state[tag+"time"][i] = String(ora).padStart(2,"0") + ":" + String(min).padStart(2,"0");
-                }
-
-                if(!state[tag+"camp"][i]){
-                    state[tag+"camp"][i] = evento.campo;
-                }
+                state[tag+"time"][i] = String(ora).padStart(2,"0") + ":" + String(min).padStart(2,"0");
+                state[tag+"camp"][i] = evento.campo;
             }
 
             let risultato = String(state[tag+"res"][i] || "-").split("-");
