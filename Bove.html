@@ -8416,84 +8416,50 @@ function renderTables(){
     ensureRules();
 
 
-
-    /*
-        ============================
-        GENERATORE PARTITE
-        ============================
-    */
-
-
     function generaMatch(n){
-
 
         let partite=[];
 
 
         for(let i=0;i<n;i++){
 
-
             for(let j=i+1;j<n;j++){
 
-
                 partite.push([i,j]);
-
 
             }
 
         }
 
 
-
         if(
             state.rules.garaAndataRitorno===true
         ){
-
 
             let ritorno=[];
 
 
             partite.forEach(m=>{
 
-
                 ritorno.push([
-
                     m[1],
-
                     m[0]
-
                 ]);
-
 
             });
 
 
-
             partite =
-                partite.concat(
-                    ritorno
-                );
-
+                partite.concat(ritorno);
 
         }
 
 
-
         return partite;
-
 
     }
 
 
-
-
-
-
-    /*
-        ============================
-        CONFIGURAZIONE CAMPI
-        ============================
-    */
 
 
     let campiDisponibili = [
@@ -8529,21 +8495,6 @@ function renderTables(){
 
 
 
-    let calendarioGlobale = 0;
-
-
-
-
-
-
-
-    /*
-        ============================
-        ORDINE GIRONI
-        ============================
-    */
-
-
     let lettereGironi=[
 
         "A",
@@ -8555,6 +8506,24 @@ function renderTables(){
 
     ];
 
+
+
+    /*
+        NUMERO CAMPI UTILIZZABILI
+    */
+
+    let numeroCampi =
+        campiDisponibili.length;
+
+
+
+    /*
+        TUTTI I GIRONI VENGONO
+        INSERITI NELLO STESSO
+        CALENDARIO TEMPORALE
+    */
+
+    let calendario = [];
 
 
 
@@ -8570,21 +8539,16 @@ function renderTables(){
 
         if(
             !Array.isArray(girone) ||
-            girone.length<2
+            girone.length < 2
         )
-
             return;
 
 
 
-
-
         let matches =
-
             generaMatch(
                 girone.length
             );
-
 
 
 
@@ -8593,75 +8557,142 @@ function renderTables(){
 
 
 
-
-
-
-
-        /*
-            GARANTISCE ARRAY
-        */
-
-
         if(
-            !Array.isArray(
-                state[tag+"res"]
-            )
+            !Array.isArray(state[tag+"res"])
         )
-
-            state[tag+"res"]=
-                [];
+            state[tag+"res"]=[];
 
 
 
         if(
-            !Array.isArray(
-                state[tag+"time"]
-            )
+            !Array.isArray(state[tag+"time"])
         )
-
-            state[tag+"time"]=
-                [];
+            state[tag+"time"]=[];
 
 
 
         if(
-            !Array.isArray(
-                state[tag+"camp"]
-            )
+            !Array.isArray(state[tag+"camp"])
         )
-
-            state[tag+"camp"]=
-                [];
-
-
+            state[tag+"camp"]=[];
 
 
 
 
         while(
-            state[tag+"res"].length<totale
+            state[tag+"res"].length < totale
         )
-
             state[tag+"res"].push("-");
 
 
 
         while(
-            state[tag+"time"].length<totale
+            state[tag+"time"].length < totale
         )
-
             state[tag+"time"].push("");
 
 
 
         while(
-            state[tag+"camp"].length<totale
+            state[tag+"camp"].length < totale
         )
-
             state[tag+"camp"].push("");
 
 
 
+
+
+
+        /*
+            CREAZIONE CALENDARIO
+            A TURNI
+
+            Esempio:
+            ore 20:00
+            campo 2 partita 1
+            campo 3 partita 2
+
+            ore 20:30
+            campo 2 partita 3
+            campo 3 partita 4
+
+        */
+
+
+
+        matches.forEach((m,i)=>{
+
+
+            let turno =
+
+                Math.floor(
+                    i / numeroCampi
+                );
+
+
+
+            let campoIndice =
+
+                i %
+                numeroCampi;
+
+
+
+            calendario.push({
+
+                tag:tag,
+
+                indice:i,
+
+                campo:
+                    campiDisponibili[campoIndice],
+
+                minuti:
+                    turno * durata,
+
+                match:m
+
+            });
+
+
+        });
+
+
+
+    });
+
+
+
+
+
+
+
+
+    /*
+        DISEGNO TABELLE
+    */
+
+
+    lettereGironi.forEach(tag=>{
+
+
+        let girone =
+            state[tag];
+
+
+
+        if(
+            !Array.isArray(girone) ||
+            girone.length < 2
+        )
+            return;
+
+
+
+        let matches =
+            generaMatch(
+                girone.length
+            );
 
 
 
@@ -8670,25 +8701,45 @@ function renderTables(){
 
 
 
-
         matches.forEach((m,i)=>{
 
 
 
-            /*
-                ============================
-                ORARIO GLOBALE CORRETTO
-                ============================
+            let evento =
 
-                NON PIU':
-                partita 0 di ogni girone = 20:00
+                calendario.find(x=>
+
+                    x.tag===tag &&
+                    x.indice===i
+
+                );
 
 
-                Ora:
-                ogni partita occupa
-                una posizione globale
-                del calendario.
-            */
+
+
+            let minuti =
+
+                evento
+                ?
+                evento.minuti
+                :
+                0;
+
+
+
+            let ora =
+
+                baseOra +
+                Math.floor(
+                    minuti/60
+                );
+
+
+
+            let min =
+
+                minuti % 60;
+
 
 
             if(
@@ -8697,36 +8748,7 @@ function renderTables(){
                 state[tag+"time"][i]==="-"
             ){
 
-
-                let slot =
-
-                    calendarioGlobale;
-
-
-
-                let minuti =
-
-                    slot *
-                    durata;
-
-
-
-                let ora =
-
-                    baseOra +
-                    Math.floor(
-                        minuti / 60
-                    );
-
-
-
-                let min =
-
-                    minuti % 60;
-
-
-
-                state[tag+"time"][i] =
+                state[tag+"time"][i]=
 
                     String(ora)
                     .padStart(2,"0")
@@ -8736,47 +8758,26 @@ function renderTables(){
                     String(min)
                     .padStart(2,"0");
 
-
-
             }
 
-
-
-
-            calendarioGlobale++;
-
-
-
-
-
-
-
-
-            /*
-                CAMPO AUTOMATICO
-            */
 
 
             if(
                 !state[tag+"camp"][i]
             ){
 
-
                 state[tag+"camp"][i]=
 
+                    evento
+                    ?
+                    evento.campo
+                    :
                     campiDisponibili[
-
                         i %
-
                         campiDisponibili.length
-
                     ];
 
-
             }
-
-
-
 
 
 
@@ -8784,13 +8785,9 @@ function renderTables(){
             let risultato =
 
                 String(
-
                     state[tag+"res"][i]
-
                     ||
-
                     "-"
-
                 )
                 .split("-");
 
@@ -8798,13 +8795,9 @@ function renderTables(){
 
 
 
-
-
-
-            rows+=`
+            rows += `
 
 <tr>
-
 
 <td>
 
@@ -8821,9 +8814,6 @@ style="width:45px"
 </td>
 
 
-
-
-
 <td>
 
 <input
@@ -8835,10 +8825,6 @@ oninput="updateTime('${tag}',${i},0,this.value)"
 >
 
 </td>
-
-
-
-
 
 
 
@@ -8858,15 +8844,9 @@ ${girone[m[1]] || "-"}
 
 
 
-
-
-
-
 <td>
 
-
 <div class="db-cell">
-
 
 <input
 
@@ -8883,8 +8863,6 @@ oninput="updateRes('${tag}',${i},0,this.value)"
 >
 
 
-
-
 <input
 
 value="${
@@ -8899,26 +8877,18 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 >
 
-
 </div>
-
 
 </td>
 
 
-
 </tr>
-
 
 `;
 
 
 
         });
-
-
-
-
 
 
 
@@ -8939,8 +8909,6 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
     });
-
-
 
 
 
@@ -10209,11 +10177,10 @@ async function initDefaults(){
 
         /*
             AVVIO PULITO
-
-            NON CARICA:
+            NON RECUPERA:
             - torneo precedente
             - squadre salvate
-            - tabelloni vecchi
+            - tabelloni precedenti
         */
 
 
@@ -10223,9 +10190,7 @@ async function initDefaults(){
 
 
             nomeTorneo:"",
-
             dataTorneo:"",
-
             idTorneo:null,
 
 
@@ -10233,24 +10198,32 @@ async function initDefaults(){
             B:[],
             C:[],
             D:[],
+            E:[],
+            F:[],
 
 
             Ares:[],
             Bres:[],
             Cres:[],
             Dres:[],
+            Eres:[],
+            Fres:[],
 
 
             Atime:[],
             Btime:[],
             Ctime:[],
             Dtime:[],
+            Etime:[],
+            Ftime:[],
 
 
             Acamp:[],
             Bcamp:[],
             Ccamp:[],
             Dcamp:[],
+            Ecamp:[],
+            Fcamp:[],
 
 
             qRes:
@@ -10264,10 +10237,17 @@ async function initDefaults(){
             fTopRes:"-",
 
 
+            finalTop:[],
+
+
             campioneTop:null,
 
 
-            finalTop:[]
+            svizzero:null,
+            americano:null,
+            mexicano:null,
+            king:null,
+            short:null
 
         };
 
@@ -10278,10 +10258,13 @@ async function initDefaults(){
 
 
         /*
-            SALVA LO STATO PULITO
-            così localStorage non ripristina
-            il vecchio torneo
+            CANCELA EVENTUALI DATI VECCHI
         */
+
+
+        localStorage.removeItem(
+            "savedTeams"
+        );
 
 
         localStorage.setItem(
@@ -10295,7 +10278,7 @@ async function initDefaults(){
 
 
         /*
-            DISEGNA PAGINA VUOTA
+            PAGINA VUOTA
         */
 
 
@@ -10306,18 +10289,12 @@ async function initDefaults(){
 
 
     }
-
     catch(e){
 
-
         console.error(
-
             "Errore inizializzazione:",
-
             e
-
         );
-
 
     }
 
