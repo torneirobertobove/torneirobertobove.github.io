@@ -5620,7 +5620,6 @@ async function loadState(){
         /*
             ============================
             CARICAMENTO SUPABASE
-            NUOVO SISTEMA TORNEI
             ============================
         */
 
@@ -5628,118 +5627,41 @@ async function loadState(){
         if(typeof sb !== "undefined"){
 
 
-            const parametri =
-                new URLSearchParams(
-                    window.location.search
-                );
-
-
-            const idUrl =
-                parametri.get("id");
-
-
-
-            if(idUrl){
-
-                state.idTorneo =
-                    Number(idUrl);
-
-            }
-
-
-
-
-
-            if(state.idTorneo){
-
-
-
-                const {
-
-                    data:torneo,
-
-                    error
-
-                }
-
-                =
+            let {data,error}=
 
                 await sb
-
-                .from("tornei")
-
-                .select(
-                    "id,nome,data,configurazione"
-                )
-
+                .from("torneo")
+                .select("state")
                 .eq(
                     "id",
-                    state.idTorneo
+                    "torneo_data"
                 )
-
                 .single();
 
 
 
+            if(error)
 
-
-                if(error){
-
-
-                    console.warn(
-                        "Errore caricamento torneo:",
-                        error
-                    );
-
-
-                }
+                console.warn(
+                    "Supabase:",
+                    error
+                );
 
 
 
+            if(
+                data &&
+                data.state
+            ){
 
 
-                if(torneo){
+                state={
 
+                    ...state,
 
+                    ...data.state
 
-                    state.idTorneo =
-                        torneo.id;
-
-
-
-                    state.nomeTorneo =
-                        torneo.nome;
-
-
-
-                    state.dataTorneo =
-                        torneo.data;
-
-
-
-
-
-                    if(
-                        torneo.configurazione
-                    ){
-
-
-
-                        state={
-
-                            ...state,
-
-                            ...torneo.configurazione
-
-                        };
-
-
-                    }
-
-
-
-                }
-
+                };
 
 
             }
@@ -6060,14 +5982,24 @@ async function loadState(){
 
     /*
         ============================
-        RENDER
+        RENDER SOLO CON TORNEO REALE
         ============================
     */
 
 
-    if(typeof render==="function")
+    if(
+        typeof render==="function" &&
+        (
+            (Array.isArray(state.A) && state.A.length>0) ||
+            (Array.isArray(state.B) && state.B.length>0) ||
+            (Array.isArray(state.C) && state.C.length>0) ||
+            (Array.isArray(state.D) && state.D.length>0)
+        )
+    ){
 
         render();
+
+    }
 
 
 }
