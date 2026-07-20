@@ -185,13 +185,16 @@ function salvaAdminState(){
 function caricaAdminState(){
   const salvato = localStorage.getItem(ADMIN_STORAGE);
   if(!salvato) return;
+
   try{
     const parsed = JSON.parse(salvato);
+
     adminState = {
       ...adminState,
       ...parsed,
       tornei: parsed.tornei || []
     };
+
   }catch(e){
     console.error("Errore caricamento stato", e);
   }
@@ -199,87 +202,182 @@ function caricaAdminState(){
 
 function mostraLoginMessaggio(testo, colore){
   const box = document.getElementById("loginMessaggio");
+
   if(!box) return;
+
   box.innerHTML = testo;
   box.style.color = colore || "white";
 }
 
+
 async function verificaSessioneAdmin(){
+
   const { data } = await sb.auth.getSession();
+
   const session = data?.session;
+
   if(!session) return false;
+
 
   const { data: profilo, error } = await sb
     .from("profili")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("user_id", session.user.id)
     .single();
 
+
   if(error || !profilo || profilo.ruolo !== "admin"){
+
     await sb.auth.signOut();
+
     return false;
   }
+
 
   adminState.adminLoggato = true;
   adminState.adminEmail = session.user.email || "";
   adminState.profile = profilo;
+
   salvaAdminState();
+
   return true;
 }
 
+
+
 async function loginAdmin(){
-  const email = document.getElementById("adminEmail").value.trim();
-  const password = document.getElementById("adminPassword").value.trim();
+
+  const email = document
+    .getElementById("adminEmail")
+    .value
+    .trim();
+
+
+  const password = document
+    .getElementById("adminPassword")
+    .value
+    .trim();
+
+
 
   if(!email || !password){
-    mostraLoginMessaggio("Inserire email e password", "#ef4444");
+
+    mostraLoginMessaggio(
+      "Inserire email e password",
+      "#ef4444"
+    );
+
     return;
   }
 
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+
+  const { data, error } =
+    await sb.auth.signInWithPassword({
+      email,
+      password
+    });
+
+
 
   if(error || !data.session){
-    mostraLoginMessaggio("Login non riuscito", "#ef4444");
+
+    mostraLoginMessaggio(
+      "Login non riuscito",
+      "#ef4444"
+    );
+
     return;
   }
 
-  const { data: profilo, error: errProfilo } = await sb
-    .from("profili")
-    .select("*")
-.eq("user_id", data.session.user.id)
 
-  console.log("Utente Auth:", data.session.user);
-console.log("Profilo:", profilo);
-console.log("Errore profilo:", errProfilo);
 
-const { data: profilo, error: errProfilo } = await sb
-  .from("profili")
-  .select("*")
-  .eq("user_id", data.session.user.id)
-  .single();
+  const { data: profilo, error: errProfilo } =
+    await sb
+      .from("profili")
+      .select("*")
+      .eq("user_id", data.session.user.id)
+      .single();
 
-console.log("PROFILO RICEVUTO:", profilo);
-console.log("ERRORE PROFILO:", errProfilo);
-console.log("RUOLO:", profilo ? profilo.ruolo : "NESSUN PROFILO");
 
-if(errProfilo || !profilo || profilo.ruolo !== "admin"){
-  
-    console.error("ERR PROFILO:", errProfilo);
-    console.error("PROFILO:", profilo);
+
+  console.log(
+    "Utente Auth:",
+    data.session.user
+  );
+
+
+  console.log(
+    "PROFILO RICEVUTO:",
+    profilo
+  );
+
+
+  console.log(
+    "ERRORE PROFILO:",
+    errProfilo
+  );
+
+
+  console.log(
+    "RUOLO:",
+    profilo ? profilo.ruolo : "NESSUN PROFILO"
+  );
+
+
+
+  if(
+    errProfilo ||
+    !profilo ||
+    profilo.ruolo !== "admin"
+  ){
+
+    console.error(
+      "ERR PROFILO:",
+      errProfilo
+    );
+
+
+    console.error(
+      "PROFILO:",
+      profilo
+    );
+
 
     await sb.auth.signOut();
-    mostraLoginMessaggio("Accesso negato: non sei admin", "#ef4444");
+
+
+    mostraLoginMessaggio(
+      "Accesso negato: non sei admin",
+      "#ef4444"
+    );
+
+
     return;
-}
+  }
+
+
+
   adminState.adminLoggato = true;
+
   adminState.adminEmail = email;
+
   adminState.profile = profilo;
+
+
   salvaAdminState();
 
-  mostraLoginMessaggio("Accesso effettuato", "#22c55e");
-  await apriDashboardAdmin();
-}
 
+
+  mostraLoginMessaggio(
+    "Accesso effettuato",
+    "#22c55e"
+  );
+
+
+  await apriDashboardAdmin();
+
+}
 async function apriDashboardAdmin(){
   const login = document.getElementById("loginAdmin");
   const area = document.getElementById("areaAdmin");
