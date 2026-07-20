@@ -73,25 +73,9 @@ display:inline-block;
 <body>
 <div class="container">
 
-<div id="loginBox" class="card">
-<h1>🎾 Admin Padel Manager</h1>
-<h2>🔐 Accesso Admin</h2>
-
-<label>Email amministratore</label>
-<input id="adminEmail" type="email" placeholder="email admin">
-
-<label>Password</label>
-<input id="adminPassword" type="password" placeholder="password">
-
-<button onclick="loginAdmin()">Accedi</button>
-
-<div id="loginMessaggio"></div>
-
-</div>
-
-
 <div id="areaAdmin" class="hidden">
 <h1>🎾 Padel Tournament Admin</h1>
+
 <div class="card">
 <h2>➕ Crea nuovo torneo</h2>
 <label>Nome torneo</label>
@@ -170,7 +154,7 @@ display:inline-block;
 
 <script>
 const SUPABASE_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const ADMIN_STORAGE = "padel_admin_state";
@@ -190,96 +174,21 @@ function salvaAdminState(){
 function caricaAdminState(){
   const salvato = localStorage.getItem(ADMIN_STORAGE);
   if(!salvato) return;
-
   try{
     const parsed = JSON.parse(salvato);
-
     adminState = {
       ...adminState,
       ...parsed,
       tornei: parsed.tornei || []
     };
-
   }catch(e){
     console.error("Errore caricamento stato", e);
   }
 }
 
-function mostraLoginMessaggio(testo, colore){
-  const box = document.getElementById("loginMessaggio");
-
-  if(!box) return;
-
-  box.innerHTML = testo;
-  box.style.color = colore || "white";
-}
-async function verificaSessioneAdmin(){
-
-  const { data } = await sb.auth.getSession();
-
-  const session = data?.session;
-
-  if(!session) return false;
-
-
-  const { data: profilo, error } = await sb
-    .from("profili")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .single();
-
-
-  if(error || !profilo || profilo.ruolo !== "admin"){
-
-    await sb.auth.signOut();
-
-    return false;
-  }
-
-
-  adminState.adminLoggato = true;
-  adminState.adminEmail = session.user.email || "";
-  adminState.profile = profilo;
-
-  salvaAdminState();
-
-  return true;
-}
-
-  const { data } = await sb.auth.getSession();
-
-  const session = data?.session;
-
-  if(!session) return false;
-
-
-  const { data: profilo, error } = await sb
-    .from("profili")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .single();
-
-
-  if(error || !profilo || profilo.ruolo !== "admin"){
-
-    await sb.auth.signOut();
-
-    return false;
-  }
-
-
-  adminState.adminLoggato = true;
-  adminState.adminEmail = session.user.email || "";
-  adminState.profile = profilo;
-
-  salvaAdminState();
-
-  return true;
-}
-
-
-
 async function initAdmin(){
+  caricaAdminState();
+
   const { data } = await sb.auth.getSession();
   const session = data?.session;
 
@@ -303,16 +212,14 @@ async function initAdmin(){
   adminState.adminLoggato = true;
   adminState.adminEmail = session.user.email || "";
   adminState.profile = profilo;
+  salvaAdminState();
 
   await apriDashboardAdmin();
 }
+
 async function apriDashboardAdmin(){
-  const login = document.getElementById("loginAdmin");
   const area = document.getElementById("areaAdmin");
-
-  if(login) login.style.display = "none";
   if(area) area.classList.remove("hidden");
-
   await caricaTorneiSupabase();
   renderAdmin();
 }
@@ -325,7 +232,7 @@ async function logoutAdmin(){
   adminState.profile = null;
   localStorage.removeItem(ADMIN_STORAGE);
   await sb.auth.signOut();
-  location.reload();
+  location.href = "index.html";
 }
 
 async function caricaTorneiSupabase(){
@@ -363,45 +270,29 @@ function renderAdmin(){
   renderCoppie();
 
   const t = getTorneoAdminCorrente();
+  const gestione = document.getElementById("gestioneTorneoAdmin");
 
-const gestione = document.getElementById("gestioneTorneoAdmin");
-
-if(gestione){
+  if(gestione){
+    if(t) gestione.classList.remove("hidden");
+    else gestione.classList.add("hidden");
+  }
 
   if(t){
-    gestione.classList.remove("hidden");
-  }else{
-    gestione.classList.add("hidden");
+    const dettaglio = document.getElementById("dettaglioTorneoAdmin");
+    if(dettaglio){
+      dettaglio.innerHTML = `
+        <h3>${t.nome}</h3>
+        <p>📅 Data: ${t.data || "-"}</p>
+        <p>🎾 Formula: ${t.configurazione?.formula || t.formula || "-"}</p>
+        <p>👥 Posti: ${t.posti || "-"}</p>
+        <p>Stato: ${t.stato || "bozza"}</p>
+      `;
+    }
   }
-
 }
 
-
-if(t){
-
-  const dettaglio = document.getElementById("dettaglioTorneoAdmin");
-
-  if(dettaglio){
-
-    dettaglio.innerHTML = `
-      <h3>${t.nome}</h3>
-      <p>📅 Data: ${t.data || "-"}</p>
-      <p>🎾 Formula: ${t.configurazione?.formula || t.formula || "-"}</p>
-      <p>👥 Posti: ${t.posti || "-"}</p>
-      <p>Stato: ${t.stato || "bozza"}</p>
-    `;
-
-  }
-
-}
 function getTorneoAdminCorrente(){
-
-  console.log("ID selezionato:", adminState.torneoSelezionato);
-  console.log("TORNEI:", adminState.tornei);
-
-  return adminState.tornei.find(
-    t => t.id === adminState.torneoSelezionato
-  ) || null;
+  return adminState.tornei.find(t => Number(t.id) === Number(adminState.torneoSelezionato)) || null;
 }
 
 async function creaNuovoTorneo(){
@@ -481,42 +372,11 @@ function renderListaTornei(){
 }
 
 function selezionaTorneoAdmin(id){
-
-  console.log("CLICK GESTISCI ID:", id);
-  console.log("TORNEI DISPONIBILI:", adminState.tornei);
-
-
-  const torneo = adminState.tornei.find(
-    t => Number(t.id) === Number(id)
-  );
-
-
-  console.log("TORNEO TROVATO:", torneo);
-
-
-  if(!torneo){
-    console.error("TORNEO NON TROVATO");
-    return;
-  }
-
-
+  const torneo = adminState.tornei.find(t => Number(t.id) === Number(id));
+  if(!torneo) return;
   adminState.torneoSelezionato = id;
-
-
-  console.log(
-    "TORNEO SELEZIONATO:",
-    adminState.torneoSelezionato
-  );
-
-
   salvaAdminState();
-
-
-  console.log("CHIAMO renderAdmin()");
-
-
   renderAdmin();
-
 }
 
 async function pubblicaTorneo(){
@@ -795,8 +655,8 @@ async function eliminaTorneoAdmin(id){
     return;
   }
 
-  adminState.tornei = adminState.tornei.filter(t => t.id !== id);
-  if(adminState.torneoSelezionato === id){
+  adminState.tornei = adminState.tornei.filter(t => Number(t.id) !== Number(id));
+  if(Number(adminState.torneoSelezionato) === Number(id)){
     adminState.torneoSelezionato = null;
   }
 
@@ -805,11 +665,7 @@ async function eliminaTorneoAdmin(id){
 }
 
 window.addEventListener("load", async () => {
-  caricaAdminState();
-  const ok = await verificaSessioneAdmin();
-  if(ok || adminState.adminLoggato){
-  async function loginAdmin(){
-  }
+  await initAdmin();
 });
 </script>
 </body>
