@@ -110,47 +110,64 @@
         );
 
         async function caricaTornei() {
-            const box = document.getElementById("lista-tornei");
-            box.innerHTML = '<p style="text-align:center;color:#94a3b8">⏳ Caricamento tornei...</p>';
 
-            const { data, error } = await sb
-                .from("tornei")
-                .select("id,nome,data,posti,configurazione,pubblicato")
-                .eq("pubblicato", true)
-                .order("data", { ascending: true });
+    const box = document.getElementById("lista-tornei");
 
-            if (error) {
-                console.error("Errore caricamento tornei:", error);
-                box.innerHTML = `
-                    <div class="torneo-item">
-                        <p style="color:#ef4444;text-align:center">
-                            ❌ Errore caricamento tornei<br>
-                            <small>${error.message}</small>
-                        </p>
-                    </div>
-                `;
-                return;
-            }
+    box.innerHTML = `
+    <p style="text-align:center">
+    ⏳ Controllo Supabase...
+    </p>`;
 
-            if (!data || data.length === 0) {
-                console.log("NESSUN TORNEO DISPONIBILE");
-                box.innerHTML = `
-                    <div class="torneo-item">
-                        <p style="text-align:center;color:#94a3b8">
-                            📭 Nessun torneo disponibile al momento
-                        </p>
-                    </div>
-                `;
-                return;
-            }
 
-            box.innerHTML = "";
+    const { data, error } = await sb
+        .from("tornei")
+        .select("*")
+        .eq("pubblicato", true)
+        .order("data", { ascending:true });
 
-            for (const torneo of data) {
-                await creaSchedaTorneo(torneo);
-            }
-        }
 
+
+    console.log("TORNEI PUBBLICATI RICEVUTI:", data);
+
+    console.log("ERRORE TORNEI:", error);
+
+
+
+    if(error){
+
+        box.innerHTML = `
+        <div class="torneo-item">
+        ERRORE SUPABASE:
+        ${error.message}
+        </div>`;
+
+        return;
+    }
+
+
+
+    if(!data || data.length===0){
+
+        box.innerHTML = `
+        <div class="torneo-item">
+        Nessun torneo pubblicato trovato
+        </div>`;
+
+        return;
+    }
+
+
+
+    box.innerHTML="";
+
+
+    for(const torneo of data){
+
+        await creaSchedaTorneo(torneo);
+
+    }
+
+}
         async function creaSchedaTorneo(torneo) {
             const box = document.getElementById("lista-tornei");
 
