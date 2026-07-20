@@ -452,8 +452,41 @@ async function chiudiIscrizioniTorneo(){
   renderAdmin();
 }
 
-function caricaRichiesteIscrizione(){
-  renderRichiesteIscrizione();
+async function caricaRichiesteIscrizione(){
+
+  const torneo = getTorneoAdminCorrente();
+
+  if(!torneo){
+    alert("Nessun torneo selezionato");
+    return;
+  }
+
+
+  const { data, error } = await sb
+    .from("iscrizioni")
+    .select("*")
+    .eq("torneo_id", torneo.id)
+    .order("created_at",{ascending:true});
+
+
+  console.log("ISCRIZIONI LETTE:", data);
+  console.log("ERRORE ISCRIZIONI:", error);
+
+
+  if(error){
+    alert("Errore caricamento iscrizioni: " + error.message);
+    return;
+  }
+
+
+  torneo.configurazione.iscritti = data || [];
+
+
+  await aggiornaConfigurazioneTorneo(torneo);
+
+
+  renderAdmin();
+
 }
 
 function renderRichiesteIscrizione(){
