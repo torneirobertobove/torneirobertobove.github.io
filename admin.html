@@ -485,7 +485,7 @@ t=>t.id===adminState.torneoSelezionato
 )||null;
 
 }
-function creaNuovoTorneo(){
+async function creaNuovoTorneo(){
 
 let nome=document.getElementById("adminNomeTorneo").value.trim();
 
@@ -501,60 +501,83 @@ let descrizione=document.getElementById("adminDescrizione").value.trim();
 if(!nome){
 
 alert("Inserire nome torneo");
-
 return;
 
 }
 
 
-if(!posti||posti<2){
+if(!posti || posti<2){
 
 alert("Numero posti non valido");
-
 return;
 
 }
 
 
-let torneo={
 
-id:Date.now(),
+const configurazione = {
 
-nome:nome,
+formula: formula,
 
-data:data,
-
-posti:posti,
-
-formula:formula,
-
-descrizione:descrizione,
-
-stato:"bozza",
-
-iscritti:[],
-
-partecipanti:[],
-
-coppie:[]
+posti: posti
 
 };
 
 
-adminState.tornei.push(torneo);
 
-adminState.torneoSelezionato=torneo.id;
+const { data: nuovoTorneo, error } = await sb
+.from("tornei")
+.insert({
+
+nome: nome,
+
+data: data,
+
+descrizione: descrizione,
+
+posti: posti,
+
+stato:"bozza",
+
+pubblicato:false,
+
+configurazione: configurazione
+
+})
+.select()
+.single();
 
 
-salvaAdminState();
+
+if(error){
+
+console.error(
+"Errore creazione torneo:",
+error
+);
+
+alert(
+"Errore creazione torneo: " + error.message
+);
+
+return;
+
+}
+
+
+
+adminState.torneoSelezionato = nuovoTorneo.id;
+
+
+await caricaTorneiSupabase();
+
 
 renderAdmin();
 
 
-alert("Torneo creato");
+alert("Torneo creato correttamente");
 
 }
-
 
 
 function renderListaTornei(){
