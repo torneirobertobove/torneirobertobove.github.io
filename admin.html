@@ -213,7 +213,38 @@ function mostraLoginMessaggio(testo, colore){
   box.innerHTML = testo;
   box.style.color = colore || "white";
 }
+async function verificaSessioneAdmin(){
 
+  const { data } = await sb.auth.getSession();
+
+  const session = data?.session;
+
+  if(!session) return false;
+
+
+  const { data: profilo, error } = await sb
+    .from("profili")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .single();
+
+
+  if(error || !profilo || profilo.ruolo !== "admin"){
+
+    await sb.auth.signOut();
+
+    return false;
+  }
+
+
+  adminState.adminLoggato = true;
+  adminState.adminEmail = session.user.email || "";
+  adminState.profile = profilo;
+
+  salvaAdminState();
+
+  return true;
+}
 
   const { data } = await sb.auth.getSession();
 
