@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Padel Tournament Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 :root{
 --bg:#0f172a;
@@ -71,20 +70,16 @@ display:inline-block;
 }
 </style>
 </head>
-
 <body>
 <div class="container">
 
 <div id="loginAdmin" class="card">
 <h1>🎾 Admin Padel Manager</h1>
 <h2>🔐 Accesso Admin</h2>
-
 <label>Email amministratore</label>
 <input id="adminEmail" type="email" placeholder="email admin">
-
 <label>Password</label>
 <input id="adminPassword" type="password" placeholder="password">
-
 <button onclick="loginAdmin()">Accedi</button>
 <div id="loginMessaggio"></div>
 </div>
@@ -94,16 +89,12 @@ display:inline-block;
 
 <div class="card">
 <h2>➕ Crea nuovo torneo</h2>
-
 <label>Nome torneo</label>
 <input id="adminNomeTorneo" placeholder="Nome torneo">
-
 <label>Data torneo</label>
 <input id="adminDataTorneo" type="date">
-
 <label>Numero posti disponibili</label>
 <input id="adminPosti" type="number" value="16">
-
 <label>Formula torneo</label>
 <select id="adminTipoTorneo">
 <option value="italiana">🇮🇹 Torneo all'italiana</option>
@@ -116,10 +107,8 @@ display:inline-block;
 <option value="short">⏱ Short Format</option>
 <option value="manuale">⚙️ Personalizzato</option>
 </select>
-
 <label>Descrizione torneo</label>
 <textarea id="adminDescrizione" placeholder="Descrizione, regole, note..."></textarea>
-
 <button onclick="creaNuovoTorneo()" class="btn-green">➕ CREA TORNEO</button>
 </div>
 
@@ -131,7 +120,6 @@ display:inline-block;
 <div id="gestioneTorneoAdmin" class="card hidden">
 <h2>⚙️ Gestione torneo</h2>
 <div id="dettaglioTorneoAdmin"></div>
-
 <button onclick="pubblicaTorneo()" class="btn-green">📢 Pubblica torneo</button>
 <button onclick="chiudiIscrizioniTorneo()" class="btn-red">🔒 Chiudi iscrizioni</button>
 <button onclick="caricaRichiesteIscrizione()">🔄 Aggiorna iscritti</button>
@@ -176,9 +164,9 @@ display:inline-block;
 </div>
 
 <script>
-const SB_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
-const SB_KEY = "INCOLLA_QUI_LA_TUA_ANON_KEY";
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const SUPABASE_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const ADMIN_STORAGE = "padel_admin_state";
 
@@ -248,10 +236,7 @@ async function loginAdmin(){
     return;
   }
 
-  const { data, error } = await sb.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
   if(error || !data.session){
     mostraLoginMessaggio("Login non riuscito", "#ef4444");
@@ -334,12 +319,14 @@ function renderAdmin(){
   renderRichiesteIscrizione();
   renderPartecipanti();
   renderCoppie();
+
   const t = getTorneoAdminCorrente();
   const gestione = document.getElementById("gestioneTorneoAdmin");
   if(gestione){
     if(t) gestione.classList.remove("hidden");
     else gestione.classList.add("hidden");
   }
+
   if(t){
     const dettaglio = document.getElementById("dettaglioTorneoAdmin");
     if(dettaglio){
@@ -439,10 +426,6 @@ function selezionaTorneoAdmin(id){
   if(!torneo) return;
   adminState.torneoSelezionato = id;
   salvaAdminState();
-
-  const gestione = document.getElementById("gestioneTorneoAdmin");
-  if(gestione) gestione.classList.remove("hidden");
-
   renderAdmin();
 }
 
@@ -659,9 +642,7 @@ async function inviaWhatsAppTutti(){
   }
 
   const partecipanti = torneo.configurazione?.partecipanti || [];
-  partecipanti.forEach(g => {
-    apriWhatsApp(g.telefono, testo);
-  });
+  partecipanti.forEach(g => apriWhatsApp(g.telefono, testo));
 }
 
 function inviaWhatsAppApprovati(){
@@ -673,56 +654,6 @@ function apriWhatsApp(numero, messaggio){
   const telefono = numero.replace(/[^0-9]/g, "");
   const url = "https://wa.me/" + telefono + "?text=" + encodeURIComponent(messaggio);
   window.open(url, "_blank");
-}
-
-async function inviaIscrizioneGiocatore(dati){
-  const torneo = adminState.tornei.find(t => t.id === dati.torneo_id);
-  if(!torneo) return false;
-
-  if(torneo.stato !== "pubblicato"){
-    alert("Iscrizioni non disponibili");
-    return false;
-  }
-
-  const iscritti = torneo.configurazione?.iscritti || [];
-  iscritti.push({
-    id: Date.now(),
-    nome: dati.nome,
-    email: dati.email,
-    telefono: dati.telefono,
-    livello: dati.livello || "",
-    note: dati.note || "",
-    stato: "richiesta"
-  });
-
-  torneo.configurazione.iscritti = iscritti;
-  await aggiornaConfigurazioneTorneo(torneo);
-  return true;
-}
-
-function listaTorneiPubblici(){
-  return adminState.tornei.filter(t => t.stato === "pubblicato");
-}
-
-function getInfoTorneoPubblico(id){
-  const torneo = adminState.tornei.find(t => t.id === id);
-  if(!torneo) return null;
-
-  return {
-    id: torneo.id,
-    nome: torneo.nome,
-    data: torneo.data,
-    formula: torneo.configurazione?.formula || "-",
-    posti: torneo.posti,
-    disponibili: torneo.posti - (torneo.configurazione?.iscritti?.length || 0)
-  };
-}
-
-function postiDisponibiliTorneo(id){
-  const torneo = adminState.tornei.find(t => t.id === id);
-  if(!torneo) return 0;
-  const iscritti = torneo.configurazione?.iscritti?.length || 0;
-  return Math.max(0, torneo.posti - iscritti);
 }
 
 function generaLinkBove(){
@@ -744,7 +675,6 @@ function generaLinkBove(){
 
   const json = encodeURIComponent(JSON.stringify(configurazione));
   const link = "Bove.html?torneo=" + json;
-
   const campo = document.getElementById("linkBoveGenerato");
   if(campo) campo.value = link;
 }
@@ -762,18 +692,6 @@ function copiaLinkBove(){
   alert("Link copiato");
 }
 
-function esportaListaTorneiPubblici(){
-  return adminState.tornei
-    .filter(t => t.stato === "pubblicato")
-    .map(t => ({
-      id: t.id,
-      nome: t.nome,
-      data: t.data,
-      formula: t.configurazione?.formula || "-",
-      posti: t.posti
-    }));
-}
-
 async function eliminaTorneoAdmin(id){
   if(!confirm("Eliminare torneo?")) return;
 
@@ -788,7 +706,6 @@ async function eliminaTorneoAdmin(id){
   }
 
   adminState.tornei = adminState.tornei.filter(t => t.id !== id);
-
   if(adminState.torneoSelezionato === id){
     adminState.torneoSelezionato = null;
   }
@@ -797,40 +714,12 @@ async function eliminaTorneoAdmin(id){
   renderAdmin();
 }
 
-async function cambiaStatoTorneo(stato){
-  const torneo = getTorneoAdminCorrente();
-  if(!torneo) return;
-
-  const { error } = await sb
-    .from("tornei")
-    .update({ stato })
-    .eq("id", torneo.id);
-
-  if(error){
-    console.error(error);
-    return;
-  }
-
-  torneo.stato = stato;
-  salvaAdminState();
-  renderAdmin();
-}
-
-function resetAdmin(){
-  localStorage.removeItem(ADMIN_STORAGE);
-  location.reload();
-}
-
 window.addEventListener("load", async () => {
   caricaAdminState();
   const ok = await verificaSessioneAdmin();
   if(ok || adminState.adminLoggato){
     await apriDashboardAdmin();
   }
-});
-
-document.addEventListener("DOMContentLoaded", async () => {
-  caricaAdminState();
 });
 </script>
 </body>
