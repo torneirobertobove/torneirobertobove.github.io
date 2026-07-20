@@ -279,138 +279,32 @@ async function verificaSessioneAdmin(){
 
 
 
-async function loginAdmin(){
+async function initAdmin(){
+  const { data } = await sb.auth.getSession();
+  const session = data?.session;
 
-  const email = document
-    .getElementById("adminEmail")
-    .value
-    .trim();
-
-
-  const password = document
-    .getElementById("adminPassword")
-    .value
-    .trim();
-
-
-
-  if(!email || !password){
-
-    mostraLoginMessaggio(
-      "Inserire email e password",
-      "#ef4444"
-    );
-
+  if(!session){
+    location.href = "index.html";
     return;
   }
 
+  const { data: profilo, error } = await sb
+    .from("profili")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .single();
 
-
-  const { data, error } =
-    await sb.auth.signInWithPassword({
-      email,
-      password
-    });
-
-
-
-  if(error || !data.session){
-
-    mostraLoginMessaggio(
-      "Login non riuscito",
-      "#ef4444"
-    );
-
-    return;
-  }
-
-
-
-  const { data: profilo, error: errProfilo } =
-    await sb
-      .from("profili")
-      .select("*")
-      .eq("user_id", data.session.user.id)
-      .single();
-
-
-
-  console.log(
-    "Utente Auth:",
-    data.session.user
-  );
-
-
-  console.log(
-    "PROFILO RICEVUTO:",
-    profilo
-  );
-
-
-  console.log(
-    "ERRORE PROFILO:",
-    errProfilo
-  );
-
-
-  console.log(
-    "RUOLO:",
-    profilo ? profilo.ruolo : "NESSUN PROFILO"
-  );
-
-
-
-  if(
-    errProfilo ||
-    !profilo ||
-    profilo.ruolo !== "admin"
-  ){
-
-    console.error(
-      "ERR PROFILO:",
-      errProfilo
-    );
-
-
-    console.error(
-      "PROFILO:",
-      profilo
-    );
-
-
+  if(error || !profilo || profilo.ruolo !== "admin"){
     await sb.auth.signOut();
-
-
-    mostraLoginMessaggio(
-      "Accesso negato: non sei admin",
-      "#ef4444"
-    );
-
-
+    location.href = "index.html";
     return;
   }
-
-
 
   adminState.adminLoggato = true;
-
-  adminState.adminEmail = email;
-
+  adminState.adminEmail = session.user.email || "";
   adminState.profile = profilo;
 
-
-  salvaAdminState();
-
-
-
-  mostraLoginMessaggio(
-    "Accesso effettuato",
-    "#22c55e"
-  );
-
-
   await apriDashboardAdmin();
-
 }
 async function apriDashboardAdmin(){
   const login = document.getElementById("loginAdmin");
@@ -914,7 +808,7 @@ window.addEventListener("load", async () => {
   caricaAdminState();
   const ok = await verificaSessioneAdmin();
   if(ok || adminState.adminLoggato){
-    await apriDashboardAdmin();
+  async function loginAdmin(){
   }
 });
 </script>
