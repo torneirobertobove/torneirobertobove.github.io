@@ -1848,40 +1848,24 @@ return;
 
 
 
-// aggiorna stato locale
+/*
+ aggiorna subito lo stato locale
+*/
 
 giocatore.stato =
 "approvato";
 
-giocatore.approvato = true;
 
- const {error: erroreApprovazione} = await sb
-.from("iscrizioni")
-.update({
-    stato:"approvato",
-    approvato:true
-})
-.eq(
-    "id",
-    giocatore.id
-);
+giocatore.approvato =
+true;
 
 
-if(erroreApprovazione){
 
-console.error(
-"Errore aggiornamento iscrizione:",
-erroreApprovazione
-);
+/*
+ aggiorna tabella Supabase iscrizioni
+*/
 
-return;
-
-} 
-
-
-// aggiorna anche Supabase
-
-const {error}=await sb
+const {error: erroreApprovazione} = await sb
 
 .from("iscrizioni")
 
@@ -1889,7 +1873,9 @@ const {error}=await sb
 
 stato:"approvato",
 
-approvato:true
+approvato:true,
+
+updated_at:new Date().toISOString()
 
 })
 
@@ -1900,22 +1886,30 @@ giocatore.id
 
 
 
-if(error){
+if(erroreApprovazione){
 
 console.error(
-"Errore approvazione iscrizione:",
-error
+"Errore aggiornamento iscrizione:",
+erroreApprovazione
 );
 
+
 alert(
-"Errore approvazione"
+"Errore approvazione giocatore"
 );
+
 
 return;
 
 }
 
 
+
+
+/*
+ aggiunge ai partecipanti approvati
+ evitando duplicati
+*/
 
 
 const partecipanti =
@@ -1926,17 +1920,24 @@ torneo.configurazione?.partecipanti || [];
 const giaPresente =
 partecipanti.some(
 g =>
+
 (
 g.id &&
 giocatore.id &&
-g.id === giocatore.id
+Number(g.id) === Number(giocatore.id)
 )
+
 ||
+
 (
-(g.nome_giocatore || g.nome)
+
+(g.nome_giocatore || g.nome || "")
 ===
-(giocatore.nome_giocatore || giocatore.nome)
+
+(giocatore.nome_giocatore || giocatore.nome || "")
+
 )
+
 );
 
 
@@ -1950,6 +1951,13 @@ giocatore
 }
 
 
+
+
+torneo.configurazione =
+torneo.configurazione || {};
+
+
+
 torneo.configurazione.partecipanti =
 partecipanti;
 
@@ -1960,15 +1968,28 @@ iscritti;
 
 
 
-await aggiornaConfigurazioneTorneo(torneo);
+/*
+ salva configurazione torneo
+*/
 
-await caricaRichiesteIscrizione();
+await aggiornaConfigurazioneTorneo(
+torneo
+);
+
+
+
+/*
+ ricarica dati reali
+*/
+
+await caricaTorneiSupabase();
+
+
 
 renderAdmin();
 
+
 }
-
-
 
 
 async function rifiutaIscritto(index){
