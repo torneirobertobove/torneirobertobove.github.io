@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Profilo giocatore</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+:root{
+    --bg-image:url('https://torneirobertobove.github.io/sfondo2.jpg');
+}
+
+body{
+
+    margin:0;
+
+    background-image:var(--bg-image);
+    background-size:cover;
+    background-position:center;
+    background-attachment:fixed;
+
+    font-family:sans-serif;
+
+    color:white;
+
+    min-height:100vh;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+}
+
+
+.box{
+
+    width:350px;
+
+    padding:30px;
+
+    border-radius:25px;
+
+    background:rgba(255,255,255,0.15);
+
+    backdrop-filter:blur(10px);
+
+    box-shadow:
+    0 8px 32px rgba(0,0,0,.4);
+
+    text-align:center;
+
+}
+
+
+.logo{
+
+    width:140px;
+
+    margin-bottom:10px;
+
+}
+
+
+h2{
+
+    margin-top:5px;
+
+}
+
+
+input,
+textarea,
+select{
+
+    width:100%;
+
+    box-sizing:border-box;
+
+    padding:10px;
+
+    margin:7px 0;
+
+    border-radius:8px;
+
+    border:none;
+
+    color:#333;
+
+}
+
+
+textarea{
+
+    height:70px;
+
+    resize:none;
+
+}
+
+
+.btn{
+
+    width:100%;
+
+    margin-top:15px;
+
+    padding:13px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+    background:white;
+
+    color:#004a99;
+
+}
+
+
+#status{
+
+    margin-top:15px;
+
+    min-height:20px;
+
+    color:#ffeb3b;
+
+    font-size:14px;
+
+}
+
+
+.info{
+
+    font-size:13px;
+
+    opacity:.9;
+
+    margin-bottom:10px;
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="box">
+
+
+<img src="logo.jpg" class="logo">
+
+
+<h2>Profilo giocatore</h2>
+
+
+<div class="info" id="emailBox"></div>
+
+
+<input id="nome"
+placeholder="Nome">
+
+
+<input id="cognome"
+placeholder="Cognome">
+
+
+<input id="telefono"
+placeholder="Telefono">
+
+
+<input id="livello"
+placeholder="Livello">
+
+
+<input id="alias"
+placeholder="Alias torneo">
+
+
+<textarea id="note"
+placeholder="Note"></textarea>
+
+
+
+<button class="btn"
+onclick="salvaProfilo()">
+
+SALVA PROFILO
+
+</button>
+
+
+
+<div id="status"></div>
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+const supabaseUrl =
+"https://iybjvtmfaupgthqqsngd.supabase.co";
+
+
+const supabaseKey =
+"INSERISCI_LA_TUA_ANON_KEY";
+
+
+const client =
+supabase.createClient(
+supabaseUrl,
+supabaseKey
+);
+
+
+
+let userId=null;
+
+let emailUtente="";
+
+
+
+
+
+function generaAlias(nome,cognome){
+
+
+    if(!nome || !cognome)
+
+        return "";
+
+
+    nome =
+    nome.trim();
+
+
+    cognome =
+    cognome.trim();
+
+
+
+    if(!nome || !cognome)
+
+        return "";
+
+
+
+    return (
+
+        nome.charAt(0)
+        +
+        "."
+        +
+        cognome
+
+    );
+
+
+}
+
+
+
+
+
+async function caricaProfilo(){
+
+
+
+const {
+
+data:{
+user
+
+}
+
+}
+
+=
+await client.auth.getUser();
+
+
+
+if(!user){
+
+
+    window.location.href="login.html";
+
+    return;
+
+}
+
+
+
+userId =
+user.id;
+
+
+emailUtente =
+user.email;
+
+
+
+document.getElementById(
+"emailBox"
+).innerHTML =
+
+"Email: "
++
+emailUtente;
+
+
+
+
+
+const {
+
+data,
+error
+
+}
+=
+await client
+
+.from("profili")
+
+.select("*")
+
+.eq(
+"user_id",
+userId
+)
+
+.single();
+
+
+
+
+if(error){
+
+
+console.error(error);
+
+
+document.getElementById(
+"status"
+).innerHTML=
+
+"Profilo non trovato";
+
+
+return;
+
+}
+
+
+
+
+
+document.getElementById("nome").value =
+data.nome || "";
+
+
+document.getElementById("cognome").value =
+data.cognome || "";
+
+
+document.getElementById("telefono").value =
+data.telefono || "";
+
+
+document.getElementById("livello").value =
+data.livello || "";
+
+
+document.getElementById("alias").value =
+data.alias || "";
+
+
+document.getElementById("note").value =
+data.note || "";
+
+
+
+}
+
+
+
+
+
+async function salvaProfilo(){
+
+
+
+const nome =
+document.getElementById("nome").value.trim();
+
+
+const cognome =
+document.getElementById("cognome").value.trim();
+
+
+const telefono =
+document.getElementById("telefono").value.trim();
+
+
+const livello =
+document.getElementById("livello").value.trim();
+
+
+let alias =
+document.getElementById("alias").value.trim();
+
+
+const note =
+document.getElementById("note").value.trim();
+
+
+
+
+
+if(!nome || !cognome){
+
+
+document.getElementById(
+"status"
+).innerHTML=
+
+"Inserisci nome e cognome";
+
+
+return;
+
+}
+
+
+
+
+
+if(!alias){
+
+
+alias =
+generaAlias(
+nome,
+cognome
+);
+
+
+document.getElementById(
+"alias"
+).value =
+alias;
+
+
+}
+
+
+
+
+
+const {
+
+error
+
+}
+
+=
+await client
+
+.from("profili")
+
+.update({
+
+nome,
+
+cognome,
+
+telefono,
+
+livello,
+
+alias,
+
+note,
+
+email:
+emailUtente,
+
+updated_at:
+new Date()
+.toISOString()
+
+})
+
+.eq(
+"user_id",
+userId
+);
+
+
+
+
+
+if(error){
+
+
+console.error(error);
+
+
+document.getElementById(
+"status"
+).innerHTML=
+
+"Errore salvataggio";
+
+
+return;
+
+}
+
+
+
+
+document.getElementById(
+"status"
+).innerHTML=
+
+"Profilo salvato!";
+
+
+setTimeout(()=>{
+
+
+window.location.href="2Page.html";
+
+
+},1000);
+
+
+
+}
+
+
+
+
+
+
+caricaProfilo();
+
+
+</script>
+
+
+</body>
+
+</html>
