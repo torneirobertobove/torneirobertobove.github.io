@@ -493,13 +493,9 @@ if(!session){
 
 location.href="index.html";
 
-return false;
+
 
 }
-
-
-
-
 
 const {data:profilo,error} = await sb
 
@@ -552,80 +548,6 @@ salvaAdminState();
 
 
 await apriDashboardAdmin();
-
-
-
-return true;
-
-
-}
-
-
-
-
-
-
-
-
-
-async function verificaSessioneAdmin(){
-
-
-const {data} = await sb.auth.getSession();
-
-
-if(!data.session){
-
-return false;
-
-}
-
-
-
-const {data:profilo,error}=await sb
-
-.from("profili")
-
-.select("*")
-
-.eq(
-"user_id",
-data.session.user.id
-)
-
-.single();
-
-
-
-
-
-if(error || !profilo){
-
-return false;
-
-}
-
-
-
-
-
-if(profilo.ruolo !== "admin"){
-
-return false;
-
-}
-
-
-
-
-adminState.adminLoggato=true;
-
-adminState.adminEmail=data.session.user.email || "";
-
-adminState.profile=profilo;
-
-
-salvaAdminState();
 
 
 
@@ -709,7 +631,13 @@ location.href="index.html";
 
 }
 
- async function caricaTorneiSupabase(){
+
+
+
+
+
+
+async function caricaTorneiSupabase(){
 
 
 const {data,error}=await sb
@@ -724,6 +652,8 @@ const {data,error}=await sb
 ascending:false
 }
 );
+
+
 
 
 
@@ -749,16 +679,28 @@ adminState.tornei = (data || []).map(t=>({
 
 
 configurazione:
+{
 
-t.configurazione || {
+...(t.configurazione || {}),
 
-formula:t.formula || "manuale",
 
-iscritti:[],
+formula:
+t.configurazione?.formula ||
+t.formula ||
+"manuale",
 
-partecipanti:[],
 
-coppie:[]
+iscritti:
+t.configurazione?.iscritti || [],
+
+
+partecipanti:
+t.configurazione?.partecipanti || [],
+
+
+coppie:
+t.configurazione?.coppie || []
+
 
 }
 
@@ -825,8 +767,11 @@ renderCoppie();
 
 
 
+
 const torneo =
 getTorneoAdminCorrente();
+
+
 
 
 
@@ -846,14 +791,18 @@ if(torneo){
 
 gestione.classList.remove("hidden");
 
+
 }else{
+
 
 gestione.classList.add("hidden");
 
+
 }
 
 
 }
+
 
 
 
@@ -920,16 +869,7 @@ ${torneo.stato || "bozza"}
 }
 
 
-
-
-
-
-
-
-
-
 function getTorneoAdminCorrente(){
-
 
 
 console.log(
@@ -1040,7 +980,15 @@ renderAdmin();
 
 }
 
- async function creaNuovoTorneo(){
+
+
+
+
+
+
+
+
+async function creaNuovoTorneo(){
 
 
 const nome =
@@ -1086,9 +1034,14 @@ document
 
 if(!nome){
 
-alert("Inserire nome torneo");
+
+alert(
+"Inserire nome torneo"
+);
+
 
 return;
+
 
 }
 
@@ -1096,9 +1049,14 @@ return;
 
 if(!posti || posti < 2){
 
-alert("Numero posti non valido");
+
+alert(
+"Numero posti non valido"
+);
+
 
 return;
+
 
 }
 
@@ -1109,13 +1067,18 @@ return;
 
 const configurazione = {
 
+
 formula,
+
 
 iscritti:[],
 
+
 partecipanti:[],
 
+
 coppie:[]
+
 
 };
 
@@ -1132,21 +1095,30 @@ const {data:nuovoTorneo,error}=await sb
 
 .insert({
 
+
 nome,
+
 
 data:data || null,
 
+
 descrizione,
+
 
 posti,
 
+
 stato:"bozza",
+
 
 pubblicato:false,
 
+
 iscrizioni_chiuse:false,
 
+
 configurazione
+
 
 })
 
@@ -1161,7 +1133,9 @@ configurazione
 
 if(error){
 
+
 console.error(error);
+
 
 
 alert(
@@ -1171,9 +1145,13 @@ error.message
 );
 
 
+
 return;
 
+
 }
+
+
 
 
 
@@ -1187,7 +1165,10 @@ nuovoTorneo.id;
 await caricaTorneiSupabase();
 
 
+
 renderAdmin();
+
+
 
 
 
@@ -1250,8 +1231,11 @@ adminState.tornei.map(t=>{
 
 
 const formula =
+
 t.configurazione?.formula ||
+
 t.formula ||
+
 "-";
 
 
@@ -1275,7 +1259,9 @@ return `
 
 
 <span class="badge">
+
 ${t.stato || "bozza"}
+
 </span>
 
 
@@ -1410,7 +1396,13 @@ renderAdmin();
 
 }
 
-  async function chiudiIscrizioniTorneo(){
+
+
+
+
+
+
+async function chiudiIscrizioniTorneo(){
 
 
 const torneo =
@@ -1483,7 +1475,6 @@ renderAdmin();
 
 
 
-
 async function caricaRichiesteIscrizione(){
 
 
@@ -1536,6 +1527,7 @@ console.log(
 "ISCRIZIONI LETTE:",
 data
 );
+
 
 
 console.log(
@@ -1642,24 +1634,6 @@ torneo.configurazione?.iscritti || [];
 
 
 
-console.log(
-"DATI ARRIVATI AL RENDER:",
-iscritti
-);
-
-
-
-console.log(
-"PRIMO RENDER:",
-iscritti[0]
-);
-
-
-
-
-
-
-
 if(iscritti.length===0){
 
 
@@ -1757,26 +1731,47 @@ onclick="rifiutaIscritto(${i})">
 
 
 }
+
+
+
+
+
+
+
+
+
 async function approvaIscritto(index){
 
-const torneo = getTorneoAdminCorrente();
 
-if(!torneo) return;
+const torneo =
+getTorneoAdminCorrente();
+
+
+
+if(!torneo)
+
+return;
+
 
 
 const iscritti =
 torneo.configurazione?.iscritti || [];
 
 
+
 const giocatore =
 iscritti[index];
 
 
-if(!giocatore) return;
+
+if(!giocatore)
+
+return;
 
 
 
-giocatore.stato = "approvato";
+giocatore.stato =
+"approvato";
 
 
 
@@ -1818,11 +1813,20 @@ renderAdmin();
 
 
 
+
+
+
 async function rifiutaIscritto(index){
 
-const torneo = getTorneoAdminCorrente();
 
-if(!torneo) return;
+const torneo =
+getTorneoAdminCorrente();
+
+
+
+if(!torneo)
+
+return;
 
 
 
@@ -1833,8 +1837,10 @@ torneo.configurazione?.iscritti || [];
 
 if(iscritti[index]){
 
+
 iscritti[index].stato =
 "rifiutato";
+
 
 }
 
@@ -1857,21 +1863,28 @@ renderAdmin();
 
 
 
+
+
 async function aggiornaConfigurazioneTorneo(torneo){
 
 
 const {error}=await sb
+
 .from("tornei")
+
 .update({
 
 configurazione:
 torneo.configurazione
 
 })
+
 .eq(
 "id",
 torneo.id
 );
+
+
 
 
 
@@ -1882,11 +1895,13 @@ console.error(
 error
 );
 
+
 alert(
 "Errore aggiornamento: "
 +
 error.message
 );
+
 
 return;
 
@@ -1904,6 +1919,9 @@ await caricaTorneiSupabase();
 
 
 
+
+
+
 function renderPartecipanti(){
 
 
@@ -1914,7 +1932,9 @@ document.getElementById(
 
 
 
-if(!box) return;
+if(!box)
+
+return;
 
 
 
@@ -1941,8 +1961,10 @@ torneo.configurazione?.partecipanti || [];
 
 if(lista.length===0){
 
+
 box.innerHTML =
 "<p>Nessun partecipante approvato</p>";
+
 
 return;
 
@@ -1953,30 +1975,39 @@ return;
 box.innerHTML =
 lista.map((g,i)=>`
 
+
 <div class="lista-item">
+
 
 <b>
 ${i+1}) ${g.nome_giocatore || g.nome || "-"}
 </b>
 
+
 <br>
+
 
 📧 ${g.email || "-"}
 
+
 <br>
+
 
 📱 ${g.telefono || "-"}
 
+
 <br>
+
 
 🎾 ${g.categoria || "-"}
 
+
 </div>
+
 
 `).join("");
 
 }
-
 
 
 
@@ -2053,7 +2084,7 @@ coppie.map((c,i)=>`
 
 <b>Coppia ${i+1}</b><br>
 
-${c.g1} + ${c.g2}
+${c.g1 || "-"} + ${c.g2 || "-"}
 
 </p>
 
@@ -2065,10 +2096,17 @@ ${c.g1} + ${c.g2}
 `;
 
 }
-  async function generaCoppieAutomatiche(){
+
+
+
+
+
+async function generaCoppieAutomatiche(){
+
 
 const torneo =
 getTorneoAdminCorrente();
+
 
 
 if(!torneo) return;
@@ -2099,17 +2137,32 @@ const coppie=[];
 for(let i=0;i<partecipanti.length-1;i+=2){
 
 
+const g1 =
+partecipanti[i];
+
+
+const g2 =
+partecipanti[i+1];
+
+
+
+if(!g1 || !g2)
+
+continue;
+
+
+
 coppie.push({
 
 g1:
-partecipanti[i].nome_giocatore ||
-partecipanti[i].nome ||
+g1.nome_giocatore ||
+g1.nome ||
 "-",
 
 
 g2:
-partecipanti[i+1].nome_giocatore ||
-partecipanti[i+1].nome ||
+g2.nome_giocatore ||
+g2.nome ||
 "-"
 
 });
@@ -2117,6 +2170,12 @@ partecipanti[i+1].nome ||
 
 }
 
+
+
+
+
+torneo.configurazione =
+torneo.configurazione || {};
 
 
 
@@ -2163,13 +2222,23 @@ return;
 
 
 
-const testo =
-document
-.getElementById(
+const campoMessaggio =
+document.getElementById(
 "messaggioWhatsApp"
-)
-.value
-.trim();
+);
+
+
+
+if(!campoMessaggio){
+
+return;
+
+}
+
+
+
+const testo =
+campoMessaggio.value.trim();
 
 
 
@@ -2238,10 +2307,16 @@ return;
 
 
 const telefono =
-numero.replace(
+String(numero).replace(
 /[^0-9]/g,
 ""
 );
+
+
+
+if(!telefono)
+
+return;
 
 
 
@@ -2360,18 +2435,14 @@ document.getElementById(
 
 if(campo){
 
-campo.value=link;
+campo.value =
+link;
 
 }
 
 
 
 }
-
-
-
-
-
 
 function apriBoveConTorneo(){
 
@@ -2380,6 +2451,14 @@ const campo =
 document.getElementById(
 "linkBoveGenerato"
 );
+
+
+
+if(!campo){
+
+return;
+
+}
 
 
 
@@ -2409,7 +2488,7 @@ campo.value,
 
 
 
-function copiaLinkBove(){
+async function copiaLinkBove(){
 
 
 const campo =
@@ -2425,7 +2504,23 @@ return;
 
 
 
-navigator.clipboard.writeText(
+if(!campo.value){
+
+alert(
+"Nessun link disponibile"
+);
+
+return;
+
+}
+
+
+
+
+try{
+
+
+await navigator.clipboard.writeText(
 campo.value
 );
 
@@ -2436,8 +2531,34 @@ alert(
 );
 
 
+
+}catch(e){
+
+
+console.error(
+"Errore copia link:",
+e
+);
+
+
+alert(
+"Impossibile copiare il link"
+);
+
+
 }
-  async function eliminaTorneoAdmin(id){
+
+
+}
+
+
+
+
+
+
+
+
+async function eliminaTorneoAdmin(id){
 
 
 if(
@@ -2451,6 +2572,11 @@ return;
 
 
 
+const torneoId =
+Number(id);
+
+
+
 const {error}=await sb
 
 .from("tornei")
@@ -2459,7 +2585,7 @@ const {error}=await sb
 
 .eq(
 "id",
-id
+torneoId
 );
 
 
@@ -2489,7 +2615,7 @@ adminState.tornei.filter(
 
 t =>
 
-Number(t.id)!==Number(id)
+Number(t.id)!==torneoId
 
 );
 
@@ -2501,7 +2627,7 @@ if(
 Number(adminState.torneoSelezionato)
 ===
 
-Number(id)
+torneoId
 
 ){
 
@@ -2561,10 +2687,16 @@ return;
 
 
 
+const configurazione =
+torneo.configurazione || {};
+
+
+
+
 box.innerHTML = `
 
 <h3>
-${torneo.nome}
+${torneo.nome || "-"}
 </h3>
 
 
@@ -2577,7 +2709,7 @@ ${torneo.data || "-"}
 <p>
 🎾 Formula:
 ${
-torneo.configurazione?.formula ||
+configurazione.formula ||
 torneo.formula ||
 "-"
 }
@@ -2598,9 +2730,6 @@ ${torneo.stato || "bozza"}
 `;
 
 }
-
-
-
 
 
 function aggiornaListaPartecipanti(){
@@ -2728,11 +2857,14 @@ return data;
 async function verificaSessioneAdmin(){
 
 
-const {data}=await sb.auth.getSession();
+const {data,errorSession}=await sb.auth.getSession();
 
 
 
-if(!data.session){
+if(
+errorSession ||
+!data.session
+){
 
 return false;
 
@@ -2755,6 +2887,8 @@ data.session.user.id
 
 
 
+
+
 if(error){
 
 console.error(
@@ -2762,14 +2896,17 @@ console.error(
 error
 );
 
+
 return false;
 
 }
 
 
 
+
 if(
-profilo.ruolo!=="admin"
+!profilo ||
+profilo.ruolo !== "admin"
 ){
 
 return false;
@@ -2778,9 +2915,19 @@ return false;
 
 
 
+
+
 adminState.adminLoggato=true;
 
-adminState.profile=profilo;
+
+adminState.adminEmail =
+data.session.user.email || "";
+
+
+adminState.profile =
+profilo;
+
+
 
 salvaAdminState();
 
@@ -2790,7 +2937,14 @@ return true;
 
 
 }
- function render(){
+
+
+
+
+
+
+
+function render(){
 
 
 renderAdmin();
@@ -2993,6 +3147,7 @@ contaPostiLiberi()
 
 async function aggiornaDatiTorneo(){
 
+
 const torneo =
 getTorneoAdminCorrente();
 
@@ -3125,171 +3280,318 @@ eliminaTorneoAdmin;
 
 window.logoutAdmin =
 logoutAdmin;
- function renderPartecipanti(){
-
-  const box = document.getElementById("partecipantiAdmin");
-
-  if(!box) return;
-
-  const torneo = getTorneoAdminCorrente();
-
-  if(!torneo){
-    box.innerHTML="";
-    return;
-  }
-
-  const lista =
-    torneo.configurazione?.partecipanti || [];
 
 
-  if(lista.length===0){
-
-    box.innerHTML =
-    "<p>Nessun partecipante approvato</p>";
-
-    return;
-
-  }
 
 
-  box.innerHTML = lista.map((g,i)=>`
 
-    <div class="lista-item">
 
-      <b>${i+1}) ${g.nome_giocatore || g.nome || "-"}</b><br>
 
-      📧 ${g.email || "-"}<br>
+function renderPartecipanti(){
 
-      📱 ${g.telefono || "-"}<br>
 
-      🎾 ${g.categoria || g.livello || "-"}
+const box =
+document.getElementById(
+"partecipantiAdmin"
+);
 
-    </div>
 
-  `).join("");
+
+if(!box)
+
+return;
+
+
+
+const torneo =
+getTorneoAdminCorrente();
+
+
+
+if(!torneo){
+
+box.innerHTML="";
+
+return;
 
 }
 
 
 
+
+const lista =
+torneo.configurazione?.partecipanti || [];
+
+
+
+
+if(lista.length===0){
+
+box.innerHTML =
+"<p>Nessun partecipante approvato</p>";
+
+return;
+
+}
+
+
+
+
+
+box.innerHTML =
+lista.map((g,i)=>`
+
+<div class="lista-item">
+
+<b>
+${i+1}) ${g.nome_giocatore || g.nome || "-"}
+</b>
+
+<br>
+
+📧 ${g.email || "-"}
+
+<br>
+
+📱 ${g.telefono || "-"}
+
+<br>
+
+🎾 ${g.categoria || g.livello || "-"}
+
+</div>
+
+`).join("");
+
+}
 function renderCoppie(){
 
-  const box =
-  document.getElementById("creaCoppieBox");
 
-  if(!box) return;
-
-
-  const torneo =
-  getTorneoAdminCorrente();
-
-
-  if(!torneo){
-
-    box.innerHTML="";
-
-    return;
-
-  }
-
-
-  const partecipanti =
-  torneo.configurazione?.partecipanti || [];
-
-
-  const coppie =
-  torneo.configurazione?.coppie || [];
+const box =
+document.getElementById(
+"creaCoppieBox"
+);
 
 
 
-  if(partecipanti.length < 2){
+if(!box)
 
-    box.innerHTML =
-    "<p>Servono almeno due giocatori approvati</p>";
-
-    return;
-
-  }
+return;
 
 
 
-  box.innerHTML = `
-
-  <button onclick="generaCoppieAutomatiche()">
-
-  👥 Crea coppie automatiche
-
-  </button>
+const torneo =
+getTorneoAdminCorrente();
 
 
-  ${coppie.map((c,i)=>`
 
-  <div class="lista-item">
+if(!torneo){
 
-  <b>Coppia ${i+1}</b><br>
+box.innerHTML="";
 
-  ${c.g1} + ${c.g2}
-
-  </div>
-
-  `).join("")}
-
-  `;
+return;
 
 }
+
+
+
+const configurazione =
+torneo.configurazione || {};
+
+
+
+const partecipanti =
+configurazione.partecipanti || [];
+
+
+
+const coppie =
+configurazione.coppie || [];
+
+
+
+
+
+if(partecipanti.length < 2){
+
+
+box.innerHTML =
+"<p>Servono almeno due giocatori approvati</p>";
+
+
+return;
+
+
+}
+
+
+
+
+
+box.innerHTML = `
+
+<button onclick="generaCoppieAutomatiche()">
+
+👥 Crea coppie automatiche
+
+</button>
+
+
+
+<div>
+
+${
+coppie.map((c,i)=>`
+
+<div class="lista-item">
+
+<b>Coppia ${i+1}</b><br>
+
+${c.g1 || "-"} + ${c.g2 || "-"}
+
+</div>
+
+`).join("")
+}
+
+</div>
+
+`;
+
+}
+
+
+
+
+
 
 
 
 async function generaCoppieAutomatiche(){
 
-  const torneo =
-  getTorneoAdminCorrente();
 
-  if(!torneo) return;
-
-
-  const lista =
-  torneo.configurazione?.partecipanti || [];
+const torneo =
+getTorneoAdminCorrente();
 
 
-  const coppie=[];
+
+if(!torneo)
+
+return;
 
 
-  for(let i=0;i<lista.length-1;i+=2){
 
-    coppie.push({
-
-      g1:
-      lista[i].nome_giocatore || lista[i].nome,
-
-      g2:
-      lista[i+1].nome_giocatore || lista[i+1].nome
-
-    });
-
-  }
+torneo.configurazione =
+torneo.configurazione || {};
 
 
-  torneo.configurazione.coppie =
-  coppie;
+
+const lista =
+torneo.configurazione.partecipanti || [];
 
 
-  await aggiornaConfigurazioneTorneo(torneo);
 
 
-  renderAdmin();
+
+if(lista.length < 2){
+
+
+alert(
+"Servono almeno due partecipanti"
+);
+
+
+return;
+
 
 }
 
 
 
-window.addEventListener("load", async ()=>{
 
-  await initAdmin();
+
+const coppie=[];
+
+
+
+
+
+for(
+let i=0;
+i < lista.length - 1;
+i += 2
+){
+
+
+coppie.push({
+
+g1:
+lista[i].nome_giocatore ||
+lista[i].nome ||
+"-",
+
+
+g2:
+lista[i+1].nome_giocatore ||
+lista[i+1].nome ||
+"-"
 
 });
-  </script>
 
-</body>
 
-</html>
+}
+
+
+
+
+
+
+torneo.configurazione.coppie =
+coppie;
+
+
+
+
+
+await aggiornaConfigurazioneTorneo(
+torneo
+);
+
+
+
+
+
+renderAdmin();
+
+
+}
+
+
+
+
+
+
+
+
+if(
+!window.adminLoadAvviato
+){
+
+
+window.adminLoadAvviato = true;
+
+
+
+window.addEventListener(
+"load",
+async ()=>{
+
+
+await initAdmin();
+
+
+});
+
+
+}
+</script> </body> </html> 
