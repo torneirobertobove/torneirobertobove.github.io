@@ -208,50 +208,9 @@
             }
             const limite = squadre * 2;
 
-            // STEP 1: Controlla iscrizioni esistenti
-            const { data: iscritti, error: erroreLista } = await sb
-                .from("iscrizioni")
-                .select("id")
-                .eq("torneo_id", torneoId);
+          // STEP 3: Inserimento (usa nome_giocatore, NON nome_completo)
 
-            if (erroreLista) {
-                console.error("Errore lettura iscrizioni:", erroreLista);
-                mostraMessaggio("❌ Errore lettura iscrizioni<br><small>" + erroreLista.message + "</small>", "errore");
-                return;
-            }
-
-            const iscrittiCorrenti = iscritti ? iscritti.length : 0;
-
-            if (iscrittiCorrenti >= limite) {
-                mostraMessaggio("❌ Torneo completo", "errore");
-                return;
-            }
-
-            // Prepara nome giocatore (usa email se non c'è profilo)
-            const nomeGiocatore = profilo && profilo.nome
-                ? profilo.nome.trim()
-                : utente.email.split('@')[0].toUpperCase();
-
-            // STEP 2: Controllo se già iscritto (usa nome_giocatore)
-            const { data: giaIscritto, error: erroreControllo } = await sb
-                .from("iscrizioni")
-                .select("id")
-                .eq("torneo_id", torneoId)
-                .eq("nome_giocatore", nomeGiocatore);
-
-            if (erroreControllo) {
-                console.error("Errore controllo iscrizione:", erroreControllo);
-                mostraMessaggio("❌ Errore controllo iscrizione", "errore");
-                return;
-            }
-
-            if (giaIscritto && giaIscritto.length > 0) {
-                mostraMessaggio("⚠️ Sei già iscritto a questo torneo", "errore");
-                return;
-            }
-
-            // STEP 3: Inserimento (usa nome_giocatore, NON nome_completo)
-          const { error: erroreInsert } = await sb
+const { error: erroreInsert } = await sb
     .from("iscrizioni")
     .insert({
 
@@ -262,6 +221,9 @@
 
         nome:
         profilo?.nome || "",
+
+        cognome:
+        profilo?.cognome || "",
 
         nome_giocatore:
         nomeGiocatore,
@@ -291,30 +253,10 @@
         new Date().toISOString()
 
     });
-            if (erroreInsert) {
-                console.error("ERRORE INSERIMENTO:", erroreInsert);
-                mostraMessaggio("❌ " + erroreInsert.message, "errore");
-                return;
-            }
 
-            mostraMessaggio("✅ Iscrizione completata!", "successo");
 
-            setTimeout(() => {
-                window.location.href = "visitatore.html";
-            }, 1500);
-        }
-
-        function tornaTornei() {
-            window.location.href = "visitatore.html";
-        }
-
-        function mostraMessaggio(testo, tipo) {
-            const box = document.getElementById("messaggio");
-            box.className = tipo;
-            box.innerHTML = `<p>${testo}</p>`;
-        }
-
-        window.addEventListener("load", inizializza);
-    </script>
-</body>
-</html>
+if (erroreInsert) {
+    console.error("ERRORE INSERIMENTO:", erroreInsert);
+    mostraMessaggio("❌ " + erroreInsert.message, "errore");
+    return;
+}
