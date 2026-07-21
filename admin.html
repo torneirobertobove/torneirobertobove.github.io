@@ -1760,10 +1760,8 @@ onclick="rifiutaIscritto(${i})">
 
 async function approvaIscritto(index){
 
-
 const torneo =
 getTorneoAdminCorrente();
-
 
 
 if(!torneo)
@@ -1781,15 +1779,56 @@ const giocatore =
 iscritti[index];
 
 
-
 if(!giocatore)
 
 return;
 
 
 
+// aggiorna stato locale
+
 giocatore.stato =
 "approvato";
+
+
+
+
+// aggiorna anche Supabase
+
+const {error}=await sb
+
+.from("iscrizioni")
+
+.update({
+
+stato:"approvato",
+
+approvato:true
+
+})
+
+.eq(
+"id",
+giocatore.id
+);
+
+
+
+if(error){
+
+console.error(
+"Errore approvazione iscrizione:",
+error
+);
+
+alert(
+"Errore approvazione"
+);
+
+return;
+
+}
+
 
 
 
@@ -1800,8 +1839,9 @@ torneo.configurazione?.partecipanti || [];
 
 if(
 !partecipanti.some(
-g => g.id === giocatore.id
+g=>g.id===giocatore.id
 )
+
 ){
 
 partecipanti.push(
@@ -1816,15 +1856,20 @@ torneo.configurazione.partecipanti =
 partecipanti;
 
 
+
 torneo.configurazione.iscritti =
 iscritti;
 
 
 
-await aggiornaConfigurazioneTorneo(torneo);
+await aggiornaConfigurazioneTorneo(
+torneo
+);
+
 
 
 renderAdmin();
+
 
 }
 
