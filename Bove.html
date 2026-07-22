@@ -5391,16 +5391,24 @@ async function updateAndSync(){
         ============================
         */
 
+
         const inputNome =
-            document.getElementById("nomeTorneoInput");
+            document.getElementById(
+                "nomeTorneoInput"
+            );
 
 
-        if(inputNome && inputNome.value.trim()){
+        if(
+            inputNome &&
+            inputNome.value.trim()!=""
+        ){
 
             state.nomeTorneo =
                 inputNome.value.trim();
 
         }
+
+
 
 
 
@@ -5410,7 +5418,10 @@ async function updateAndSync(){
         ============================
         */
 
-        if(!state.dataTorneo){
+
+        if(
+            !state.dataTorneo
+        ){
 
             state.dataTorneo =
                 new Date()
@@ -5421,11 +5432,35 @@ async function updateAndSync(){
 
 
 
+
+
         /*
         ============================
-        SOLO SALVATAGGIO LOCALE
+        GARANZIA ID TORNEO
         ============================
         */
+
+
+        if(
+            !state.idTorneo
+        ){
+
+            state.idTorneo =
+                Date.now();
+
+        }
+
+
+
+
+
+        /*
+        ============================
+        SALVATAGGIO LOCALE
+        SEMPRE ATTIVO
+        ============================
+        */
+
 
         localStorage.setItem(
 
@@ -5437,17 +5472,87 @@ async function updateAndSync(){
 
 
 
+
+
+        /*
+        ============================
+        SALVATAGGIO SUPABASE
+        SOLO SE CONFIGURATO
+        ============================
+        */
+
+
+        if(
+            typeof sb !== "undefined" &&
+            state.nomeTorneo &&
+            state.nomeTorneo.trim()!=""
+        ){
+
+
+            const {error}=
+
+                await sb
+                .from("tornei")
+                .upsert({
+
+                    id:
+                        state.idTorneo,
+
+
+                    nome:
+                        state.nomeTorneo,
+
+
+                    data:
+                        state.dataTorneo,
+
+
+                    stato:
+                        "attivo",
+
+
+                    configurazione:
+                        state
+
+                });
+
+
+
+            if(error){
+
+                console.error(
+
+                    "Errore sincronizzazione Supabase:",
+
+                    error
+
+                );
+
+            }
+
+
+        }
+
+
+
     }
 
 
     catch(e){
 
+
         console.error(
-            "Errore sincronizzazione locale:",
+
+            "Errore updateAndSync:",
+
             e
+
         );
 
+
     }
+
+
 
 
 
@@ -5457,16 +5562,43 @@ async function updateAndSync(){
     ============================
     */
 
-    if(typeof render==="function")
+
+    if(
+        typeof render==="function"
+    ){
 
         render();
+
+    }
 
 
 }
 async function salvaTorneoSupabase(){
 
-
     try{
+
+
+        /*
+        ============================
+        CONTROLLO SUPABASE
+        ============================
+        */
+
+
+        if(
+            typeof sb === "undefined"
+        ){
+
+            alert(
+                "Connessione Supabase non disponibile"
+            );
+
+            return;
+
+        }
+
+
+
 
 
         /*
@@ -5475,16 +5607,26 @@ async function salvaTorneoSupabase(){
         ============================
         */
 
+
         const inputNome =
-            document.getElementById("nomeTorneoInput");
+            document.getElementById(
+                "nomeTorneoInput"
+            );
 
 
-        if(inputNome && inputNome.value.trim()){
+
+        if(
+            inputNome &&
+            inputNome.value.trim()!=""
+        ){
 
             state.nomeTorneo =
                 inputNome.value.trim();
 
         }
+
+
+
 
 
         if(
@@ -5502,13 +5644,18 @@ async function salvaTorneoSupabase(){
 
 
 
+
+
         /*
         ============================
-        ID TORNEO
+        ID TORNEO UNIVOCO
         ============================
         */
 
-        if(!state.idTorneo){
+
+        if(
+            !state.idTorneo
+        ){
 
             state.idTorneo =
                 Date.now();
@@ -5517,13 +5664,18 @@ async function salvaTorneoSupabase(){
 
 
 
+
+
         /*
         ============================
-        DATA
+        DATA TORNEO
         ============================
         */
 
-        if(!state.dataTorneo){
+
+        if(
+            !state.dataTorneo
+        ){
 
             state.dataTorneo =
                 new Date()
@@ -5534,44 +5686,98 @@ async function salvaTorneoSupabase(){
 
 
 
+
+
         /*
         ============================
-        SALVATAGGIO SUPABASE
+        PREPARAZIONE DATI
         ============================
         */
 
-        const {data,error}=
 
-            await sb
-            .from("tornei")
-            .upsert({
+        const record = {
 
-                id:
-                    state.idTorneo,
 
-                nome:
-                    state.nomeTorneo,
+            id:
+                state.idTorneo,
 
-                data:
-                    state.dataTorneo,
 
-                stato:
-                    "attivo",
+            nome:
+                state.nomeTorneo,
 
-                configurazione:
-                    state
 
-            })
-            .select();
+            data:
+                state.dataTorneo,
+
+
+            stato:
+                "attivo",
+
+
+            configurazione:
+                state
+
+
+        };
+
+
+
+
+
+
+
+        /*
+        ============================
+        UPSERT TORNEO
+        ============================
+        */
+
+
+        const {
+
+            data,
+
+            error
+
+        } = await sb
+
+        .from("tornei")
+
+        .upsert(
+
+            record,
+
+            {
+                onConflict:
+                    "id"
+            }
+
+        )
+
+        .select();
+
+
+
+
 
 
 
         if(error){
 
+
             console.error(
-                "Errore salvataggio torneo:",
+
+                "Errore salvataggio Supabase:",
+
                 error
+
             );
+
+
+            alert(
+                "Errore durante il salvataggio torneo"
+            );
+
 
             return;
 
@@ -5579,22 +5785,48 @@ async function salvaTorneoSupabase(){
 
 
 
-        console.log(
-            "TORNEO SALVATO:",
-            data
-        );
+
+
+
+
+        /*
+        ============================
+        CONFERMA STATO LOCALE
+        ============================
+        */
 
 
         localStorage.setItem(
+
             "torneoState",
+
             JSON.stringify(state)
+
         );
+
+
+
+
+
+
+
+        console.log(
+
+            "TORNEO SALVATO:",
+
+            data
+
+        );
+
 
 
 
         alert(
+
             "Torneo salvato correttamente"
+
         );
+
 
 
     }
@@ -5602,10 +5834,22 @@ async function salvaTorneoSupabase(){
 
     catch(e){
 
+
         console.error(
+
             "Errore salvaTorneoSupabase:",
+
             e
+
         );
+
+
+        alert(
+
+            "Errore inatteso durante il salvataggio"
+
+        );
+
 
     }
 
@@ -5613,22 +5857,24 @@ async function salvaTorneoSupabase(){
 }
 async function loadState(){
 
-
     try{
 
 
         /*
-            ============================
-            CARICAMENTO DA ADMIN
-            ============================
+        ============================
+        CONTROLLO TORNEO DA ADMIN
+        ============================
         */
 
 
         const param =
+
             new URLSearchParams(
                 window.location.search
             )
             .get("torneo");
+
+
 
 
 
@@ -5639,9 +5885,12 @@ async function loadState(){
 
 
                 const dati =
+
                     JSON.parse(
                         decodeURIComponent(param)
                     );
+
+
 
 
 
@@ -5651,49 +5900,98 @@ async function loadState(){
 
 
                     idTorneo:
-                        dati.idTorneo,
+                        dati.idTorneo
+                        ||
+                        Date.now(),
 
 
                     nomeTorneo:
-                        dati.nomeTorneo,
+                        dati.nomeTorneo
+                        ||
+                        "",
 
 
                     dataTorneo:
-                        dati.data,
+                        dati.data
+                        ||
+                        "",
 
 
                     formato:
-                        dati.formula,
-
-
-                    posti:
-                        dati.posti,
+                        dati.posti
+                        ||
+                        8,
 
 
                     partecipanti:
-                        dati.partecipanti || [],
+                        dati.partecipanti
+                        ||
+                        [],
 
 
                     coppie:
-                        dati.coppie || []
+                        dati.coppie
+                        ||
+                        []
+
 
                 };
 
 
 
+
+
+                /*
+                ============================
+                CREAZIONE SQUADRE DA ADMIN
+                ============================
+                */
+
+
+                if(
+                    Array.isArray(dati.coppie)
+                ){
+
+
+                    state.A =
+
+                        dati.coppie.map(
+
+                            c =>
+
+                            c.g1 +
+                            " / " +
+                            c.g2
+
+                        );
+
+
+                }
+
+
+
+
+
+                state.B=[];
+                state.C=[];
+                state.D=[];
+                state.E=[];
+                state.F=[];
+
+
+
+
+
                 console.log(
-                    "TORNEO CARICATO DA ADMIN:",
+
+                    "TORNEO CARICATO DA ADMIN",
+
                     state
+
                 );
 
 
 
-                /*
-                    IMPORTANTE:
-                    se arriva da ADMIN
-                    NON deve caricare
-                    il vecchio stato Supabase
-                */
 
 
             }
@@ -5702,13 +6000,15 @@ async function loadState(){
 
 
                 console.error(
-                    "Errore lettura torneo URL:",
+
+                    "Errore lettura torneo Admin:",
+
                     e
+
                 );
 
 
             }
-
 
 
         }
@@ -5718,35 +6018,53 @@ async function loadState(){
         else{
 
 
-
             /*
-                ============================
-                CARICAMENTO SUPABASE
-                SOLO SE NON ARRIVA ADMIN
-                ============================
+            ============================
+            CARICAMENTO SUPABASE
+            SOLO SE NON ADMIN
+            ============================
             */
 
 
-            if(typeof sb !== "undefined"){
-
+            if(
+                typeof sb !== "undefined"
+            ){
 
 
                 let {
+
                     data,
+
                     error
 
                 } = await sb
 
-                .from("torneo")
 
-                .select("state")
+                .from("tornei")
 
-                .eq(
-                    "id",
-                    "torneo_data"
+
+                .select("*")
+
+
+                .order(
+
+                    "created_at",
+
+                    {
+                        ascending:false
+                    }
+
                 )
 
+
+                .limit(1)
+
+
                 .single();
+
+
+
+
 
 
 
@@ -5754,8 +6072,11 @@ async function loadState(){
 
 
                     console.warn(
-                        "Supabase:",
+
+                        "Nessun torneo Supabase:",
+
                         error
+
                     );
 
 
@@ -5764,17 +6085,38 @@ async function loadState(){
 
 
 
+
+
                 if(
+
                     data &&
-                    data.state
+
+                    data.configurazione
+
                 ){
 
 
-                    state={
+                    state = {
 
                         ...state,
 
-                        ...data.state
+                        ...data.configurazione,
+
+
+                        idTorneo:
+
+                            data.id,
+
+
+                        nomeTorneo:
+
+                            data.nome,
+
+
+                        dataTorneo:
+
+                            data.data
+
 
                     };
 
@@ -5788,6 +6130,9 @@ async function loadState(){
 
 
         }
+
+
+
 
 
 
@@ -5814,12 +6159,10 @@ async function loadState(){
 
 
 
-
-
     /*
-        ============================
-        GARANZIA REGOLE
-        ============================
+    ============================
+    GARANZIA REGOLE
+    ============================
     */
 
 
@@ -5831,12 +6174,10 @@ async function loadState(){
 
 
 
-
-
     /*
-        ============================
-        GARANZIA GIRONI
-        ============================
+    ============================
+    GARANZIA GIRONE
+    ============================
     */
 
 
@@ -5845,14 +6186,22 @@ async function loadState(){
         "A",
         "B",
         "C",
-        "D"
+        "D",
+        "E",
+        "F"
 
-    ].forEach(g=>{
+    ]
+
+    .forEach(g=>{
 
 
-        if(!Array.isArray(state[g]))
+        if(
+            !Array.isArray(state[g])
+        ){
 
             state[g]=[];
+
+        }
 
 
     });
@@ -5863,13 +6212,283 @@ async function loadState(){
 
 
 
+    /*
+    ============================
+    SISTEMA ARRAY PARTITE
+    ============================
+    */
+
+
+    function numeroPartite(girone){
+
+
+        let n =
+
+            Array.isArray(girone)
+
+            ?
+
+            girone.length
+
+            :
+
+            0;
+
+
+
+        let totale=0;
+
+
+
+        for(
+            let i=0;
+            i<n;
+            i++
+        ){
+
+
+            for(
+                let j=i+1;
+                j<n;
+                j++
+            ){
+
+                totale++;
+
+            }
+
+
+        }
+
+
+
+        return totale;
+
+
+    }
+
+
+
+
+
+
+
+    function sistema(nome,len,val){
+
+
+        if(
+            !Array.isArray(state[nome])
+        ){
+
+            state[nome]=[];
+
+        }
+
+
+
+
+
+        while(
+
+            state[nome].length < len
+
+        ){
+
+            state[nome].push(val);
+
+        }
+
+
+
+
+
+
+        if(
+
+            state[nome].length > len
+
+        ){
+
+            state[nome] =
+
+                state[nome]
+                .slice(0,len);
+
+        }
+
+
+    }
+
+
+
+
+
+
+
+    [
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+
+    ]
+
+    .forEach(g=>{
+
+
+        let totale =
+
+            numeroPartite(
+                state[g]
+            );
+
+
+
+        sistema(
+
+            g+"res",
+
+            totale,
+
+            "-"
+
+        );
+
+
+        sistema(
+
+            g+"time",
+
+            totale,
+
+            "-"
+
+        );
+
+
+        sistema(
+
+            g+"camp",
+
+            totale,
+
+            ""
+
+        );
+
+
+
+    });
+
+
+
+
+
 
 
     /*
-        ============================
-        SISTEMA ARRAY PARTITE
-        ============================
+    ============================
+    FASE FINALE
+    ============================
     */
+
+
+    if(
+        !Array.isArray(state.qRes)
+    )
+
+        state.qRes =
+            Array(4).fill("-");
+
+
+
+    if(
+        !Array.isArray(state.sTopRes)
+    )
+
+        state.sTopRes =
+            Array(2).fill("-");
+
+
+
+    if(
+        state.fTopRes===undefined
+    )
+
+        state.fTopRes="-";
+
+
+
+    if(
+        state.campioneTop===undefined
+    )
+
+        state.campioneTop=null;
+
+
+
+
+
+
+
+    /*
+    ============================
+    SALVATAGGIO STATO PULITO
+    ============================
+    */
+
+
+    localStorage.setItem(
+
+        "torneoState",
+
+        JSON.stringify(state)
+
+    );
+
+
+
+
+
+
+
+    /*
+    ============================
+    RENDER SOLO CON SQUADRE
+    ============================
+    */
+
+
+    if(
+
+        typeof render==="function"
+
+        &&
+
+        (
+
+            state.A.length>0 ||
+
+            state.B.length>0 ||
+
+            state.C.length>0 ||
+
+            state.D.length>0
+
+        )
+
+    ){
+
+        render();
+
+    }
+
+
+
+}
 
     function numeroPartite(girone){
 
@@ -6203,58 +6822,284 @@ function aggiornaNomeFormulaTorneo(){
 function reset(){
 
 
-    state={
+    if(
+        !confirm(
+            "Sei sicuro di voler cancellare il torneo corrente?"
+        )
+    )
+        return;
+
+
+
+
+
+    /*
+    ============================
+    RESET DATI TORNEO
+    ============================
+    */
+
+
+    state = {
+
 
         ...state,
 
 
+
+        idTorneo:null,
+
+
         nomeTorneo:"",
+
+
+        dataTorneo:"",
+
+
+
 
 
         A:[],
         B:[],
         C:[],
         D:[],
+        E:[],
+        F:[],
 
 
-        Ares:Array(6).fill("-"),
-        Bres:Array(6).fill("-"),
-        Cres:Array(6).fill("-"),
-        Dres:Array(6).fill("-"),
 
 
-        Atime:Array(6).fill("-"),
-        Btime:Array(6).fill("-"),
-        Ctime:Array(6).fill("-"),
-        Dtime:Array(6).fill("-"),
 
 
-        qRes:Array(4).fill("-"),
+        Ares:[],
+        Bres:[],
+        Cres:[],
+        Dres:[],
+        Eres:[],
+        Fres:[],
 
-        sTopRes:Array(2).fill("-"),
 
-        fTopRes:"-",
+
+        Atime:[],
+        Btime:[],
+        Ctime:[],
+        Dtime:[],
+        Etime:[],
+        Ftime:[],
+
+
+
+        Acamp:[],
+        Bcamp:[],
+        Ccamp:[],
+        Dcamp:[],
+        Ecamp:[],
+        Fcamp:[],
+
+
+
+
+
+
+
+        /*
+        ============================
+        FASE FINALE
+        ============================
+        */
+
+
+        qRes:
+
+            Array(4)
+            .fill("-"),
+
+
+
+        sTopRes:
+
+            Array(2)
+            .fill("-"),
+
+
+
+        fTopRes:
+
+            "-",
+
+
+
+        finalTop:[],
+
+
 
         campioneTop:null,
 
 
+
+
+
+
+
         /*
-            RESET BLOCCO REGOLAMENTO
+        ============================
+        MOTORI SPECIALI
+        ============================
         */
+
+
+        svizzero:null,
+
+
+        americano:null,
+
+
+        mexicano:null,
+
+
+        king:null,
+
+
+        short:null,
+
+
+
+
+
+
+
+
+        /*
+        ============================
+        RESET REGOLAMENTO
+        ============================
+        */
+
 
         rules:{
 
+
             ...state.rules,
 
-            locked:false
+
+            locked:false,
+
+
+            tipoTorneo:"",
+
+
+            formulaGironi:"",
+
+
+            formulaFinale:"",
+
+
+            numeroSquadre:0,
+
+
+            numeroGironi:0,
+
+
+            qualificatePerGirone:0,
+
+
+            numeroQualificateFinali:0,
+
+
+            usaQuarti:false,
+
+
+            usaSemifinali:false,
+
+
+            usaFinale:false
+
 
         }
+
+
 
     };
 
 
 
+
+
+
+
+
+
+    /*
+    ============================
+    PULIZIA STORAGE
+    ============================
+    */
+
+
+    localStorage.removeItem(
+        "savedTeams"
+    );
+
+
+
+    localStorage.setItem(
+
+        "torneoState",
+
+        JSON.stringify(state)
+
+    );
+
+
+
+
+
+
+
+    /*
+    ============================
+    CHIUSURA EVENTUALI MODAL
+    ============================
+    */
+
+
+    let modal =
+
+        document.getElementById(
+            "teamModal"
+        );
+
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    AGGIORNAMENTO UI
+    ============================
+    */
+
+
+    if(
+        typeof aggiornaNomeFormulaTorneo==="function"
+    )
+
+        aggiornaNomeFormulaTorneo();
+
+
+
     updateAndSync();
+
+
 
 }
 function calc(teams,res){
@@ -9334,6 +10179,7 @@ function applicaModelloTorneo(){
 
 
     let select =
+
         document.getElementById(
             "tipoTorneo"
         );
@@ -9347,39 +10193,60 @@ function applicaModelloTorneo(){
 
 
     let tipo =
+
         select.value;
 
 
 
+
+
+    if(!tipo)
+
+        return;
+
+
+
+
+
+
+
+
     /*
-        AGGIORNAMENTO DESCRIZIONE
-        FORMULA SELEZIONATA
+    ============================
+    DESCRIZIONE FORMULA
+    ============================
     */
 
-    if(typeof aggiornaDescrizioneTipoTorneo==="function")
 
-        aggiornaDescrizioneTipoTorneo(tipo);
+    if(
+        typeof aggiornaDescrizioneTipoTorneo==="function"
+    ){
+
+        aggiornaDescrizioneTipoTorneo();
+
+    }
+
+
+
+
+
+
 
 
 
     /*
-        ============================
-        MODELLO TORNEO SELEZIONATO
-        ============================
+    ============================
+    SALVA TIPO TORNEO
+    ============================
     */
 
 
     state.rules.tipoTorneo =
+
         tipo;
 
 
 
-    /*
-        IMPORTANTE:
-        formatoTorneo NON viene modificato qui.
-        Rimane il formato squadre scelto
-        dal pulsante Formato.
-    */
 
 
 
@@ -9387,29 +10254,68 @@ function applicaModelloTorneo(){
 
 
     /*
-        ============================
-        RESET PARAMETRI MODELLO
-        ============================
+    ============================
+    RESET FASE FINALE
+    ============================
     */
+
+
+    state.qRes =
+
+        Array(4)
+        .fill("-");
+
+
+
+    state.sTopRes =
+
+        Array(2)
+        .fill("-");
+
+
+
+    state.fTopRes = "-";
+
+
+
+    state.finalTop=[];
+
+
+    state.campioneTop=null;
+
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    PARAMETRI COMUNI
+    ============================
+    */
+
+
+    state.rules.usaQuarti=true;
+
+
+    state.rules.usaSemifinali=true;
+
+
+    state.rules.usaFinale=true;
+
 
 
     state.rules.formulaGironi="";
 
 
     state.rules.formulaFinale=
-        "eliminazione_diretta";
+        "eliminazioneDiretta";
 
 
-    state.rules.usaQuarti=true;
 
-    state.rules.usaSemifinali=true;
-
-    state.rules.usaFinale=true;
-
-
-    state.rules.ripescaggio=false;
-
-    state.rules.numeroRipescate=0;
 
 
 
@@ -9417,9 +10323,9 @@ function applicaModelloTorneo(){
 
 
     /*
-        ============================
-        MODELLI TORNEO
-        ============================
+    ============================
+    MODELLI TORNEO
+    ============================
     */
 
 
@@ -9430,31 +10336,33 @@ function applicaModelloTorneo(){
         case "italiana":
 
 
+
             state.rules.formulaGironi =
                 "tuttiControTutti";
 
-
-            state.rules.formulaFinale =
-                "eliminazioneDiretta";
 
 
             state.rules.qualificatePerGirone =
                 2;
 
 
+
             state.rules.numeroQualificateFinali =
-                state.rules.numeroGironi *
-                state.rules.qualificatePerGirone;
 
+                Number(
+                    state.rules.numeroGironi
+                )
+                *
+                2;
 
-            state.rules.usaQuarti=true;
-
-            state.rules.usaSemifinali=true;
-
-            state.rules.usaFinale=true;
 
 
         break;
+
+
+
+
+
 
 
 
@@ -9462,31 +10370,33 @@ function applicaModelloTorneo(){
         case "gironiFinale":
 
 
+
             state.rules.formulaGironi =
                 "tuttiControTutti";
 
-
-            state.rules.formulaFinale =
-                "eliminazioneDiretta";
 
 
             state.rules.qualificatePerGirone =
                 2;
 
 
+
             state.rules.numeroQualificateFinali =
-                state.rules.numeroGironi *
+
+                Number(
+                    state.rules.numeroGironi
+                )
+                *
                 2;
 
 
-            state.rules.usaQuarti=true;
-
-            state.rules.usaSemifinali=true;
-
-            state.rules.usaFinale=true;
-
 
         break;
+
+
+
+
+
 
 
 
@@ -9494,26 +10404,25 @@ function applicaModelloTorneo(){
         case "eliminazione":
 
 
-            state.rules.formulaGironi =
-                "";
 
+            state.rules.formulaGironi="";
 
-            state.rules.formulaFinale =
-                "eliminazioneDiretta";
 
 
             state.rules.numeroQualificateFinali =
-                state.rules.numeroSquadre;
 
+                Number(
+                    state.rules.numeroSquadre
+                );
 
-            state.rules.usaQuarti=true;
-
-            state.rules.usaSemifinali=true;
-
-            state.rules.usaFinale=true;
 
 
         break;
+
+
+
+
+
 
 
 
@@ -9521,26 +10430,60 @@ function applicaModelloTorneo(){
         case "svizzero":
 
 
+
             state.rules.formulaGironi =
                 "svizzero";
 
 
+
             state.rules.formulaFinale =
-                "eliminazioneDiretta";
+                "classifica";
+
 
 
             state.rules.numeroQualificateFinali =
                 4;
 
 
+
             state.rules.usaQuarti=false;
 
+
+
             state.rules.usaSemifinali=true;
+
+
 
             state.rules.usaFinale=true;
 
 
+
+
+
+            if(
+                !state.svizzero
+            )
+
+                state.svizzero={
+
+                    turno:1,
+
+                    totaleTurni:0,
+
+                    squadre:[],
+
+                    incontri:[]
+
+                };
+
+
+
         break;
+
+
+
+
+
 
 
 
@@ -9548,26 +10491,57 @@ function applicaModelloTorneo(){
         case "americano":
 
 
+
             state.rules.formulaGironi =
                 "americano";
+
 
 
             state.rules.formulaFinale =
                 "classifica";
 
 
-            state.rules.numeroQualificateFinali =
-                1;
+
+            state.rules.numeroQualificateFinali=1;
+
 
 
             state.rules.usaQuarti=false;
 
+
             state.rules.usaSemifinali=false;
+
 
             state.rules.usaFinale=false;
 
 
+
+
+
+            if(
+                !state.americano
+            )
+
+                state.americano={
+
+                    turno:1,
+
+                    totaleTurni:0,
+
+                    giocatori:[],
+
+                    rotazioni:[]
+
+                };
+
+
+
         break;
+
+
+
+
+
 
 
 
@@ -9575,26 +10549,55 @@ function applicaModelloTorneo(){
         case "mexicano":
 
 
+
             state.rules.formulaGironi =
                 "mexicano";
+
 
 
             state.rules.formulaFinale =
                 "classifica";
 
 
-            state.rules.numeroQualificateFinali =
-                1;
+
+            state.rules.numeroQualificateFinali=1;
+
 
 
             state.rules.usaQuarti=false;
 
+
             state.rules.usaSemifinali=false;
+
 
             state.rules.usaFinale=false;
 
 
+
+
+
+            if(
+                !state.mexicano
+            )
+
+                state.mexicano={
+
+                    turno:1,
+
+                    giocatori:[],
+
+                    abbinamenti:[]
+
+                };
+
+
+
         break;
+
+
+
+
+
 
 
 
@@ -9602,26 +10605,55 @@ function applicaModelloTorneo(){
         case "king":
 
 
+
             state.rules.formulaGironi =
                 "kingOfTheCourt";
+
 
 
             state.rules.formulaFinale =
                 "classifica";
 
 
-            state.rules.numeroQualificateFinali =
-                1;
+
+            state.rules.numeroQualificateFinali=1;
+
 
 
             state.rules.usaQuarti=false;
 
+
             state.rules.usaSemifinali=false;
+
 
             state.rules.usaFinale=false;
 
 
+
+
+
+            if(
+                !state.king
+            )
+
+                state.king={
+
+                    turno:1,
+
+                    campi:[],
+
+                    rotazioni:[]
+
+                };
+
+
+
         break;
+
+
+
+
+
 
 
 
@@ -9629,55 +10661,82 @@ function applicaModelloTorneo(){
         case "short":
 
 
+
             state.rules.formulaGironi =
                 "shortFormat";
 
 
-            state.rules.formulaFinale =
-                "eliminazioneDiretta";
 
+            state.rules.numeroQualificateFinali=4;
 
-            state.rules.numeroQualificateFinali =
-                4;
 
 
             state.rules.usaQuarti=true;
 
+
             state.rules.usaSemifinali=true;
+
 
             state.rules.usaFinale=true;
 
 
+
+
+
+            if(
+                !state.short
+            )
+
+                state.short={
+
+                    turno:1,
+
+                    incontri:[]
+
+                };
+
+
+
         break;
+
+
+
+
+
 
 
 
 
         case "manuale":
 
+
         case "personalizzato":
 
 
-            state.rules.formulaGironi =
-                "";
+
+            state.rules.formulaGironi="";
 
 
-            state.rules.formulaFinale =
-                "";
+            state.rules.formulaFinale="";
 
 
-            state.rules.numeroQualificateFinali =
-                0;
+
+            state.rules.numeroQualificateFinali=0;
+
 
 
             state.rules.usaQuarti=false;
 
+
             state.rules.usaSemifinali=false;
+
 
             state.rules.usaFinale=false;
 
 
+
         break;
+
 
 
     }
@@ -9685,25 +10744,37 @@ function applicaModelloTorneo(){
 
 
 
+
+
+
+
+
     /*
-        ============================
-        SALVATAGGIO E AGGIORNAMENTO
-        ============================
+    ============================
+    BLOCCO REGOLAMENTO
+    ============================
     */
 
 
-        /*
-        ============================
-        SALVATAGGIO E AGGIORNAMENTO
-        ============================
+    state.rules.locked=true;
+
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    SALVATAGGIO + RENDER
+    ============================
     */
 
 
     updateAndSync();
 
-
-    if(typeof render==="function")
-        render();
 
 
 }
