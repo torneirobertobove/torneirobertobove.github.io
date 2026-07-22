@@ -130,177 +130,69 @@ const sb = supabase.createClient(
 
 
 
-async function verifyAccess(){
+async function verifyAccess() {
+    try {
+        const { data: { session }, error: sessionError } = await sb.auth.getSession();
 
-
-    const {
-        data:{
-            session
+        if (sessionError) {
+            console.warn("Errore lettura sessione:", sessionError);
+            return;
         }
-    } = await sb.auth.getSession();
 
+        if (!session) {
+            console.warn("Nessun utente autenticato");
+            return;
+        }
 
+        const userId = session.user.id;
 
+        const { data: profilo, error } = await sb
+            .from("profili")
+            .select("nome,ruolo")
+            .eq("user_id", userId)
+            .single();
 
-    if(!session){
+        console.log("RISULTATO PROFILO:", profilo, error);
 
+        if (error || !profilo) {
+            console.warn("Profilo non trovato");
+            return;
+        }
 
-        console.warn(
-            "Nessun utente autenticato"
-        );
+        if ((profilo.ruolo || "").toLowerCase() !== "admin") {
+            console.warn("Utente senza permessi admin:", profilo);
+            return;
+        }
 
+        console.log("ACCESSO ADMIN:", profilo.nome);
 
-        bloccaGestionale();
-
-
-        return;
-
-
+    } catch (e) {
+        console.error("Errore verifyAccess:", e);
     }
-
-
-
-
-
-    const userId =
-        session.user.id;
-
-
-
-
-
-
-    const {
-        data:profilo,
-        error
-    }
-    =
-    await sb
-    .from("profili")
-    .select(
-        "nome,ruolo"
-    )
-    .eq(
-        "user_id",
-        userId
-    )
-    .single();
-
-
-
-
-
-
-
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
-    );
-
-
-
-
-
-
-
-
-    if(error || !profilo){
-
-
-        console.warn(
-            "Profilo amministratore non trovato"
-        );
-
-
-        bloccaGestionale();
-
-
-        return;
-
-
-    }
-
-
-
-
-
-
-
-
-    if(
-        profilo.ruolo !== "admin"
-    ){
-
-
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-
-
-        bloccaGestionale();
-
-
-        return;
-
-
-    }
-
-
-
-
-
-
-
-    console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
-    );
-
-
-
 }
 
-
-
-
-
-function bloccaGestionale(){
-
-
-    document
-    .querySelectorAll(
-        'input, button, textarea, select'
-    )
-    .forEach(el=>{
-
-
-        if(
-            !el.classList.contains("back")
-            &&
-            el.innerText !== "Stampa"
-        ){
-
-            el.disabled = true;
-
-            el.style.opacity = "0.6";
-
-        }
-
-
+function bloccaGestionale() {
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = true;
+        el.style.opacity = "0.6";
+        el.style.cursor = "not-allowed";
     });
 
+    document.querySelectorAll('button').forEach(el => {
+        const isBack = el.classList.contains("back");
+        const isStampa = el.innerText.trim() === "Stampa";
 
-    console.warn(
-        "Gestionale bloccato: serve un amministratore"
-    );
+        if (!isBack && !isStampa) {
+            el.style.opacity = "0.6";
+            el.style.cursor = "not-allowed";
+        }
+    });
 
-
+    console.warn("Gestionale bloccato: serve un amministratore");
 }
 </script>
 </head>
-<body onload="initDefaults(); verifyAccess()">
+<body onload="initDefaults()">
 <div id="teamModal" class="modal">
   <div class="modal-content">
     <h3>Inserisci Squadre</h3>
