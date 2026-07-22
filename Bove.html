@@ -5574,16 +5574,7 @@ async function salvaTorneoSupabase(){
     try{
 
 
-        /*
-        ============================
-        CONTROLLO SUPABASE
-        ============================
-        */
-
-
-        if(
-            typeof sb === "undefined"
-        ){
+        if(typeof sb === "undefined"){
 
             alert(
                 "Connessione Supabase non disponibile"
@@ -5595,33 +5586,21 @@ async function salvaTorneoSupabase(){
 
 
 
-
-
-        /*
-        ============================
-        NOME TORNEO
-        ============================
-        */
-
-
         const inputNome =
             document.getElementById(
                 "nomeTorneoInput"
             );
 
 
-
         if(
             inputNome &&
-            inputNome.value.trim()!=""
+            inputNome.value.trim() !== ""
         ){
 
             state.nomeTorneo =
                 inputNome.value.trim();
 
         }
-
-
 
 
 
@@ -5640,18 +5619,7 @@ async function salvaTorneoSupabase(){
 
 
 
-
-
-        /*
-        ============================
-        ID TORNEO UNIVOCO
-        ============================
-        */
-
-
-        if(
-            !state.idTorneo
-        ){
+        if(!state.idTorneo){
 
             state.idTorneo =
                 Date.now();
@@ -5660,18 +5628,7 @@ async function salvaTorneoSupabase(){
 
 
 
-
-
-        /*
-        ============================
-        DATA TORNEO
-        ============================
-        */
-
-
-        if(
-            !state.dataTorneo
-        ){
+        if(!state.dataTorneo){
 
             state.dataTorneo =
                 new Date()
@@ -5682,17 +5639,17 @@ async function salvaTorneoSupabase(){
 
 
 
+        localStorage.setItem(
 
+            "torneoState",
 
-        /*
-        ============================
-        PREPARAZIONE DATI
-        ============================
-        */
+            JSON.stringify(state)
+
+        );
+
 
 
         const record = {
-
 
             id:
                 state.idTorneo,
@@ -5713,20 +5670,8 @@ async function salvaTorneoSupabase(){
             configurazione:
                 state
 
-
         };
 
-
-
-
-
-
-
-        /*
-        ============================
-        UPSERT TORNEO
-        ============================
-        */
 
 
         const {
@@ -5744,8 +5689,7 @@ async function salvaTorneoSupabase(){
             record,
 
             {
-                onConflict:
-                    "id"
+                onConflict:"id"
             }
 
         )
@@ -5754,12 +5698,7 @@ async function salvaTorneoSupabase(){
 
 
 
-
-
-
-
         if(error){
-
 
             console.error(
 
@@ -5781,31 +5720,6 @@ async function salvaTorneoSupabase(){
 
 
 
-
-
-
-
-        /*
-        ============================
-        CONFERMA STATO LOCALE
-        ============================
-        */
-
-
-        localStorage.setItem(
-
-            "torneoState",
-
-            JSON.stringify(state)
-
-        );
-
-
-
-
-
-
-
         console.log(
 
             "TORNEO SALVATO:",
@@ -5815,14 +5729,21 @@ async function salvaTorneoSupabase(){
         );
 
 
-
-
         alert(
 
             "Torneo salvato correttamente"
 
         );
 
+
+        /*
+            NON RICHIAMARE render()
+            qui.
+            
+            Il render completo può bloccare
+            i pulsanti se una funzione grafica
+            contiene un errore.
+        */
 
 
     }
@@ -5848,7 +5769,6 @@ async function salvaTorneoSupabase(){
 
 
     }
-
 
 }
 async function loadState(){
@@ -11251,7 +11171,6 @@ function aggiornaDescrizioneTipoTorneo(){
 }
 async function initDefaults(){
 
-
     try{
 
 
@@ -11264,23 +11183,22 @@ async function initDefaults(){
 
 
         /*
-            AVVIO TORNEO DA ADMIN
-            CARICA IL TORNEO NELLO STATE
+            ============================
+            CARICAMENTO DA ADMIN
+            ============================
         */
 
+
         if(torneoDaAdmin){
-
-
-            console.log(
-                "Avvio torneo da ADMIN"
-            );
 
 
             try{
 
 
                 let torneo =
-                    JSON.parse(torneoDaAdmin);
+                    JSON.parse(
+                        decodeURIComponent(torneoDaAdmin)
+                    );
 
 
 
@@ -11290,15 +11208,15 @@ async function initDefaults(){
 
 
                     idTorneo:
-                        torneo.idTorneo,
+                        torneo.idTorneo || Date.now(),
 
 
                     nomeTorneo:
-                        torneo.nomeTorneo,
+                        torneo.nomeTorneo || "",
 
 
                     dataTorneo:
-                        torneo.data,
+                        torneo.data || "",
 
 
                     formato:
@@ -11314,12 +11232,6 @@ async function initDefaults(){
 
                 };
 
-
-
-                /*
-                    CREAZIONE SQUADRE
-                    UNA SQUADRA = DUE GIOCATORI
-                */
 
 
                 state.A =
@@ -11352,14 +11264,34 @@ async function initDefaults(){
 
 
 
-                if(typeof render==="function")
+                /*
+                    render protetto
+                */
 
-                    render();
+
+                if(
+                    typeof render==="function"
+                ){
+
+                    try{
+
+                        render();
+
+                    }
+                    catch(err){
+
+                        console.error(
+                            "Errore render dopo caricamento ADMIN:",
+                            err
+                        );
+
+                    }
+
+                }
 
 
 
                 return;
-
 
 
             }
@@ -11381,77 +11313,78 @@ async function initDefaults(){
 
 
         /*
-            AVVIO NORMALE
-            PAGINA PULITA
+            ============================
+            CARICAMENTO STATO ESISTENTE
+            ============================
         */
 
 
-        state = {
-
-            ...state,
-
-
-            nomeTorneo:"",
-            dataTorneo:"",
-            idTorneo:null,
+        let salvato =
+            localStorage.getItem(
+                "torneoState"
+            );
 
 
-            A:[],
-            B:[],
-            C:[],
-            D:[],
-            E:[],
-            F:[],
+
+        if(salvato){
 
 
-            Ares:[],
-            Bres:[],
-            Cres:[],
-            Dres:[],
-            Eres:[],
-            Fres:[],
+            try{
 
 
-            Atime:[],
-            Btime:[],
-            Ctime:[],
-            Dtime:[],
-            Etime:[],
-            Ftime:[],
+                state = {
+
+                    ...state,
+
+                    ...JSON.parse(salvato)
+
+                };
 
 
-            Acamp:[],
-            Bcamp:[],
-            Ccamp:[],
-            Dcamp:[],
-            Ecamp:[],
-            Fcamp:[],
+            }
+            catch(e){
 
 
-            qRes:
-                Array(4).fill("-"),
+                console.error(
+                    "Errore lettura torneo locale:",
+                    e
+                );
 
 
-            sTopRes:
-                Array(2).fill("-"),
+            }
 
 
-            fTopRes:"-",
+        }
 
 
-            finalTop:[],
+
+        /*
+            ============================
+            GARANZIA ARRAY
+            ============================
+        */
 
 
-            campioneTop:null,
+        [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+
+        ]
+        .forEach(g=>{
 
 
-            svizzero:null,
-            americano:null,
-            mexicano:null,
-            king:null,
-            short:null
+            if(
+                !Array.isArray(state[g])
+            )
 
-        };
+                state[g]=[];
+
+
+        });
 
 
 
@@ -11459,9 +11392,38 @@ async function initDefaults(){
 
 
 
-        localStorage.removeItem(
-            "savedTeams"
-        );
+        if(
+            !Array.isArray(state.qRes)
+        )
+
+            state.qRes =
+                Array(4).fill("-");
+
+
+
+        if(
+            !Array.isArray(state.sTopRes)
+        )
+
+            state.sTopRes =
+                Array(2).fill("-");
+
+
+
+        if(
+            state.fTopRes===undefined
+        )
+
+            state.fTopRes="-";
+
+
+
+        if(
+            state.campioneTop===undefined
+        )
+
+            state.campioneTop=null;
+
 
 
         localStorage.setItem(
@@ -11474,9 +11436,33 @@ async function initDefaults(){
 
 
 
-        if(typeof render==="function")
 
-            render();
+        /*
+            ============================
+            RENDER PROTETTO
+            ============================
+        */
+
+
+        if(
+            typeof render==="function"
+        ){
+
+            try{
+
+                render();
+
+            }
+            catch(err){
+
+                console.error(
+                    "Errore render iniziale:",
+                    err
+                );
+
+            }
+
+        }
 
 
 
@@ -11493,16 +11479,29 @@ async function initDefaults(){
     }
 
 }
-   window.addEventListener("load",()=>{
 
-    if(typeof initDefaults==="function")
+
+
+window.addEventListener("load",()=>{
+
+
+    if(
+        typeof initDefaults==="function"
+    )
+
         initDefaults();
 
 
-    if(typeof verifyAccess==="function")
+
+    if(
+        typeof verifyAccess==="function"
+    )
+
         verifyAccess();
 
+
 });
+
     </script>
 </body>
 </html>
