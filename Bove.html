@@ -9545,146 +9545,594 @@ function updateCamp(g,i,val){
     updateAndSync();
 
 }
-function renderTables() {
+function renderTables(){
 
     ensureRules();
 
-    function generaRoundRobin(n) {
-        let teams = Array.from({ length: n }, (_, i) => i);
-        let hasBye = false;
 
-        if (teams.length % 2 === 1) {
-            teams.push(null);
-            hasBye = true;
-        }
+    function generaRoundRobin(n){
 
-        let rounds = [];
-        let numTeams = teams.length;
-        let numRounds = numTeams - 1;
-        let half = numTeams / 2;
+        let squadre =
+            Array.from(
+                {length:n},
+                (_,i)=>i
+            );
 
-        for (let r = 0; r < numRounds; r++) {
-            let round = [];
-            for (let i = 0; i < half; i++) {
-                let t1 = teams[i];
-                let t2 = teams[numTeams - 1 - i];
-                if (t1 !== null && t2 !== null) {
-                    round.push([t1, t2]);
-                }
+
+        if(squadre.length % 2 !== 0)
+            squadre.push(null);
+
+
+        let rounds=[];
+
+        let totale =
+            squadre.length;
+
+
+        let turni =
+            totale-1;
+
+
+        let meta =
+            totale/2;
+
+
+
+        for(let r=0;r<turni;r++){
+
+
+            let round=[];
+
+
+            for(let i=0;i<meta;i++){
+
+
+                let a =
+                    squadre[i];
+
+
+                let b =
+                    squadre[totale-1-i];
+
+
+
+                if(
+                    a!==null &&
+                    b!==null
+                )
+
+                    round.push([a,b]);
+
+
             }
+
+
 
             rounds.push(round);
 
-            let fixed = teams[0];
-            let rest = teams.slice(1);
-            rest.unshift(rest.pop());
-            teams = [fixed].concat(rest);
+
+
+            let fisso =
+                squadre[0];
+
+
+            let resto =
+                squadre.slice(1);
+
+
+            resto.unshift(
+                resto.pop()
+            );
+
+
+            squadre =
+                [
+                    fisso,
+                    ...resto
+                ];
+
         }
 
-        if (state.rules.garaAndataRitorno === true) {
-            let ritorno = rounds.map(round =>
-                round.map(m => [m[1], m[0]])
-            );
-            rounds = rounds.concat(ritorno);
+
+
+        if(
+            state.rules.garaAndataRitorno===true
+        ){
+
+            let ritorno =
+                rounds.map(r=>
+
+                    r.map(m=>
+                        [
+                            m[1],
+                            m[0]
+                        ]
+                    )
+
+                );
+
+
+            rounds =
+                rounds.concat(
+                    ritorno
+                );
+
         }
+
+
 
         return rounds;
+
     }
 
-    let campiDisponibili = [2,3,4,5,6,7,8,9,10,11,12,13];
-    let durata = Number(state.rules.duration || 30);
-    let startTime = String(state.rules.start || "2000").padStart(4, "0");
-    let baseOra = Number(startTime.slice(0, 2)) || 20;
-    let baseMin = Number(startTime.slice(2, 4)) || 0;
 
-    let lettereGironi = ["A","B","C","D","E","F"];
 
-    let calendario = [];
 
-    lettereGironi.forEach(tag => {
-        let girone = state[tag];
-        if (!Array.isArray(girone) || girone.length < 2) return;
+    /*
+    ===============================
+    PARAMETRI CALENDARIO
+    ===============================
+    */
 
-        let rounds = generaRoundRobin(girone.length);
 
-        rounds.forEach((round, slot) => {
-            round.forEach((m, indexInRound) => {
+    let campi = [];
+
+
+    let numeroCampi =
+        Number(
+            state.rules.numeroCampi || 2
+        );
+
+
+    if(numeroCampi<1)
+        numeroCampi=1;
+
+
+
+    for(
+        let i=0;
+        i<numeroCampi;
+        i++
+    ){
+
+        campi.push(
+            i+2
+        );
+
+    }
+
+
+
+
+    let durata =
+        Number(
+            state.rules.duration || 30
+        );
+
+
+
+    let start =
+        String(
+            state.rules.start || "2000"
+        )
+        .padStart(4,"0");
+
+
+
+    let oraBase =
+        Number(
+            start.substring(0,2)
+        );
+
+
+    let minutiBase =
+        Number(
+            start.substring(2,4)
+        );
+
+
+
+
+    /*
+    ===============================
+    CREAZIONE CALENDARIO GLOBALE
+    ===============================
+    */
+
+
+    let calendario=[];
+
+
+
+    [
+        "A",
+        "B",
+        "C",
+        "D"
+    ]
+    .forEach(tag=>{
+
+
+        let squadre =
+            state[tag];
+
+
+        if(
+            !Array.isArray(squadre) ||
+            squadre.length<2
+        )
+
+            return;
+
+
+
+        let rounds =
+            generaRoundRobin(
+                squadre.length
+            );
+
+
+
+        rounds.forEach((round)=>{
+
+
+            round.forEach(match=>{
+
+
                 calendario.push({
-                    tag: tag,
-                    indice: calendario.filter(x => x.tag === tag).length,
-                    slot: slot,
-                    campo: campiDisponibili[indexInRound]
+
+                    girone:tag,
+
+                    casa:match[0],
+
+                    ospite:match[1],
+
+                    campo:null,
+
+                    slot:null
+
+
                 });
+
+
             });
+
+
         });
+
+
     });
 
-    lettereGironi.forEach(tag => {
-        let girone = state[tag];
-        if (!Array.isArray(girone) || girone.length < 2) return;
 
-        let rounds = generaRoundRobin(girone.length);
 
-        let matches = [];
-        rounds.forEach(round => round.forEach(m => matches.push(m)));
 
-        let totale = matches.length;
 
-        state[tag + "res"] = Array.isArray(state[tag + "res"]) ? state[tag + "res"] : [];
-        state[tag + "time"] = Array.isArray(state[tag + "time"]) ? state[tag + "time"] : [];
-        state[tag + "camp"] = Array.isArray(state[tag + "camp"]) ? state[tag + "camp"] : [];
+    /*
+    ===============================
+    CONTROLLO DISPONIBILITA'
+    ===============================
+    */
 
-        while (state[tag + "res"].length < totale) state[tag + "res"].push("-");
-        while (state[tag + "time"].length < totale) state[tag + "time"].push("");
-        while (state[tag + "camp"].length < totale) state[tag + "camp"].push("");
 
-        let rows = "";
+    let occupazioni=[];
 
-        matches.forEach((m, i) => {
-            let slot = Math.floor(i / Math.max(1, campiDisponibili.length));
-            let campo = campiDisponibili[i % campiDisponibili.length];
-            let minuti = slot * durata;
-            let ora = baseOra + Math.floor((baseMin + minuti) / 60);
-            let min = (baseMin + minuti) % 60;
 
-            if (!state[tag + "time"][i]) {
-                state[tag + "time"][i] = String(ora).padStart(2, "0") + ":" + String(min).padStart(2, "0");
+
+    calendario.forEach(partita=>{
+
+
+        let assegnata=false;
+
+
+        let slot=0;
+
+
+
+        while(!assegnata){
+
+
+
+            for(
+                let c=0;
+                c<campi.length;
+                c++
+            ){
+
+
+                let campo =
+                    campi[c];
+
+
+
+                let conflitto=false;
+
+
+
+                occupazioni.forEach(o=>{
+
+
+                    if(
+                        o.slot===slot &&
+                        o.campo===campo &&
+                        (
+                            o.squadre.includes(
+                                partita.casa
+                            )
+                            ||
+                            o.squadre.includes(
+                                partita.ospite
+                            )
+                        )
+                    ){
+
+                        conflitto=true;
+
+                    }
+
+
+                });
+
+
+
+
+                if(!conflitto){
+
+
+                    partita.campo =
+                        campo;
+
+
+                    partita.slot =
+                        slot;
+
+
+
+                    occupazioni.push({
+
+                        slot:slot,
+
+                        campo:campo,
+
+                        squadre:[
+
+                            partita.casa,
+
+                            partita.ospite
+
+                        ]
+
+                    });
+
+
+
+                    assegnata=true;
+
+
+                    break;
+
+                }
+
+
             }
 
-            if (!state[tag + "camp"][i]) {
-                state[tag + "camp"][i] = campo;
-            }
 
-            let risultato = String(state[tag + "res"][i] || "-").split("-");
+
+            if(!assegnata)
+                slot++;
+
+
+        }
+
+
+
+    });
+
+
+
+
+
+
+
+    /*
+    ===============================
+    DISEGNO TABELLE
+    ===============================
+    */
+
+
+
+    [
+        "A",
+        "B",
+        "C",
+        "D"
+    ]
+    .forEach(tag=>{
+
+
+        let box =
+            document.getElementById(
+                tag+"rows"
+            );
+
+
+        if(!box)
+            return;
+
+
+
+        let partite =
+            calendario.filter(
+                x=>x.girone===tag
+            );
+
+
+
+        let rows="";
+
+
+
+        state[tag+"res"] =
+            Array.isArray(state[tag+"res"])
+            ?
+            state[tag+"res"]
+            :
+            [];
+
+
+
+        state[tag+"time"] =
+            Array.isArray(state[tag+"time"])
+            ?
+            state[tag+"time"]
+            :
+            [];
+
+
+
+        state[tag+"camp"] =
+            Array.isArray(state[tag+"camp"])
+            ?
+            state[tag+"camp"]
+            :
+            [];
+
+
+
+
+
+        partite.forEach((m,i)=>{
+
+
+
+            let minuti =
+                minutiBase +
+                (m.slot*durata);
+
+
+
+            let ora =
+                oraBase +
+                Math.floor(
+                    minuti/60
+                );
+
+
+            let min =
+                minuti%60;
+
+
+
+            let tempo =
+                String(ora)
+                .padStart(2,"0")
+                +
+                ":"
+                +
+                String(min)
+                .padStart(2,"0");
+
+
+
+            state[tag+"time"][i]=tempo;
+
+
+            state[tag+"camp"][i]=
+                m.campo;
+
+
+
+            if(!state[tag+"res"][i])
+
+                state[tag+"res"][i]="-";
+
+
+
+            let risultato =
+                String(
+                    state[tag+"res"][i]
+                )
+                .split("-");
+
+
+
 
             rows += `
+
 <tr>
+
 <td>
-<input value="${state[tag + "camp"][i]}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px">
+<input
+value="${m.campo}"
+oninput="updateCamp('${tag}',${i},this.value)"
+style="width:45px">
 </td>
+
+
 <td>
-<input value="${state[tag + "time"][i]}" oninput="updateTime('${tag}',${i},0,this.value)">
+
+<input
+value="${tempo}"
+oninput="updateTime('${tag}',${i},0,this.value)">
+
 </td>
+
+
 <td>
-${girone[m[0]] || "-"}
+
+${state[tag][m.casa]}
+
 <br>
+
 <b>VS</b>
+
 <br>
-${girone[m[1]] || "-"}
+
+${state[tag][m.ospite]}
+
 </td>
+
+
 <td>
+
 <div class="db-cell">
-<input value="${risultato[0] === "-" ? "" : risultato[0]}" oninput="updateRes('${tag}',${i},0,this.value)">
-<input value="${risultato[1] === "-" ? "" : risultato[1]}" oninput="updateRes('${tag}',${i},1,this.value)">
+
+<input
+value="${risultato[0]==='-'?'':risultato[0]}"
+oninput="updateRes('${tag}',${i},0,this.value)"
+>
+
+
+<input
+value="${risultato[1] || ''}"
+oninput="updateRes('${tag}',${i},1,this.value)"
+>
+
 </div>
+
+
 </td>
+
+
 </tr>
+
 `;
+
+
+
         });
 
-        let box = document.getElementById(tag + "rows");
-        if (box) box.innerHTML = rows;
+
+
+        box.innerHTML=rows;
+
+
     });
+
+
+
+    updateAndSync();
+
 }
 function getFinalQualified(){
 
