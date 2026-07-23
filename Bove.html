@@ -5796,12 +5796,13 @@ async function loadState(){
         ============================
         */
 
-        const param =
 
+        const param =
             new URLSearchParams(
                 window.location.search
             )
             .get("torneo");
+
 
 
 
@@ -5812,7 +5813,6 @@ async function loadState(){
 
 
                 const dati =
-
                     JSON.parse(
                         decodeURIComponent(param)
                     );
@@ -5825,45 +5825,43 @@ async function loadState(){
 
 
                     idTorneo:
-
-                        dati.idTorneo
-                        ||
-                        Date.now(),
+                        dati.idTorneo || Date.now(),
 
 
                     nomeTorneo:
-
-                        dati.nomeTorneo
-                        ||
-                        "",
+                        dati.nomeTorneo || "",
 
 
                     dataTorneo:
-
-                        dati.data
-                        ||
-                        "",
+                        dati.data || "",
 
 
                     formato:
+                        dati.posti || 8,
 
-                        dati.posti
-                        ||
-                        8,
+
+                    rules:{
+
+                        ...state.rules,
+
+                        locked:false,
+
+                        numeroSquadre:
+                            dati.posti || 8,
+
+
+                        tipoTorneo:
+                            dati.formula || "manuale"
+
+                    },
 
 
                     partecipanti:
-
-                        dati.partecipanti
-                        ||
-                        [],
+                        dati.partecipanti || [],
 
 
                     coppie:
-
-                        dati.coppie
-                        ||
-                        []
+                        dati.coppie || []
 
                 };
 
@@ -5873,9 +5871,14 @@ async function loadState(){
 
                 /*
                 ============================
-                CREAZIONE SQUADRE ADMIN
+                CONVERSIONE COPPIE ADMIN
+                IN SQUADRE TORNEO
                 ============================
                 */
+
+
+                let squadre=[];
+
 
 
                 if(
@@ -5883,45 +5886,54 @@ async function loadState(){
                 ){
 
 
-                    let squadre =
+                    squadre =
 
-                        dati.coppie.map(
-
-                            c =>
-
-                            c.g1 +
-                            " / " +
-                            c.g2
-
-                        );
+                        dati.coppie.map(c=>{
 
 
+                            return (
 
-                    let meta =
+                                (c.g1 || "")
+                                +
+                                " / "
+                                +
+                                (c.g2 || "")
 
-                        Math.ceil(
-                            squadre.length / 2
-                        );
-
-
-
-                    state.A =
-
-                        squadre.slice(
-                            0,
-                            meta
-                        );
+                            );
 
 
-
-                    state.B =
-
-                        squadre.slice(
-                            meta
-                        );
+                        });
 
 
                 }
+
+
+
+
+
+                let meta =
+
+                    Math.ceil(
+                        squadre.length / 2
+                    );
+
+
+
+
+                state.A =
+
+                    squadre.slice(
+                        0,
+                        meta
+                    );
+
+
+
+                state.B =
+
+                    squadre.slice(
+                        meta
+                    );
 
 
 
@@ -5932,8 +5944,9 @@ async function loadState(){
 
 
 
+
                 console.log(
-                    "TORNEO CARICATO DA ADMIN",
+                    "TORNEO ADMIN CARICATO",
                     state
                 );
 
@@ -5943,10 +5956,12 @@ async function loadState(){
 
             catch(e){
 
+
                 console.error(
                     "Errore lettura torneo Admin:",
                     e
                 );
+
 
             }
 
@@ -5961,7 +5976,8 @@ async function loadState(){
 
             /*
             ============================
-            CARICAMENTO SUPABASE
+            CARICAMENTO ULTIMO TORNEO
+            SUPABASE
             ============================
             */
 
@@ -5969,7 +5985,6 @@ async function loadState(){
             if(
                 typeof sb !== "undefined"
             ){
-
 
 
                 const {
@@ -5980,29 +5995,20 @@ async function loadState(){
 
                 } = await sb
 
-
                 .from("tornei")
-
 
                 .select("*")
 
-
                 .order(
-
                     "created_at",
-
                     {
                         ascending:false
                     }
-
                 )
-
 
                 .limit(1)
 
-
                 .single();
-
 
 
 
@@ -6010,7 +6016,7 @@ async function loadState(){
                 if(error){
 
                     console.warn(
-                        "Nessun torneo Supabase:",
+                        "Nessun torneo Supabase",
                         error
                     );
 
@@ -6019,13 +6025,9 @@ async function loadState(){
 
 
 
-
                 if(
-
                     data &&
-
                     data.configurazione
-
                 ){
 
 
@@ -6034,22 +6036,18 @@ async function loadState(){
 
                         ...state,
 
-
                         ...data.configurazione,
 
 
                         idTorneo:
-
                             data.id,
 
 
                         nomeTorneo:
-
                             data.nome,
 
 
                         dataTorneo:
-
                             data.data
 
 
@@ -6065,6 +6063,7 @@ async function loadState(){
         }
 
 
+
     }
 
     catch(e){
@@ -6077,6 +6076,7 @@ async function loadState(){
 
 
     }
+
 
 
 
@@ -6120,9 +6120,11 @@ async function loadState(){
 
         if(
             !Array.isArray(state[g])
-        )
+        ){
 
             state[g]=[];
+
+        }
 
 
     });
@@ -6132,9 +6134,10 @@ async function loadState(){
 
 
 
+
     /*
     ============================
-    SISTEMA ARRAY PARTITE
+    SISTEMA ARRAY RISULTATI
     ============================
     */
 
@@ -6143,43 +6146,39 @@ async function loadState(){
 
 
         let n =
-
             Array.isArray(girone)
-
             ?
-
             girone.length
-
             :
-
             0;
-
 
 
         let totale=0;
 
 
 
-        for(let i=0;i<n;i++){
+        for(
+            let i=0;
+            i<n;
+            i++
+        ){
 
-
-            for(let j=i+1;j<n;j++){
-
+            for(
+                let j=i+1;
+                j<n;
+                j++
+            ){
 
                 totale++;
-
 
             }
 
         }
 
 
-
         return totale;
 
-
     }
-
 
 
 
@@ -6190,33 +6189,39 @@ async function loadState(){
 
         if(
             !Array.isArray(state[nome])
-        )
+        ){
 
             state[nome]=[];
+
+        }
 
 
 
 
         while(
             state[nome].length < len
-        )
+        ){
 
             state[nome].push(val);
+
+        }
 
 
 
 
         if(
             state[nome].length > len
-        )
+        ){
 
             state[nome] =
-
                 state[nome]
                 .slice(0,len);
 
+        }
+
 
     }
+
 
 
 
@@ -6330,6 +6335,7 @@ async function loadState(){
 
 
 
+
     /*
     ============================
     FORMATO
@@ -6339,10 +6345,13 @@ async function loadState(){
 
     if(
         state.formato===undefined
-    )
+    ){
 
         state.formato =
             state.rules.numeroSquadre;
+
+    }
+
 
 
 
@@ -6352,7 +6361,7 @@ async function loadState(){
 
     /*
     ============================
-    SALVATAGGIO STATO PULITO
+    SALVATAGGIO
     ============================
     */
 
@@ -6371,6 +6380,7 @@ async function loadState(){
 
 
 
+
     /*
     ============================
     RENDER
@@ -6379,7 +6389,23 @@ async function loadState(){
 
 
     if(
+
         typeof render==="function"
+
+        &&
+
+        (
+
+            state.A.length>0 ||
+
+            state.B.length>0 ||
+
+            state.C.length>0 ||
+
+            state.D.length>0
+
+        )
+
     ){
 
         render();
@@ -6388,7 +6414,6 @@ async function loadState(){
 
 
 }
-
 
 
 function handleFile(e){
