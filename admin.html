@@ -493,81 +493,65 @@ e
 
 async function initAdmin(){
 
+    caricaAdminState();
 
-caricaAdminState();
+    const {data} = await sb.auth.getSession();
+
+    const session = data?.session;
+
+    if(!session){
+
+        location.href="index.html";
+
+        return false;
+
+    }
 
 
+    const {data:profilo,error} = await sb
 
-const {data} = await sb.auth.getSession();
+    .from("profili")
 
+    .select("*")
 
-const session = data?.session;
-if(!session){
+    .eq(
+        "user_id",
+        session.user.id
+    )
 
-location.href="index.html";
-
-return false;
-
-}
-
-const {data:profilo,error} = await sb
-.from("profili")
-
-.select("*")
-
-.eq(
-"user_id",
-session.user.id
-)
-
-.single();
-
+    .single();
 
 
 
+    if(error || !profilo || profilo.ruolo !== "admin"){
 
-if(error || !profilo || profilo.ruolo !== "admin"){
+        await sb.auth.signOut();
 
+        location.href="index.html";
 
-await sb.auth.signOut();
+        return false;
 
-
-location.href="index.html";
-
-
-return false;
+    }
 
 
-}
+    adminState.adminLoggato = true;
+
+    adminState.adminEmail =
+    session.user.email || "";
+
+    adminState.profile =
+    profilo;
 
 
+    salvaAdminState();
 
 
+    await apriDashboardAdmin();
 
 
-adminState.adminLoggato = true;
-
-
-adminState.adminEmail = session.user.email || "";
-
-
-adminState.profile = profilo;
-
-
-
-salvaAdminState();
-
-
-
-await apriDashboardAdmin();
-
-
-
-return true;
-
+    return true;
 
 }
-
 
 async function apriDashboardAdmin(){
 
