@@ -9566,6 +9566,7 @@ function renderTables(){
 
     function generaRoundRobin(n){
 
+
         let squadre =
             Array.from(
                 {length:n},
@@ -9573,8 +9574,12 @@ function renderTables(){
             );
 
 
-        if(squadre.length % 2 !== 0)
+        if(
+            squadre.length % 2 !== 0
+        )
+
             squadre.push(null);
+
 
 
         let rounds=[];
@@ -9592,13 +9597,23 @@ function renderTables(){
 
 
 
-        for(let r=0;r<turni;r++){
+
+        for(
+            let r=0;
+            r<turni;
+            r++
+        ){
 
 
             let round=[];
 
 
-            for(let i=0;i<meta;i++){
+
+            for(
+                let i=0;
+                i<meta;
+                i++
+            ){
 
 
                 let a =
@@ -9615,14 +9630,17 @@ function renderTables(){
                     b!==null
                 )
 
-                    round.push([a,b]);
-
+                    round.push([
+                        a,
+                        b
+                    ]);
 
             }
 
 
 
             rounds.push(round);
+
 
 
 
@@ -9634,36 +9652,59 @@ function renderTables(){
                 squadre.slice(1);
 
 
+
             resto.unshift(
                 resto.pop()
             );
 
 
+
             squadre =
-                [
-                    fisso,
-                    ...resto
-                ];
+            [
+
+                fisso,
+
+                ...resto
+
+            ];
+
+
 
         }
 
+
+
+
+
+
+        /*
+        ===============================
+        ANDATA / RITORNO
+        ===============================
+        */
 
 
         if(
             state.rules.garaAndataRitorno===true
         ){
 
-            let ritorno =
-                rounds.map(r=>
 
-                    r.map(m=>
-                        [
-                            m[1],
-                            m[0]
-                        ]
-                    )
+            let ritorno =
+
+                rounds.map(r =>
+
+                    r.map(m =>
+
+                    [
+
+                        m[1],
+
+                        m[0]
+
+                    ])
 
                 );
+
 
 
             rounds =
@@ -9677,7 +9718,10 @@ function renderTables(){
 
         return rounds;
 
+
     }
+
+
 
 
 
@@ -9689,17 +9733,25 @@ function renderTables(){
     */
 
 
-    let campi = [];
+    let campi=[];
+
 
 
     let numeroCampi =
+
         Number(
-            state.rules.numeroCampi || 2
+            state.rules.numeroCampi
         );
 
 
-    if(numeroCampi<1)
-        numeroCampi=1;
+
+    if(
+        !numeroCampi ||
+        numeroCampi<1
+    )
+
+        numeroCampi=2;
+
 
 
 
@@ -9718,38 +9770,129 @@ function renderTables(){
 
 
 
+
+
     let durata =
+
         Number(
-            state.rules.duration || 30
+            state.rules.duration
         );
 
 
 
-    let start =
-        String(
-            state.rules.start || "2000"
-        )
-        .padStart(4,"0");
+    if(
+        !durata ||
+        durata<1
+    )
+
+        durata=30;
 
 
 
-    let oraBase =
-        Number(
-            start.substring(0,2)
-        );
-
-
-    let minutiBase =
-        Number(
-            start.substring(2,4)
-        );
 
 
 
 
     /*
     ===============================
-    CREAZIONE CALENDARIO GLOBALE
+    LETTURA ORARIO INIZIO
+    SUPPORTA:
+
+    20:00
+
+    oppure
+
+    2000
+    ===============================
+    */
+
+
+    let start =
+
+        String(
+            state.rules.start ||
+            "20:00"
+        );
+
+
+
+    let oraBase=20;
+
+    let minutiBase=0;
+
+
+
+
+
+    if(
+        start.includes(":")
+    ){
+
+
+        let p =
+            start.split(":");
+
+
+
+        oraBase =
+            Number(
+                p[0]
+            )
+            ||
+            20;
+
+
+
+        minutiBase =
+            Number(
+                p[1]
+            )
+            ||
+            0;
+
+
+
+    }
+
+    else{
+
+
+        start =
+            start
+            .padStart(4,"0");
+
+
+
+        oraBase =
+
+            Number(
+                start.substring(0,2)
+            )
+            ||
+            20;
+
+
+
+        minutiBase =
+
+            Number(
+                start.substring(2,4)
+            )
+            ||
+            0;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    ===============================
+    CREAZIONE CALENDARIO
     ===============================
     */
 
@@ -9758,17 +9901,21 @@ function renderTables(){
 
 
 
+
     [
+
         "A",
         "B",
         "C",
         "D"
+
     ]
     .forEach(tag=>{
 
 
         let squadre =
             state[tag];
+
 
 
         if(
@@ -9780,14 +9927,18 @@ function renderTables(){
 
 
 
+
         let rounds =
+
             generaRoundRobin(
                 squadre.length
             );
 
 
 
-        rounds.forEach((round)=>{
+
+
+        rounds.forEach(round=>{
 
 
             round.forEach(match=>{
@@ -9795,13 +9946,18 @@ function renderTables(){
 
                 calendario.push({
 
+
                     girone:tag,
+
 
                     casa:match[0],
 
+
                     ospite:match[1],
 
+
                     campo:null,
+
 
                     slot:null
 
@@ -9809,10 +9965,13 @@ function renderTables(){
                 });
 
 
+
             });
 
 
+
         });
+
 
 
     });
@@ -9821,14 +9980,18 @@ function renderTables(){
 
 
 
+
+
     /*
     ===============================
-    CONTROLLO DISPONIBILITA'
+    ASSEGNAZIONE CAMPI
+    SENZA SOVRAPPOSIZIONE SQUADRE
     ===============================
     */
 
 
     let occupazioni=[];
+
 
 
 
@@ -9839,6 +10002,7 @@ function renderTables(){
 
 
         let slot=0;
+
 
 
 
@@ -9853,6 +10017,7 @@ function renderTables(){
             ){
 
 
+
                 let campo =
                     campi[c];
 
@@ -9862,26 +10027,39 @@ function renderTables(){
 
 
 
+
                 occupazioni.forEach(o=>{
 
 
+
                     if(
+
                         o.slot===slot &&
+
                         o.campo===campo &&
+
                         (
+
                             o.squadre.includes(
                                 partita.casa
                             )
+
                             ||
+
                             o.squadre.includes(
                                 partita.ospite
                             )
+
                         )
+
                     ){
+
 
                         conflitto=true;
 
+
                     }
+
 
 
                 });
@@ -9892,8 +10070,10 @@ function renderTables(){
                 if(!conflitto){
 
 
+
                     partita.campo =
                         campo;
+
 
 
                     partita.slot =
@@ -9903,17 +10083,25 @@ function renderTables(){
 
                     occupazioni.push({
 
+
                         slot:slot,
+
 
                         campo:campo,
 
+
                         squadre:[
+
 
                             partita.casa,
 
+
                             partita.ospite
 
+
                         ]
+
+
 
                     });
 
@@ -9924,18 +10112,384 @@ function renderTables(){
 
                     break;
 
+
+
                 }
+
 
 
             }
 
 
 
+
             if(!assegnata)
+
                 slot++;
 
 
+
         }
+
+
+
+    });
+    /*
+    ===============================
+    DISEGNO TABELLE
+    ===============================
+    */
+
+
+    [
+
+        "A",
+        "B",
+        "C",
+        "D"
+
+    ]
+    .forEach(tag=>{
+
+
+        let box =
+
+            document.getElementById(
+                tag+"rows"
+            );
+
+
+
+        if(!box)
+
+            return;
+
+
+
+
+        let partite =
+
+            calendario.filter(
+
+                x =>
+                    x.girone===tag
+
+            );
+
+
+
+        let rows="";
+
+
+
+
+
+
+        if(
+            !Array.isArray(
+                state[tag+"res"]
+            )
+        )
+
+            state[tag+"res"]=[];
+
+
+
+
+        if(
+            !Array.isArray(
+                state[tag+"time"]
+            )
+        )
+
+            state[tag+"time"]=[];
+
+
+
+
+        if(
+            !Array.isArray(
+                state[tag+"camp"]
+            )
+        )
+
+            state[tag+"camp"]=[];
+
+
+
+
+
+
+
+
+        partite.forEach((m,i)=>{
+
+
+
+            /*
+            ===============================
+            CALCOLO ORARIO PARTITA
+            ===============================
+            */
+
+
+            let minutiTotali =
+
+                minutiBase +
+
+                (
+                    m.slot *
+                    durata
+                );
+
+
+
+
+            let ora =
+
+                oraBase +
+
+                Math.floor(
+                    minutiTotali / 60
+                );
+
+
+
+
+            let minuti =
+
+                minutiTotali % 60;
+
+
+
+
+
+            if(ora>=24)
+
+                ora -= 24;
+
+
+
+
+
+            let tempo =
+
+
+                String(ora)
+                .padStart(2,"0")
+
+                +
+
+                ":"
+
+                +
+
+                String(minuti)
+                .padStart(2,"0");
+
+
+
+
+
+
+
+            state[tag+"time"][i]=
+                tempo;
+
+
+
+            state[tag+"camp"][i]=
+                m.campo;
+
+
+
+
+
+
+
+            if(
+                !state[tag+"res"][i]
+            )
+
+                state[tag+"res"][i]="-";
+
+
+
+
+
+
+            let risultato =
+
+                String(
+                    state[tag+"res"][i]
+                )
+                .split("-");
+
+
+
+
+
+
+
+
+
+            rows += `
+
+
+<tr>
+
+
+<td>
+
+<input
+
+value="${m.campo}"
+
+oninput="updateCamp('${tag}',${i},this.value)"
+
+style="width:45px"
+
+>
+
+</td>
+
+
+
+
+
+<td>
+
+
+<input
+
+value="${tempo}"
+
+oninput="updateTime('${tag}',${i},0,this.value)"
+
+>
+
+</td>
+
+
+
+
+
+
+
+<td>
+
+
+${
+
+state[tag][m.casa]
+
+}
+
+
+<br>
+
+
+<b>
+
+VS
+
+</b>
+
+
+<br>
+
+
+${
+
+state[tag][m.ospite]
+
+}
+
+
+
+</td>
+
+
+
+
+
+
+
+<td>
+
+
+<div class="db-cell">
+
+
+
+<input
+
+
+value="${
+
+risultato[0]==="-"
+
+?
+
+""
+
+:
+
+risultato[0]
+
+}"
+
+
+oninput="updateRes('${tag}',${i},0,this.value)"
+
+>
+
+
+
+<input
+
+
+value="${
+
+risultato[1] || ""
+
+}"
+
+
+oninput="updateRes('${tag}',${i},1,this.value)"
+
+>
+
+
+
+</div>
+
+
+
+</td>
+
+
+
+
+
+
+</tr>
+
+
+
+`;
+
+
+
+        });
+
+
+
+
+
+
+        box.innerHTML = rows;
+
 
 
 
@@ -9949,203 +10503,14 @@ function renderTables(){
 
     /*
     ===============================
-    DISEGNO TABELLE
+    SALVATAGGIO
     ===============================
     */
 
 
-
-    [
-        "A",
-        "B",
-        "C",
-        "D"
-    ]
-    .forEach(tag=>{
-
-
-        let box =
-            document.getElementById(
-                tag+"rows"
-            );
-
-
-        if(!box)
-            return;
-
-
-
-        let partite =
-            calendario.filter(
-                x=>x.girone===tag
-            );
-
-
-
-        let rows="";
-
-
-
-        state[tag+"res"] =
-            Array.isArray(state[tag+"res"])
-            ?
-            state[tag+"res"]
-            :
-            [];
-
-
-
-        state[tag+"time"] =
-            Array.isArray(state[tag+"time"])
-            ?
-            state[tag+"time"]
-            :
-            [];
-
-
-
-        state[tag+"camp"] =
-            Array.isArray(state[tag+"camp"])
-            ?
-            state[tag+"camp"]
-            :
-            [];
-
-
-
-
-
-        partite.forEach((m,i)=>{
-
-
-
-            let minuti =
-                minutiBase +
-                (m.slot*durata);
-
-
-
-            let ora =
-                oraBase +
-                Math.floor(
-                    minuti/60
-                );
-
-
-            let min =
-                minuti%60;
-
-
-
-            let tempo =
-                String(ora)
-                .padStart(2,"0")
-                +
-                ":"
-                +
-                String(min)
-                .padStart(2,"0");
-
-
-
-            state[tag+"time"][i]=tempo;
-
-
-            state[tag+"camp"][i]=
-                m.campo;
-
-
-
-            if(!state[tag+"res"][i])
-
-                state[tag+"res"][i]="-";
-
-
-
-            let risultato =
-                String(
-                    state[tag+"res"][i]
-                )
-                .split("-");
-
-
-
-
-            rows += `
-
-<tr>
-
-<td>
-<input
-value="${m.campo}"
-oninput="updateCamp('${tag}',${i},this.value)"
-style="width:45px">
-</td>
-
-
-<td>
-
-<input
-value="${tempo}"
-oninput="updateTime('${tag}',${i},0,this.value)">
-
-</td>
-
-
-<td>
-
-${state[tag][m.casa]}
-
-<br>
-
-<b>VS</b>
-
-<br>
-
-${state[tag][m.ospite]}
-
-</td>
-
-
-<td>
-
-<div class="db-cell">
-
-<input
-value="${risultato[0]==='-'?'':risultato[0]}"
-oninput="updateRes('${tag}',${i},0,this.value)"
->
-
-
-<input
-value="${risultato[1] || ''}"
-oninput="updateRes('${tag}',${i},1,this.value)"
->
-
-</div>
-
-
-</td>
-
-
-</tr>
-
-`;
-
-
-
-        });
-
-
-
-        box.innerHTML=rows;
-
-
-    });
-
-
-
     updateAndSync();
+
+
 
 }
 function getFinalQualified(){
