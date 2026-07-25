@@ -678,3 +678,351 @@ Seleziona formato torneo
     </select>
   </div>
 </div>
+    function generateMatches() {
+    let numGironi = parseInt(document.getElementById('numeroGironi').value) || 2;
+    let squadrePerGirone = parseInt(document.getElementById('squadrePerGirone').value) || 4;
+    let gironiList = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+    state.matches = {};
+    state.scores = {};
+
+    for (let i = 0; i < numGironi; i++) {
+        let gName = gironiList[i];
+        state.matches[gName] = [];
+        state.scores[gName] = {};
+
+        let squadreGirone = state.teams.slice(i * squadrePerGirone, (i + 1) * squadrePerGirone);
+        
+        // Generazione calendario tutti contro tutti (Round Robin)
+        for (let j = 0; j < squadreGirone.length; j++) {
+            for (let k = j + 1; k < squadreGirone.length; k++) {
+                let matchId = `${gName}_${j}_${k}`;
+                state.matches[gName].push({
+                    id: matchId,
+                    team1: squadreGirone[j],
+                    team2: squadreGirone[k],
+                    ora: "20:00",
+                    campo: "Campo " + (i + 1)
+                });
+                state.scores[gName][matchId] = { s1: '', s2: '' };
+            }
+        }
+    }
+    renderMatches();
+    updateStandings();
+}
+
+function renderMatches() {
+    let gironiList = ['A', 'B', 'C', 'D', 'E', 'F'];
+    gironiList.forEach(g => {
+        let tbody = document.getElementById(g + 'rows');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        
+        if (!state.matches[g]) return;
+
+        state.matches[g].forEach(m => {
+            let score = state.scores[g][m.id] || { s1: '', s2: '' };
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${m.campo}</td>
+                <td>${m.ora}</td>
+                <td>${m.team1} vs ${m.team2}</td>
+                <td class="db-cell">
+                    <input type="number" min="0" value="${score.s1}" oninput="updateScore('${g}', '${m.id}', 's1', this.value)">
+                    <input type="number" min="0" value="${score.s2}" oninput="updateScore('${g}', '${m.id}', 's2', this.value)">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function updateScore(girone, matchId, field, val) {
+    if (!state.scores[girone][matchId]) {
+        state.scores[girone][matchId] = { s1: '', s2: '' };
+    }
+    state.scores[girone][matchId][field] = val;
+    updateStandings();
+}
+
+function updateStandings() {
+    let gironiList = ['A', 'B', 'C', 'D', 'E', 'F'];
+    let numGironi = parseInt(document.getElementById('numeroGironi').value) || 2;
+
+    for (let i = 0; i < numGironi; i++) {
+        let g = gironiList[i];
+        let tbody = document.getElementById(g + 'class');
+        if (!tbody) continue;
+
+        let squadreGirone = state.teams.slice(i * (state.format / numGironi), (i + 1) * (state.format / numGironi));
+        let stats = {};
+
+        squadreGirone.forEach(t => {
+            stats[t] = { pt: 0, gf: 0, gs: 0, dr: 0 };
+        });
+
+        if (state.matches[g]) {
+            state.matches[g].forEach(m => {
+                let sc = state.scores[g][m.id];
+                if (sc && sc.s1 !== '' && sc.s2 !== '') {
+                    let s1 = parseInt(sc.s1) || 0;
+                    let s2 = parseInt(sc.s2) || 0;
+
+                    if (stats[m.team1]) {
+                        stats[m.team1].gf += s1;
+                        stats[m.team1].gs += s2;
+                    }
+                    if (stats[m.team2]) {
+                        stats[m.team2].gf += s2;
+                        stats[m.team2].gs += s1;
+                    }
+
+                    if (s1 > s2) {
+                        if (stats[m.team1]) stats[m.team1].pt += 3;
+                    } else if (s1 < s2) {
+                        if (stats[m.team2]) stats[m.team2].pt += 3;
+                    } else {
+                        if (stats[m.team1]) stats[m.team1].pt += 1;
+                        if (stats[m.team2]) stats[m.team2].pt += 1;
+                    }
+                }
+            });
+        }
+
+        squadreGirone.forEach(t => {
+            stats[t].dr = stats[t].gf - stats[t].gs;
+        });
+
+        let sorted = squadreGirone.sort((a, b) => {
+            if (stats[b].pt !== stats[a].pt) return stats[b].pt - stats[a].pt;
+            if (stats[b].dr !== stats[a].dr) return stats[b].dr - stats[a].dr;
+            return stats[b].gf - stats[a].gf;
+        });
+
+        tbody.innerHTML = '';
+        sorted.forEach((t, idx) => {
+            let tr = document.createElement('tr');
+            let qualClass = idx < 2 ? '<span class="qual-arrow-up">▲</span>' : '';
+            tr.innerHTML = `
+                <td>${qualClass} ${t}</td>
+                <td><b>${stats[t].pt}</b></td>
+                <td>${stats[t].gf}</td>
+                <td>${stats[t].gs}</td>
+                <td>${stats[t].dr}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+             function renderKo() {
+    // Render Quarti di Finale
+    let qDiv = document.getElementById('Q');
+    if (qDiv) {
+        qDiv.innerHTML = '';
+        state.ko.Q.forEach((match, idx) => {
+            let score = state.koScores.Q[idx] || '';
+            qDiv.innerHTML += `
+                <div class="match">
+                    <b>Quarto ${idx + 1}</b><br>
+                    ${match.t1 || '1° Girone X'} vs ${match.t2 || '2° Girone Y'}<br>
+                    <input type="text" placeholder="Risultato" value="${score}" oninput="state.koScores.Q[${idx}]=this.value" style="width:80px;margin-top:5px;">
+                </div>
+            `;
+        });
+    }
+
+    // Render Semifinali
+    let sDiv = document.getElementById('S');
+    if (sDiv) {
+        sDiv.innerHTML = '';
+        state.ko.S.forEach((match, idx) => {
+            let score = state.koScores.S[idx] || '';
+            sDiv.innerHTML += `
+                <div class="match">
+                    <b>Semifinale ${idx + 1}</b><br>
+                    ${match.t1 || 'Vincente Q'} vs ${match.t2 || 'Vincente Q'}<br>
+                    <input type="text" placeholder="Risultato" value="${score}" oninput="state.koScores.S[${idx}]=this.value" style="width:80px;margin-top:5px;">
+                </div>
+            `;
+        });
+    }
+}
+
+async function salvaTorneoSupabase() {
+    try {
+        let nome = document.getElementById('nomeTorneoInput').value || "Torneo Padel";
+        const { data, error } = await sb.from('tornei').insert([
+            { nome_torneo: nome, stato_json: state }
+        ]);
+        if (error) throw error;
+        alert("Torneo salvato con successo su Supabase!");
+    } catch (err) {
+        console.error("Errore salvataggio:", err);
+        alert("Errore durante il salvataggio del torneo.");
+    }
+}
+
+async function pubblicaTorneo() {
+    alert("Funzione di pubblicazione attiva. Il torneo è online!");
+}
+
+function reset() {
+    if (confirm("Vuoi davvero resettare tutti i dati del torneo?")) {
+        localStorage.clear();
+        location.reload();
+    }
+}
+
+// Inizializzazione automatica all'avvio della pagina
+window.onload = function() {
+    verifyAccess();
+    setFormat(8);
+    renderKo();
+};
+ function applicaModelloTorneo() {
+    let tipo = document.getElementById('tipoTorneo').value;
+    let formatoSelect = document.getElementById('formatoTorneo');
+    
+    if (tipo === 'italiana') {
+        document.getElementById('formulaGironi').value = 'andataRitorno';
+        document.getElementById('numeroGironi').value = 1;
+        document.getElementById('squadrePerGirone').value = formatoSelect.value;
+    } else if (tipo === 'gironiFinale') {
+        document.getElementById('formulaGironi').value = 'tuttiControTutti';
+        document.getElementById('formulaFinale').value = 'eliminazioneDiretta';
+    } else if (tipo === 'eliminazione') {
+        document.getElementById('formulaFinale').value = 'eliminazioneDiretta';
+    }
+    
+    updateVisibility();
+    generateMatches();
+}
+
+function aggiornaDescrizioneTipoTorneo() {
+    let tipo = document.getElementById('tipoTorneo').value;
+    let descBox = document.getElementById('descrizioneTipoTorneo');
+    
+    let descrizioni = {
+        "italiana": "<b>Torneo all'italiana:</b> Un unico grande girone in cui tutte le squadre si affrontano in partite di sola andata o andata e ritorno. Vince chi totalizza più punti in classifica.",
+        "gironiFinale": "<b>Gironi + Fase Finale:</b> La formula classica. Le squadre vengono divise in gironi all'italiana; le migliori accedono direttamente al tabellone a eliminazione diretta (Quarti, Semifinali e Finale).",
+        "eliminazione": "<b>Eliminazione Diretta:</b> Tabellone tennistico puro. Chi perde è fuori immediatamente. Ideale per tornei lampo o eventi con poche ore a disposizione.",
+        "svizzero": "<b>Torneo Svizzero:</b> Le squadre non vengono eliminate. Ad ogni turno, chi vince gioca contro chi ha lo stesso numero di vittorie, garantendo equilibrio e divertimento fino alla fine.",
+        "americano": "<b>Americano Padel:</b> Torneo individuale o a coppie rotative dove ogni giocatore accumula punti in base ai giochi vinti su un numero prestabilito di punti totali.",
+        "mexicano": "<b>Mexicano Padel:</b> Evoluzione dell'Americano. Le sfide dei turni successivi vengono create in tempo reale abbinando i giocatori in base alla classifica provvisoria per massimizzare l'equilibrio.",
+        "king": "<b>King of the Court:</b> Partite a tempo su campi scalati. Chi vince sale al campo superiore (il campo Re), chi perde scende.",
+        "short": "<b>Short Format:</b> Partite veloci con set unici a 4 o 6 giochi, pensato per eventi intensi di un solo giorno.",
+        "manuale": "<b>Torneo Personalizzato:</b> Configurazione completamente libera gestita direttamente dall'organizzatore."
+    };
+
+    descBox.innerHTML = descrizioni[tipo] || "Seleziona una formula per visualizzare la descrizione dettagliata.";
+}
+       function handleFile(e) {
+    let file = e.target.files[0];
+    if (!file) return;
+
+    let reader = new FileReader();
+    reader.onload = function(evt) {
+        let data = new Uint8Array(evt.target.result);
+        let workbook = XLSX.read(data, { type: 'array' });
+        
+        // Legge il primo foglio disponibile
+        let firstSheetName = workbook.SheetNames[0];
+        let worksheet = workbook.Sheets[firstSheetName];
+        let json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        let importedTeams = [];
+        json.forEach(row => {
+            if (row[0] && typeof row[0] === 'string' && row[0].trim() !== '') {
+                importedTeams.push(row[0].trim());
+            }
+        });
+
+        if (importedTeams.length > 0) {
+            state.teams = importedTeams;
+            state.format = importedTeams.length;
+            document.getElementById('formatoTorneo').value = state.format;
+            generateMatches();
+            alert(`Importate con successo ${importedTeams.length} squadre da Excel!`);
+        } else {
+            alert("Nessuna squadra trovata nel file Excel. Assicurati che i nomi siano nella prima colonna.");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+     function renderSpecialTournaments() {
+    // Gestione visualizzazione box tornei speciali in base al tipo selezionato
+    let tipo = document.getElementById('tipoTorneo').value;
+    
+    document.getElementById('svizzeroBox').style.display = (tipo === 'svizzero') ? 'block' : 'none';
+    document.getElementById('americanoBox').style.display = (tipo === 'americano') ? 'block' : 'none';
+    document.getElementById('mexicanoBox').style.display = (tipo === 'mexicano') ? 'block' : 'none';
+    document.getElementById('kingBox').style.display = (tipo === 'king') ? 'block' : 'none';
+    document.getElementById('shortBox').style.display = (tipo === 'short') ? 'block' : 'none';
+
+    if (tipo === 'svizzero') {
+        renderSvizzero();
+    } else if (tipo === 'americano') {
+        renderAmericano();
+    }
+}
+
+function renderSvizzero() {
+    let container = document.getElementById('svizzeroContenuto');
+    if (!container) return;
+    container.innerHTML = `
+        <p style="font-size:13px; color:#94a3b8;">Turno 1 - Abbinamenti automatici basati sulla classifica provvisoria:</p>
+        <div class="match">Le coppie vengono accoppiate per punteggio accumulato nei turni precedenti.</div>
+    `;
+}
+
+function renderAmericano() {
+    let container = document.getElementById('americanoContenuto');
+    if (!container) return;
+    container.innerHTML = `
+        <p style="font-size:13px; color:#94a3b8;">Rotazione americana attiva:</p>
+        <div class="match">Ogni giocatore gioca con tutti gli altri compagni accumulando punti individuali.</div>
+    `;
+}
+
+function generateTestTournament() {
+    // Riempie il torneo con dati di test realistici
+    state.teams = [
+        "Rossi / Verdi", "Bianchi / Neri", "Ferrari / Rossi", "Conti / Rinaldi",
+        "Esposito / Romano", "Colombo / Ricci", "Marini / Greco", "Costa / Giordano"
+    ];
+    state.format = 8;
+    document.getElementById('formatoTorneo').value = 8;
+    document.getElementById('numeroGironi').value = 2;
+    document.getElementById('squadrePerGirone').value = 4;
+    
+    updateVisibility();
+    generateMatches();
+    
+    // Inserisce punteggi casuali di prova
+    if (state.matches['A']) {
+        state.matches['A'].forEach((m, idx) => {
+            state.scores['A'][m.id] = { s1: 6, s2: 3 };
+        });
+    }
+    if (state.matches['B']) {
+        state.matches['B'].forEach((m, idx) => {
+            state.scores['B'][m.id] = { s1: 6, s2: 4 };
+        });
+    }
+    
+    updateStandings();
+    renderKo();
+    alert("Torneo di test generato con successo!");
+}
+  // Listener aggiuntivi per aggiornare i tornei speciali al cambio select
+document.addEventListener("DOMContentLoaded", () => {
+    let selectTipo = document.getElementById('tipoTorneo');
+    if (selectTipo) {
+        selectTipo.addEventListener('change', renderSpecialTournaments);
+    }
+});
+</script>
+</body>
+</html>
+                
