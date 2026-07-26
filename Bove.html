@@ -3113,66 +3113,8 @@ async function loadState(){
 
                 state = {
                     ...state,
-
-                    idTorneo:
-                        dati.idTorneo ||
-                        Date.now(),
-
-                    nomeTorneo:
-                        dati.nomeTorneo ||
-                        "",
-
-                    dataTorneo:
-                        dati.data ||
-                        "",
-
-                    formato:
-                        Number(dati.posti) ||
-                        8,
-
-                    rules:{
-                        ...state.rules,
-                        locked:false,
-                        numeroSquadre:
-                            Number(dati.posti) ||
-                            8,
-                        tipoTorneo:
-                            dati.formula ||
-                            "manuale"
-                    },
-
-                    partecipanti:
-                        dati.partecipanti ||
-                        [],
-
-                    coppie:
-                        dati.coppie ||
-                        [],
-
-                    A:[],
-                    B:[],
-                    C:[],
-                    D:[],
-                    E:[],
-                    F:[]
+                    ...dati
                 };
-
-
-                const squadre = (dati.coppie || []).map((c,i)=>({
-
-                    id:i+1,
-                    nome:"Coppia " + (i+1),
-                    giocatore1:c.g1 || "",
-                    giocatore2:c.g2 || ""
-
-                }));
-
-
-                const meta = Math.ceil(squadre.length / 2);
-
-                state.A = squadre.slice(0,meta);
-                state.B = squadre.slice(meta);
-
 
             }
             catch(e){
@@ -3184,9 +3126,7 @@ async function loadState(){
         }
         else{
 
-
             const salvato = localStorage.getItem("torneoState");
-
 
             if(salvato){
 
@@ -3196,7 +3136,6 @@ async function loadState(){
                         ...state,
                         ...JSON.parse(salvato)
                     };
-
 
                 }
                 catch(e){
@@ -3210,14 +3149,15 @@ async function loadState(){
         }
 
 
-
         ensureRules();
-
 
 
         /*
         ============================
-        COMPATIBILITA' BOVE ORIGINALE
+        COMPATIBILITA' BOVE
+        ============================
+        ricostruisce A/B/C/D
+        dalla nuova struttura gironi
         ============================
         */
 
@@ -3225,16 +3165,13 @@ async function loadState(){
         if(!state.gironi){
 
             state.gironi={
-
                 A:[],
                 B:[],
                 C:[],
                 D:[]
-
             };
 
         }
-
 
 
         [
@@ -3245,13 +3182,6 @@ async function loadState(){
         ].forEach(g=>{
 
 
-            /*
-            PRIORITA':
-            1) state.A originale Bove
-            2) state.gironi nuovo formato
-            */
-
-
             if(
                 Array.isArray(state[g]) &&
                 state[g].length>0
@@ -3260,18 +3190,13 @@ async function loadState(){
                 state.gironi[g]=state[g];
 
             }
-
             else if(
-
-                Array.isArray(state.gironi[g]) &&
-                state.gironi[g].length>0
-
+                Array.isArray(state.gironi[g])
             ){
 
                 state[g]=state.gironi[g];
 
             }
-
             else{
 
                 state[g]=[];
@@ -3290,13 +3215,11 @@ async function loadState(){
             "F"
         ].forEach(g=>{
 
-
             if(!Array.isArray(state[g])){
 
                 state[g]=[];
 
             }
-
 
         });
 
@@ -3304,7 +3227,7 @@ async function loadState(){
 
         /*
         ============================
-        ARRAY PARTITE
+        SISTEMA ARRAY PARTITE
         ============================
         */
 
@@ -3342,11 +3265,11 @@ async function loadState(){
 
 
         if(!Array.isArray(state.qRes))
-            state.qRes = Array(4).fill("-");
+            state.qRes=Array(4).fill("-");
 
 
         if(!Array.isArray(state.sTopRes))
-            state.sTopRes = Array(2).fill("-");
+            state.sTopRes=Array(2).fill("-");
 
 
         if(state.fTopRes===undefined)
@@ -3359,7 +3282,9 @@ async function loadState(){
 
 
         /*
-        SINCRONIZAZIONE FINALE
+        ============================
+        SALVA STATO CORRETTO
+        ============================
         */
 
         localStorage.setItem(
@@ -3370,8 +3295,11 @@ async function loadState(){
 
         console.log(
             "LOADSTATE COMPLETATO",
+            "A:",
             state.A,
+            "B:",
             state.B,
+            "GIRONI:",
             state.gironi
         );
 
@@ -3385,15 +3313,6 @@ async function loadState(){
         );
 
     }
-}
-function numeroPartite(girone){
-
-    const n = Array.isArray(girone)
-        ? girone.length
-        : 0;
-
-    return (n*(n-1))/2;
-
 }
 
 
