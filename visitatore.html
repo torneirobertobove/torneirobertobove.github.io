@@ -2,6 +2,7 @@
 <html lang="it">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -68,6 +69,13 @@ margin:0 0 10px 0;
 color:#94a3b8;
 }
 
+.squadra{
+background:#064e3b;
+padding:10px;
+margin-top:6px;
+border-radius:8px;
+}
+
 .back-btn{
 background:#475569;
 color:white;
@@ -91,11 +99,6 @@ color:#94a3b8;
 
 .errore{
 color:#ef4444;
-text-align:center;
-}
-
-.successo{
-color:#22c55e;
 text-align:center;
 }
 
@@ -162,7 +165,6 @@ const {
 
 data:{
 user
-
 }
 
 }
@@ -174,13 +176,10 @@ await sb.auth.getUser();
 
 if(!user){
 
-
-window.location.href="login.html";
-
-return null;
-
+console.warn("Utente non autenticato");
 
 }
+
 
 
 return user;
@@ -229,9 +228,7 @@ await sb
 
 .from("tornei")
 
-.select(
-"id,nome,data,posti,stato,pubblicato,configurazione"
-)
+.select("*")
 
 .eq(
 "pubblicato",
@@ -243,7 +240,6 @@ true
 {
 ascending:true
 }
-
 );
 
 
@@ -298,7 +294,7 @@ box.innerHTML=`
 
 <div class="torneo-item">
 
-Nessun torneo disponibile
+Nessun torneo pubblicato trovato
 
 </div>
 
@@ -328,34 +324,42 @@ await creaSchedaTorneo(torneo);
 
 
 }
-
   async function creaSchedaTorneo(torneo){
 
-
-const box=document.getElementById(
-"lista-tornei"
-);
+const box=document.getElementById("lista-tornei");
 
 
+let configurazione = torneo.configurazione || {};
 
-let configurazione =
-torneo.configurazione || {};
-
-
-
-let numeroSquadre=8;
+let numeroSquadre = 0;
 
 
-
-if(
-configurazione.rules &&
-configurazione.rules.numeroSquadre
-){
+if(configurazione.rules && configurazione.rules.numeroSquadre){
 
 numeroSquadre =
 Number(configurazione.rules.numeroSquadre);
 
 }
+else if(configurazione.numeroSquadre){
+
+numeroSquadre =
+Number(configurazione.numeroSquadre);
+
+}
+else if(configurazione.formato){
+
+numeroSquadre =
+Number(configurazione.formato);
+
+}
+
+
+if(!numeroSquadre){
+
+numeroSquadre=8;
+
+}
+
 
 
 const massimoGiocatori =
@@ -370,7 +374,7 @@ const {
 
 data:iscritti,
 
-error
+error:errorIscritti
 
 }
 
@@ -379,9 +383,7 @@ await sb
 
 .from("iscrizioni")
 
-.select(
-"id,nome_giocatore,stato"
-)
+.select("id,nome_giocatore,nome_completo,stato")
 
 .eq(
 "torneo_id",
@@ -397,24 +399,25 @@ torneo.id
 
 
 
-if(error){
+if(errorIscritti){
 
 console.error(
-"Errore iscrizioni:",
-error
+"Errore caricamento iscritti:",
+errorIscritti
 );
 
 }
 
 
 
-const listaIscritti =
+
+const listaIscrittiSafe =
 iscritti || [];
 
 
 
 const numeroIscritti =
-listaIscritti.length;
+listaIscrittiSafe.length;
 
 
 
@@ -430,39 +433,36 @@ numeroIscritti >= massimoGiocatori;
 
 
 
-let listaHTML="";
+
+let listaIscrittiHTML="";
 
 
 
-if(listaIscritti.length){
+if(listaIscrittiSafe.length){
 
 
-listaIscritti.forEach(
-(g,i)=>{
+listaIscrittiSafe.forEach((g,i)=>{
 
 
-listaHTML += `
+listaIscrittiHTML += `
 
-<div style="
-padding:5px;
-border-bottom:1px solid #374151">
+<div style="padding:4px 0;border-bottom:1px solid #374151">
 
-${i+1})
-${g.nome_completo || g.nome_giocatore || "Anonimo"}
+${i+1}) ${g.nome_completo || g.nome_giocatore || "Anonimo"}
 
 </div>
 
 `;
 
+
 });
 
 
 }
-
 else{
 
 
-listaHTML=
+listaIscrittiHTML=
 
 "<div style='color:#94a3b8'>Nessun giocatore iscritto</div>";
 
@@ -475,45 +475,36 @@ listaHTML=
 
 
 
-
 let squadreHTML="";
 
 
 
-for(
-let i=0;
-i<listaIscritti.length-1;
-i+=2
-){
+for(let i=0;i<listaIscrittiSafe.length-1;i+=2){
 
 
-let g1 =
-listaIscritti[i];
+let giocatore1 =
+listaIscrittiSafe[i];
 
 
-let g2 =
-listaIscritti[i+1];
+let giocatore2 =
+listaIscrittiSafe[i+1];
 
 
 
-if(g1 && g2){
+if(giocatore1 && giocatore2){
 
 
 squadreHTML += `
 
-<div style="
-background:#064e3b;
-padding:10px;
-border-radius:8px;
-margin-top:6px">
+<div class="squadra">
 
 🎾 Squadra ${Math.floor(i/2)+1}
 
 <br>
 
-<b>
-${g1.nome_completo || g1.nome_giocatore || "Giocatore 1"}
-</b>
+<strong>
+${giocatore1.nome_completo || giocatore1.nome_giocatore || "Giocatore 1"}
+</strong>
 
 <br>
 
@@ -521,20 +512,20 @@ ${g1.nome_completo || g1.nome_giocatore || "Giocatore 1"}
 
 <br>
 
-<b>
-${g2.nome_completo || g2.nome_giocatore || "Giocatore 2"}
-</b>
-
+<strong>
+${giocatore2.nome_completo || giocatore2.nome_giocatore || "Giocatore 2"}
+</strong>
 
 </div>
 
 `;
 
-}
 
 
 }
 
+
+}
 
 
 
@@ -546,82 +537,70 @@ box.innerHTML += `
 <div class="torneo-item">
 
 
-<h3 style="
-color:#10b981;
-margin-top:0">
+<h3 style="margin:0 0 10px 0;color:#10b981">
 
-🏆 ${torneo.nome}
+🏆 ${torneo.nome || "Torneo senza nome"}
 
 </h3>
 
 
 
+<div style="margin:8px 0">
 
-<div>
-
-📅 Data:
-<b>${torneo.data || "-"}</b>
-
-</div>
-
-
-
-<div style="margin-top:8px">
-
-🎾 Formato:
-
-<b>
-${numeroSquadre} squadre
-</b>
-
-<br>
-
-👥 Massimo:
-<b>
-${massimoGiocatori} giocatori
-</b>
+📅 <strong>Data:</strong>
+${torneo.data || "-"}
 
 </div>
 
 
 
 
-<div style="margin-top:8px">
+<div style="margin:8px 0">
+
+🎾 <strong>Formato:</strong>
+
+${numeroSquadre}
+
+squadre
+
+(${massimoGiocatori}
+
+giocatori max)
+
+</div>
 
 
-👥 Iscritti:
 
-<b>
+
+<div style="margin:8px 0">
+
+👥 <strong>Iscritti:</strong>
+
 ${numeroIscritti}/${massimoGiocatori}
-</b>
 
+giocatori
 
 </div>
 
 
 
 
-<div style="
-margin-top:10px;
-font-weight:bold">
-
+<div style="margin:8px 0;font-weight:bold">
 
 ${
 chiuso
 
 ?
 
-"<span style='color:#ef4444'>❌ ISCRIZIONI CHIUSE</span>"
+'<span style="color:#ef4444">❌ ISCRIZIONI CHIUSE</span>'
 
 :
 
-"<span style='color:#22c55e'>✅ Posti disponibili: "+disponibili+"</span>"
+'<span style="color:#10b981">✅ Posti disponibili: '+disponibili+' giocatori</span>'
 
 }
 
-
 </div>
-
 
 
 
@@ -636,9 +615,7 @@ ${chiuso ? "disabled" : ""}
 
 >
 
-
 ${chiuso ? "Chiuso" : "Iscriviti"}
-
 
 </button>
 
@@ -656,7 +633,7 @@ ${chiuso ? "Chiuso" : "Iscriviti"}
 </h4>
 
 
-${listaHTML}
+${listaIscrittiHTML}
 
 
 </div>
@@ -676,12 +653,11 @@ ${listaHTML}
 </h4>
 
 
-${
 
+${
 squadreHTML ||
 
 "<div style='color:#94a3b8'>In attesa della prima coppia</div>"
-
 }
 
 
@@ -690,8 +666,8 @@ squadreHTML ||
 
 
 
-</div>
 
+</div>
 
 `;
 
@@ -707,7 +683,8 @@ squadreHTML ||
 function vaiIscrizione(id){
 
 
-window.location.href =
+window.location.href=
+
 "iscrizione.html?torneo="+id;
 
 
@@ -725,14 +702,7 @@ async function avviaPagina(){
 try{
 
 
-const user =
 await verificaLogin();
-
-
-
-if(!user)
-return;
-
 
 
 await caricaTornei();
@@ -740,7 +710,6 @@ await caricaTornei();
 
 
 }
-
 catch(e){
 
 
@@ -759,7 +728,7 @@ document.getElementById(
 
 <div class="torneo-item errore">
 
-❌ Errore:
+❌ ERRORE:
 
 <br>
 
@@ -789,4 +758,4 @@ avviaPagina();
 
 </body>
 
-</html>  
+</html>
