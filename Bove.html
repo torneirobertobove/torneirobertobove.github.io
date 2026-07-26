@@ -6748,36 +6748,29 @@ async function initDefaults() {
 
                 ...state,
 
-
                 idTorneo:
                     torneo.idTorneo ||
                     null,
-
 
                 nomeTorneo:
                     torneo.nomeTorneo ||
                     "",
 
-
                 dataTorneo:
                     torneo.data ||
                     "",
-
 
                 formato:
                     Number(torneo.posti) ||
                     8,
 
-
                 partecipanti:
                     torneo.partecipanti ||
                     [],
 
-
                 coppie:
                     torneo.coppie ||
                     [],
-
 
                 A:[],
                 B:[],
@@ -6790,16 +6783,6 @@ async function initDefaults() {
 
 
 
-            /*
-            ============================
-            CONVERSIONE COPPIE
-            compatibile:
-            g1/g2 Admin
-            giocatore1/giocatore2 Bove
-            ============================
-            */
-
-
             const coppie =
                 state.coppie || [];
 
@@ -6808,10 +6791,8 @@ async function initDefaults() {
             const squadre =
                 coppie.map((c,i)=>({
 
-
                     id:
                         i+1,
-
 
                     nome:
                         c.nome ||
@@ -6823,82 +6804,82 @@ async function initDefaults() {
                             (c.giocatore2 || c.g2 || "")
                         ),
 
-
                     giocatore1:
                         c.giocatore1 ||
                         c.g1 ||
                         "",
-
 
                     giocatore2:
                         c.giocatore2 ||
                         c.g2 ||
                         ""
 
-
-
                 }));
 
 
 
 
-            if(squadre.length <= 4) {
+            let numeroGironi =
+                Math.ceil(
+                    squadre.length / 4
+                );
 
-
-                state.A =
-                    squadre;
-
-
-            }
-            else {
-
-
-                const meta =
-                    Math.ceil(
-                        squadre.length / 2
-                    );
-
-
-                state.A =
-                    squadre.slice(
-                        0,
-                        meta
-                    );
-
-
-                state.B =
-                    squadre.slice(
-                        meta
-                    );
-
-            }
+            if(numeroGironi < 1)
+                numeroGironi = 1;
 
 
 
+            let lettere =
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ];
 
-            /*
-            ============================
-            SINCRONIZZA GIRONI
-            ============================
-            */
 
 
-            state.gironi = {
+            lettere.forEach((g,index)=>{
 
-                A:
-                    state.A,
+                let start =
+                    index * 4;
 
-                B:
-                    state.B,
 
-                C:
-                    state.C,
+                let end =
+                    start + 4;
 
-                D:
-                    state.D
+
+                if(index < numeroGironi){
+
+                    state[g] =
+                        squadre.slice(
+                            start,
+                            end
+                        );
+
+                }
+                else{
+
+                    state[g]=[];
+
+                }
+
+            });
+
+
+
+            state.gironi={
+
+                A:state.A,
+                B:state.B,
+                C:state.C,
+                D:state.D,
+                E:state.E,
+                F:state.F
 
             };
-
 
 
 
@@ -6951,13 +6932,13 @@ async function initDefaults() {
 
 
                 state =
-                    {
+                {
 
-                        ...state,
+                    ...state,
 
-                        ...JSON.parse(salvato)
+                    ...JSON.parse(salvato)
 
-                    };
+                };
 
 
             }
@@ -6978,7 +6959,6 @@ async function initDefaults() {
 
 
 
-
         ensureRules();
 
 
@@ -6986,12 +6966,31 @@ async function initDefaults() {
 
         /*
         ============================
-        GARANZIA ARRAY GIRONI
+        GARANZIA ARRAY GIRONI A-F
         ============================
         */
 
 
+        if(!state.gironi){
+
+            state.gironi={
+
+                A:[],
+                B:[],
+                C:[],
+                D:[],
+                E:[],
+                F:[]
+
+            };
+
+        }
+
+
+
+
         [
+
             "A",
             "B",
             "C",
@@ -7002,61 +7001,35 @@ async function initDefaults() {
         ].forEach(g=>{
 
 
-            if(!Array.isArray(state[g])) {
+            if(!Array.isArray(state[g])){
 
                 state[g]=[];
 
             }
 
 
-        });
 
+            if(!Array.isArray(state.gironi[g])){
 
+                state.gironi[g]=[];
 
+            }
 
-        if(!state.gironi) {
-
-
-            state.gironi={
-
-                A:[],
-                B:[],
-                C:[],
-                D:[]
-
-            };
-
-        }
-
-
-
-
-        [
-            "A",
-            "B",
-            "C",
-            "D"
-
-        ].forEach(g=>{
 
 
             if(
                 state[g].length===0 &&
-                Array.isArray(state.gironi[g])
-            ) {
+                state.gironi[g].length>0
+            ){
 
                 state[g]=
                     state.gironi[g];
 
             }
-
-
-            else {
-
+            else{
 
                 state.gironi[g]=
                     state[g];
-
 
             }
 
@@ -7070,6 +7043,13 @@ async function initDefaults() {
         localStorage.setItem(
             "torneoState",
             JSON.stringify(state)
+        );
+
+
+
+        console.log(
+            "STATE FINALE INIT",
+            state
         );
 
 
