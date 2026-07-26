@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -10,153 +8,100 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-
 <style>
 
 body{
-    background:#0f172a;
-    color:white;
-    font-family:system-ui, sans-serif;
-    padding:20px;
+background:#0f172a;
+color:white;
+font-family:system-ui,sans-serif;
+padding:20px;
 }
-
 
 .card{
-
-    background:#111827;
-    border:1px solid #243041;
-    border-radius:12px;
-    padding:20px;
-    max-width:500px;
-    margin:auto;
-
+background:#111827;
+border:1px solid #243041;
+border-radius:12px;
+padding:20px;
+max-width:500px;
+margin:auto;
 }
-
 
 h2{
-
-    text-align:center;
-    color:#10b981;
-
+text-align:center;
+color:#10b981;
 }
-
 
 .info{
-
-    background:#0b1220;
-    padding:12px;
-    border-radius:8px;
-    margin:10px 0;
-
+background:#0b1220;
+padding:12px;
+border-radius:8px;
+margin:10px 0;
 }
-
 
 button{
-
-    width:100%;
-    padding:12px;
-    margin-top:12px;
-    border:0;
-    border-radius:8px;
-    cursor:pointer;
-    background:#2563eb;
-    color:white;
-    font-size:16px;
-
+width:100%;
+padding:12px;
+margin-top:12px;
+border:0;
+border-radius:8px;
+cursor:pointer;
+background:#2563eb;
+color:white;
+font-size:16px;
 }
-
 
 button:hover{
-
-    background:#1d4ed8;
-
+background:#1d4ed8;
 }
-
 
 .back{
-
-    background:#475569;
-
+background:#475569;
 }
-
 
 .successo{
-
-    color:#22c55e;
-    text-align:center;
-    font-weight:bold;
-
+color:#22c55e;
+text-align:center;
+font-weight:bold;
 }
-
 
 .errore{
-
-    color:#ef4444;
-    text-align:center;
-    font-weight:bold;
-
+color:#ef4444;
+text-align:center;
+font-weight:bold;
 }
-
 
 </style>
 
-
 </head>
-
 
 <body>
 
-
 <div class="card">
-
 
 <h2>
 🏆 Iscrizione torneo
 </h2>
 
-
-
 <div id="datiTorneo">
 Caricamento...
 </div>
 
-
-
-<div id="datiUtente">
-</div>
-
-
-
+<div id="datiUtente"></div>
 
 <button onclick="confermaIscrizione()">
-
 Conferma iscrizione
-
 </button>
-
-
-
 
 <button class="back" onclick="tornaTornei()">
-
 Torna ai tornei
-
 </button>
 
-
-
-
-<div id="messaggio">
+<div id="messaggio"></div>
 
 </div>
-
-
-</div>
-
 
 
 <script>
-
 
 const sb = supabase.createClient(
 
@@ -167,782 +112,591 @@ const sb = supabase.createClient(
 );
 
 
-
 const torneoId = new URLSearchParams(
-
 window.location.search
-
 ).get("torneo");
 
 
-
 let torneo=null;
-
 let utente=null;
-
 let profilo=null;
+
+
 
 async function inizializza(){
 
+if(!torneoId){
 
-    if(!torneoId){
+mostraMessaggio(
+"❌ Torneo non selezionato",
+"errore"
+);
 
-        mostraMessaggio(
-            "❌ Torneo non selezionato",
-            "errore"
-        );
-
-        return;
-    }
-
-
-
-    const {
-
-        data:{
-            user
-
-        }
-
-    } = await sb.auth.getUser();
-
-
-
-    if(!user){
-
-        window.location.href="index.html";
-
-        return;
-
-    }
-
-
-
-    utente=user;
-
-
-
-    const {
-
-        data:torneoLetto,
-
-        error:erroreTorneo
-
-    } = await sb
-
-    .from("tornei")
-
-    .select(
-        "id,nome,data,configurazione,posti,stato"
-    )
-
-    .eq(
-        "id",
-        torneoId
-    )
-
-    .single();
-
-
-
-
-    if(erroreTorneo || !torneoLetto){
-
-
-        console.error(
-            erroreTorneo
-        );
-
-
-        mostraMessaggio(
-            "❌ Errore caricamento torneo",
-            "errore"
-        );
-
-
-        return;
-
-    }
-
-
-
-    torneo=torneoLetto;
-
-
-
-
-    const {
-
-        data:profiloLetto,
-
-        error:erroreProfilo
-
-    } = await sb
-
-    .from("profili")
-
-    .select(
-        "nome,cognome,email,telefono,livello,note"
-    )
-
-    .eq(
-        "user_id",
-        user.id
-    )
-
-    .single();
-
-
-
-
-
-    if(erroreProfilo){
-
-        console.warn(
-            "Profilo non trovato",
-            erroreProfilo
-        );
-
-    }
-
-
-
-    profilo=profiloLetto || null;
-
-
-
-    mostraDati();
-
-
+return;
 
 }
 
+
+
+const {
+data:{
+user
+}
+}
+=
+await sb.auth.getUser();
+
+
+
+if(!user){
+
+window.location.href="index.html";
+
+return;
+
+}
+
+
+
+utente=user;
+
+
+
+const {
+data:torneoLetto,
+error:erroreTorneo
+}
+=
+await sb
+.from("tornei")
+.select("id,nome,data,configurazione,posti,stato")
+.eq("id",torneoId)
+.single();
+
+
+
+if(erroreTorneo || !torneoLetto){
+
+console.error(erroreTorneo);
+
+mostraMessaggio(
+"❌ Errore caricamento torneo",
+"errore"
+);
+
+return;
+
+}
+
+
+
+torneo=torneoLetto;
+
+
+
+const {
+data:profiloLetto,
+error:erroreProfilo
+}
+=
+await sb
+.from("profili")
+.select("nome,cognome,email,telefono,livello,note")
+.eq("user_id",user.id)
+.single();
+
+
+
+if(erroreProfilo){
+
+console.warn(
+"Profilo non trovato",
+erroreProfilo
+);
+
+}
+
+
+
+profilo=profiloLetto || null;
+
+
+mostraDati();
+
+}
 
 
 
 function getNumeroSquadre(){
 
-
-    let squadre=0;
-
+let squadre=0;
 
 
-    if(
-        torneo &&
-        torneo.configurazione &&
-        torneo.configurazione.rules &&
-        torneo.configurazione.rules.numeroSquadre
-    ){
+if(
+torneo &&
+torneo.configurazione &&
+torneo.configurazione.rules &&
+torneo.configurazione.rules.numeroSquadre
+){
 
-        squadre=Number(
-            torneo.configurazione.rules.numeroSquadre
-        );
-
-
-    }
-    else if(torneo && torneo.posti){
-
-        squadre=Number(
-            torneo.posti
-        );
-
-    }
-
-
-
-    return squadre;
-
+squadre=
+Number(
+torneo.configurazione.rules.numeroSquadre
+);
 
 }
 
 
+if(!squadre){
+
+squadre=8;
+
+}
 
 
+return squadre;
+
+}
 
 
 
 function mostraDati(){
 
+const boxTorneo=
+document.getElementById("datiTorneo");
 
 
-    const boxTorneo=document.getElementById(
-        "datiTorneo"
-    );
+const squadre=getNumeroSquadre();
 
+const massimo=squadre*2;
 
 
-    const squadre=getNumeroSquadre();
 
+boxTorneo.innerHTML=`
 
-    const massimo=squadre*2;
+<div class="info">
 
+🏆 <b>${torneo.nome}</b>
 
+<br>
 
-    boxTorneo.innerHTML=`
+📅 Data: ${torneo.data || "-"}
 
-    <div class="info">
+<br>
 
-        🏆 <b>${torneo.nome}</b>
+🎾 Formato: ${squadre} squadre
 
-        <br>
+<br>
 
-        📅 Data: ${torneo.data || "-"}
+👥 Capacità: ${massimo} giocatori
 
-        <br>
+<br>
 
-        🎾 Formato: ${squadre} squadre
+Stato:
+${
+torneo.stato==="chiuso"
+?
+"❌ Chiuso"
+:
+"🟢 Aperto"
+}
 
-        <br>
+</div>
 
-        👥 Capacità: ${massimo} giocatori
+`;
 
-        <br>
 
-        Stato:
-        ${
-            torneo.stato==="chiuso"
 
-            ?
+const boxUtente=
+document.getElementById("datiUtente");
 
-            "❌ Chiuso"
 
-            :
 
-            "🟢 Aperto"
+if(profilo){
 
-        }
+boxUtente.innerHTML=`
 
+<div class="info">
 
-    </div>
+👤 Giocatore:
 
+<b>
+${profilo.nome || ""}
+${profilo.cognome || ""}
+</b>
 
-    `;
+<br>
 
+📧 ${utente.email}
 
+</div>
 
+`;
 
-    const boxUtente=document.getElementById(
-        "datiUtente"
-    );
+}else{
 
+boxUtente.innerHTML=`
 
+<div class="info">
 
+👤 Utente:
 
+<b>${utente.email}</b>
 
-    if(profilo){
+</div>
 
+`;
 
-        boxUtente.innerHTML=`
-
-        <div class="info">
-
-        👤 Giocatore:
-
-        <b>
-
-        ${(profilo.nome || "")}
-        ${(profilo.cognome || "")}
-
-        </b>
-
-
-        <br>
-
-        📧 ${utente.email}
-
-
-        </div>
-
-
-        `;
-
-
-    }
-    else{
-
-
-        boxUtente.innerHTML=`
-
-        <div class="info">
-
-        👤 Utente:
-
-        <b>${utente.email}</b>
-
-
-        </div>
-
-        `;
-
-
-    }
-
+}
 
 
 }
     async function confermaIscrizione(){
 
+if(!torneo || !utente){
 
-    if(!torneo || !utente){
-
-        mostraMessaggio(
-            "❌ Dati torneo o utente mancanti",
-            "errore"
-        );
-
-        return;
-
-    }
-
-
-
-
-    const squadre=getNumeroSquadre();
-
-
-    const limite=squadre*2;
-
-
-
-    // controllo stato torneo
-
-    if(torneo.stato==="chiuso"){
-
-
-        mostraMessaggio(
-            "❌ Torneo chiuso",
-            "errore"
-        );
-
-        return;
-
-    }
-
-
-
-
-    // controllo posti disponibili
-
-    const {
-
-        data:iscritti,
-
-        error:erroreLista
-
-    } = await sb
-
-    .from("iscrizioni")
-
-    .select("id")
-
-    .eq(
-        "torneo_id",
-        torneoId
-    );
-
-
-
-
-    if(erroreLista){
-
-
-        console.error(
-            erroreLista
-        );
-
-
-        mostraMessaggio(
-            "❌ Errore controllo posti",
-            "errore"
-        );
-
-
-        return;
-
-    }
-
-
-
-
-
-    if(
-        iscritti &&
-        iscritti.length>=limite
-    ){
-
-
-        mostraMessaggio(
-            "❌ Torneo completo",
-            "errore"
-        );
-
-
-        return;
-
-    }
-
-
-
-
-
-    // controllo doppia iscrizione utente
-
-    const {
-
-        data:giaIscritto,
-
-        error:erroreGia
-
-    } = await sb
-
-    .from("iscrizioni")
-
-.select("id")
-
-.eq(
-    "torneo_id",
-    torneoId
-)
-
-.eq(
-    "user_id",
-    utente.id
+mostraMessaggio(
+"❌ Dati torneo o utente mancanti",
+"errore"
 );
 
+return;
 
+}
+
+
+
+if(torneo.stato==="chiuso"){
+
+mostraMessaggio(
+"❌ Torneo chiuso",
+"errore"
+);
+
+return;
+
+}
+
+
+
+const squadre=getNumeroSquadre();
+
+const limite=squadre*2;
+
+
+
+const {
+data:iscritti,
+error:erroreLista
+}
+=
+await sb
+.from("iscrizioni")
+.select("id")
+.eq("torneo_id",torneoId);
+
+
+
+if(erroreLista){
+
+console.error(erroreLista);
+
+mostraMessaggio(
+"❌ Errore controllo posti",
+"errore"
+);
+
+return;
+
+}
+
+
+
+const totaleIscritti=
+iscritti ? iscritti.length : 0;
+
+
+
+if(totaleIscritti>=limite){
+
+mostraMessaggio(
+"❌ Torneo completo",
+"errore"
+);
+
+return;
+
+}
+
+
+
+
+
+const {
+data:giaIscritto,
+error:erroreGia
+}
+=
+await sb
+.from("iscrizioni")
+.select("id")
+.eq("torneo_id",torneoId)
+.eq("user_id",utente.id);
 
 
 
 if(erroreGia){
 
+console.error(erroreGia);
 
-    console.error(
-        erroreGia
-    );
+mostraMessaggio(
+"❌ Errore controllo iscrizione",
+"errore"
+);
 
-
-    mostraMessaggio(
-        "❌ Errore controllo iscrizione",
-        "errore"
-    );
-
-
-    return;
+return;
 
 }
 
 
 
+if(giaIscritto && giaIscritto.length>0){
 
+mostraMessaggio(
+"⚠️ Sei già iscritto a questo torneo",
+"errore"
+);
 
-
-if(
-    giaIscritto &&
-    giaIscritto.length>0
-){
-
-
-    mostraMessaggio(
-        "⚠️ Sei già iscritto a questo torneo",
-        "errore"
-    );
-
-
-    return;
+return;
 
 }
-
-
-
 
 
 
 
 const nome =
-
-    profilo
-
-    ?
-
-    (profilo.nome || "").trim()
-
-    :
-
-    utente.email;
-
-
-
+profilo?.nome || utente.email;
 
 
 const cognome =
+profilo?.cognome || "";
 
-    profilo && profilo.cognome
 
-    ?
-
-    profilo.cognome.trim()
-
-    :
-
-    "";
-
+const nomeCompleto =
+(nome+" "+cognome).trim();
 
 
 
 const alias =
 
-    cognome
+cognome
 
-    ?
+?
 
-    cognome
-    .substring(0,6)
-    .toUpperCase()
+cognome
+.substring(0,6)
+.toUpperCase()
 
-    :
+:
 
-    utente.email
-    .substring(0,6)
-    .toUpperCase();
+utente.email
+.substring(0,6)
+.toUpperCase();
 
 
 
 
 
+const {
+error:erroreInsert
+}
+=
+await sb
+.from("iscrizioni")
+.insert({
 
-    // INSERIMENTO DATABASE
+torneo_id:torneoId,
 
-      const {
+user_id:utente.id,
 
-        error:erroreInsert
+nome_giocatore:alias,
 
-    } = await sb
+nome_completo:nomeCompleto,
 
-    .from("iscrizioni")
+nome:nome,
 
-    .insert({
+cognome:cognome,
 
+email:utente.email || "",
 
-        torneo_id: torneoId,
+telefono:
+profilo?.telefono || "",
 
+livello:
+profilo?.livello || "",
 
-        user_id: utente.id,
+note:
+profilo?.note || "",
 
+categoria:"Open",
 
-        nome_giocatore: alias,
+stato:"approvato",
 
+approvato:true,
 
-        nome:
-            nome || "",
+data_iscrizione:
+new Date().toISOString()
 
+});
 
-        cognome:
-            cognome || "",
 
 
 
-        email: utente.email || "",
 
+if(erroreInsert){
 
-        telefono:
-            profilo?.telefono || "",
+console.error(
+"ERRORE INSERIMENTO:",
+erroreInsert
+);
 
 
-        livello:
-            profilo?.livello || "",
+mostraMessaggio(
+"❌ Errore iscrizione: "+
+erroreInsert.message,
+"errore"
+);
 
-
-        note:
-            profilo?.note || "",
-
-
-        categoria:"Open",
-
-
-        stato:"richiesta",
-
-
-        approvato:false,
-
-
-        data_iscrizione:
-            new Date().toISOString()
-
-
-    });
-
-
-
-
-
-
-
-    if(erroreInsert){
-
-
-        console.error(
-            "ERRORE INSERIMENTO:",
-            erroreInsert
-        );
-
-
-        mostraMessaggio(
-            "❌ Errore iscrizione: "+
-            erroreInsert.message,
-            "errore"
-        );
-
-
-        return;
-
-    }
-
-
-
-
-
-
-    // se raggiunto limite chiude torneo
-
-    if(
-        iscritti.length+1 >= limite
-    ){
-
-
-        await sb
-
-        .from("tornei")
-
-        .update({
-
-            stato:"chiuso"
-
-        })
-
-        .eq(
-            "id",
-            torneoId
-        );
-
-
-    }
-
-
-
-
-
-
-    mostraMessaggio(
-
-        "✅ Iscrizione completata",
-
-        "successo"
-
-    );
-
-
-
-
-
-
-    setTimeout(()=>{
-
-
-        window.location.href=
-        "visitatore.html";
-
-
-    },1500);
-
-
-
+return;
 
 }
-  function mostraMessaggio(testo,tipo){
 
 
-    const box=document.getElementById(
-        "messaggio"
-    );
 
 
-    if(!box){
-        return;
-    }
+
+if(totaleIscritti+1>=limite){
 
 
-    box.className=tipo;
-
-
-    box.innerHTML=`
-
-        <p>
-            ${testo}
-        </p>
-
-    `;
+await sb
+.from("tornei")
+.update({
+stato:"chiuso"
+})
+.eq("id",torneoId);
 
 
 }
 
+
+
+
+
+mostraMessaggio(
+"✅ Iscrizione completata",
+"successo"
+);
+
+
+
+setTimeout(()=>{
+
+window.location.href=
+"visitatore.html";
+
+},1500);
+
+
+
+}
+
+
+
+
+
+function mostraMessaggio(testo,tipo){
+
+
+const box=
+document.getElementById("messaggio");
+
+
+if(!box)
+return;
+
+
+box.className=tipo;
+
+
+box.innerHTML=`
+
+<p>${testo}</p>
+
+`;
+
+}
 
 
 
 function tornaTornei(){
 
-
-    window.location.href=
-    "visitatore.html";
-
-
-}
-   function tornaTornei(){
-
-    window.location.href="visitatore.html";
+window.location.href=
+"visitatore.html";
 
 }
 
 
-// INCOLLA QUI LA FUNZIONE WHATSAPP
-
-function apriWhatsApp(numero, messaggio){
-
-    if(!numero){
-
-        mostraMessaggio(
-            "❌ Numero WhatsApp mancante",
-            "errore"
-        );
-
-        return;
-
-    }
 
 
-    let telefono = String(numero)
-        .replace(/\s+/g,"")
-        .replace("+","");
+
+function apriWhatsApp(numero,messaggio){
 
 
-    let testo = encodeURIComponent(
-        messaggio ||
-        "Ciao, ti contatto per il torneo."
-    );
+if(!numero){
 
+mostraMessaggio(
+"❌ Numero WhatsApp mancante",
+"errore"
+);
 
-    window.open(
-        "https://wa.me/" + telefono + "?text=" + testo,
-        "_blank"
-    );
+return;
 
 }
+
+
+
+let telefono=
+String(numero)
+.replace(/\s+/g,"")
+.replace("+","");
+
+
+
+let testo=
+encodeURIComponent(
+messaggio ||
+"Ciao, ti contatto per il torneo."
+);
+
+
+
+window.open(
+"https://wa.me/"+telefono+"?text="+testo,
+"_blank"
+);
+
+
+}
+
+
 
 
 
 window.addEventListener(
-    "load",
-    inizializza
+"load",
+inizializza
 );
+
 
 </script>
 
