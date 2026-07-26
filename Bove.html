@@ -6698,9 +6698,9 @@ function aggiornaDescrizioneTipoTorneo() {
     }
 
 }
-async function initDefaults() {
+async function initDefaults(){
 
-    try {
+    try{
 
         console.log("AVVIO BOVE");
 
@@ -6714,8 +6714,7 @@ async function initDefaults() {
 
 
 
-        if(torneoParam) {
-
+        if(torneoParam){
 
             console.log("TORNEO RICEVUTO DA ADMIN");
 
@@ -6723,7 +6722,7 @@ async function initDefaults() {
             let torneo;
 
 
-            try {
+            try{
 
                 torneo =
                     JSON.parse(
@@ -6731,7 +6730,7 @@ async function initDefaults() {
                     );
 
             }
-            catch(e) {
+            catch(e){
 
                 console.error(
                     "Errore lettura torneo Admin",
@@ -6784,15 +6783,18 @@ async function initDefaults() {
 
 
             const coppie =
-                state.coppie || [];
+                Array.isArray(state.coppie)
+                ?
+                state.coppie
+                :
+                [];
 
 
 
             const squadre =
                 coppie.map((c,i)=>({
 
-                    id:
-                        i+1,
+                    id:i+1,
 
                     nome:
                         c.nome ||
@@ -6818,40 +6820,34 @@ async function initDefaults() {
 
 
 
-
-            let numeroGironi =
-                Math.ceil(
-                    squadre.length / 4
-                );
-
-            if(numeroGironi < 1)
-                numeroGironi = 1;
-
-
-
-            let lettere =
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
-                ];
+            const lettere =
+            [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ];
 
 
 
-            lettere.forEach((g,index)=>{
+            for(let i=0;i<lettere.length;i++){
+
+                let g =
+                    lettere[i];
+
 
                 let start =
-                    index * 4;
+                    i * 4;
 
 
                 let end =
                     start + 4;
 
 
-                if(index < numeroGironi){
+
+                if(start < squadre.length){
 
                     state[g] =
                         squadre.slice(
@@ -6866,29 +6862,31 @@ async function initDefaults() {
 
                 }
 
+            }
+
+
+
+            state.gironi={};
+
+
+            lettere.forEach(g=>{
+
+                state.gironi[g]=
+                    Array.isArray(state[g])
+                    ?
+                    state[g]
+                    :
+                    [];
+
             });
-
-
-
-            state.gironi={
-
-                A:state.A,
-                B:state.B,
-                C:state.C,
-                D:state.D,
-                E:state.E,
-                F:state.F
-
-            };
 
 
 
             ensureRules();
 
 
-
             state.rules.numeroSquadre =
-                squadre.length;
+                squadre.length || 8;
 
 
 
@@ -6898,12 +6896,10 @@ async function initDefaults() {
             );
 
 
-
             console.log(
                 "STATE CARICATO DA ADMIN",
                 state
             );
-
 
 
             render();
@@ -6911,10 +6907,7 @@ async function initDefaults() {
 
             return;
 
-
         }
-
-
 
 
 
@@ -6925,37 +6918,27 @@ async function initDefaults() {
 
 
 
-        if(salvato) {
+        if(salvato){
 
-
-            try {
-
+            try{
 
                 state =
                 {
-
                     ...state,
-
                     ...JSON.parse(salvato)
-
                 };
 
-
             }
-            catch(e) {
-
+            catch(e){
 
                 console.error(
                     "Errore recupero stato",
                     e
                 );
 
-
             }
 
-
         }
-
 
 
 
@@ -6963,42 +6946,27 @@ async function initDefaults() {
 
 
 
-
-        /*
-        ============================
-        GARANZIA ARRAY GIRONI A-F
-        ============================
-        */
-
-
-        if(!state.gironi){
-
-            state.gironi={
-
-                A:[],
-                B:[],
-                C:[],
-                D:[],
-                E:[],
-                F:[]
-
-            };
-
-        }
-
-
-
-
+        const lettere =
         [
-
             "A",
             "B",
             "C",
             "D",
             "E",
             "F"
+        ];
 
-        ].forEach(g=>{
+
+
+        if(!state.gironi){
+
+            state.gironi={};
+
+        }
+
+
+
+        lettere.forEach(g=>{
 
 
             if(!Array.isArray(state[g])){
@@ -7009,13 +6977,21 @@ async function initDefaults() {
 
 
 
-            if(!Array.isArray(state.gironi[g])){
+            if(
+                !Array.isArray(state.gironi[g])
+            ){
 
                 state.gironi[g]=[];
 
             }
 
 
+
+            /*
+            PRIORITA':
+            se esiste il vecchio girone recuperalo
+            altrimenti sincronizza
+            */
 
             if(
                 state[g].length===0 &&
@@ -7026,17 +7002,14 @@ async function initDefaults() {
                     state.gironi[g];
 
             }
-            else{
 
-                state.gironi[g]=
-                    state[g];
 
-            }
+
+            state.gironi[g]=
+                state[g];
 
 
         });
-
-
 
 
 
@@ -7057,16 +7030,13 @@ async function initDefaults() {
         render();
 
 
-
     }
-    catch(e) {
-
+    catch(e){
 
         console.error(
             "Errore initDefaults",
             e
         );
-
 
     }
 
