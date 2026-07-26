@@ -25,7 +25,7 @@ padding:20px;
 
 .container{
 max-width:800px;
-margin:0 auto
+margin:auto;
 }
 
 .card{
@@ -33,67 +33,85 @@ background:var(--card);
 padding:20px;
 border-radius:12px;
 border:1px solid #243041;
-margin-bottom:20px
+margin-bottom:20px;
 }
 
 .btn-back{
 background:#475569;
-color:#fff;
+color:white;
 padding:10px 20px;
-border-radius:8px;
 border:0;
+border-radius:8px;
 cursor:pointer;
-margin-bottom:20px
+margin-bottom:20px;
 }
 
 h2{
+color:var(--accent);
 margin-top:0;
-color:var(--accent)
 }
 
 .news-item{
+padding:10px 0;
 border-bottom:1px solid #243041;
-padding:10px 0
 }
 
 .calendar-item{
 background:#0b1220;
-padding:12px;
-margin:8px 0;
-border-radius:6px
+padding:15px;
+margin:10px 0;
+border-radius:8px;
 }
 
 .btn{
 background:var(--accent);
-border:0;
 color:white;
-padding:8px 12px;
+border:0;
+padding:10px;
 border-radius:6px;
 cursor:pointer;
+width:100%;
 margin-top:10px;
-width:100%
+font-weight:bold;
+}
+
+.btn:disabled{
+background:#555;
+cursor:not-allowed;
 }
 
 .errore{
 color:#ef4444;
-text-align:center
+text-align:center;
 }
 
 .caricamento{
 text-align:center;
-color:#94a3b8
+color:#94a3b8;
+}
+
+.aperto{
+color:#22c55e;
+}
+
+.chiuso{
+color:#ef4444;
 }
 </style>
 
 </head>
 
+
 <body>
 
+
 <div class="container">
+
 
 <button class="btn-back" onclick="location.href='2Page.html'">
 ⬅ Indietro
 </button>
+
 
 
 <div class="card">
@@ -117,6 +135,8 @@ Aggiornamento regolamento tornei estate 2026.
 
 
 
+
+
 <div class="card">
 
 <h2>
@@ -130,13 +150,17 @@ Aggiornamento regolamento tornei estate 2026.
 Caricamento tornei...
 </div>
 
-</div>
-
 
 </div>
 
 
 </div>
+
+
+
+</div>
+
+
 
 
 
@@ -153,6 +177,8 @@ const sb = supabase.createClient(
 
 
 
+
+
 async function inizializzaDashboard(){
 
 
@@ -163,7 +189,6 @@ user
 }
 
 }
-
 =
 await sb.auth.getUser();
 
@@ -186,12 +211,59 @@ caricaTornei();
 
 
 
+
+
+
+function numeroSquadre(torneo){
+
+
+let configurazione =
+torneo.configurazione || {};
+
+
+
+if(
+configurazione.rules &&
+configurazione.rules.numeroSquadre
+){
+
+return Number(
+configurazione.rules.numeroSquadre
+);
+
+}
+
+
+
+if(configurazione.numeroSquadre){
+
+return Number(
+configurazione.numeroSquadre
+);
+
+}
+
+
+
+return Number(torneo.posti || 8);
+
+}
+
+
+
+
+
+
+
 async function caricaTornei(){
 
 
-const box=document.getElementById(
+
+const box =
+document.getElementById(
 "calendarioList"
 );
+
 
 
 
@@ -208,7 +280,7 @@ await sb
 .from("tornei")
 
 .select(
-"id,nome,data,posti,stato,pubblicato"
+"id,nome,data,posti,stato,pubblicato,configurazione"
 )
 
 .eq(
@@ -230,17 +302,19 @@ ascending:true
 if(error){
 
 
-console.error(error);
+console.error(
+error
+);
 
 
-box.innerHTML=`
+box.innerHTML=
 
+`
 <div class="errore">
-
 ❌ Errore caricamento tornei
-
+<br>
+${error.message}
 </div>
-
 `;
 
 return;
@@ -250,20 +324,22 @@ return;
 
 
 
+
+
+
 if(!data || data.length===0){
 
 
-box.innerHTML=`
+box.innerHTML=
 
+`
 <div class="calendar-item">
-
 Nessun torneo disponibile
-
 </div>
-
 `;
 
 return;
+
 
 }
 
@@ -274,17 +350,31 @@ box.innerHTML="";
 
 
 
+
+
 data.forEach(torneo=>{
 
 
-let chiuso=
+let chiuso =
 torneo.stato==="chiuso";
 
 
 
-box.innerHTML += `
+let squadre =
+numeroSquadre(torneo);
 
 
+
+let giocatori =
+squadre*2;
+
+
+
+
+box.innerHTML +=
+
+
+`
 <div class="calendar-item">
 
 
@@ -293,29 +383,41 @@ box.innerHTML += `
 </b>
 
 
+<br><br>
+
+
+📅 Data:
+${torneo.data || "-"}
+
+
 <br>
 
 
-📅 ${torneo.data || "-"}
-
+🎾 Formato:
+${squadre} squadre
 
 
 <br>
 
 
+👥 Posti:
+${giocatori} giocatori
 
-${
-chiuso
 
+
+<br><br>
+
+
+
+<span class="${chiuso ? "chiuso":"aperto"}">
+
+${chiuso
 ?
-
 "❌ Iscrizioni chiuse"
-
 :
+"🟢 Iscrizioni aperte"}
 
-"🟢 Iscrizioni aperte"
-
-}
+</span>
 
 
 
@@ -325,18 +427,21 @@ class="btn"
 
 onclick="vaiIscrizione(${torneo.id})"
 
-${chiuso ? "disabled" : ""}
+${chiuso ? "disabled":""}
 
 >
 
-${chiuso ? "Chiuso" : "Iscriviti"}
+${chiuso
+?
+"Chiuso"
+:
+"Iscriviti"}
 
 </button>
 
 
 
 </div>
-
 
 `;
 
@@ -351,10 +456,13 @@ ${chiuso ? "Chiuso" : "Iscriviti"}
 
 
 
+
+
+
 function vaiIscrizione(id){
 
 
-window.location.href=
+window.location.href =
 "iscrizione.html?torneo="+id;
 
 
@@ -363,7 +471,10 @@ window.location.href=
 
 
 
+
+
 inizializzaDashboard();
+
 
 
 </script>
