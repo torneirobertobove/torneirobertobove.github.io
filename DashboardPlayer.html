@@ -1,138 +1,113 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
 
 <meta charset="UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Dashboard Player</title>
+<title>Dashboard Principale</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 
-:root{
---bg:#0f172a;
---card:#111827;
---text:#e5e7eb;
---accent:#6366f1;
-}
-
 body{
-background:var(--bg);
-color:var(--text);
-font-family:system-ui,-apple-system,sans-serif;
+background:#0f172a;
+color:white;
+font-family:system-ui;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
 margin:0;
-padding:20px;
 }
 
-.container{
-max-width:800px;
-margin:0 auto;
-}
 
 .card{
-background:var(--card);
-padding:20px;
-border-radius:12px;
+
+background:#111827;
+padding:30px;
+border-radius:15px;
 border:1px solid #243041;
-margin-bottom:20px;
-}
-
-.btn-back{
-background:#475569;
-color:#fff;
-padding:10px 20px;
-border-radius:8px;
-border:0;
-cursor:pointer;
-margin-bottom:20px;
-}
-
-h2{
-margin-top:0;
-color:var(--accent);
-}
-
-.news-item{
-border-bottom:1px solid #243041;
-padding:10px 0;
-}
-
-.calendar-item{
-
-background:#0b1220;
-
-padding:12px;
-
-margin:8px 0;
-
-border-radius:6px;
+text-align:center;
+width:90%;
+max-width:400px;
 
 }
 
 
-.btn{
-
-background:var(--accent);
-
-border:0;
-
-color:white;
-
-padding:8px 12px;
-
-border-radius:6px;
-
-cursor:pointer;
-
-margin-top:10px;
+button{
 
 width:100%;
+padding:15px;
+margin:10px 0;
+border:0;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+font-size:16px;
 
 }
 
 
-.btn:disabled{
+.admin-btn{
 
-background:#555;
-
-cursor:not-allowed;
-
-}
-
-
-.errore{
-
-color:#ef4444;
-
-text-align:center;
+background:#2563eb;
+color:white;
 
 }
 
 
-.caricamento{
+.user-btn{
 
-text-align:center;
+background:#10b981;
+color:white;
+
+}
+
+
+.profile-btn{
+
+background:#8b5cf6;
+color:white;
+
+}
+
+
+.player-btn{
+
+background:#f59e0b;
+color:white;
+
+}
+
+
+.logout{
+
+background:#ef4444;
+color:white;
+margin-top:20px;
+
+}
+
+
+button:hover{
+
+opacity:.8;
+
+}
+
+
+#status{
 
 color:#94a3b8;
+font-size:14px;
+margin-top:10px;
 
 }
-
-
-.successo{
-
-color:#22c55e;
-
-text-align:center;
-
-}
-
 
 </style>
-
 
 </head>
 
@@ -140,159 +115,140 @@ text-align:center;
 <body>
 
 
-<div class="container">
+<div class="card">
 
 
-<button class="btn-back" onclick="location.href='2Page.html'">
+<h2 id="welcome">
+Verifica in corso...
+</h2>
 
-⬅ Indietro
+
+<div id="adminMenu" style="display:none">
+
+
+<button 
+class="admin-btn"
+onclick="apriGestioneTorneo()">
+
+⚙️ Gestione Torneo
 
 </button>
 
 
-
-
-<div class="card">
-
-
-<h2>
-
-📰 News & Mercatino
-
-</h2>
-
-
-<div class="news-item">
-
-Prossima apertura mercatino racchette usate.
-
 </div>
 
 
-<div class="news-item">
-
-Aggiornamento regolamento tornei estate 2026.
-
-</div>
+<div id="userMenu" style="display:none">
 
 
-</div>
+<button
+class="user-btn"
+onclick="location.href='visitatore.html'">
+
+🏆 Visualizza Tornei
+
+</button>
 
 
+<button
+class="player-btn"
+onclick="location.href='DashboardPlayer.html'">
+
+🎾 Dashboard Giocatore
+
+</button>
 
 
+<button
+class="profile-btn"
+onclick="location.href='profilo.html'">
 
-<div class="card">
+👤 Il mio Profilo
 
-
-<h2>
-
-📅 Calendario Tornei
-
-</h2>
-
-
-<div id="calendarioList">
-
-
-<div class="caricamento">
-
-Caricamento tornei...
-
-</div>
+</button>
 
 
 </div>
 
 
+<button
+class="logout"
+onclick="logout()">
+
+🚪 Esci
+
+</button>
+
+
+<div id="status"></div>
+
+
 </div>
-
-
-
-</div>
-
-
-
-
-
 <script>
+
+const SUPABASE_URL =
+"https://iybjvtmfaupgthqqsngd.supabase.co";
+
+
+const SUPABASE_ANON_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQ68WFysOI";
 
 
 const sb = supabase.createClient(
-
-"https://iybjvtmfaupgthqqsngd.supabase.co",
-
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI"
-
+SUPABASE_URL,
+SUPABASE_ANON_KEY
 );
 
 
 
-
-
-async function verificaAccesso(){
+async function init(){
 
 
 const {
 
 data:{
-user
+session
 
 }
 
 }
 
 =
-await sb.auth.getUser();
+await sb.auth.getSession();
 
 
 
-if(!user){
+if(!session){
 
 
 window.location.href="index.html";
 
 
-return null;
-
-
-}
-
-
-return user;
-
+return;
 
 }
 
 
 
+const user=session.user;
 
 
 
-async function caricaTornei(){
+document
+.getElementById("welcome")
+.innerHTML=
+
+"Benvenuto<br><small>"+
+user.email+
+"</small>";
 
 
-const box=document.getElementById(
-"calendarioList"
-);
-
-
-
-box.innerHTML=`
-
-<div class="caricamento">
-
-⏳ Caricamento tornei...
-
-</div>
-
-`;
 
 
 
 const {
 
-data,
+data:profilo,
 
 error
 
@@ -301,173 +257,50 @@ error
 =
 await sb
 
-.from("tornei")
+.from("profili")
 
 .select(
-"id,nome,data,posti,stato,pubblicato"
+"nome,cognome,ruolo"
 )
 
 .eq(
-"pubblicato",
-true
+"user_id",
+user.id
 )
 
-.order(
-"data",
-{
-ascending:true
-}
+.maybeSingle();
 
-);
+
 
 
 
 console.log(
-"TORNEI DASHBOARD:",
-data
-);
-
-
-console.log(
-"ERRORE DASHBOARD:",
+"PROFILO LETTO:",
+profilo,
 error
 );
 
 
 
 
-if(error){
+
+if(!profilo){
 
 
-box.innerHTML=`
-
-<div class="errore">
-
-❌ Errore caricamento tornei
-
-<br>
-
-${error.message}
-
-</div>
-
-`;
+document
+.getElementById("userMenu")
+.style.display="block";
 
 
-return;
+document
+.getElementById("status")
+.innerHTML=
 
-}
-
-
-
-if(!data || data.length===0){
-
-
-box.innerHTML=`
-
-<div class="calendar-item">
-
-Nessun torneo disponibile
-
-</div>
-
-`;
+"Completa il tuo profilo giocatore";
 
 
 return;
 
-}
-
-
-
-box.innerHTML="";
-
-
-
-data.forEach(torneo=>{
-
-
-creaRigaTorneo(torneo);
-
-
-});
-
-
-}
-
-function creaRigaTorneo(torneo){
-
-
-const box=document.getElementById(
-"calendarioList"
-);
-
-
-
-const chiuso =
-torneo.stato==="chiuso";
-
-
-
-box.innerHTML += `
-
-
-<div class="calendar-item">
-
-
-<b>
-🏆 ${torneo.nome}
-</b>
-
-
-<br>
-
-
-📅 Data:
-${torneo.data || "-"}
-
-
-
-<br>
-
-
-${
-chiuso
-
-?
-
-"❌ Iscrizioni chiuse"
-
-:
-
-"🟢 Iscrizioni aperte"
-
-}
-
-
-
-<button
-
-class="btn"
-
-onclick="vaiIscrizione(${torneo.id})"
-
-${chiuso ? "disabled" : ""}
-
->
-
-${chiuso ? "Chiuso" : "Iscriviti"}
-
-</button>
-
-
-
-</div>
-
-
-`;
-
-
 
 }
 
@@ -476,12 +309,68 @@ ${chiuso ? "Chiuso" : "Iscriviti"}
 
 
 
+if(profilo.ruolo==="admin"){
 
-function vaiIscrizione(id){
+
+document
+.getElementById("adminMenu")
+.style.display="block";
 
 
-window.location.href =
-"iscrizione.html?torneo=" + id;
+document
+.getElementById("userMenu")
+.style.display="block";
+
+
+document
+.getElementById("status")
+.innerHTML=
+
+"Accesso amministratore";
+
+
+}
+
+
+else{
+
+
+document
+.getElementById("userMenu")
+.style.display="block";
+
+
+document
+.getElementById("status")
+.innerHTML=
+
+"Accesso giocatore";
+
+
+}
+
+
+}
+  
+
+
+function apriGestioneTorneo(){
+
+window.location.href="admin.html";
+
+}
+
+
+
+
+
+async function logout(){
+
+
+await sb.auth.signOut();
+
+
+window.location.href="index.html";
 
 
 }
@@ -490,75 +379,7 @@ window.location.href =
 
 
 
-
-async function inizializzaDashboard(){
-
-
-
-try{
-
-
-const user =
-await verificaAccesso();
-
-
-
-if(!user){
-
-return;
-
-}
-
-
-
-await caricaTornei();
-
-
-
-}
-catch(e){
-
-
-console.error(
-"ERRORE DASHBOARD PLAYER:",
-e
-);
-
-
-
-document.getElementById(
-"calendarioList"
-).innerHTML = `
-
-
-<div class="errore">
-
-❌ Errore:
-
-<br>
-
-${e.message}
-
-</div>
-
-
-`;
-
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-inizializzaDashboard();
-
+init();
 
 
 </script>
@@ -567,5 +388,3 @@ inizializzaDashboard();
 </body>
 
 </html>
-
-  
