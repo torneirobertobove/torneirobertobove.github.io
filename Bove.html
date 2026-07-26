@@ -2666,15 +2666,45 @@ function saveTeams(){
         return;
     }
 
+    /*
+        ============================
+        CONTROLLO COPPIE
+        ogni riga = una squadra
+        esempio:
+        Pippo/Pluto
+        Milan/Juve
+        ============================
+    */
+
+    for(let i=0;i<teams.length;i++){
+
+        if(!teams[i].includes("/")){
+
+            alert(
+                "La squadra numero " +
+                (i+1) +
+                " non contiene la coppia.\n\n" +
+                "Formato corretto:\n" +
+                "Giocatore1/Giocatore2"
+            );
+
+            return;
+        }
+
+    }
+
+
     let numeroGironi =
         Number(
             state.rules.numeroGironi
         ) || 2;
 
+
     let squadrePerGirone =
         Number(
             state.rules.squadrePerGirone
         ) || 4;
+
 
     if(
         numeroGironi *
@@ -2687,21 +2717,25 @@ function saveTeams(){
         return;
     }
 
+
     /*
         ============================
-        SALVATAGGIO NOMI
+        SALVATAGGIO COPPIE
         ============================
     */
+
     localStorage.setItem(
         "savedTeams",
         JSON.stringify(teams)
     );
+
 
     /*
         ============================
         RESET COMPLETO GIRONI A-F
         ============================
     */
+
     [
         "A",
         "B",
@@ -2710,17 +2744,21 @@ function saveTeams(){
         "E",
         "F"
     ].forEach(g=>{
+
         state[g]=[];
         state[g+"res"]=[];
         state[g+"time"]=[];
         state[g+"camp"]=[];
+
     });
+
 
     /*
         ============================
         DISTRIBUZIONE AUTOMATICA
         ============================
     */
+
     let lettere = [
         "A",
         "B",
@@ -2730,31 +2768,56 @@ function saveTeams(){
         "F"
     ];
 
+
     lettere.forEach((g,index)=>{
+
         if(index < numeroGironi){
+
             let start =
                 index *
                 squadrePerGirone;
 
+
             let end =
                 start +
                 squadrePerGirone;
+
 
             state[g] =
                 teams.slice(
                     start,
                     end
                 );
+
         }
+
     });
+
+
+    /*
+        ============================
+        SINCRONIZZAZIONE GIRONI
+        ============================
+    */
+
+    state.gironi = {
+        A: state.A,
+        B: state.B,
+        C: state.C,
+        D: state.D
+    };
+
 
     /*
         ============================
         RESET PARTITE GIRONI
         ============================
     */
+
     function resetPartite(nome,girone){
+
         let totale=0;
+
 
         let n =
             Array.isArray(girone)
@@ -2763,79 +2826,110 @@ function saveTeams(){
             :
             0;
 
+
         for(let i=0;i<n;i++){
+
             for(let j=i+1;j<n;j++){
+
                 totale++;
+
             }
+
         }
+
 
         state[nome+"res"] =
             Array(totale)
             .fill("-");
 
+
         state[nome+"time"] =
             Array(totale)
             .fill("-");
 
+
         state[nome+"camp"] =
             Array(totale)
             .fill("");
+
     }
 
+
     lettere.forEach(g=>{
+
         resetPartite(
             g,
             state[g]
         );
+
     });
+
+
 
     /*
         ============================
         RESET FASE FINALE
         ============================
     */
+
     state.qRes =
         Array(4)
         .fill("-");
+
 
     state.sTopRes =
         Array(2)
         .fill("-");
 
+
     state.fTopRes =
         "-";
 
+
     state.finalTop=[];
+
     state.campioneTop=null;
+
+
 
     /*
         ============================
         BLOCCO REGOLAMENTO
         ============================
     */
+
     state.rules.locked=true;
+
     state.formato =
         richieste;
+
+
 
     /*
         ============================
         CHIUSURA MODAL
         ============================
     */
+
     let modal =
         document.getElementById(
             "teamModal"
         );
 
+
     if(modal)
         modal.style.display="none";
+
+
 
     /*
         ============================
         SALVATAGGIO STATO
         ============================
     */
+
     updateAndSync();
+
 }
 
 async function updateAndSync(){
