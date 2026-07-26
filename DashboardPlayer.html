@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Dashboard Player</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+
 :root{
 --bg:#0f172a;
 --card:#111827;
@@ -18,14 +23,14 @@
 body{
 background:var(--bg);
 color:var(--text);
-font-family:system-ui;
+font-family:system-ui,-apple-system,sans-serif;
 margin:0;
 padding:20px;
 }
 
 .container{
 max-width:800px;
-margin:auto;
+margin:0 auto;
 }
 
 .card{
@@ -38,66 +43,96 @@ margin-bottom:20px;
 
 .btn-back{
 background:#475569;
-color:white;
+color:#fff;
 padding:10px 20px;
-border:0;
 border-radius:8px;
+border:0;
 cursor:pointer;
 margin-bottom:20px;
 }
 
 h2{
-color:var(--accent);
 margin-top:0;
+color:var(--accent);
 }
 
 .news-item{
-padding:10px 0;
 border-bottom:1px solid #243041;
+padding:10px 0;
 }
 
 .calendar-item{
+
 background:#0b1220;
-padding:15px;
-margin:10px 0;
-border-radius:8px;
+
+padding:12px;
+
+margin:8px 0;
+
+border-radius:6px;
+
 }
+
 
 .btn{
+
 background:var(--accent);
-color:white;
+
 border:0;
-padding:10px;
+
+color:white;
+
+padding:8px 12px;
+
 border-radius:6px;
+
 cursor:pointer;
-width:100%;
+
 margin-top:10px;
-font-weight:bold;
+
+width:100%;
+
 }
+
 
 .btn:disabled{
+
 background:#555;
+
 cursor:not-allowed;
+
 }
+
 
 .errore{
+
 color:#ef4444;
+
 text-align:center;
+
 }
+
 
 .caricamento{
+
 text-align:center;
+
 color:#94a3b8;
+
 }
 
-.aperto{
+
+.successo{
+
 color:#22c55e;
+
+text-align:center;
+
 }
 
-.chiuso{
-color:#ef4444;
-}
+
 </style>
+
 
 </head>
 
@@ -109,25 +144,35 @@ color:#ef4444;
 
 
 <button class="btn-back" onclick="location.href='2Page.html'">
+
 ⬅ Indietro
+
 </button>
 
 
 
+
 <div class="card">
 
+
 <h2>
+
 📰 News & Mercatino
+
 </h2>
 
 
 <div class="news-item">
+
 Prossima apertura mercatino racchette usate.
+
 </div>
 
 
 <div class="news-item">
+
 Aggiornamento regolamento tornei estate 2026.
+
 </div>
 
 
@@ -139,15 +184,21 @@ Aggiornamento regolamento tornei estate 2026.
 
 <div class="card">
 
+
 <h2>
+
 📅 Calendario Tornei
+
 </h2>
 
 
 <div id="calendarioList">
 
+
 <div class="caricamento">
+
 Caricamento tornei...
+
 </div>
 
 
@@ -179,16 +230,18 @@ const sb = supabase.createClient(
 
 
 
-async function inizializzaDashboard(){
+async function verificaAccesso(){
 
 
 const {
 
 data:{
 user
+
 }
 
 }
+
 =
 await sb.auth.getUser();
 
@@ -196,59 +249,20 @@ await sb.auth.getUser();
 
 if(!user){
 
-window.location.href="login.html";
 
-return;
-
-}
+window.location.href="index.html";
 
 
-caricaTornei();
+return null;
 
 
 }
 
 
+return user;
 
-
-
-
-
-function numeroSquadre(torneo){
-
-
-let configurazione =
-torneo.configurazione || {};
-
-
-
-if(
-configurazione.rules &&
-configurazione.rules.numeroSquadre
-){
-
-return Number(
-configurazione.rules.numeroSquadre
-);
 
 }
-
-
-
-if(configurazione.numeroSquadre){
-
-return Number(
-configurazione.numeroSquadre
-);
-
-}
-
-
-
-return Number(torneo.posti || 8);
-
-}
-
 
 
 
@@ -258,18 +272,28 @@ return Number(torneo.posti || 8);
 async function caricaTornei(){
 
 
-
-const box =
-document.getElementById(
+const box=document.getElementById(
 "calendarioList"
 );
 
+
+
+box.innerHTML=`
+
+<div class="caricamento">
+
+⏳ Caricamento tornei...
+
+</div>
+
+`;
 
 
 
 const {
 
 data,
+
 error
 
 }
@@ -280,7 +304,7 @@ await sb
 .from("tornei")
 
 .select(
-"id,nome,data,posti,stato,pubblicato,configurazione"
+"id,nome,data,posti,stato,pubblicato"
 )
 
 .eq(
@@ -293,8 +317,21 @@ true
 {
 ascending:true
 }
+
 );
 
+
+
+console.log(
+"TORNEI DASHBOARD:",
+data
+);
+
+
+console.log(
+"ERRORE DASHBOARD:",
+error
+);
 
 
 
@@ -302,47 +339,44 @@ ascending:true
 if(error){
 
 
-console.error(
-error
-);
+box.innerHTML=`
 
-
-box.innerHTML=
-
-`
 <div class="errore">
+
 ❌ Errore caricamento tornei
+
 <br>
+
 ${error.message}
+
 </div>
+
 `;
+
 
 return;
 
 }
-
-
-
-
 
 
 
 if(!data || data.length===0){
 
 
-box.innerHTML=
+box.innerHTML=`
 
-`
 <div class="calendar-item">
+
 Nessun torneo disponibile
+
 </div>
+
 `;
+
 
 return;
 
-
 }
-
 
 
 
@@ -350,31 +384,34 @@ box.innerHTML="";
 
 
 
-
-
 data.forEach(torneo=>{
 
 
-let chiuso =
+creaRigaTorneo(torneo);
+
+
+});
+
+
+}
+
+function creaRigaTorneo(torneo){
+
+
+const box=document.getElementById(
+"calendarioList"
+);
+
+
+
+const chiuso =
 torneo.stato==="chiuso";
 
 
 
-let squadre =
-numeroSquadre(torneo);
+box.innerHTML += `
 
 
-
-let giocatori =
-squadre*2;
-
-
-
-
-box.innerHTML +=
-
-
-`
 <div class="calendar-item">
 
 
@@ -383,41 +420,29 @@ box.innerHTML +=
 </b>
 
 
-<br><br>
+<br>
 
 
 📅 Data:
 ${torneo.data || "-"}
 
 
-<br>
-
-
-🎾 Formato:
-${squadre} squadre
-
 
 <br>
 
 
-👥 Posti:
-${giocatori} giocatori
+${
+chiuso
 
-
-
-<br><br>
-
-
-
-<span class="${chiuso ? "chiuso":"aperto"}">
-
-${chiuso
 ?
-"❌ Iscrizioni chiuse"
-:
-"🟢 Iscrizioni aperte"}
 
-</span>
+"❌ Iscrizioni chiuse"
+
+:
+
+"🟢 Iscrizioni aperte"
+
+}
 
 
 
@@ -427,15 +452,11 @@ class="btn"
 
 onclick="vaiIscrizione(${torneo.id})"
 
-${chiuso ? "disabled":""}
+${chiuso ? "disabled" : ""}
 
 >
 
-${chiuso
-?
-"Chiuso"
-:
-"Iscriviti"}
+${chiuso ? "Chiuso" : "Iscriviti"}
 
 </button>
 
@@ -443,11 +464,8 @@ ${chiuso
 
 </div>
 
+
 `;
-
-
-
-});
 
 
 
@@ -463,7 +481,73 @@ function vaiIscrizione(id){
 
 
 window.location.href =
-"iscrizione.html?torneo="+id;
+"iscrizione.html?torneo=" + id;
+
+
+}
+
+
+
+
+
+
+async function inizializzaDashboard(){
+
+
+
+try{
+
+
+const user =
+await verificaAccesso();
+
+
+
+if(!user){
+
+return;
+
+}
+
+
+
+await caricaTornei();
+
+
+
+}
+catch(e){
+
+
+console.error(
+"ERRORE DASHBOARD PLAYER:",
+e
+);
+
+
+
+document.getElementById(
+"calendarioList"
+).innerHTML = `
+
+
+<div class="errore">
+
+❌ Errore:
+
+<br>
+
+${e.message}
+
+</div>
+
+
+`;
+
+
+
+}
+
 
 
 }
@@ -481,4 +565,7 @@ inizializzaDashboard();
 
 
 </body>
+
 </html>
+
+  
