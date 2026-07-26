@@ -3008,14 +3008,18 @@ async function salvaTorneoSupabase(){
 }
 async function loadState(){
     try{
+
         const param = new URLSearchParams(window.location.search).get("torneo");
 
         if(param){
+
             try{
+
                 const dati = JSON.parse(decodeURIComponent(param));
 
                 state = {
                     ...state,
+
                     idTorneo:
                         dati.idTorneo ||
                         Date.now(),
@@ -3061,27 +3065,34 @@ async function loadState(){
 
 
                 const squadre = (dati.coppie || []).map((c,i)=>({
+
                     id:i+1,
                     nome:"Coppia " + (i+1),
                     giocatore1:c.g1 || "",
                     giocatore2:c.g2 || ""
+
                 }));
+
 
                 const meta = Math.ceil(squadre.length / 2);
 
                 state.A = squadre.slice(0,meta);
                 state.B = squadre.slice(meta);
 
-                console.log("TORNEO ADMIN CARICATO",state);
 
             }
             catch(e){
+
                 console.error("Errore lettura torneo Admin:",e);
+
             }
+
         }
         else{
 
+
             const salvato = localStorage.getItem("torneoState");
+
 
             if(salvato){
 
@@ -3092,9 +3103,12 @@ async function loadState(){
                         ...JSON.parse(salvato)
                     };
 
+
                 }
                 catch(e){
+
                     console.error("Errore recupero stato locale:",e);
+
                 }
 
             }
@@ -3102,23 +3116,32 @@ async function loadState(){
         }
 
 
-                ensureRules();
+
+        ensureRules();
+
+
 
         /*
         ============================
         COMPATIBILITA' BOVE ORIGINALE
-        sincronizza state.A/B/C/D con state.gironi
         ============================
         */
 
+
         if(!state.gironi){
+
             state.gironi={
+
                 A:[],
                 B:[],
                 C:[],
                 D:[]
+
             };
+
         }
+
+
 
         [
             "A",
@@ -3126,6 +3149,14 @@ async function loadState(){
             "C",
             "D"
         ].forEach(g=>{
+
+
+            /*
+            PRIORITA':
+            1) state.A originale Bove
+            2) state.gironi nuovo formato
+            */
+
 
             if(
                 Array.isArray(state[g]) &&
@@ -3135,21 +3166,29 @@ async function loadState(){
                 state.gironi[g]=state[g];
 
             }
+
             else if(
-                Array.isArray(state.gironi[g])
+
+                Array.isArray(state.gironi[g]) &&
+                state.gironi[g].length>0
+
             ){
 
                 state[g]=state.gironi[g];
 
             }
+
             else{
 
                 state[g]=[];
+
                 state.gironi[g]=[];
 
             }
 
+
         });
+
 
 
         [
@@ -3157,34 +3196,102 @@ async function loadState(){
             "F"
         ].forEach(g=>{
 
+
             if(!Array.isArray(state[g])){
+
                 state[g]=[];
+
+            }
+
+
+        });
+
+
+
+        /*
+        ============================
+        ARRAY PARTITE
+        ============================
+        */
+
+
+        [
+            "Ares",
+            "Bres",
+            "Cres",
+            "Dres",
+            "Eres",
+            "Fres",
+            "Atime",
+            "Btime",
+            "Ctime",
+            "Dtime",
+            "Etime",
+            "Ftime",
+            "Acamp",
+            "Bcamp",
+            "Ccamp",
+            "Dcamp",
+            "Ecamp",
+            "Fcamp"
+
+        ].forEach(x=>{
+
+            if(!Array.isArray(state[x])){
+
+                state[x]=[];
+
             }
 
         });
 
+
+
         if(!Array.isArray(state.qRes))
             state.qRes = Array(4).fill("-");
+
 
         if(!Array.isArray(state.sTopRes))
             state.sTopRes = Array(2).fill("-");
 
-        if(state.fTopRes === undefined)
-            state.fTopRes = "-";
 
-        if(state.campioneTop === undefined)
-            state.campioneTop = null;
+        if(state.fTopRes===undefined)
+            state.fTopRes="-";
+
+
+        if(state.campioneTop===undefined)
+            state.campioneTop=null;
+
+
+
+        /*
+        SINCRONIZAZIONE FINALE
+        */
+
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+
+
+        console.log(
+            "LOADSTATE COMPLETATO",
+            state.A,
+            state.B,
+            state.gironi
+        );
 
 
     }
     catch(e){
 
-        console.error("Errore caricamento stato:",e);
+        console.error(
+            "Errore caricamento stato:",
+            e
+        );
 
     }
 }
-
-
 function numeroPartite(girone){
 
     const n = Array.isArray(girone)
