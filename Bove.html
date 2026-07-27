@@ -5035,10 +5035,13 @@ function saveTeams(){
 
 
 
+
     let input =
+
         document.getElementById(
             "teamInput"
         );
+
 
 
     if(!input)
@@ -5047,28 +5050,30 @@ function saveTeams(){
 
 
 
+
+
     let teams =
-    input.value
-    .split("\n")
-    .map(x =>
-        x
-        .replace(/\s+/g," ")
-        .replace(/\s*\/\s*/g,"/")
-        .trim()
-    )
-    .filter(Boolean);
+
+        input.value
+
+        .split("\n")
+
+        .map(x=>
+
+            x
+            .replace(/\s+/g," ")
+            .replace(/\s*\/\s*/g,"/")
+            .trim()
+
+        )
+
+        .filter(Boolean);
 
 
 
 
-    /*
-        ============================
-        CONTROLLO COPPIE GIOCATORI
-        OGNI RIGA = UNA SQUADRA
-        FORMATO:
-        Cognome1 / Cognome2
-        ============================
-    */
+
+
 
 
     for(let i=0;i<teams.length;i++){
@@ -5078,18 +5083,17 @@ function saveTeams(){
             teams[i];
 
 
+
         if(!squadra.includes("/")){
 
 
             alert(
 
-                "Squadra n° " +
-                (i+1) +
-                " non valida.\n\n" +
-
-                "Inserire nel formato:\n\n" +
-
-                "Cognome1 / Cognome2"
+                "Squadra n° "+
+                (i+1)+
+                " non valida.\n\n"+
+                "Inserire:\n\n"+
+                "Giocatore1/Giocatore2"
 
             );
 
@@ -5110,14 +5114,16 @@ function saveTeams(){
 
 
 
-        if(giocatori.length!==2){
+        if(
+            giocatori.length!==2
+        ){
 
 
             alert(
 
-                "Squadra n° " +
-                (i+1) +
-                " deve contenere 2 giocatori."
+                "La squadra n° "+
+                (i+1)+
+                " deve avere 2 giocatori."
 
             );
 
@@ -5136,23 +5142,28 @@ function saveTeams(){
 
 
 
+
     let richieste =
+
         Number(
             state.rules.numeroSquadre
         ) || 8;
 
 
 
-    if(teams.length!==richieste){
+
+
+    if(
+        teams.length!==richieste
+    ){
 
 
         alert(
 
-            "Il regolamento prevede " +
-            richieste +
-            " squadre.\n\n" +
-
-            "Inserite: " +
+            "Il regolamento richiede "+
+            richieste+
+            " squadre.\n\n"+
+            "Inserite: "+
             teams.length
 
         );
@@ -5160,7 +5171,73 @@ function saveTeams(){
 
         return;
 
+
     }
+
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    SALVATAGGIO DEFINITIVO SQUADRE
+    ============================
+    */
+
+
+    localStorage.setItem(
+
+        "savedTeams",
+
+        JSON.stringify(teams)
+
+    );
+
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    RESET GIRONI
+    ============================
+    */
+
+
+    [
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+
+    ]
+
+    .forEach(g=>{
+
+
+        state[g]=[];
+
+        state[g+"res"]=[];
+
+        state[g+"time"]=[];
+
+        state[g+"camp"]=[];
+
+
+    });
+
+
 
 
 
@@ -5186,92 +5263,14 @@ function saveTeams(){
 
 
 
-    if(
-        numeroGironi *
-        squadrePerGirone !==
-        richieste
-    ){
-
-
-        alert(
-
-            "Struttura gironi non compatibile."
-
-        );
-
-
-        return;
-
-    }
-
-
-
 
 
 
 
     /*
-        ============================
-        SALVATAGGIO NOMI
-        ============================
-    */
-
-
-    localStorage.setItem(
-
-        "savedTeams",
-
-        JSON.stringify(teams)
-
-    );
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        RESET COMPLETO GIRONI
-        A-F
-        ============================
-    */
-
-
-    [
-
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
-
-    ].forEach(g=>{
-
-        state[g]=[];
-
-        state[g+"res"]=[];
-
-        state[g+"time"]=[];
-
-        state[g+"camp"]=[];
-
-    });
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        DISTRIBUZIONE AUTOMATICA
-        ============================
+    ============================
+    CREAZIONE GIRONI
+    ============================
     */
 
 
@@ -5288,61 +5287,65 @@ function saveTeams(){
 
 
 
-    lettere.forEach((g,index)=>{
 
 
-        if(index < numeroGironi){
+    for(
+        let i=0;
+        i<numeroGironi;
+        i++
+    ){
 
 
-            let start =
+        let inizio =
 
-                index *
-                squadrePerGirone;
-
-
-
-            let end =
-
-                start +
-                squadrePerGirone;
+            i *
+            squadrePerGirone;
 
 
 
-            state[g] =
+        let fine =
 
-                teams.slice(
-
-                    start,
-
-                    end
-
-                );
+            inizio +
+            squadrePerGirone;
 
 
-        }
+
+        state[lettere[i]] =
+
+            teams.slice(
+                inizio,
+                fine
+            );
 
 
-    });
-       /*
-        ============================
-        RESET PARTITE GIRONI
-        ============================
+    }
+
+
+
+
+
+
+
+
+    /*
+    ============================
+    CREA ARRAY RISULTATI
+    ============================
     */
 
 
-    function resetPartite(nome,girone){
-
-
-        let totale=0;
+    function creaPartite(nome){
 
 
         let n =
 
-            Array.isArray(girone)
+            Array.isArray(
+                state[nome]
+            )
 
             ?
 
-            girone.length
+            state[nome].length
 
             :
 
@@ -5350,11 +5353,22 @@ function saveTeams(){
 
 
 
-        for(let i=0;i<n;i++){
+        let totale=0;
 
 
-            for(let j=i+1;j<n;j++){
 
+        for(
+            let i=0;
+            i<n;
+            i++
+        ){
+
+
+            for(
+                let j=i+1;
+                j<n;
+                j++
+            ){
 
                 totale++;
 
@@ -5383,6 +5397,8 @@ function saveTeams(){
             Array(totale)
             .fill("");
 
+
+
     }
 
 
@@ -5394,13 +5410,7 @@ function saveTeams(){
     lettere.forEach(g=>{
 
 
-        resetPartite(
-
-            g,
-
-            state[g]
-
-        );
+        creaPartite(g);
 
 
     });
@@ -5414,9 +5424,9 @@ function saveTeams(){
 
 
     /*
-        ============================
-        RESET FASE FINALE
-        ============================
+    ============================
+    RESET KO
+    ============================
     */
 
 
@@ -5443,6 +5453,7 @@ function saveTeams(){
     state.finalTop=[];
 
 
+
     state.campioneTop=null;
 
 
@@ -5454,9 +5465,9 @@ function saveTeams(){
 
 
     /*
-        ============================
-        BLOCCO REGOLAMENTO
-        ============================
+    ============================
+    BLOCCO REGOLAMENTO
+    ============================
     */
 
 
@@ -5474,10 +5485,11 @@ function saveTeams(){
 
 
 
+
     /*
-        ============================
-        CHIUSURA MODAL
-        ============================
+    ============================
+    CHIUSURA FINESTRA
+    ============================
     */
 
 
@@ -5486,6 +5498,7 @@ function saveTeams(){
         document.getElementById(
             "teamModal"
         );
+
 
 
     if(modal)
@@ -5499,24 +5512,20 @@ function saveTeams(){
 
 
 
-        /*
-        ============================
-        SALVATAGGIO STATO
-        ============================
+
+    /*
+    ============================
+    SALVA E RENDER
+    ============================
     */
 
 
     updateAndSync();
 
 
-    /*
-        ============================
-        AGGIORNA TABELLONE
-        ============================
-    */
-
 
     render();
+
 
 
 }
@@ -5527,20 +5536,22 @@ async function updateAndSync(){
 
         /*
         ============================
-        AGGIORNA NOME TORNEO
+        NOME TORNEO
         ============================
         */
 
 
         const inputNome =
+
             document.getElementById(
                 "nomeTorneoInput"
             );
 
 
+
         if(
             inputNome &&
-            inputNome.value.trim() !== ""
+            inputNome.value.trim()!==""
         ){
 
             state.nomeTorneo =
@@ -5552,9 +5563,12 @@ async function updateAndSync(){
 
 
 
+
+
+
         /*
         ============================
-        DATA TORNEO
+        DATA
         ============================
         */
 
@@ -5564,6 +5578,7 @@ async function updateAndSync(){
         ){
 
             state.dataTorneo =
+
                 new Date()
                 .toISOString()
                 .split("T")[0];
@@ -5574,9 +5589,12 @@ async function updateAndSync(){
 
 
 
+
+
+
         /*
         ============================
-        ID TORNEO
+        ID
         ============================
         */
 
@@ -5594,25 +5612,30 @@ async function updateAndSync(){
 
 
 
+
+
+
+
         /*
         ============================
-        SALVATAGGIO LOCALE PROTETTO
+        CONTROLLO STATO VECCHIO
         ============================
         */
 
 
-        let statoPrecedente =
+        let precedente =
 
             localStorage.getItem(
                 "torneoState"
             );
 
 
-        let salva = true;
+
+        let salva=true;
 
 
 
-        if(statoPrecedente){
+        if(precedente){
 
 
             try{
@@ -5621,25 +5644,19 @@ async function updateAndSync(){
                 let vecchio =
 
                     JSON.parse(
-                        statoPrecedente
+                        precedente
                     );
 
-
-
-                /*
-                EVITA DI CANCELLARE
-                UN TORNEO ESISTENTE
-                CON ARRAY VUOTI
-                */
 
 
                 if(
 
                     Array.isArray(vecchio.A) &&
-                    vecchio.A.length > 0 &&
+                    vecchio.A.length>0 &&
 
                     Array.isArray(vecchio.B) &&
-                    vecchio.B.length > 0 &&
+                    vecchio.B.length>0 &&
+
 
                     (
 
@@ -5657,10 +5674,14 @@ async function updateAndSync(){
 
                 ){
 
+
                     salva=false;
 
+
                     console.warn(
-                        "Salvataggio locale bloccato: stato vuoto evitato"
+
+                        "Bloccato salvataggio stato vuoto"
+
                     );
 
 
@@ -5672,10 +5693,12 @@ async function updateAndSync(){
 
             catch(e){
 
+
                 console.warn(
-                    "Errore controllo stato precedente",
+                    "Errore lettura stato precedente",
                     e
                 );
+
 
             }
 
@@ -5683,6 +5706,17 @@ async function updateAndSync(){
         }
 
 
+
+
+
+
+
+
+        /*
+        ============================
+        SALVATAGGIO LOCALE
+        ============================
+        */
 
 
         if(salva){
@@ -5703,60 +5737,123 @@ async function updateAndSync(){
 
 
 
+
+
+
         /*
         ============================
-        SINCRONIZZAZIONE SUPABASE
-        SOLO SE DISPONIBILE
-        E TORNEO REALE
+        SALVA SQUADRE
         ============================
         */
 
 
         if(
 
-            typeof sb !== "undefined" &&
+            Array.isArray(state.A) &&
+            state.A.length>0 &&
 
-            state.nomeTorneo &&
-
-            state.nomeTorneo.trim() !== ""
+            Array.isArray(state.B) &&
+            state.B.length>0
 
         ){
 
 
-            const {error} =
+            localStorage.setItem(
+
+                "savedTeams",
+
+                JSON.stringify(
+
+                    [
+
+                        ...state.A,
+
+                        ...state.B
+
+                    ]
+
+                )
+
+            );
+
+
+        }
+
+
+
+
+
+
+
+
+
+        /*
+        ============================
+        SUPABASE
+        ============================
+        */
+
+
+        if(
+
+            typeof sb!=="undefined" &&
+
+            state.nomeTorneo &&
+
+            state.nomeTorneo.trim()!=="" &&
+
+            salva
+
+        ){
+
+
+
+            const {error}=
 
                 await sb
+
                 .from("tornei")
-                .upsert({
 
-                    id:
-                        state.idTorneo,
+                .upsert(
 
+                    {
 
-                    nome:
-                        state.nomeTorneo,
+                        id:
 
-
-                    data:
-                        state.dataTorneo,
+                            state.idTorneo,
 
 
-                    stato:
-                        "attivo",
+                        nome:
+
+                            state.nomeTorneo,
 
 
-                    configurazione:
-                        state
+                        data:
+
+                            state.dataTorneo,
 
 
-                },
+                        stato:
 
-                {
-                    onConflict:
-                        "id"
-                }
+                            "attivo",
+
+
+                        configurazione:
+
+                            state
+
+                    },
+
+
+                    {
+
+                        onConflict:"id"
+
+                    }
 
                 );
+
+
 
 
 
@@ -5765,7 +5862,7 @@ async function updateAndSync(){
 
                 console.error(
 
-                    "Errore sincronizzazione Supabase:",
+                    "Errore Supabase:",
 
                     error
 
@@ -5775,7 +5872,10 @@ async function updateAndSync(){
             }
 
 
+
         }
+
+
 
 
 
@@ -5798,208 +5898,7 @@ async function updateAndSync(){
 
 
 }
-async function salvaTorneoSupabase(){
 
-    try{
-
-
-        if(typeof sb === "undefined"){
-
-            alert(
-                "Connessione Supabase non disponibile"
-            );
-
-            return;
-
-        }
-
-
-
-        const inputNome =
-            document.getElementById(
-                "nomeTorneoInput"
-            );
-
-
-        if(
-            inputNome &&
-            inputNome.value.trim() !== ""
-        ){
-
-            state.nomeTorneo =
-                inputNome.value.trim();
-
-        }
-
-
-
-        if(
-            !state.nomeTorneo ||
-            state.nomeTorneo.trim()===""
-        ){
-
-            alert(
-                "Inserisci prima il nome del torneo"
-            );
-
-            return;
-
-        }
-
-
-
-        if(!state.idTorneo){
-
-            state.idTorneo =
-                Date.now();
-
-        }
-
-
-
-        if(!state.dataTorneo){
-
-            state.dataTorneo =
-                new Date()
-                .toISOString()
-                .split("T")[0];
-
-        }
-
-
-
-        localStorage.setItem(
-
-            "torneoState",
-
-            JSON.stringify(state)
-
-        );
-
-
-
-        const record = {
-
-            id:
-                state.idTorneo,
-
-
-            nome:
-                state.nomeTorneo,
-
-
-            data:
-                state.dataTorneo,
-
-
-            stato:
-                "attivo",
-
-
-            configurazione:
-                state
-
-        };
-
-
-
-        const {
-
-            data,
-
-            error
-
-        } = await sb
-
-        .from("tornei")
-
-        .upsert(
-
-            record,
-
-            {
-                onConflict:"id"
-            }
-
-        )
-
-        .select();
-
-
-
-        if(error){
-
-            console.error(
-
-                "Errore salvataggio Supabase:",
-
-                error
-
-            );
-
-
-            alert(
-                "Errore durante il salvataggio torneo"
-            );
-
-
-            return;
-
-        }
-
-
-
-        console.log(
-
-            "TORNEO SALVATO:",
-
-            data
-
-        );
-
-
-        alert(
-
-            "Torneo salvato correttamente"
-
-        );
-
-
-        /*
-            NON RICHIAMARE render()
-            qui.
-            
-            Il render completo può bloccare
-            i pulsanti se una funzione grafica
-            contiene un errore.
-        */
-
-
-    }
-
-
-    catch(e){
-
-
-        console.error(
-
-            "Errore salvaTorneoSupabase:",
-
-            e
-
-        );
-
-
-        alert(
-
-            "Errore inatteso durante il salvataggio"
-
-        );
-
-
-    }
-
-}
 async function loadState(){
 
     try{
@@ -6087,12 +5986,6 @@ async function loadState(){
 
 
 
-                /*
-                ============================
-                CREAZIONE SQUADRE ADMIN
-                ============================
-                */
-
 
                 if(
                     Array.isArray(dati.coppie)
@@ -6128,11 +6021,8 @@ async function loadState(){
 
 
                 console.log(
-
                     "TORNEO CARICATO DA ADMIN",
-
                     state
-
                 );
 
 
@@ -6143,20 +6033,15 @@ async function loadState(){
 
 
                 console.error(
-
                     "Errore lettura torneo Admin:",
-
                     e
-
                 );
 
 
             }
 
 
-
         }
-
 
 
         else{
@@ -6164,107 +6049,70 @@ async function loadState(){
 
             /*
             ============================
-            CARICAMENTO SUPABASE
+            BOVE.HTML DIRETTO
+            NON CARICARE SUPABASE
+            AUTOMATICAMENTE
             ============================
             */
 
 
-            if(
-                typeof sb !== "undefined"
-            ){
+            let locale =
+
+                localStorage.getItem(
+                    "torneoState"
+                );
 
 
-                const {
 
-                    data,
-
-                    error
-
-                } = await sb
+            if(locale){
 
 
-                .from("tornei")
+                try{
 
 
-                .select("*")
+                    let salvato =
+
+                        JSON.parse(
+                            locale
+                        );
 
 
-                .order(
 
-                    "created_at",
+                    /*
+                    NON RIPRISTINARE
+                    UNO STATO VUOTO
+                    SOPRA UNO NUOVO
+                    */
 
-                    {
-                        ascending:false
+
+                    if(
+
+                        Array.isArray(salvato.A) &&
+                        Array.isArray(salvato.B)
+
+                    ){
+
+                        state = {
+
+                            ...state,
+
+                            ...salvato
+
+                        };
+
                     }
 
-                )
 
+                }
 
-                .limit(1)
-
-
-                .single();
-
-
-
-
-
-                if(error){
-
+                catch(e){
 
                     console.warn(
-
-                        "Nessun torneo Supabase:",
-
-                        error
-
+                        "Errore caricamento locale:",
+                        e
                     );
 
-
                 }
-
-
-
-
-
-                if(
-
-                    data &&
-
-                    data.configurazione
-
-                ){
-
-
-                    state = {
-
-
-                        ...state,
-
-
-                        ...data.configurazione,
-
-
-                        idTorneo:
-
-                            data.id,
-
-
-                        nomeTorneo:
-
-                            data.nome,
-
-
-                        dataTorneo:
-
-                            data.data
-
-
-                    };
-
-
-                }
-
 
 
             }
@@ -6282,15 +6130,14 @@ async function loadState(){
 
 
         console.error(
-
             "Errore caricamento stato:",
-
             e
-
         );
 
 
     }
+
+
 
 
 
@@ -6309,9 +6156,11 @@ async function loadState(){
 
 
 
+
+
     /*
     ============================
-    GARANZIA GIRONE
+    GARANZIA ARRAY GIRONI
     ============================
     */
 
@@ -6345,11 +6194,8 @@ async function loadState(){
 
 
 
-    /*
-    ============================
-    SISTEMA ARRAY PARTITE
-    ============================
-    */
+
+
 
 
     function numeroPartite(girone){
@@ -6374,24 +6220,16 @@ async function loadState(){
 
 
         for(
-
             let i=0;
-
             i<n;
-
             i++
-
         ){
 
 
             for(
-
                 let j=i+1;
-
                 j<n;
-
                 j++
-
             ){
 
                 totale++;
@@ -6407,6 +6245,14 @@ async function loadState(){
 
 
     }
+
+
+
+
+
+
+
+
     function sistema(nome,len,val){
 
 
@@ -6420,12 +6266,8 @@ async function loadState(){
 
 
 
-
-
         while(
-
             state[nome].length < len
-
         ){
 
             state[nome].push(val);
@@ -6435,14 +6277,11 @@ async function loadState(){
 
 
 
-
         if(
-
             state[nome].length > len
-
         ){
 
-            state[nome] =
+            state[nome]=
 
                 state[nome]
                 .slice(0,len);
@@ -6451,6 +6290,7 @@ async function loadState(){
 
 
     }
+
 
 
 
@@ -6481,37 +6321,25 @@ async function loadState(){
 
 
         sistema(
-
             g+"res",
-
             totale,
-
             "-"
-
         );
 
 
 
         sistema(
-
             g+"time",
-
             totale,
-
             ""
-
         );
 
 
 
         sistema(
-
             g+"camp",
-
             totale,
-
             ""
-
         );
 
 
@@ -6523,9 +6351,11 @@ async function loadState(){
 
 
 
+
+
     /*
     ============================
-    FASE FINALE
+    FASI FINALI
     ============================
     */
 
@@ -6576,19 +6406,23 @@ async function loadState(){
 
 
 
+
+
     /*
     ============================
-    FORMATO
+    RECUPERO SQUADRE SALVATE
     ============================
     */
 
 
     if(
-        state.formato===undefined
+
+        state.A.length===0 &&
+        typeof loadSavedTeams==="function"
+
     ){
 
-        state.formato =
-            state.rules.numeroSquadre;
+        loadSavedTeams();
 
     }
 
@@ -6598,9 +6432,10 @@ async function loadState(){
 
 
 
+
     /*
     ============================
-    SALVATAGGIO STATO PULITO
+    SALVATAGGIO LOCALE
     ============================
     */
 
@@ -6619,6 +6454,7 @@ async function loadState(){
 
 
 
+
     /*
     ============================
     RENDER
@@ -6627,40 +6463,31 @@ async function loadState(){
 
 
     if(
-
         typeof render==="function"
-
     ){
+
 
         try{
 
-
             render();
-
 
         }
 
         catch(err){
 
-
             console.error(
-
                 "Errore render iniziale:",
-
                 err
-
             );
 
-
         }
+
 
     }
 
 
 
 }
-
-
 
 function handleFile(e){
     let r=new FileReader();
