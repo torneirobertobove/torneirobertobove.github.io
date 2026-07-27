@@ -5533,16 +5533,7 @@ async function updateAndSync(){
 
     try{
 
-
-        /*
-        ============================
-        NOME TORNEO
-        ============================
-        */
-
-
         const inputNome =
-
             document.getElementById(
                 "nomeTorneoInput"
             );
@@ -5560,22 +5551,9 @@ async function updateAndSync(){
 
 
 
-
-
-
-        /*
-        ============================
-        DATA TORNEO
-        ============================
-        */
-
-
-        if(
-            !state.dataTorneo
-        ){
+        if(!state.dataTorneo){
 
             state.dataTorneo =
-
                 new Date()
                 .toISOString()
                 .split("T")[0];
@@ -5584,19 +5562,7 @@ async function updateAndSync(){
 
 
 
-
-
-
-        /*
-        ============================
-        ID TORNEO
-        ============================
-        */
-
-
-        if(
-            !state.idTorneo
-        ){
+        if(!state.idTorneo){
 
             state.idTorneo =
                 Date.now();
@@ -5605,66 +5571,18 @@ async function updateAndSync(){
 
 
 
-
-
-
-
         /*
-        ============================
-        RECUPERO SQUADRE
-        PRIMA DEL SALVATAGGIO
-        ============================
-        */
-
-
-        if(
-
-            (
-                !Array.isArray(state.A)
-                ||
-                state.A.length===0
-
-            )
-
-            &&
-
-            typeof loadSavedTeams==="function"
-
-            &&
-
-            localStorage.getItem(
-                "savedTeams"
-            )
-
-        ){
-
-            loadSavedTeams();
-
-        }
-
-
-
-
-
-
-
-
-        /*
-        ============================
-        CONTROLLO STATO PRECEDENTE
-        ============================
+            PROTEZIONE CONTRO STATO VUOTO
         */
 
 
         let precedente =
-
             localStorage.getItem(
                 "torneoState"
             );
 
 
-        let salva=true;
-
+        let statoDaSalvare = true;
 
 
 
@@ -5675,48 +5593,41 @@ async function updateAndSync(){
 
 
                 let vecchio =
-
                     JSON.parse(
                         precedente
                     );
 
 
-
-                if(
+                let vecchioCompleto =
 
                     Array.isArray(vecchio.A) &&
                     vecchio.A.length>0 &&
 
                     Array.isArray(vecchio.B) &&
-                    vecchio.B.length>0 &&
+                    vecchio.B.length>0;
 
 
-                    (
 
-                        !Array.isArray(state.A)
-                        ||
-                        state.A.length===0
+                let nuovoVuoto =
 
-                        ||
+                    !Array.isArray(state.A) ||
+                    state.A.length===0 ||
 
-                        !Array.isArray(state.B)
-                        ||
-                        state.B.length===0
+                    !Array.isArray(state.B) ||
+                    state.B.length===0;
 
-                    )
 
+
+                if(
+                    vecchioCompleto &&
+                    nuovoVuoto
                 ){
 
-
-                    salva=false;
-
+                    statoDaSalvare=false;
 
                     console.warn(
-
-                        "Salvataggio bloccato: possibile cancellazione squadre"
-
+                        "Salvataggio bloccato: evitata perdita squadre"
                     );
-
 
                 }
 
@@ -5725,15 +5636,10 @@ async function updateAndSync(){
 
             catch(e){
 
-
                 console.warn(
-
                     "Errore controllo stato precedente",
-
                     e
-
                 );
-
 
             }
 
@@ -5745,16 +5651,12 @@ async function updateAndSync(){
 
 
 
-
-
         /*
-        ============================
-        SALVATAGGIO LOCALE
-        ============================
+            SALVATAGGIO STATO LOCALE
         */
 
 
-        if(salva){
+        if(statoDaSalvare){
 
 
             localStorage.setItem(
@@ -5773,29 +5675,17 @@ async function updateAndSync(){
 
 
 
-
-
         /*
-        ============================
-        SALVATAGGIO SQUADRE
-        ============================
+            SALVATAGGIO SQUADRE
         */
 
 
         if(
 
-            Array.isArray(state.A)
+            Array.isArray(state.A) &&
+            state.A.length>0 &&
 
-            &&
-
-            Array.isArray(state.B)
-
-            &&
-
-            state.A.length>0
-
-            &&
-
+            Array.isArray(state.B) &&
             state.B.length>0
 
         ){
@@ -5828,30 +5718,20 @@ async function updateAndSync(){
 
 
 
-
-
         /*
-        ============================
-        SUPABASE
-        ============================
+            SUPABASE
         */
 
 
         if(
 
-            typeof sb!=="undefined"
+            typeof sb!=="undefined" &&
 
-            &&
+            statoDaSalvare &&
 
-            state.nomeTorneo
-
-            &&
+            state.nomeTorneo &&
 
             state.nomeTorneo.trim()!==""
-
-            &&
-
-            salva
 
         ){
 
@@ -5867,31 +5747,25 @@ async function updateAndSync(){
                     {
 
                         id:
-
                             state.idTorneo,
 
 
                         nome:
-
                             state.nomeTorneo,
 
 
                         data:
-
                             state.dataTorneo,
 
 
                         stato:
-
                             "attivo",
 
 
                         configurazione:
-
                             state
 
                     },
-
 
                     {
 
@@ -5903,23 +5777,18 @@ async function updateAndSync(){
 
 
 
-
             if(error){
 
-
                 console.error(
-
                     "Errore sincronizzazione Supabase:",
-
                     error
-
                 );
-
 
             }
 
 
         }
+
 
     }
 
@@ -5928,16 +5797,12 @@ async function updateAndSync(){
 
 
         console.error(
-
             "Errore updateAndSync:",
-
             e
-
         );
 
 
     }
-
 
 }
 async function loadState(){
