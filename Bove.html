@@ -7037,6 +7037,7 @@ function calc(teams,res){
     }
 
 
+
     if(
         !Array.isArray(res)
     ){
@@ -7049,9 +7050,9 @@ function calc(teams,res){
 
     let classifica =
 
-        teams.map((n,i)=>({
+        teams.map((nome,index)=>({
 
-            n:n || "",
+            n:nome || "",
 
             pt:0,
 
@@ -7061,7 +7062,7 @@ function calc(teams,res){
 
             df:0,
 
-            id:i,
+            id:index,
 
             qual:false
 
@@ -7073,12 +7074,12 @@ function calc(teams,res){
 
     /*
     ============================
-    CREAZIONE PARTITE IDENTICO A renderTables
+    GENERA CALENDARIO IDENTICO
     ============================
     */
 
 
-    let squadre =
+    let elenco =
 
         Array.from(
             {
@@ -7090,20 +7091,20 @@ function calc(teams,res){
 
 
     if(
-        squadre.length % 2 !==0
+        elenco.length % 2 !==0
     ){
 
-        squadre.push(null);
+        elenco.push(null);
 
     }
 
 
 
-    let matches=[];
+    let incontri=[];
 
 
     let totale =
-        squadre.length;
+        elenco.length;
 
 
     let turni =
@@ -7129,23 +7130,27 @@ function calc(teams,res){
         ){
 
 
-            let a =
-                squadre[i];
+            let casa =
+                elenco[i];
 
 
-            let b =
-                squadre[totale-1-i];
+            let ospite =
+                elenco[totale-1-i];
 
 
 
             if(
-                a!==null &&
-                b!==null
+                casa!==null &&
+                ospite!==null
             ){
 
-                matches.push([
-                    a,
-                    b
+
+                incontri.push([
+
+                    casa,
+
+                    ospite
+
                 ]);
 
             }
@@ -7156,11 +7161,11 @@ function calc(teams,res){
 
 
         let fisso =
-            squadre[0];
+            elenco[0];
 
 
         let resto =
-            squadre.slice(1);
+            elenco.slice(1);
 
 
 
@@ -7169,7 +7174,8 @@ function calc(teams,res){
         );
 
 
-        squadre =
+
+        elenco =
         [
             fisso,
             ...resto
@@ -7186,41 +7192,44 @@ function calc(teams,res){
         state.rules.garaAndataRitorno===true
     ){
 
+
         let ritorno =
 
-            matches.map(m=>
-            [
-                m[1],
-                m[0]
-            ]);
+            incontri.map(m=>
+
+                [
+
+                    m[1],
+
+                    m[0]
+
+                ]
+
+            );
 
 
 
-        matches =
-            matches.concat(
+        incontri =
+
+            incontri.concat(
                 ritorno
             );
 
+
     }
-
-
-
-
-
-
-
-    /*
+       /*
     ============================
     CALCOLO RISULTATI
     ============================
     */
 
 
-    matches.forEach((m,i)=>{
+    incontri.forEach((match,index)=>{
 
 
         let risultato =
-            res[i];
+
+            res[index];
 
 
 
@@ -7236,14 +7245,20 @@ function calc(teams,res){
 
 
 
+        let valori =
 
-        let p =
-            risultato.split("-");
+            risultato
+            .split("-")
+            .map(
+                x=>Number(x)
+            );
 
 
 
         if(
-            p.length!==2
+            valori.length!==2 ||
+            isNaN(valori[0]) ||
+            isNaN(valori[1])
         ){
 
             return;
@@ -7252,32 +7267,28 @@ function calc(teams,res){
 
 
 
-        let golA =
-            Number(p[0]);
+        let golCasa =
+            valori[0];
 
 
-        let golB =
-            Number(p[1]);
-
-
-
-        if(
-            isNaN(golA) ||
-            isNaN(golB)
-        ){
-
-            return;
-
-        }
+        let golOspite =
+            valori[1];
 
 
 
         let casa =
-            classifica[m[0]];
+
+            classifica[
+                match[0]
+            ];
+
 
 
         let ospite =
-            classifica[m[1]];
+
+            classifica[
+                match[1]
+            ];
 
 
 
@@ -7294,45 +7305,58 @@ function calc(teams,res){
 
 
 
-        casa.gf += golA;
+        casa.gf += golCasa;
 
-        casa.gs += golB;
+        casa.gs += golOspite;
 
 
+        ospite.gf += golOspite;
 
-        ospite.gf += golB;
+        ospite.gs += golCasa;
 
-        ospite.gs += golA;
 
 
 
 
 
         if(
-            golA > golB
+            golCasa > golOspite
         ){
 
+
             casa.pt +=
-                Number(state.rules.w);
+
+                Number(
+                    state.rules.w || 3
+                );
 
 
             ospite.pt +=
-                Number(state.rules.l);
+
+                Number(
+                    state.rules.l || 0
+                );
 
 
         }
 
         else if(
-            golB > golA
+            golOspite > golCasa
         ){
 
 
             ospite.pt +=
-                Number(state.rules.w);
+
+                Number(
+                    state.rules.w || 3
+                );
 
 
             casa.pt +=
-                Number(state.rules.l);
+
+                Number(
+                    state.rules.l || 0
+                );
 
 
         }
@@ -7341,11 +7365,17 @@ function calc(teams,res){
 
 
             casa.pt +=
-                Number(state.rules.d);
+
+                Number(
+                    state.rules.d || 1
+                );
 
 
             ospite.pt +=
-                Number(state.rules.d);
+
+                Number(
+                    state.rules.d || 1
+                );
 
 
         }
@@ -7353,6 +7383,7 @@ function calc(teams,res){
 
 
     });
+
 
 
 
@@ -7370,6 +7401,7 @@ function calc(teams,res){
 
 
         x.df =
+
             x.gf -
             x.gs;
 
@@ -7382,46 +7414,96 @@ function calc(teams,res){
 
 
 
-
     /*
     ============================
-    ORDINAMENTO
+    ORDINAMENTO CLASSIFICA
     ============================
     */
+
+
+    let criteri = [
+
+        "pt",
+
+        state.rules.crit1 || "df",
+
+        state.rules.crit2 || "gf",
+
+        state.rules.crit3 || "gs"
+
+    ];
+
+
+
+
+    function confronto(a,b,c){
+
+
+        switch(c){
+
+
+            case "pt":
+
+                return b.pt-a.pt;
+
+
+            case "df":
+
+                return b.df-a.df;
+
+
+            case "gf":
+
+                return b.gf-a.gf;
+
+
+            case "gs":
+
+                return a.gs-b.gs;
+
+
+            default:
+
+                return 0;
+
+
+        }
+
+    }
+
+
+
+
 
 
     classifica.sort((a,b)=>{
 
 
-        if(
-            b.pt!==a.pt
-        )
-
-            return b.pt-a.pt;
+        for(
+            let criterio of criteri
+        ){
 
 
+            let risultato =
 
-        if(
-            b.df!==a.df
-        )
-
-            return b.df-a.df;
-
-
-
-        if(
-            b.gf!==a.gf
-        )
-
-            return b.gf-a.gf;
+                confronto(
+                    a,
+                    b,
+                    criterio
+                );
 
 
 
-        if(
-            a.gs!==b.gs
-        )
+            if(
+                risultato!==0
+            ){
 
-            return a.gs-b.gs;
+                return risultato;
+
+            }
+
+
+        }
 
 
 
@@ -7438,18 +7520,16 @@ function calc(teams,res){
 
     /*
     ============================
-    QUALIFICATE
+    QUALIFICAZIONE
     ============================
     */
 
 
-    let q =
+    let qualificate =
 
         Number(
             state.rules.qualificatePerGirone
-        )
-        ||
-        0;
+        ) || 0;
 
 
 
@@ -7457,7 +7537,8 @@ function calc(teams,res){
 
 
         x.qual =
-            i < q;
+
+            i < qualificate;
 
 
     });
