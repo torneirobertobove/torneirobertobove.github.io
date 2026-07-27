@@ -1,10 +1,169 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Dashboard Player</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+--bg:#0f172a;
+--card:#111827;
+--text:#e5e7eb;
+--accent:#6366f1;
+}
+
+body{
+background:var(--bg);
+color:var(--text);
+font-family:system-ui;
+margin:0;
+padding:20px;
+}
+
+.container{
+max-width:800px;
+margin:0 auto
+}
+
+.card{
+background:var(--card);
+padding:20px;
+border-radius:12px;
+border:1px solid #243041;
+margin-bottom:20px
+}
+
+.btn-back{
+background:#475569;
+color:#fff;
+padding:10px 20px;
+border-radius:8px;
+border:0;
+cursor:pointer;
+margin-bottom:20px
+}
+
+h2{
+margin-top:0;
+color:var(--accent)
+}
+
+.news-item{
+border-bottom:1px solid #243041;
+padding:10px 0
+}
+
+.calendar-item{
+background:#0b1220;
+padding:12px;
+margin:8px 0;
+border-radius:6px
+}
+
+.btn{
+background:var(--accent);
+border:0;
+color:white;
+padding:8px 12px;
+border-radius:6px;
+cursor:pointer;
+margin-top:10px;
+width:100%
+}
+
+.errore{
+color:#ef4444;
+text-align:center
+}
+
+.caricamento{
+text-align:center;
+color:#94a3b8
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<button class="btn-back" onclick="location.href='2Page.html'">
+⬅ Indietro
+</button>
+
+
+<div class="card">
+
+<h2>
+📰 News & Mercatino
+</h2>
+
+
+<div class="news-item">
+Prossima apertura mercatino racchette usate.
+</div>
+
+
+<div class="news-item">
+Aggiornamento regolamento tornei estate 2026.
+</div>
+
+
+</div>
+
+
+<div class="card">
+
+<h2>
+📅 Calendario Tornei
+</h2>
+
+
+<div id="calendarioList">
+
+<div class="caricamento">
+Caricamento tornei...
+</div>
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+<script>
+
+
+const sb = supabase.createClient(
+
+"https://iybjvtmfaupgthqqsngd.supabase.co",
+
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQ68WFysOI"
+
+);
+
+
+
 async function inizializzaDashboard(){
 
+
 const {
+
 data:{
 user
 }
+
 }
+
 =
 await sb.auth.getUser();
 
@@ -19,8 +178,195 @@ return;
 }
 
 
-
-caricaTornei();
+await caricaTornei();
 
 
 }
+  async function caricaTornei(){
+
+
+const box=document.getElementById(
+"calendarioList"
+);
+
+
+
+const {
+
+data,
+error
+
+}
+
+=
+await sb
+
+.from("tornei")
+
+.select(
+"id,nome,data,posti,stato,pubblicato"
+)
+
+.eq(
+"pubblicato",
+true
+)
+
+.order(
+"data",
+{
+ascending:true
+}
+);
+
+
+
+
+if(error){
+
+
+console.error(
+"Errore caricamento tornei:",
+error
+);
+
+
+box.innerHTML=`
+
+<div class="errore">
+
+❌ Errore caricamento tornei
+
+</div>
+
+`;
+
+return;
+
+}
+
+
+
+
+if(!data || data.length===0){
+
+
+box.innerHTML=`
+
+<div class="calendar-item">
+
+Nessun torneo disponibile
+
+</div>
+
+`;
+
+return;
+
+}
+
+
+
+
+box.innerHTML="";
+
+
+
+data.forEach(torneo=>{
+
+
+let chiuso =
+torneo.stato==="chiuso";
+
+
+
+box.innerHTML += `
+
+
+<div class="calendar-item">
+
+
+<b>
+🏆 ${torneo.nome || "Torneo senza nome"}
+</b>
+
+
+<br>
+
+
+📅 ${torneo.data || "-"}
+
+
+
+<br>
+
+
+
+${
+chiuso
+
+?
+
+"❌ Iscrizioni chiuse"
+
+:
+
+"🟢 Iscrizioni aperte"
+
+}
+
+
+
+<button
+
+class="btn"
+
+onclick="vaiIscrizione(${torneo.id})"
+
+${chiuso ? "disabled" : ""}
+
+>
+
+${chiuso ? "Chiuso" : "Iscriviti"}
+
+</button>
+
+
+
+</div>
+
+
+`;
+
+
+
+});
+
+
+
+}
+
+
+
+function vaiIscrizione(id){
+
+
+window.location.href=
+
+"iscrizione.html?torneo="+id;
+
+
+}
+
+
+
+
+inizializzaDashboard();
+
+
+</script>
+
+
+</body>
+
+</html>
