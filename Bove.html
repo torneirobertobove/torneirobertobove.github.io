@@ -9752,32 +9752,17 @@ function renderTables(){
     */
 
 
-    let campi = [];
+   let campiPerGirone = {
 
+    A:[2,3],
 
-    let numeroCampi =
-        Number(
-            state.rules.numeroCampi || 2
-        );
+    B:[4,5],
 
+    C:[6,7],
 
-    if(numeroCampi<1)
-        numeroCampi=1;
+    D:[8,9]
 
-
-
-    for(
-        let i=0;
-        i<numeroCampi;
-        i++
-    ){
-
-        campi.push(
-            i+2
-        );
-
-    }
-
+};
 
 
 
@@ -9789,23 +9774,28 @@ function renderTables(){
 
 
     let start =
-        String(
-            state.rules.start || "2000"
-        )
-        .padStart(4,"0");
+    String(
+        state.rules.start || "20:00"
+    );
 
 
+let partiOra =
+    start.includes(":")
+    ?
+    start.split(":")
+    :
+    [
+        start.substring(0,2),
+        start.substring(2,4)
+    ];
 
-    let oraBase =
-        Number(
-            start.substring(0,2)
-        );
+
+let oraBase =
+    Number(partiOra[0]) || 20;
 
 
-    let minutiBase =
-        Number(
-            start.substring(2,4)
-        );
+let minutiBase =
+    Number(partiOra[1]) || 0;
 
 
 
@@ -9909,89 +9899,93 @@ function renderTables(){
 
 
 
-            for(
-                let c=0;
-                c<campi.length;
-                c++
-            ){
-
-
-                let campo =
-                    campi[c];
+           let campi =
+    campiPerGirone[partita.girone] || [2,3];
 
 
 
-                let conflitto=false;
+for(
+    let c=0;
+    c<campi.length;
+    c++
+){
+
+
+    let campo =
+        campi[c];
 
 
 
-                occupazioni.forEach(o=>{
-
-
-                    if(
-                        o.slot===slot &&
-                        o.campo===campo &&
-                        (
-                            o.squadre.includes(
-                                partita.casa
-                            )
-                            ||
-                            o.squadre.includes(
-                                partita.ospite
-                            )
-                        )
-                    ){
-
-                        conflitto=true;
-
-                    }
-
-
-                });
+    let conflitto=false;
 
 
 
-
-                if(!conflitto){
-
-
-                    partita.campo =
-                        campo;
+    occupazioni.forEach(o=>{
 
 
-                    partita.slot =
-                        slot;
+        if(
+            o.slot===slot &&
+            o.campo===campo &&
+            (
+                o.squadre.includes(
+                    partita.casa
+                )
+                ||
+                o.squadre.includes(
+                    partita.ospite
+                )
+            )
+        ){
+
+            conflitto=true;
+
+        }
 
 
-
-                    occupazioni.push({
-
-                        slot:slot,
-
-                        campo:campo,
-
-                        squadre:[
-
-                            partita.casa,
-
-                            partita.ospite
-
-                        ]
-
-                    });
+    });
 
 
 
-                    assegnata=true;
+
+    if(!conflitto){
 
 
-                    break;
+        partita.campo =
+            campo;
 
-                }
+
+        partita.slot =
+            slot;
 
 
-            }
 
+        occupazioni.push({
+
+            slot:slot,
+
+            campo:campo,
+
+            squadre:[
+
+                partita.casa,
+
+                partita.ospite
+
+            ]
+
+        });
+
+
+
+        assegnata=true;
+
+
+        break;
+
+    }
+
+
+}
 
 
             if(!assegnata)
