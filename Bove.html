@@ -2540,592 +2540,634 @@ async function caricaTorneoArchivio(id){
 }
 function setFormat(n){
 
-    ensureRules();
+ensureRules();
 
 
+if(checkRulesLocked())
+return;
 
-    if(checkRulesLocked())
 
-        return;
 
+n=Number(n);
 
 
-    n = Number(n);
 
+if(
+n!==8 &&
+n!==12 &&
+n!==16 &&
+n!==20 &&
+n!==24
+)
 
+n=8;
 
-    if(
-        n!==8 &&
-        n!==12 &&
-        n!==16 &&
-        n!==20 &&
-        n!==24
-    )
 
-        n=8;
 
+state.formato=n;
 
+state.rules.numeroSquadre=n;
 
 
 
-    /*
-        ============================
-        FORMATO MASTER
-        ============================
-    */
+let numeroGironi =
+Math.ceil(n/4);
 
 
-    state.formato=n;
 
-    state.rules.numeroSquadre=n;
+state.rules.numeroGironi=
+numeroGironi;
 
 
+state.rules.squadrePerGirone=4;
 
 
 
-    /*
-        ============================
-        STRUTTURA AUTOMATICA
-        ============================
-    */
+let lettereGironi=[
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
+];
 
 
-    let numeroGironi =
-        n / 4;
 
+/*
+CREAZIONE GIRONI
+*/
 
 
-    state.rules.numeroGironi =
-        numeroGironi;
+lettereGironi.forEach((g,index)=>{
 
 
+if(index < numeroGironi){
 
-    state.rules.squadrePerGirone =
-        4;
 
+if(!Array.isArray(state[g]))
 
+state[g]=[];
 
 
 
+}
+else{
 
 
-    /*
-        ============================
-        CREAZIONE GIRONI DINAMICI
-        NON CANCELLA SQUADRE ESISTENTI
-        ============================
-    */
+state[g]=[];
 
+state[g+"res"]=[];
 
-    let lettereGironi=[
+state[g+"time"]=[];
 
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
+state[g+"camp"]=[];
 
-    ];
 
+}
 
 
-    lettereGironi.forEach((g,index)=>{
 
+});
 
-        if(index < numeroGironi){
 
 
-            if(
-                !Array.isArray(state[g]) ||
-                state[g].length!==4
-            ){
 
-                state[g]=
-                    Array(4).fill("");
 
-            }
+/*
+RESET PARTITE GIRONI
+*/
 
 
-        }
-        else{
+function resetGirone(nome){
 
 
-            state[g]=[];
+let girone =
+Array.isArray(state[nome])
+?
+state[nome]
+:
+[];
 
 
-        }
 
+let totale=0;
 
-    });
 
+for(
+let i=0;
+i<girone.length;
+i++
+){
 
 
+for(
+let j=i+1;
+j<girone.length;
+j++
+){
 
 
+totale++;
 
 
+}
 
+}
 
-    /*
-        ============================
-        RESET PARTITE GIRONI
-        ============================
-    */
 
 
-    function resetGirone(nome,girone){
+if(
+!Array.isArray(state[nome+"res"]) ||
+state[nome+"res"].length!==totale
+)
 
+state[nome+"res"]=
+Array(totale).fill("-");
 
-        let totale=0;
 
 
+if(
+!Array.isArray(state[nome+"time"]) ||
+state[nome+"time"].length!==totale
+)
 
-        let len =
+state[nome+"time"]=
+Array(totale).fill("-");
 
-            Array.isArray(girone)
 
-            ?
 
-            girone.length
+if(
+!Array.isArray(state[nome+"camp"]) ||
+state[nome+"camp"].length!==totale
+)
 
-            :
+state[nome+"camp"]=
+Array(totale).fill("");
 
-            0;
 
 
+}
 
-        for(
-            let i=0;
-            i<len;
-            i++
-        ){
 
 
-            for(
-                let j=i+1;
-                j<len;
-                j++
-            ){
 
+lettereGironi.forEach(g=>{
 
-                totale++;
+resetGirone(g);
 
+});
 
-            }
 
 
-        }
 
 
 
-        if(
-            !Array.isArray(state[nome+"res"]) ||
-            state[nome+"res"].length!==totale
-        )
 
-            state[nome+"res"] =
-                Array(totale).fill("-");
+/*
+RESET FASE FINALE
+*/
 
 
+state.quarti=[];
 
-        if(
-            !Array.isArray(state[nome+"time"]) ||
-            state[nome+"time"].length!==totale
-        )
+state.qRes=
+Array(4).fill("-");
 
-            state[nome+"time"] =
-                Array(totale).fill("-");
 
+state.semiTop=[];
 
+state.sTopRes=
+Array(2).fill("-");
 
-        if(
-            !Array.isArray(state[nome+"camp"]) ||
-            state[nome+"camp"].length!==totale
-        )
 
-            state[nome+"camp"] =
-                Array(totale).fill("");
+state.finalTop=[];
 
+state.fTopRes="-";
 
-    }
 
+state.campioneTop=null;
 
 
 
 
 
 
-    lettereGironi.forEach(g=>{
 
 
-        resetGirone(
+/*
+VISIBILITA' GIRONI
+*/
 
-            g,
 
-            state[g]
+lettereGironi.forEach(g=>{
 
-        );
 
+let card=
+document.getElementById(
+"card"+g
+);
 
-    });
 
 
+if(card){
 
 
+card.style.display=
 
+state[g].length>0
 
+?
 
+"block"
 
+:
 
-    /*
-        ============================
-        RESET FASE FINALE
-        ============================
-    */
+"none";
 
 
-    state.qRes =
-        Array(4).fill("-");
+}
 
 
 
-    state.sTopRes =
-        Array(2).fill("-");
+});
 
 
 
-    state.fTopRes =
-        "-";
 
 
 
-    state.campioneTop =
-        null;
+/*
+CHIUSURA MODAL
+*/
 
 
+let modal=
+document.getElementById(
+"formatModal"
+);
 
 
 
+if(modal)
 
+modal.style.display="none";
 
 
 
-    /*
-        ============================
-        VISIBILITA' GIRONI
-        ============================
-    */
 
 
-    lettereGironi.forEach(g=>{
 
 
-        let card =
+/*
+AGGIORNA DESCRIZIONE FORMATO
+*/
 
-            document.getElementById(
-                "card"+g
-            );
 
+let titolo =
+document.getElementById(
+"nomeFormulaTorneo"
+);
 
 
-        if(card)
 
-            card.style.display =
+if(titolo){
 
-                state[g].length
 
-                ?
+titolo.innerHTML=
+"🏆 "+n+" Squadre";
 
-                "block"
 
-                :
+}
 
-                "none";
 
 
-    });
 
 
 
 
+/*
+SALVA
+*/
 
 
+updateAndSync();
 
 
 
-    /*
-        ============================
-        CHIUSURA MODAL
-        ============================
-    */
+if(typeof render==="function")
 
+render();
 
-    let modal =
-
-        document.getElementById(
-            "formatModal"
-        );
-
-
-
-    if(modal)
-
-        modal.style.display="none";
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        SINCRONIZZAZIONE
-        ============================
-    */
-
-
-    updateAndSync();
 
 
 }
 function generateTestTournament(){
 
-    ensureRules();
+ensureRules();
 
 
-    /*
-        CREA SQUADRE TEST SE IL TORNEO E' VUOTO
-    */
 
+let totaleSquadre =
+Number(state.rules.numeroSquadre)||8;
 
-    if(
-        !Array.isArray(state.A) ||
-        state.A.length===0
-    ){
 
-        state.A=[
 
-            "RobertoB./Falba",
-            "Gianni/Santantonio",
-            "Smaldino/Enrico",
-            "Luigi/Gaetano"
+let nomi=[
 
-        ];
+"Roberto/Falba",
+"Gianni/Santantonio",
+"Smaldino/Enrico",
+"Luigi/Gaetano",
 
-    }
+"Sasa/TopPlayer",
+"Giuseppe/Gennaro",
+"NIK/Cillo",
+"Daniele/Enzo",
 
+"Marco/Andrea",
+"Paolo/Simone",
+"Luca/Matteo",
+"Fabio/Stefano",
 
+"Alessio/Mario",
+"Franco/Giorgio",
+"Andrea/Pietro",
+"Davide/Carlo",
 
-    if(
-        !Array.isArray(state.B) ||
-        state.B.length===0
-    ){
+"Simone/Riccardo",
+"Massimo/Lorenzo",
+"Nicola/Antonio",
+"Vincenzo/Gabriele",
 
-        state.B=[
+"Federico/Leonardo",
+"Tommaso/Michele",
+"Enrico/Filippo",
+"Christian/Alberto"
 
-            "Sasa/TopPlayer",
-            "Giuseppe/Gennaro",
-            "NIK/Cillo",
-            "Daniele/Enzo"
+];
 
-        ];
 
-    }
 
+let squadre =
+nomi.slice(
+0,
+totaleSquadre
+);
 
 
-    state.C=[];
 
-    state.D=[];
 
+/*
+CREAZIONE GIRONI
+*/
 
 
+let lettere=[
 
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
-    /*
-        CREA RISULTATI CASUALI
-        SOLO PER I GIRONI
-    */
+];
 
 
-    function generaRisultato(){
+let perGirone =
+Number(state.rules.squadrePerGirone)||4;
 
 
-        let a =
-            Math.floor(
-                Math.random()*7
-            );
 
+lettere.forEach(g=>{
 
-        let b =
-            Math.floor(
-                Math.random()*7
-            );
+state[g]=[];
 
+state[g+"res"]=[];
 
-        return a+"-"+b;
+state[g+"time"]=[];
 
+state[g+"camp"]=[];
 
-    }
+});
 
 
 
 
 
-    /*
-        RIEMPI RISULTATI GIRONI
-    */
+for(
+let i=0;
+i<state.rules.numeroGironi;
+i++
+){
 
 
-    [
+let start =
+i*perGirone;
 
-        "A",
-        "B",
-        "C",
-        "D"
 
-    ]
+let end =
+start+perGirone;
 
-    .forEach(tag=>{
 
 
-        if(
-            !Array.isArray(state[tag]) ||
-            state[tag].length<2
-        )
+state[lettere[i]] =
+squadre.slice(
+start,
+end
+);
 
-            return;
 
+}
 
 
-        let totale=0;
 
 
 
-        for(
-            let i=0;
-            i<state[tag].length;
-            i++
-        ){
 
 
-            for(
-                let j=i+1;
-                j<state[tag].length;
-                j++
-            ){
 
-                totale++;
+/*
+CREAZIONE RISULTATI
+*/
 
-            }
 
+function creaRisultati(nome){
 
-        }
 
+let girone =
+state[nome];
 
 
+if(
+!Array.isArray(girone) ||
+girone.length<2
+)
 
-        state[tag+"res"] =
+return;
 
-            Array(totale)
-            .fill(null)
-            .map(
-                ()=>generaRisultato()
-            );
 
 
+let totale=0;
 
-        state[tag+"time"] =
 
-            Array(totale)
-            .fill("-");
 
+for(
+let i=0;
+i<girone.length;
+i++
+){
 
 
-        state[tag+"camp"] =
+for(
+let j=i+1;
+j<girone.length;
+j++
+){
 
-            Array(totale)
-            .fill("");
 
+totale++;
 
 
-    });
+}
 
+}
 
 
 
 
+function risultatoCasuale(){
 
 
-    /*
-        RESET FASI FINALI
-    */
+let a=
+Math.floor(
+Math.random()*7
+);
 
 
-    state.qRes =
-        Array(4).fill("-");
+let b=
+Math.floor(
+Math.random()*7
+);
 
 
+return a+"-"+b;
 
-    state.sTopRes =
-        Array(2).fill("-");
 
+}
 
 
-    state.fTopRes =
-        "-";
 
+state[nome+"res"]=
 
+Array(totale)
+.fill(null)
+.map(
+()=>risultatoCasuale()
+);
 
-    state.campioneTop=null;
 
 
+state[nome+"time"]=
 
+Array(totale)
+.fill("-");
 
 
 
+state[nome+"camp"]=
 
-    /*
-        ORARI AUTOMATICI
-    */
+Array(totale)
+.fill("");
 
 
-    if(
-        typeof autofillTimes==="function"
-    )
 
-        autofillTimes();
+}
 
 
 
 
 
+lettere.forEach(g=>{
 
+creaRisultati(g);
 
-    /*
-        SALVA E RIDISEGNA
-    */
+});
 
 
-    updateAndSync();
 
 
 
-    if(
-        typeof render==="function"
-    )
 
-        render();
 
 
 
-    alert(
-        "🧪 Torneo test creato correttamente!"
-    );
+/*
+RESET FASE FINALE
+*/
+
+
+state.qRes=
+Array(4).fill("-");
+
+
+state.sTopRes=
+Array(2).fill("-");
+
+
+state.fTopRes="-";
+
+
+state.campioneTop=null;
+
+
+state.quarti=[];
+
+state.semiTop=[];
+
+state.finalTop=[];
+
+
+
+
+
+
+
+/*
+ORARI AUTOMATICI
+*/
+
+
+if(typeof autofillTimes==="function")
+
+autofillTimes();
+
+
+
+
+
+
+
+
+/*
+SALVA E RENDER
+*/
+
+
+updateAndSync();
+
+
+
+if(typeof render==="function")
+
+render();
+
+
+
+alert(
+"🧪 Torneo test creato correttamente!"
+);
 
 
 }
@@ -3300,438 +3342,245 @@ function aggiornaDescrizioneTipoTorneo(tipo){
 }
 function ensureRules(){
 
+if(!state.rules)
+state.rules={};
 
-    if(!state.rules)
 
-        state.rules={};
+if(state.rules.locked===undefined)
+state.rules.locked=false;
 
 
+if(state.rules.tipoTorneo===undefined)
+state.rules.tipoTorneo="gironi";
 
-    /*
-        ============================
-        STATO REGOLAMENTO
-        ============================
-    */
 
+if(state.rules.formatoTorneo===undefined)
+state.rules.formatoTorneo=state.rules.tipoTorneo;
 
-    if(state.rules.locked===undefined)
 
-        state.rules.locked=false;
 
+state.rules.numeroSquadre=
+Number(state.rules.numeroSquadre)||8;
 
 
-    /*
-        ============================
-        TIPO TORNEO
-        ============================
-    */
+state.rules.numeroGironi=
+Number(state.rules.numeroGironi)||Math.ceil(state.rules.numeroSquadre/4);
 
 
-    if(state.rules.tipoTorneo===undefined)
+state.rules.squadrePerGirone=
+Number(state.rules.squadrePerGirone)||4;
 
-        state.rules.tipoTorneo="gironi";
 
 
-    if(state.rules.formatoTorneo===undefined)
+if(
+state.rules.numeroGironi*
+state.rules.squadrePerGirone
+!==state.rules.numeroSquadre
+){
 
-        state.rules.formatoTorneo =
-            state.rules.tipoTorneo;
+state.rules.squadrePerGirone=4;
 
+state.rules.numeroGironi=
+Math.ceil(
+state.rules.numeroSquadre/4
+);
 
+}
 
 
 
-    /*
-        ============================
-        STRUTTURA TORNEO
-        ============================
-    */
+if(state.rules.w===undefined)
+state.rules.w=3;
 
 
-    state.rules.numeroSquadre =
-        Number(state.rules.numeroSquadre) || 8;
+if(state.rules.d===undefined)
+state.rules.d=1;
 
 
+if(state.rules.l===undefined)
+state.rules.l=0;
 
-    state.rules.numeroGironi =
-        Number(state.rules.numeroGironi) || 2;
 
 
+if(state.rules.formulaGironi===undefined)
+state.rules.formulaGironi="italiana";
 
-    state.rules.squadrePerGirone =
-        Number(state.rules.squadrePerGirone) || 4;
 
+if(state.rules.formulaFinale===undefined)
+state.rules.formulaFinale="eliminazione_diretta";
 
 
-    if(
-        state.rules.numeroGironi *
-        state.rules.squadrePerGirone !==
-        state.rules.numeroSquadre
-    ){
 
+if(!Array.isArray(state.rules.criteriClassifica))
 
-        if(state.rules.numeroSquadre===16){
+state.rules.criteriClassifica=[
+"pt",
+"df",
+"gf",
+"gs"
+];
 
-            state.rules.numeroGironi=4;
 
-            state.rules.squadrePerGirone=4;
 
-        }
+if(state.rules.crit1===undefined)
+state.rules.crit1="df";
 
-        else if(state.rules.numeroSquadre===12){
 
-            state.rules.numeroGironi=3;
+if(state.rules.crit2===undefined)
+state.rules.crit2="gf";
 
-            state.rules.squadrePerGirone=4;
 
-        }
+if(state.rules.crit3===undefined)
+state.rules.crit3="gs";
 
-        else{
 
-            state.rules.numeroGironi=2;
 
-            state.rules.squadrePerGirone=4;
+if(state.rules.qualificatePerGirone===undefined)
+state.rules.qualificatePerGirone=2;
 
-            state.rules.numeroSquadre=8;
 
-        }
 
-    }
+if(state.rules.numeroQualificateFinali===undefined)
 
+state.rules.numeroQualificateFinali=
+state.rules.numeroGironi *
+state.rules.qualificatePerGirone;
 
 
 
+if(state.rules.usaQuarti===undefined)
+state.rules.usaQuarti=true;
 
-    /*
-        ============================
-        FORMULE
-        ============================
-    */
 
+if(state.rules.usaSemifinali===undefined)
+state.rules.usaSemifinali=true;
 
-    if(state.rules.formulaGironi===undefined)
 
-        state.rules.formulaGironi="italiana";
+if(state.rules.usaFinale===undefined)
+state.rules.usaFinale=true;
 
 
 
-    if(state.rules.formulaFinale===undefined)
+if(state.rules.killerPoint===undefined)
+state.rules.killerPoint=false;
 
-        state.rules.formulaFinale=
-            "eliminazione_diretta";
 
+if(state.rules.rigori===undefined)
+state.rules.rigori=true;
 
 
-    if(state.rules.garaAndataRitorno===undefined)
+if(state.rules.tempoSupplementare===undefined)
+state.rules.tempoSupplementare=true;
 
-        state.rules.garaAndataRitorno=false;
 
+if(state.rules.garaAndataRitorno===undefined)
+state.rules.garaAndataRitorno=false;
 
 
 
+if(state.rules.ripescaggio===undefined)
+state.rules.ripescaggio=false;
 
 
-    /*
-        ============================
-        PUNTEGGI
-        ============================
-    */
+if(state.rules.numeroRipescate===undefined)
+state.rules.numeroRipescate=0;
 
 
-    if(state.rules.w===undefined)
 
-        state.rules.w=3;
+[
+"doppiaEliminazione",
+"playoff",
+"faseGold",
+"faseSilver"
 
+].forEach(x=>{
 
-    if(state.rules.d===undefined)
+if(state.rules[x]===undefined)
+state.rules[x]=false;
 
-        state.rules.d=1;
+});
 
 
-    if(state.rules.l===undefined)
 
-        state.rules.l=0;
+if(state.rules.criterioParitaExtra===undefined)
 
+state.rules.criterioParitaExtra="sorteggio";
 
 
 
+if(state.rules.start===undefined)
+state.rules.start="20:00";
 
 
+if(state.rules.duration===undefined)
+state.rules.duration=30;
 
-    /*
-        ============================
-        CLASSIFICA
-        ============================
-    */
 
+if(state.rules.note===undefined)
+state.rules.note="";
 
-    if(!Array.isArray(state.rules.criteriClassifica))
 
-        state.rules.criteriClassifica=[
 
-            "pt",
-            "df",
-            "gf",
-            "gs"
 
-        ];
+/*
+CREAZIONE GIRONI A-F
+*/
 
+[
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
+].forEach(g=>{
 
-    if(state.rules.crit1===undefined)
+if(!Array.isArray(state[g]))
+state[g]=[];
 
-        state.rules.crit1="df";
+if(!Array.isArray(state[g+"res"]))
+state[g+"res"]=[];
 
+if(!Array.isArray(state[g+"time"]))
+state[g+"time"]=[];
 
-    if(state.rules.crit2===undefined)
+if(!Array.isArray(state[g+"camp"]))
+state[g+"camp"]=[];
 
-        state.rules.crit2="gf";
+if(!Array.isArray(state["rank"+g]))
+state["rank"+g]=[];
 
+});
 
-    if(state.rules.crit3===undefined)
 
-        state.rules.crit3="gs";
 
 
+/*
+FASE FINALE
+*/
 
 
+if(!Array.isArray(state.qRes))
+state.qRes=Array(4).fill("-");
 
 
+if(!Array.isArray(state.sTopRes))
+state.sTopRes=Array(2).fill("-");
 
-    /*
-        ============================
-        QUALIFICAZIONI
-        ============================
-    */
 
+if(state.fTopRes===undefined)
+state.fTopRes="-";
 
-    if(state.rules.qualificatePerGirone===undefined)
 
-        state.rules.qualificatePerGirone=2;
+if(state.campioneTop===undefined)
+state.campioneTop=null;
 
 
 
-    if(state.rules.numeroQualificateFinali===undefined)
+if(state.mostraQuarti===undefined)
+state.mostraQuarti=true;
 
-        state.rules.numeroQualificateFinali =
-            state.rules.numeroGironi *
-            state.rules.qualificatePerGirone;
-
-
-
-
-
-
-
-    /*
-        ============================
-        FASE FINALE
-        ============================
-    */
-
-
-    if(state.rules.usaQuarti===undefined)
-
-        state.rules.usaQuarti=true;
-
-
-
-    if(state.rules.usaSemifinali===undefined)
-
-        state.rules.usaSemifinali=true;
-
-
-
-    if(state.rules.usaFinale===undefined)
-
-        state.rules.usaFinale=true;
-
-
-
-
-
-
-
-    /*
-        ============================
-        REGOLE KO
-        ============================
-    */
-
-
-    if(state.rules.killerPoint===undefined)
-
-        state.rules.killerPoint=false;
-
-
-    if(state.rules.rigori===undefined)
-
-        state.rules.rigori=true;
-
-
-    if(state.rules.tempoSupplementare===undefined)
-
-        state.rules.tempoSupplementare=true;
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        RIPESCAGGIO
-        ============================
-    */
-
-
-    if(state.rules.ripescaggio===undefined)
-
-        state.rules.ripescaggio=false;
-
-
-    if(state.rules.numeroRipescate===undefined)
-
-        state.rules.numeroRipescate=0;
-
-
-
-
-
-
-
-    /*
-        ============================
-        FUTURI FORMATI
-        ============================
-    */
-
-
-    [
-        "doppiaEliminazione",
-        "playoff",
-        "faseGold",
-        "faseSilver"
-
-    ].forEach(x=>{
-
-
-        if(state.rules[x]===undefined)
-
-            state.rules[x]=false;
-
-
-    });
-
-
-
-
-
-
-
-    /*
-        ============================
-        PARITA'
-        ============================
-    */
-
-
-    if(state.rules.criterioParitaExtra===undefined)
-
-        state.rules.criterioParitaExtra="sorteggio";
-
-
-
-
-
-
-
-    /*
-        ============================
-        TEMPI
-        ============================
-    */
-
-
-    if(state.rules.start===undefined)
-
-        state.rules.start="20:00";
-
-
-    if(state.rules.duration===undefined)
-
-        state.rules.duration=30;
-
-
-
-
-
-
-
-    /*
-        ============================
-        NOTE
-        ============================
-    */
-
-
-    if(state.rules.note===undefined)
-
-        state.rules.note="";
-
-
-
-
-
-
-
-    /*
-        ============================
-        FASE FINALE ARRAY
-        ============================
-    */
-
-
-    if(!Array.isArray(state.qRes))
-
-        state.qRes=
-            Array(4).fill("-");
-
-
-
-    if(!Array.isArray(state.sTopRes))
-
-        state.sTopRes=
-            Array(2).fill("-");
-
-
-
-    if(state.fTopRes===undefined)
-
-        state.fTopRes="-";
-
-
-
-    if(state.campioneTop===undefined)
-
-        state.campioneTop=null;
-
-
-
-
-
-    /*
-        ============================
-        VISUALIZZAZIONE
-        ============================
-    */
-
-
-    if(state.mostraQuarti===undefined)
-
-        state.mostraQuarti=true;
 
 
 }
@@ -4442,606 +4291,464 @@ function applyRules(){
 }
 function loadSavedTeams(){
 
-    ensureRules();
+ensureRules();
 
 
 
-    let saved =
-        localStorage.getItem(
-            "savedTeams"
-        );
+let saved =
+localStorage.getItem(
+"savedTeams"
+);
 
 
 
-    if(!saved)
+if(!saved)
 
-        return;
+return;
 
 
 
+let teams;
 
-    let teams;
 
+try{
 
+teams=JSON.parse(saved);
 
-    try{
+}
 
-        teams =
-            JSON.parse(saved);
+catch(e){
 
-    }
-    catch(e){
+console.error(
+"Errore caricamento squadre:",
+e
+);
 
-        console.error(
-            "Errore caricamento squadre:",
-            e
-        );
+return;
 
-        return;
+}
 
-    }
 
 
+if(!Array.isArray(teams))
 
+return;
 
 
-    if(!Array.isArray(teams))
 
-        return;
 
+let richieste =
+Number(
+state.rules.numeroSquadre
+)||8;
 
 
 
+if(teams.length!==richieste){
 
+console.warn(
+"Squadre salvate incompatibili:",
+teams.length,
+"richieste:",
+richieste
+);
 
+return;
 
-    let richieste =
-        Number(
-            state.rules.numeroSquadre
-        ) || 8;
+}
 
 
 
 
 
-    /*
-        ============================
-        CONTROLLO COMPATIBILITA'
-        ============================
-    */
+[
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
+].forEach(g=>{
 
-    if(
-        teams.length === 0
-    ){
+state[g]=[];
 
-        return;
+state[g+"res"]=[];
 
-    }
+state[g+"time"]=[];
 
+state[g+"camp"]=[];
 
+});
 
 
-    if(
-        teams.length !== richieste
-    ){
 
 
-        console.warn(
 
-            "Numero squadre salvate incompatibile:",
-            teams.length,
-            "richieste:",
-            richieste
+let numeroGironi =
+Number(
+state.rules.numeroGironi
+)||Math.ceil(richieste/4);
 
-        );
 
 
-        return;
+let perGirone =
+Number(
+state.rules.squadrePerGirone
+)||4;
 
-    }
 
 
 
+let lettere=[
 
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
+];
 
 
 
 
-    /*
-        ============================
-        RESET GIRONI
-        ============================
-    */
 
+for(
+let i=0;
+i<numeroGironi;
+i++
+){
 
-    state.A=[];
-    state.B=[];
-    state.C=[];
-    state.D=[];
 
+let start =
+i*perGirone;
 
 
+let end =
+start+perGirone;
 
 
 
-
-
-    let numeroGironi =
-        Number(
-            state.rules.numeroGironi
-        ) || 2;
-
-
-
-    let squadrePerGirone =
-        Number(
-            state.rules.squadrePerGirone
-        ) || 4;
-
-
-
-
-
-
-
-
-
-
-    if(
-
-        numeroGironi *
-        squadrePerGirone !==
-        richieste
-
-    ){
-
-        console.warn(
-            "Regolamento gironi non valido."
-        );
-
-        return;
-
-    }
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        RICOSTRUZIONE GIRONI
-        ============================
-    */
-
-
-    [
-
-        "A",
-        "B",
-        "C",
-        "D"
-
-    ].forEach((g,i)=>{
-
-
-        if(i < numeroGironi){
-
-
-            let start =
-                i * squadrePerGirone;
-
-
-
-            let end =
-                start + squadrePerGirone;
-
-
-
-            state[g] =
-                teams.slice(
-                    start,
-                    end
-                );
-
-
-        }
-
-
-    });
-
-
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        PULIZIA GIRONI NON USATI
-        ============================
-    */
-
-
-    if(numeroGironi < 3)
-
-        state.C=[];
-
-
-
-    if(numeroGironi < 4)
-
-        state.D=[];
-
-
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        RESET PARTITE
-        ============================
-    */
-
-
-    function sistema(nome,girone){
-
-
-        let totale=0;
-
-
-
-        let n =
-            Array.isArray(girone)
-            ?
-            girone.length
-            :
-            0;
-
-
-
-        for(let i=0;i<n;i++){
-
-
-            for(let j=i+1;j<n;j++){
-
-
-                totale++;
-
-            }
-
-        }
-
-
-
-
-
-        if(
-            !Array.isArray(
-                state[nome+"res"]
-            )
-            ||
-            state[nome+"res"].length !== totale
-        )
-
-            state[nome+"res"] =
-                Array(totale).fill("-");
-
-
-
-
-
-
-        if(
-            !Array.isArray(
-                state[nome+"time"]
-            )
-            ||
-            state[nome+"time"].length !== totale
-        )
-
-            state[nome+"time"] =
-                Array(totale).fill("-");
-
-
-
-
-
-
-        if(
-            !Array.isArray(
-                state[nome+"camp"]
-            )
-            ||
-            state[nome+"camp"].length !== totale
-        )
-
-            state[nome+"camp"] =
-                Array(totale).fill("");
-
-    }
-
-
-
-
-
-
-
-
-
-    [
-
-        "A",
-        "B",
-        "C",
-        "D"
-
-    ].forEach(g=>{
-
-
-        sistema(
-            g,
-            state[g]
-        );
-
-
-    });
-
-
-
-
-
-
-
-
-
-    /*
-        ============================
-        SINCRONIZZAZIONE
-        ============================
-    */
-
-
-    state.formato =
-        richieste;
-
-
-
-    updateAndSync();
+state[lettere[i]] =
+teams.slice(
+start,
+end
+);
 
 
 }
 
+
+
+
+
+function creaPartite(nome){
+
+
+let gruppo =
+state[nome];
+
+
+if(
+!Array.isArray(gruppo) ||
+gruppo.length<2
+)
+
+return;
+
+
+
+let totale=0;
+
+
+
+for(
+let i=0;
+i<gruppo.length;
+i++
+){
+
+
+for(
+let j=i+1;
+j<gruppo.length;
+j++
+){
+
+
+totale++;
+
+}
+
+}
+
+
+
+state[nome+"res"]=
+Array(totale).fill("-");
+
+
+state[nome+"time"]=
+Array(totale).fill("-");
+
+
+state[nome+"camp"]=
+Array(totale).fill("");
+
+
+
+}
+
+
+
+
+lettere.forEach(g=>{
+
+creaPartite(g);
+
+});
+
+
+
+
+
+
+
+state.formato=
+richieste;
+
+
+
+updateAndSync();
+
+
+
+if(typeof render==="function")
+
+render();
+
+
+
+}
 function saveTeams(){
 
-    ensureRules();
+ensureRules();
 
 
 
-    if(checkRulesLocked())
+if(checkRulesLocked())
 
-        return;
+return;
 
 
 
 
-    let input =
+let input =
+document.getElementById(
+"teamInput"
+);
 
-        document.getElementById(
-            "teamInput"
-        );
 
 
+if(!input)
 
-    if(!input)
+return;
 
-        return;
 
 
 
 
+let teams =
 
-    let teams =
+input.value
 
-        input.value
+.split("\n")
 
-        .split("\n")
+.map(x=>
 
-        .map(x=>
+x
+.replace(/\s+/g," ")
+.replace(/\s*\/\s*/g,"/")
+.trim()
 
-            x
-            .replace(/\s+/g," ")
-            .replace(/\s*\/\s*/g,"/")
-            .trim()
+)
 
-        )
+.filter(Boolean);
 
-        .filter(Boolean);
 
 
 
 
 
 
+for(
+let i=0;
+i<teams.length;
+i++
+){
 
 
-    for(let i=0;i<teams.length;i++){
+if(!teams[i].includes("/")){
 
 
-        let squadra =
-            teams[i];
+alert(
 
+"Squadra n° "+
+(i+1)+
+" non valida.\n\n"+
+"Inserire:\n"+
+"Giocatore1/Giocatore2"
 
+);
 
-        if(!squadra.includes("/")){
 
+return;
 
-            alert(
 
-                "Squadra n° "+
-                (i+1)+
-                " non valida.\n\n"+
-                "Inserire:\n\n"+
-                "Giocatore1/Giocatore2"
+}
 
-            );
 
 
-            return;
+let giocatori =
 
+teams[i]
+.split("/")
+.filter(Boolean);
 
-        }
 
 
+if(giocatori.length!==2){
 
-        let giocatori =
 
-            squadra
-            .split("/")
-            .map(x=>x.trim())
-            .filter(Boolean);
+alert(
 
+"La squadra n° "+
+(i+1)+
+" deve avere 2 giocatori."
 
+);
 
-        if(
-            giocatori.length!==2
-        ){
 
+return;
 
-            alert(
 
-                "La squadra n° "+
-                (i+1)+
-                " deve avere 2 giocatori."
+}
 
-            );
 
+}
 
-            return;
 
 
-        }
 
 
-    }
 
 
+let richieste =
 
+Number(
+state.rules.numeroSquadre
+)||8;
 
 
 
 
 
-    let richieste =
+if(teams.length!==richieste){
 
-        Number(
-            state.rules.numeroSquadre
-        ) || 8;
 
+alert(
 
+"Il regolamento richiede "+
+richieste+
+" squadre.\n\n"+
+"Inserite: "+
+teams.length
 
+);
 
 
-    if(
-        teams.length!==richieste
-    ){
+return;
 
 
-        alert(
+}
 
-            "Il regolamento richiede "+
-            richieste+
-            " squadre.\n\n"+
-            "Inserite: "+
-            teams.length
 
-        );
 
 
-        return;
 
 
-    }
 
+localStorage.setItem(
 
+"savedTeams",
 
+JSON.stringify(teams)
 
+);
 
 
 
 
 
-    /*
-    ============================
-    SALVATAGGIO DEFINITIVO SQUADRE
-    ============================
-    */
 
 
-    localStorage.setItem(
+[
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
-        "savedTeams",
+].forEach(g=>{
 
-        JSON.stringify(teams)
 
-    );
+state[g]=[];
 
+state[g+"res"]=[];
 
+state[g+"time"]=[];
 
+state[g+"camp"]=[];
 
 
+});
 
 
 
 
-    /*
-    ============================
-    RESET GIRONI
-    ============================
-    */
 
 
-    [
 
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
+let numeroGironi =
 
-    ]
+Number(
+state.rules.numeroGironi
+)||Math.ceil(richieste/4);
 
-    .forEach(g=>{
 
 
-        state[g]=[];
+let perGirone =
 
-        state[g+"res"]=[];
+Number(
+state.rules.squadrePerGirone
+)||4;
 
-        state[g+"time"]=[];
 
-        state[g+"camp"]=[];
 
 
-    });
+let lettere=[
 
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
 
+];
 
 
 
@@ -5049,286 +4756,167 @@ function saveTeams(){
 
 
 
-    let numeroGironi =
+for(
+let i=0;
+i<numeroGironi;
+i++
+){
 
-        Number(
-            state.rules.numeroGironi
-        ) || 2;
 
+let start =
+i*perGirone;
 
 
-    let squadrePerGirone =
+let end =
+start+perGirone;
 
-        Number(
-            state.rules.squadrePerGirone
-        ) || 4;
 
 
+state[lettere[i]] =
 
+teams.slice(
+start,
+end
+);
 
 
+}
 
 
 
 
-    /*
-    ============================
-    CREAZIONE GIRONI
-    ============================
-    */
 
 
-    let lettere = [
 
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
+function creaPartite(nome){
 
-    ];
 
+let gruppo =
+state[nome];
 
 
 
+if(
+!Array.isArray(gruppo)
+)
 
-    for(
-        let i=0;
-        i<numeroGironi;
-        i++
-    ){
+return;
 
 
-        let inizio =
 
-            i *
-            squadrePerGirone;
+let totale=0;
 
 
 
-        let fine =
+for(
+let i=0;
+i<gruppo.length;
+i++
+){
 
-            inizio +
-            squadrePerGirone;
 
+for(
+let j=i+1;
+j<gruppo.length;
+j++
+){
 
 
-        state[lettere[i]] =
+totale++;
 
-            teams.slice(
-                inizio,
-                fine
-            );
+}
 
+}
 
-    }
 
 
+state[nome+"res"]=
+Array(totale).fill("-");
 
 
+state[nome+"time"]=
+Array(totale).fill("-");
 
 
+state[nome+"camp"]=
+Array(totale).fill("");
 
 
-    /*
-    ============================
-    CREA ARRAY RISULTATI
-    ============================
-    */
 
+}
 
-    function creaPartite(nome){
 
 
-        let n =
 
-            Array.isArray(
-                state[nome]
-            )
+lettere.forEach(g=>{
 
-            ?
+creaPartite(g);
 
-            state[nome].length
+});
 
-            :
 
-            0;
 
 
 
-        let totale=0;
 
 
+state.qRes=
+Array(4).fill("-");
 
-        for(
-            let i=0;
-            i<n;
-            i++
-        ){
 
+state.sTopRes=
+Array(2).fill("-");
 
-            for(
-                let j=i+1;
-                j<n;
-                j++
-            ){
 
-                totale++;
+state.fTopRes="-";
 
-            }
 
-        }
+state.finalTop=[];
 
 
+state.campioneTop=null;
 
-        state[nome+"res"] =
 
-            Array(totale)
-            .fill("-");
 
 
 
-        state[nome+"time"] =
+state.rules.locked=true;
 
-            Array(totale)
-            .fill("-");
 
 
+state.formato=
+richieste;
 
-        state[nome+"camp"] =
 
-            Array(totale)
-            .fill("");
 
 
 
-    }
 
 
+let modal =
+document.getElementById(
+"teamModal"
+);
 
 
 
+if(modal)
 
+modal.style.display="none";
 
-    lettere.forEach(g=>{
 
 
-        creaPartite(g);
 
 
-    });
 
 
+updateAndSync();
 
 
 
+if(typeof render==="function")
 
-
-
-
-    /*
-    ============================
-    RESET KO
-    ============================
-    */
-
-
-    state.qRes =
-
-        Array(4)
-        .fill("-");
-
-
-
-    state.sTopRes =
-
-        Array(2)
-        .fill("-");
-
-
-
-    state.fTopRes =
-
-        "-";
-
-
-
-    state.finalTop=[];
-
-
-
-    state.campioneTop=null;
-
-
-
-
-
-
-
-
-
-    /*
-    ============================
-    BLOCCO REGOLAMENTO
-    ============================
-    */
-
-
-    state.rules.locked=true;
-
-
-
-    state.formato =
-        richieste;
-
-
-
-
-
-
-
-
-
-    /*
-    ============================
-    CHIUSURA FINESTRA
-    ============================
-    */
-
-
-    let modal =
-
-        document.getElementById(
-            "teamModal"
-        );
-
-
-
-    if(modal)
-
-        modal.style.display="none";
-
-
-
-
-
-
-
-
-
-    /*
-    ============================
-    SALVA E RENDER
-    ============================
-    */
-
-
-    updateAndSync();
-
-
-
-    render();
+render();
 
 
 
