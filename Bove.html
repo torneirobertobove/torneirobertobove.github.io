@@ -6633,37 +6633,24 @@ function reset(){
 
 
 }
-function calc(teams,res){
-
-    ensureRules();
-
+function calc(squadre, risultati){
 
     if(
-        !Array.isArray(teams) ||
-        teams.length===0
-    ){
+        !Array.isArray(squadre) ||
+        !Array.isArray(risultati)
+    )
 
         return [];
 
-    }
+
+    let classifica=[];
 
 
+    squadre.forEach((nome,i)=>{
 
-    if(
-        !Array.isArray(res)
-    ){
+        classifica.push({
 
-        res=[];
-
-    }
-
-
-
-    let classifica =
-
-        teams.map((nome,index)=>({
-
-            n:nome || "",
+            n:nome,
 
             pt:0,
 
@@ -6671,417 +6658,120 @@ function calc(teams,res){
 
             gs:0,
 
-            df:0,
+            df:0
 
-            id:index,
+        });
 
-            qual:false
 
-        }));
-
+    });
 
 
 
 
-    /*
-    ============================
-    GENERA CALENDARIO IDENTICO
-    ============================
-    */
+
+    let indice=0;
 
 
-    let elenco =
-
-        Array.from(
-            {
-                length:teams.length
-            },
-            (_,i)=>i
-        );
+    for(let i=0;i<squadre.length;i++){
 
 
-
-    if(
-        elenco.length % 2 !==0
-    ){
-
-        elenco.push(null);
-
-    }
+        for(let j=i+1;j<squadre.length;j++){
 
 
-
-    let incontri=[];
-
-
-    let totale =
-        elenco.length;
+            let risultato =
+                risultati[indice];
 
 
-    let turni =
-        totale-1;
-
-
-    let meta =
-        totale/2;
-
-
-
-    for(
-        let r=0;
-        r<turni;
-        r++
-    ){
-
-
-        for(
-            let i=0;
-            i<meta;
-            i++
-        ){
-
-
-            let casa =
-                elenco[i];
-
-
-            let ospite =
-                elenco[totale-1-i];
+            indice++;
 
 
 
             if(
-                casa!==null &&
-                ospite!==null
-            ){
+                !risultato ||
+                risultato==="-" ||
+                !risultato.includes("-")
+            )
+
+                continue;
 
 
-                incontri.push([
 
-                    casa,
+            let parti =
+                risultato.split("-");
 
-                    ospite
 
-                ]);
+
+            let a =
+                Number(parti[0]);
+
+
+            let b =
+                Number(parti[1]);
+
+
+
+            if(
+                isNaN(a) ||
+                isNaN(b)
+            )
+
+                continue;
+
+
+
+
+
+            classifica[i].gf += a;
+
+            classifica[i].gs += b;
+
+            classifica[i].df =
+                classifica[i].gf -
+                classifica[i].gs;
+
+
+
+            classifica[j].gf += b;
+
+            classifica[j].gs += a;
+
+            classifica[j].df =
+                classifica[j].gf -
+                classifica[j].gs;
+
+
+
+
+
+            if(a>b){
+
+                classifica[i].pt +=
+                    Number(state.rules.w || 3);
+
+            }
+            else
+            if(b>a){
+
+                classifica[j].pt +=
+                    Number(state.rules.w || 3);
+
+            }
+            else{
+
+                classifica[i].pt +=
+                    Number(state.rules.d || 1);
+
+                classifica[j].pt +=
+                    Number(state.rules.d || 1);
 
             }
 
 
+
         }
-
-
-
-        let fisso =
-            elenco[0];
-
-
-        let resto =
-            elenco.slice(1);
-
-
-
-        resto.unshift(
-            resto.pop()
-        );
-
-
-
-        elenco =
-        [
-            fisso,
-            ...resto
-        ];
-
-    }
-
-
-
-
-
-
-    if(
-        state.rules.garaAndataRitorno===true
-    ){
-
-
-        let ritorno =
-
-            incontri.map(m=>
-
-                [
-
-                    m[1],
-
-                    m[0]
-
-                ]
-
-            );
-
-
-
-        incontri =
-
-            incontri.concat(
-                ritorno
-            );
 
 
     }
-       /*
-    ============================
-    CALCOLO RISULTATI
-    ============================
-    */
-
-
-    incontri.forEach((match,index)=>{
-
-
-        let risultato =
-
-            res[index];
-
-
-
-        if(
-            !risultato ||
-            risultato==="-" ||
-            typeof risultato!=="string"
-        ){
-
-            return;
-
-        }
-
-
-
-        let valori =
-
-            risultato
-            .split("-")
-            .map(
-                x=>Number(x)
-            );
-
-
-
-        if(
-            valori.length!==2 ||
-            isNaN(valori[0]) ||
-            isNaN(valori[1])
-        ){
-
-            return;
-
-        }
-
-
-
-        let golCasa =
-            valori[0];
-
-
-        let golOspite =
-            valori[1];
-
-
-
-        let casa =
-
-            classifica[
-                match[0]
-            ];
-
-
-
-        let ospite =
-
-            classifica[
-                match[1]
-            ];
-
-
-
-        if(
-            !casa ||
-            !ospite
-        ){
-
-            return;
-
-        }
-
-
-
-
-
-        casa.gf += golCasa;
-
-        casa.gs += golOspite;
-
-
-        ospite.gf += golOspite;
-
-        ospite.gs += golCasa;
-
-
-
-
-
-
-        if(
-            golCasa > golOspite
-        ){
-
-
-            casa.pt +=
-
-                Number(
-                    state.rules.w || 3
-                );
-
-
-            ospite.pt +=
-
-                Number(
-                    state.rules.l || 0
-                );
-
-
-        }
-
-        else if(
-            golOspite > golCasa
-        ){
-
-
-            ospite.pt +=
-
-                Number(
-                    state.rules.w || 3
-                );
-
-
-            casa.pt +=
-
-                Number(
-                    state.rules.l || 0
-                );
-
-
-        }
-
-        else{
-
-
-            casa.pt +=
-
-                Number(
-                    state.rules.d || 1
-                );
-
-
-            ospite.pt +=
-
-                Number(
-                    state.rules.d || 1
-                );
-
-
-        }
-
-
-
-    });
-
-
-
-
-
-
-
-    /*
-    ============================
-    DIFFERENZA RETI
-    ============================
-    */
-
-
-    classifica.forEach(x=>{
-
-
-        x.df =
-
-            x.gf -
-            x.gs;
-
-
-    });
-
-
-
-
-
-
-
-    /*
-    ============================
-    ORDINAMENTO CLASSIFICA
-    ============================
-    */
-
-
-    let criteri = [
-
-        "pt",
-
-        state.rules.crit1 || "df",
-
-        state.rules.crit2 || "gf",
-
-        state.rules.crit3 || "gs"
-
-    ];
-
-
-
-
-    function confronto(a,b,c){
-
-
-        switch(c){
-
-
-            case "pt":
-
-                return b.pt-a.pt;
-
-
-            case "df":
-
-                return b.df-a.df;
-
-
-            case "gf":
-
-                return b.gf-a.gf;
-
-
-            case "gs":
-
-                return a.gs-b.gs;
-
-
-            default:
-
-                return 0;
-
-
-        }
-
-    }
-
 
 
 
@@ -7090,35 +6780,31 @@ function calc(teams,res){
     classifica.sort((a,b)=>{
 
 
-        for(
-            let criterio of criteri
-        ){
+        if(b.pt!==a.pt)
 
-
-            let risultato =
-
-                confronto(
-                    a,
-                    b,
-                    criterio
-                );
+            return b.pt-a.pt;
 
 
 
-            if(
-                risultato!==0
-            ){
+        if(b.df!==a.df)
 
-                return risultato;
-
-            }
-
-
-        }
+            return b.df-a.df;
 
 
 
-        return a.id-b.id;
+        if(b.gf!==a.gf)
+
+            return b.gf-a.gf;
+
+
+
+        if(a.gs!==b.gs)
+
+            return a.gs-b.gs;
+
+
+
+        return 0;
 
 
     });
@@ -7129,27 +6815,14 @@ function calc(teams,res){
 
 
 
-    /*
-    ============================
-    QUALIFICAZIONE
-    ============================
-    */
-
-
-    let qualificate =
-
-        Number(
-            state.rules.qualificatePerGirone
-        ) || 0;
-
-
-
     classifica.forEach((x,i)=>{
 
 
         x.qual =
-
-            i < qualificate;
+            i <
+            Number(
+                state.rules.qualificatePerGirone || 2
+            );
 
 
     });
