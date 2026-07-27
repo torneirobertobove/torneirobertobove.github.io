@@ -11067,11 +11067,10 @@ async function initDefaults(){
 
 
         /*
-            ============================
-            CARICAMENTO DA ADMIN
-            ============================
+        ============================
+        CARICAMENTO DA ADMIN
+        ============================
         */
-
 
         if(torneoDaAdmin){
 
@@ -11090,29 +11089,29 @@ async function initDefaults(){
 
                     ...state,
 
-
                     idTorneo:
-                        torneo.idTorneo || Date.now(),
-
+                        torneo.idTorneo ||
+                        Date.now(),
 
                     nomeTorneo:
-                        torneo.nomeTorneo || "",
-
+                        torneo.nomeTorneo ||
+                        "",
 
                     dataTorneo:
-                        torneo.data || "",
-
+                        torneo.data ||
+                        "",
 
                     formato:
-                        torneo.posti || 8,
-
+                        torneo.posti ||
+                        8,
 
                     partecipanti:
-                        torneo.partecipanti || [],
-
+                        torneo.partecipanti ||
+                        [],
 
                     coppie:
-                        torneo.coppie || []
+                        torneo.coppie ||
+                        []
 
                 };
 
@@ -11120,8 +11119,11 @@ async function initDefaults(){
 
                 state.A =
                     (torneo.coppie || [])
-                    .map(c =>
-                        c.g1 + " / " + c.g2
+                    .map(
+                        c =>
+                        c.g1 +
+                        " / " +
+                        c.g2
                     );
 
 
@@ -11139,18 +11141,10 @@ async function initDefaults(){
 
 
                 localStorage.setItem(
-
                     "torneoState",
-
                     JSON.stringify(state)
-
                 );
 
-
-
-                /*
-                    render protetto
-                */
 
 
                 if(
@@ -11165,7 +11159,7 @@ async function initDefaults(){
                     catch(err){
 
                         console.error(
-                            "Errore render dopo caricamento ADMIN:",
+                            "Errore render admin:",
                             err
                         );
 
@@ -11181,12 +11175,10 @@ async function initDefaults(){
             }
             catch(e){
 
-
                 console.error(
-                    "Errore caricamento torneo ADMIN:",
+                    "Errore caricamento admin:",
                     e
                 );
-
 
             }
 
@@ -11196,10 +11188,12 @@ async function initDefaults(){
 
 
 
+
+
         /*
-            ============================
-            CARICAMENTO STATO ESISTENTE
-            ============================
+        ============================
+        CARICAMENTO LOCALE
+        ============================
         */
 
 
@@ -11216,24 +11210,62 @@ async function initDefaults(){
             try{
 
 
-                state = {
+                let vecchio =
+                    JSON.parse(
+                        salvato
+                    );
 
-                    ...state,
 
-                    ...JSON.parse(salvato)
 
-                };
+                /*
+                BLOCCA SOLO STATI VUOTI
+                */
+
+                if(
+
+                    Array.isArray(vecchio.A) &&
+                    vecchio.A.length>0 &&
+
+                    Array.isArray(vecchio.B) &&
+                    vecchio.B.length>0
+
+                ){
+
+
+                    state = {
+
+                        ...state,
+
+                        ...vecchio
+
+                    };
+
+
+                    console.log(
+                        "STATO TORNEO RECUPERATO",
+                        state
+                    );
+
+
+                }
+                else{
+
+
+                    console.warn(
+                        "Stato locale vuoto ignorato"
+                    );
+
+
+                }
 
 
             }
             catch(e){
 
-
                 console.error(
-                    "Errore lettura torneo locale:",
+                    "Errore lettura locale:",
                     e
                 );
-
 
             }
 
@@ -11242,14 +11274,42 @@ async function initDefaults(){
 
 
 
+
+
+
         /*
-            ============================
-            GARANZIA ARRAY
-            ============================
+        ============================
+        RECUPERO SQUADRE
+        ============================
+        */
+
+
+        if(
+
+            state.A.length===0 &&
+
+            typeof loadSavedTeams==="function"
+
+        ){
+
+            loadSavedTeams();
+
+        }
+
+
+
+
+
+
+        /*
+        ============================
+        GARANZIA ARRAY
+        ============================
         */
 
 
         [
+
             "A",
             "B",
             "C",
@@ -11258,21 +11318,29 @@ async function initDefaults(){
             "F"
 
         ]
+
         .forEach(g=>{
 
 
             if(
                 !Array.isArray(state[g])
-            )
+            ){
 
                 state[g]=[];
+
+            }
 
 
         });
 
 
 
+
+
         ensureRules();
+
+
+
 
 
 
@@ -11310,21 +11378,57 @@ async function initDefaults(){
 
 
 
-        localStorage.setItem(
-
-            "torneoState",
-
-            JSON.stringify(state)
-
-        );
 
 
 
 
         /*
-            ============================
-            RENDER PROTETTO
-            ============================
+        ============================
+        SALVATAGGIO PROTETTO
+        ============================
+        */
+
+
+        if(
+
+            Array.isArray(state.A) &&
+            state.A.length>0 &&
+
+            Array.isArray(state.B) &&
+            state.B.length>0
+
+        ){
+
+
+            localStorage.setItem(
+
+                "torneoState",
+
+                JSON.stringify(state)
+
+            );
+
+
+        }
+        else{
+
+
+            console.warn(
+                "Salvataggio iniziale bloccato: gironi vuoti"
+            );
+
+
+        }
+
+
+
+
+
+
+        /*
+        ============================
+        RENDER
+        ============================
         */
 
 
@@ -11355,12 +11459,13 @@ async function initDefaults(){
 
 
         console.error(
-            "Errore inizializzazione:",
+            "Errore initDefaults:",
             e
         );
 
 
     }
+
 
 }
 window.addEventListener("load",async()=>{
