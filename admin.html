@@ -1576,25 +1576,10 @@ if(!giocatore)return;
 
 
 
-giocatore.stato=
-"approvato";
-
-
-giocatore.approvato=
-true;
-
-
-
-
-
 const {
-
 error
-
 }=await sb
-
 .from("iscrizioni")
-
 .update({
 
 stato:"approvato",
@@ -1605,13 +1590,10 @@ updated_at:
 new Date().toISOString()
 
 })
-
 .eq(
 "id",
 giocatore.id
 );
-
-
 
 
 
@@ -1627,44 +1609,47 @@ alert(
 "Errore approvazione giocatore"
 );
 
-
 return;
 
 }
 
 
 
+/*
+RICOSTRUZIONE PARTECIPANTI
+DAL DATABASE
+*/
 
 
-const partecipanti=
+const {
 
-torneo.configurazione?.partecipanti || [];
+data:partecipanti,
 
+error:errorePartecipanti
 
-
-
-
-const giaPresente=
-
-partecipanti.some(g=>
-
-Number(g.id)===
-
-Number(giocatore.id)
-
+}=await sb
+.from("iscrizioni")
+.select("*")
+.eq(
+"torneo_id",
+torneo.id
+)
+.eq(
+"approvato",
+true
 );
 
 
 
-if(!giaPresente){
+if(errorePartecipanti){
 
-partecipanti.push(
-giocatore
+console.error(
+errorePartecipanti
 );
+
+return;
 
 }
-
-
 
 
 
@@ -1674,85 +1659,7 @@ torneo.configurazione || {};
 
 
 torneo.configurazione.partecipanti=
-partecipanti;
-
-
-
-torneo.configurazione.iscritti=
-iscritti;
-
-
-
-
-
-await aggiornaConfigurazioneTorneo(
-torneo
-);
-
-
-
-renderAdmin();
-
-}
-
-
-
-
-
-async function rifiutaIscritto(index){
-
-const torneo=
-getTorneoAdminCorrente();
-
-
-
-if(!torneo)return;
-
-
-
-const iscritti=
-
-torneo.configurazione?.iscritti || [];
-
-
-
-const giocatore=
-iscritti[index];
-
-
-
-if(!giocatore)return;
-
-
-
-giocatore.stato=
-"rifiutato";
-
-
-
-
-
-await sb
-
-.from("iscrizioni")
-
-.update({
-
-stato:"rifiutato",
-
-approvato:false,
-
-updated_at:
-new Date().toISOString()
-
-})
-
-.eq(
-"id",
-giocatore.id
-);
-
-
+partecipanti || [];
 
 
 
@@ -1770,7 +1677,6 @@ torneo
 renderAdmin();
 
 }
-
 
 
 
