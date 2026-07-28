@@ -138,13 +138,7 @@ Torna alla Dashboard
 
 
 </div>
-
-
-
-
-
 <script>
-
 
 const sb = supabase.createClient(
 
@@ -153,42 +147,6 @@ const sb = supabase.createClient(
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI"
 
 );
-
-
-
-
-
-async function verificaLogin(){
-
-
-const {
-
-data:{
-user
-}
-
-}
-
-=
-await sb.auth.getUser();
-
-
-
-if(!user){
-
-console.warn("Utente non autenticato");
-
-}
-
-
-
-return user;
-
-
-}
-
-
-
 
 
 
@@ -213,8 +171,6 @@ box.innerHTML=`
 
 
 
-
-
 const {
 
 data,
@@ -224,6 +180,7 @@ error
 }
 
 =
+
 await sb
 
 .from("tornei")
@@ -244,20 +201,17 @@ ascending:true
 
 
 
-
-
 console.log(
 "TORNEI PUBBLICATI:",
 data
 );
 
 
+
 console.log(
 "ERRORE TORNEI:",
 error
 );
-
-
 
 
 
@@ -324,34 +278,60 @@ await creaSchedaTorneo(torneo);
 
 
 }
-  async function creaSchedaTorneo(torneo){
-
-const box=document.getElementById("lista-tornei");
 
 
-let configurazione = torneo.configurazione || {};
+
+async function creaSchedaTorneo(torneo){
+
+const box=document.getElementById(
+"lista-tornei"
+);
+
+
+
+let configurazione =
+torneo.configurazione || {};
+
+
 
 let numeroSquadre = 0;
 
 
-if(configurazione.rules && configurazione.rules.numeroSquadre){
+
+if(
+configurazione.rules &&
+configurazione.rules.numeroSquadre
+){
 
 numeroSquadre =
-Number(configurazione.rules.numeroSquadre);
+Number(
+configurazione.rules.numeroSquadre
+);
 
 }
-else if(configurazione.numeroSquadre){
+
+else if(
+configurazione.numeroSquadre
+){
 
 numeroSquadre =
-Number(configurazione.numeroSquadre);
+Number(
+configurazione.numeroSquadre
+);
 
 }
-else if(configurazione.formato){
+
+else if(
+configurazione.formato
+){
 
 numeroSquadre =
-Number(configurazione.formato);
+Number(
+configurazione.formato
+);
 
 }
+
 
 
 if(!numeroSquadre){
@@ -364,9 +344,7 @@ numeroSquadre=8;
 
 const massimoGiocatori =
 Number(torneo.posti) ||
-(numeroSquadre * 2);
-
-
+(numeroSquadre*2);
 
 
 
@@ -379,11 +357,12 @@ error:errorIscritti
 }
 
 =
+
 await sb
 
 .from("iscrizioni")
 
-.select("id,nome_giocatore,nome_completo,stato")
+.select("id,nome_giocatore,nome,cognome,email,stato")
 
 .eq(
 "torneo_id",
@@ -394,8 +373,6 @@ torneo.id
 "stato",
 "approvato"
 );
-
-
 
 
 
@@ -410,7 +387,6 @@ errorIscritti
 
 
 
-
 const listaIscrittiSafe =
 iscritti || [];
 
@@ -422,20 +398,13 @@ listaIscrittiSafe.length;
 
 
 const disponibili =
-massimoGiocatori - numeroIscritti;
+massimoGiocatori-numeroIscritti;
 
 
 
 const chiuso =
-numeroIscritti >= massimoGiocatori;
-
-
-
-
-
-
-let listaIscrittiHTML="";
-
+numeroIscritti>=massimoGiocatori;
+  let listaIscrittiHTML="";
 
 
 if(listaIscrittiSafe.length){
@@ -444,15 +413,27 @@ if(listaIscrittiSafe.length){
 listaIscrittiSafe.forEach((g,i)=>{
 
 
+const nomeGiocatore =
+g.nome_giocatore ||
+(
+(g.nome || "")+
+" "+
+(g.cognome || "")
+).trim()
+||
+"Anonimo";
+
+
 listaIscrittiHTML += `
 
 <div style="padding:4px 0;border-bottom:1px solid #374151">
 
-${i+1}) ${g.nome_completo || g.nome_giocatore || "Anonimo"}
+${i+1}) ${nomeGiocatore}
 
 </div>
 
 `;
+
 
 
 });
@@ -474,24 +455,54 @@ listaIscrittiHTML=
 
 
 
-
 let squadreHTML="";
 
 
 
-for(let i=0;i<listaIscrittiSafe.length-1;i+=2){
+for(
+let i=0;
+i<listaIscrittiSafe.length-1;
+i+=2
+){
 
 
-let giocatore1 =
+const giocatore1 =
 listaIscrittiSafe[i];
 
 
-let giocatore2 =
+const giocatore2 =
 listaIscrittiSafe[i+1];
 
 
 
-if(giocatore1 && giocatore2){
+if(
+giocatore1 &&
+giocatore2
+){
+
+
+const nome1 =
+giocatore1.nome_giocatore ||
+(
+(giocatore1.nome || "")+
+" "+
+(giocatore1.cognome || "")
+).trim()
+||
+"Giocatore 1";
+
+
+
+const nome2 =
+giocatore2.nome_giocatore ||
+(
+(giocatore2.nome || "")+
+" "+
+(giocatore2.cognome || "")
+).trim()
+||
+"Giocatore 2";
+
 
 
 squadreHTML += `
@@ -503,7 +514,9 @@ squadreHTML += `
 <br>
 
 <strong>
-${giocatore1.nome_completo || giocatore1.nome_giocatore || "Giocatore 1"}
+
+${nome1}
+
 </strong>
 
 <br>
@@ -513,7 +526,9 @@ ${giocatore1.nome_completo || giocatore1.nome_giocatore || "Giocatore 1"}
 <br>
 
 <strong>
-${giocatore2.nome_completo || giocatore2.nome_giocatore || "Giocatore 2"}
+
+${nome2}
+
 </strong>
 
 </div>
@@ -526,7 +541,6 @@ ${giocatore2.nome_completo || giocatore2.nome_giocatore || "Giocatore 2"}
 
 
 }
-
 
 
 
@@ -548,6 +562,7 @@ box.innerHTML += `
 <div style="margin:8px 0">
 
 📅 <strong>Data:</strong>
+
 ${torneo.data || "-"}
 
 </div>
@@ -601,10 +616,6 @@ chiuso
 }
 
 </div>
-
-
-
-
 <button
 
 class="btn-iscriviti"
@@ -618,8 +629,6 @@ ${chiuso ? "disabled" : ""}
 ${chiuso ? "Chiuso" : "Iscriviti"}
 
 </button>
-
-
 
 
 
@@ -679,7 +688,6 @@ squadreHTML ||
 
 
 
-
 function vaiIscrizione(id){
 
 
@@ -690,19 +698,10 @@ window.location.href=
 
 }
 
-
-
-
-
-
-
-async function avviaPagina(){
+  async function avviaPagina(){
 
 
 try{
-
-
-await verificaLogin();
 
 
 await caricaTornei();
@@ -720,9 +719,16 @@ e
 
 
 
+const box=
 document.getElementById(
 "lista-tornei"
-).innerHTML=
+);
+
+
+
+if(box){
+
+box.innerHTML=
 
 `
 
@@ -738,14 +744,14 @@ ${e.message}
 
 `;
 
-
-
 }
 
 
 }
 
 
+
+}
 
 
 
