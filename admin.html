@@ -2305,87 +2305,186 @@ e
 }
 
 }
-  async function eliminaTorneoAdmin(id){
+async function eliminaTorneoAdmin(id){
 
-if(!confirm(
-"Eliminare questo torneo?"
-))return;
-
-
-
-const torneoId=
-Number(id);
+    if(!confirm(
+        "Eliminare questo torneo?"
+    ))
+        return;
 
 
 
-const {
-
-error
-
-}=await sb
-
-.from("tornei")
-
-.delete()
-
-.eq(
-"id",
-torneoId
-);
+    const torneoId =
+        Number(id);
 
 
 
+    try{
 
 
-if(error){
-
-alert(
-"Errore eliminazione: "
-+
-error.message
-);
+        /*
+        ===========================
+        ELIMINA ISCRIZIONI COLLEGATE
+        ===========================
+        */
 
 
-return;
+        const {
+            error:errorIscrizioni
+        } =
+        await sb
+
+        .from("iscrizioni")
+
+        .delete()
+
+        .eq(
+            "torneo_id",
+            torneoId
+        );
+
+
+
+        if(errorIscrizioni){
+
+            console.error(
+                "Errore eliminazione iscrizioni:",
+                errorIscrizioni
+            );
+
+
+            alert(
+                "Errore eliminazione iscrizioni: "
+                +
+                errorIscrizioni.message
+            );
+
+
+            return;
+
+        }
+
+
+
+
+
+        /*
+        ===========================
+        ELIMINA TORNEO
+        ===========================
+        */
+
+
+        const {
+
+            error
+
+        } =
+        await sb
+
+        .from("tornei")
+
+        .delete()
+
+        .eq(
+            "id",
+            torneoId
+        );
+
+
+
+
+
+        if(error){
+
+            console.error(
+                "Errore eliminazione torneo:",
+                error
+            );
+
+
+            alert(
+                "Errore eliminazione torneo: "
+                +
+                error.message
+            );
+
+
+            return;
+
+        }
+
+
+
+
+
+        /*
+        ===========================
+        AGGIORNA LISTA ADMIN
+        ===========================
+        */
+
+
+        adminState.tornei =
+
+        adminState.tornei.filter(
+
+            t =>
+
+            Number(t.id)!==torneoId
+
+        );
+
+
+
+
+
+        if(
+            Number(adminState.torneoSelezionato)===torneoId
+        ){
+
+            adminState.torneoSelezionato=null;
+
+        }
+
+
+
+
+
+        salvaAdminState();
+
+
+        renderAdmin();
+
+
+
+
+        alert(
+            "✅ Torneo eliminato correttamente"
+        );
+
+
+    }
+
+
+    catch(e){
+
+        console.error(
+            "Errore eliminazione:",
+            e
+        );
+
+
+        alert(
+            "Errore eliminazione: "
+            +
+            e.message
+        );
+
+    }
+
 
 }
-
-
-
-
-
-adminState.tornei=
-
-adminState.tornei.filter(
-
-t=>
-
-Number(t.id)!==torneoId
-
-);
-
-
-
-
-
-if(
-Number(adminState.torneoSelezionato)===torneoId
-){
-
-adminState.torneoSelezionato=null;
-
-}
-
-
-
-salvaAdminState();
-
-
-renderAdmin();
-
-}
-
-
 
 
 
