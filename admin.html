@@ -2322,21 +2322,15 @@ async function eliminaTorneoAdmin(id){
     try{
 
 
-        /*
-        ===========================
-        ELIMINA ISCRIZIONI COLLEGATE
-        ===========================
-        */
-
-
         const {
-            error:errorIscrizioni
+            data:iscrizioni,
+            error:erroreCheck
         } =
         await sb
 
         .from("iscrizioni")
 
-        .delete()
+        .select("id")
 
         .eq(
             "torneo_id",
@@ -2345,20 +2339,16 @@ async function eliminaTorneoAdmin(id){
 
 
 
-        if(errorIscrizioni){
+        if(erroreCheck){
 
             console.error(
-                "Errore eliminazione iscrizioni:",
-                errorIscrizioni
+                "Errore controllo iscrizioni:",
+                erroreCheck
             );
-
 
             alert(
-                "Errore eliminazione iscrizioni: "
-                +
-                errorIscrizioni.message
+                erroreCheck.message
             );
-
 
             return;
 
@@ -2366,19 +2356,62 @@ async function eliminaTorneoAdmin(id){
 
 
 
+        console.log(
+            "ISCRIZIONI DA ELIMINARE:",
+            iscrizioni
+        );
 
 
-        /*
-        ===========================
-        ELIMINA TORNEO
-        ===========================
-        */
+
+        if(
+            iscrizioni &&
+            iscrizioni.length>0
+        ){
+
+
+            const {
+                error:errorDeleteIscrizioni
+            } =
+            await sb
+
+            .from("iscrizioni")
+
+            .delete()
+
+            .eq(
+                "torneo_id",
+                torneoId
+            );
+
+
+
+            if(errorDeleteIscrizioni){
+
+                console.error(
+                    "Errore cancellazione iscrizioni:",
+                    errorDeleteIscrizioni
+                );
+
+
+                alert(
+                    "Impossibile eliminare iscrizioni: "
+                    +
+                    errorDeleteIscrizioni.message
+                );
+
+
+                return;
+
+            }
+
+
+        }
+
+
 
 
         const {
-
             error
-
         } =
         await sb
 
@@ -2390,7 +2423,6 @@ async function eliminaTorneoAdmin(id){
             "id",
             torneoId
         );
-
 
 
 
@@ -2418,18 +2450,11 @@ async function eliminaTorneoAdmin(id){
 
 
 
-        /*
-        ===========================
-        AGGIORNA LISTA ADMIN
-        ===========================
-        */
-
-
         adminState.tornei =
 
         adminState.tornei.filter(
 
-            t =>
+            t=>
 
             Number(t.id)!==torneoId
 
@@ -2458,15 +2483,12 @@ async function eliminaTorneoAdmin(id){
 
 
 
-
         alert(
             "✅ Torneo eliminato correttamente"
         );
 
 
     }
-
-
     catch(e){
 
         console.error(
@@ -2476,8 +2498,6 @@ async function eliminaTorneoAdmin(id){
 
 
         alert(
-            "Errore eliminazione: "
-            +
             e.message
         );
 
@@ -2485,7 +2505,6 @@ async function eliminaTorneoAdmin(id){
 
 
 }
-
 
 
 async function generaCoppieAutomatiche(){
