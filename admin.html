@@ -243,6 +243,41 @@ display:inline-block;
 </div>
 <div class="card">
 
+<h2>📰 Gestione News</h2>
+
+<label>Titolo News</label>
+<input id="newsTitolo" placeholder="Titolo news">
+
+
+<label>Testo News</label>
+<textarea id="newsTesto" placeholder="Scrivi la news..."></textarea>
+
+
+<label>Immagine (URL)</label>
+<input id="newsImmagine" placeholder="https://...">
+
+
+<button onclick="creaNews()" class="btn-green">
+➕ Pubblica News
+</button>
+
+
+<hr>
+
+
+<h3>News pubblicate</h3>
+
+<div id="listaNewsAdmin">
+
+</div>
+
+
+</div>
+
+
+    
+<div class="card">
+
 <h2>📲 Comunicazioni WhatsApp</h2>
 
 <textarea id="messaggioWhatsApp" placeholder="Scrivi comunicazione..."></textarea>
@@ -470,6 +505,8 @@ function renderAdmin(){
     renderPartecipanti();
 
     renderCoppie();
+
+    caricaNewsAdmin();
 
 }
 function renderGestioneTorneo(){
@@ -1736,7 +1773,255 @@ apriDashboardAdmin();
 
 }
 );
+async function creaNews(){
 
+    let titolo =
+        document.getElementById(
+            "newsTitolo"
+        ).value.trim();
+
+
+    let testo =
+        document.getElementById(
+            "newsTesto"
+        ).value.trim();
+
+
+    let immagine =
+        document.getElementById(
+            "newsImmagine"
+        ).value.trim();
+
+
+
+    if(!titolo){
+
+        alert(
+            "Inserisci titolo news"
+        );
+
+        return;
+
+    }
+
+
+
+    const {error}=
+
+        await sb
+        .from("news")
+        .insert({
+
+            titolo:
+                titolo,
+
+            testo:
+                testo,
+
+            immagine:
+                immagine,
+
+            pubblicata:
+                true
+
+        });
+
+
+
+    if(error){
+
+        console.error(
+            "Errore inserimento news:",
+            error
+        );
+
+        alert(
+            "Errore salvataggio news"
+        );
+
+        return;
+
+    }
+
+
+
+    document.getElementById(
+        "newsTitolo"
+    ).value="";
+
+
+    document.getElementById(
+        "newsTesto"
+    ).value="";
+
+
+    document.getElementById(
+        "newsImmagine"
+    ).value="";
+
+
+
+    await caricaNewsAdmin();
+
+
+    alert(
+        "News pubblicata"
+    );
+
+}
+
+
+
+
+
+async function caricaNewsAdmin(){
+
+    let box =
+        document.getElementById(
+            "listaNewsAdmin"
+        );
+
+
+    if(!box)
+        return;
+
+
+
+    const {
+
+        data,
+        error
+
+    }=
+
+    await sb
+
+    .from("news")
+
+    .select("*")
+
+    .order(
+        "created_at",
+        {
+            ascending:false
+        }
+    );
+
+
+
+    if(error){
+
+        console.error(
+            error
+        );
+
+        return;
+
+    }
+
+
+
+    if(!data || data.length===0){
+
+        box.innerHTML =
+        "<p>Nessuna news presente</p>";
+
+        return;
+
+    }
+
+
+
+    box.innerHTML =
+
+    data.map(n=>`
+
+    <div class="lista-item">
+
+    <b>
+    ${n.titolo}
+    </b>
+
+    <br><br>
+
+    ${n.testo || ""}
+
+    <br>
+
+    ${
+        n.immagine
+        ?
+        `<img src="${n.immagine}" style="width:100%;border-radius:10px;margin-top:10px">`
+        :
+        ""
+    }
+
+
+    <br><br>
+
+
+    <button
+    class="btn-red"
+    onclick="eliminaNews(${n.id})">
+
+    🗑 Elimina
+
+    </button>
+
+
+    </div>
+
+
+    `).join("");
+
+}
+
+
+
+
+async function eliminaNews(id){
+
+
+    if(
+        !confirm(
+            "Eliminare questa news?"
+        )
+    )
+    return;
+
+
+
+    const {error}=
+
+    await sb
+
+    .from("news")
+
+    .delete()
+
+    .eq(
+        "id",
+        id
+    );
+
+
+
+    if(error){
+
+        console.error(
+            error
+        );
+
+        return;
+
+    }
+
+
+
+    caricaNewsAdmin();
+
+
+}
 </script>
 
 </body>
