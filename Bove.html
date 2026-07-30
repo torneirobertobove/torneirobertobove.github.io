@@ -6427,6 +6427,10 @@ async function loadState(){
             params.get("idTorneo");
 
 
+        const torneoParam =
+            params.get("torneo");
+
+
 
         /*
         ============================
@@ -6434,7 +6438,8 @@ async function loadState(){
         ============================
         */
 
-        if(idParam){
+        if(idParam || torneoParam){
+
 
             /*
             ============================
@@ -6452,34 +6457,27 @@ async function loadState(){
             );
 
 
-            try{
+
+            /*
+            ============================
+            TORNEO PASSATO DA ADMIN
+            TRAMITE LINK
+            ============================
+            */
+
+            if(torneoParam){
+
+                try{
 
 
-                const {data:torneo,error}=
+                    const torneo =
 
-                    await sb
-                    .from("tornei")
-                    .select("*")
-                    .eq(
-                        "id",
-                        Number(idParam)
-                    )
-                    .single();
+                        JSON.parse(
+                            decodeURIComponent(
+                                torneoParam
+                            )
+                        );
 
-
-
-                if(error){
-
-                    console.error(
-                        "Errore caricamento torneo:",
-                        error
-                    );
-
-                }
-
-
-
-                if(torneo){
 
 
                     state = {
@@ -6487,145 +6485,45 @@ async function loadState(){
                         ...state,
 
                         idTorneo:
-                            torneo.id,
+                            torneo.idTorneo ||
+                            Date.now(),
 
                         nomeTorneo:
-                            torneo.nome || "",
+                            torneo.nomeTorneo ||
+                            "",
 
                         dataTorneo:
-                            torneo.data || "",
+                            torneo.data ||
+                            "",
 
                         formato:
-                            torneo.posti || 8,
-
+                            torneo.posti ||
+                            8,
 
                         rules:
-                            torneo.configurazione?.rules
-                            ||
+                            torneo.rules ||
                             {},
 
-
                         partecipanti:
-                            torneo.configurazione?.partecipanti
-                            ||
+                            torneo.partecipanti ||
                             [],
 
-
                         coppie:
-                            torneo.configurazione?.coppie
-                            ||
+                            torneo.coppie ||
                             []
 
                     };
 
 
-                    /*
-                    ============================
-                    CARICAMENTO COPPIE
-                    ============================
-                    */
+                }
 
 
-                    if(
-                        Array.isArray(
-                            state.coppie
-                        )
-                        &&
-                        state.coppie.length>0
-                    ){
+                catch(e){
 
-
-                        const squadre =
-
-                            state.coppie.map(
-
-                                c =>
-
-                                c.g1
-                                +
-                                "/"
-                                +
-                                c.g2
-
-                            );
-
-
-
-                        const meta =
-
-                            Math.ceil(
-                                squadre.length / 2
-                            );
-
-
-
-                        state.A =
-
-                            squadre.slice(
-                                0,
-                                meta
-                            );
-
-
-
-                        state.B =
-
-                            squadre.slice(
-                                meta
-                            );
-
-
-                    }
-
-
-
-                    /*
-                    ============================
-                    SE ESISTONO GIRONI SALVATI
-                    ============================
-                    */
-
-
-                    if(
-                        torneo.configurazione?.gironi
-                    ){
-
-
-                        const gironi =
-
-                            torneo.configurazione.gironi;
-
-
-
-                        [
-                            "A",
-                            "B",
-                            "C",
-                            "D",
-                            "E",
-                            "F"
-
-                        ].forEach(g=>{
-
-
-                            if(
-                                Array.isArray(
-                                    gironi[g]
-                                )
-                            ){
-
-                                state[g]=
-                                    gironi[g];
-
-                            }
-
-
-                        });
-
-
-                    }
-
-
+                    console.error(
+                        "Errore caricamento torneo da link:",
+                        e
+                    );
 
                 }
 
@@ -6633,20 +6531,14 @@ async function loadState(){
             }
 
 
-            catch(e){
 
+            /*
+            ============================
+            TORNEO DA ADMIN SUPABASE
+            ============================
+            */
 
-                console.error(
-                    "Errore caricamento torneo Supabase:",
-                    e
-                );
-
-
-            }
-
-
-        }
-        else{
+            else if(idParam){
 
 
             /*
