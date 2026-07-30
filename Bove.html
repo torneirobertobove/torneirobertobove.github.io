@@ -11815,24 +11815,9 @@ async function initDefaults(){
 
         if(torneoDaAdmin){
 
-            localStorage.removeItem(
-                "torneoState"
-            );
+            localStorage.removeItem("torneoState");
+            localStorage.removeItem("savedTeams");
 
-            localStorage.removeItem(
-                "savedTeams"
-            );
-
-        }
-
-
-        /*
-        ============================
-        CARICAMENTO DA ADMIN
-        ============================
-        */
-
-        if(torneoDaAdmin){
 
             try{
 
@@ -11842,6 +11827,34 @@ async function initDefaults(){
                             torneoDaAdmin
                         )
                     );
+
+
+                let rulesAdmin =
+                    torneo.configurazione?.rules
+                    ||
+                    torneo.rules
+                    ||
+                    {};
+
+
+                let numeroSquadre =
+                    Number(
+                        torneo.posti
+                    )
+                    ||
+                    Number(
+                        rulesAdmin.numeroSquadre
+                    )
+                    ||
+                    8;
+
+
+
+                let numeroGironi =
+                    numeroSquadre===16 ? 4 :
+                    numeroSquadre===12 ? 3 :
+                    2;
+
 
 
                 state = {
@@ -11862,42 +11875,55 @@ async function initDefaults(){
                         "",
 
                     formato:
-                        torneo.posti ||
-                        8,
+                        numeroSquadre,
 
-                    rules:
-                        torneo.configurazione?.rules
-                        ||
-                        torneo.rules
-                        ||
-                        {},
+
+                    rules:{
+
+                        ...state.rules,
+
+                        ...rulesAdmin,
+
+                        numeroSquadre:
+                            numeroSquadre,
+
+                        numeroGironi:
+                            numeroGironi,
+
+                        squadrePerGirone:
+                            4
+
+                    },
+
 
                     partecipanti:
-                        torneo.partecipanti ||
+                        torneo.configurazione?.partecipanti
+                        ||
+                        torneo.partecipanti
+                        ||
                         [],
 
+
                     coppie:
-                        torneo.coppie ||
+                        torneo.configurazione?.coppie
+                        ||
+                        torneo.coppie
+                        ||
                         []
 
                 };
 
 
-                state.A =
-                    (torneo.coppie || [])
-                    .map(
-                        c =>
-                        c.g1 +
-                        " / " +
-                        c.g2
-                    );
 
 
+                state.A=[];
                 state.B=[];
                 state.C=[];
                 state.D=[];
                 state.E=[];
                 state.F=[];
+
+
 
 
                 if(
@@ -11909,31 +11935,36 @@ async function initDefaults(){
                 }
 
 
+
+
                 localStorage.setItem(
                     "torneoState",
                     JSON.stringify(state)
                 );
 
 
+
+
+                console.log(
+                    "TORNEO ADMIN CARICATO",
+                    state.nomeTorneo,
+                    state.dataTorneo,
+                    state.formato,
+                    state.rules.numeroSquadre,
+                    state.rules.numeroGironi
+                );
+
+
+
+
                 if(
                     typeof render==="function"
                 ){
 
-                    try{
-
-                        render();
-
-                    }
-                    catch(err){
-
-                        console.error(
-                            "Errore render admin:",
-                            err
-                        );
-
-                    }
+                    render();
 
                 }
+
 
 
                 return;
@@ -11943,7 +11974,7 @@ async function initDefaults(){
             catch(e){
 
                 console.error(
-                    "Errore caricamento admin:",
+                    "Errore caricamento torneo Admin:",
                     e
                 );
 
@@ -11955,11 +11986,7 @@ async function initDefaults(){
 
 
 
-        /*
-        ============================
-        CARICAMENTO LOCALE
-        ============================
-        */
+
 
         let salvato =
             localStorage.getItem(
@@ -11967,9 +11994,11 @@ async function initDefaults(){
             );
 
 
+
         if(salvato){
 
             try{
+
 
                 let vecchio =
                     JSON.parse(
@@ -11977,40 +12006,19 @@ async function initDefaults(){
                     );
 
 
-                if(
+                state={
 
-                    Array.isArray(vecchio.A)
-                    &&
-                    vecchio.A.length>0
-                    &&
-                    Array.isArray(vecchio.B)
-                    &&
-                    vecchio.B.length>0
+                    ...state,
 
-                ){
+                    ...vecchio
 
-                    state = {
-
-                        ...state,
-
-                        ...vecchio
-
-                    };
+                };
 
 
-                    console.log(
-                        "STATO TORNEO RECUPERATO",
-                        state
-                    );
-
-                }
-                else{
-
-                    console.warn(
-                        "Stato locale vuoto ignorato"
-                    );
-
-                }
+                console.log(
+                    "STATO LOCALE RECUPERATO",
+                    state
+                );
 
 
             }
@@ -12029,11 +12037,6 @@ async function initDefaults(){
 
 
 
-        /*
-        ============================
-        RECUPERO SQUADRE
-        ============================
-        */
 
         if(
 
@@ -12055,13 +12058,9 @@ async function initDefaults(){
 
 
 
-        /*
-        ============================
-        GARANZIA ARRAY
-        ============================
-        */
 
         [
+
             "A",
             "B",
             "C",
@@ -12071,17 +12070,20 @@ async function initDefaults(){
 
         ].forEach(g=>{
 
+
             if(
-                !Array.isArray(
-                    state[g]
-                )
+                !Array.isArray(state[g])
             ){
 
                 state[g]=[];
 
             }
 
+
         });
+
+
+
 
 
 
@@ -12097,11 +12099,13 @@ async function initDefaults(){
 
 
 
+
+
         if(
             !Array.isArray(state.qRes)
         )
 
-            state.qRes =
+            state.qRes=
                 Array(4).fill("-");
 
 
@@ -12110,7 +12114,7 @@ async function initDefaults(){
             !Array.isArray(state.sTopRes)
         )
 
-            state.sTopRes =
+            state.sTopRes=
                 Array(2).fill("-");
 
 
@@ -12133,51 +12137,6 @@ async function initDefaults(){
 
 
 
-
-        /*
-        ============================
-        SALVATAGGIO PROTETTO
-        ============================
-        */
-
-        if(
-
-            Array.isArray(state.A)
-            &&
-            state.A.length>0
-
-            &&
-
-            Array.isArray(state.B)
-            &&
-            state.B.length>0
-
-        ){
-
-            localStorage.setItem(
-                "torneoState",
-                JSON.stringify(state)
-            );
-
-        }
-        else{
-
-            console.warn(
-                "Salvataggio iniziale bloccato: gironi vuoti"
-            );
-
-        }
-
-
-
-
-
-
-        /*
-        ============================
-        RENDER
-        ============================
-        */
 
         if(
             typeof render==="function"
