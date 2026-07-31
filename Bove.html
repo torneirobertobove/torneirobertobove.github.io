@@ -9890,13 +9890,28 @@ function renderTables(){
     ensureRules();
 
 
+    /*
+    ============================
+    GENERATORE ROUND ROBIN
+    ============================
+    */
+
+
     function generaRoundRobin(n){
 
+
         let squadre =
+
             Array.from(
-                {length:n},
+
+                {
+                    length:n
+                },
+
                 (_,i)=>i
+
             );
+
 
 
         if(
@@ -9911,23 +9926,28 @@ function renderTables(){
 
         let rounds=[];
 
+
         let totale =
             squadre.length;
 
 
         let turni =
-            totale-1;
+            totale - 1;
 
 
         let meta =
-            totale/2;
+            totale / 2;
 
 
 
         for(
+
             let r=0;
+
             r<turni;
+
             r++
+
         ){
 
 
@@ -9936,9 +9956,13 @@ function renderTables(){
 
 
             for(
+
                 let i=0;
+
                 i<meta;
+
                 i++
+
             ){
 
 
@@ -9952,14 +9976,23 @@ function renderTables(){
 
 
                 if(
-                    a!==null &&
+
+                    a!==null
+
+                    &&
+
                     b!==null
+
                 ){
 
-                    round.push([
-                        a,
-                        b
-                    ]);
+
+                    round.push(
+                        [
+                            a,
+                            b
+                        ]
+                    );
+
 
                 }
 
@@ -9968,7 +10001,9 @@ function renderTables(){
 
 
 
-            rounds.push(round);
+            rounds.push(
+                round
+            );
 
 
 
@@ -9989,8 +10024,11 @@ function renderTables(){
 
             squadre =
             [
+
                 fisso,
+
                 ...resto
+
             ];
 
 
@@ -10000,20 +10038,30 @@ function renderTables(){
 
 
 
+
         if(
+
             state.rules.garaAndataRitorno===true
+
         ){
 
 
             let ritorno =
 
-                rounds.map(round=>
+                rounds.map(
 
-                    round.map(match=>
+                    round =>
+
+                    round.map(
+
+                        match =>
 
                         [
+
                             match[1],
+
                             match[0]
+
                         ]
 
                     )
@@ -10023,6 +10071,7 @@ function renderTables(){
 
 
             rounds =
+
                 rounds.concat(
                     ritorno
                 );
@@ -10032,293 +10081,869 @@ function renderTables(){
 
 
 
+
         return rounds;
+
+
+    }
+       /*
+    ============================
+    PARAMETRI TORNEO
+    ============================
+    */
+
+
+    let campiPerGirone = {
+
+        A:[2,3],
+
+        B:[4,5],
+
+        C:[6,7],
+
+        D:[8,9],
+
+        E:[10,11],
+
+        F:[12,13]
+
+    };
+
+
+
+    let durata =
+
+        Number(
+            state.rules.duration
+        )
+        ||
+        30;
+
+
+
+    let start =
+
+        String(
+            state.rules.start
+        )
+        ||
+        "20:00";
+
+
+
+    let partiOra =
+
+        start.split(":");
+
+
+
+    let oraBase =
+
+        Number(
+            partiOra[0]
+        )
+        ||
+        20;
+
+
+
+    let minutiBase =
+
+        Number(
+            partiOra[1]
+        )
+        ||
+        0;
+
+
+
+
+    /*
+    ============================
+    CREAZIONE CALENDARIO
+    SOLO SE NON ESISTE
+    ============================
+    */
+
+
+    if(
+
+        !Array.isArray(
+            state.calendario
+        )
+
+        ||
+
+        state.calendario.length===0
+
+    ){
+
+
+
+        state.calendario=[];
+
+
+
+        [
+
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+
+        ].forEach(tag=>{
+
+
+
+            let squadre =
+
+                state[tag];
+
+
+
+            if(
+
+                !Array.isArray(squadre)
+
+                ||
+
+                squadre.length<2
+
+            ){
+
+                return;
+
+            }
+
+
+
+
+            let rounds =
+
+                generaRoundRobin(
+                    squadre.length
+                );
+
+
+
+
+            rounds.forEach(round=>{
+
+
+
+                round.forEach(match=>{
+
+
+
+                    state.calendario.push({
+
+                        girone:
+
+                            tag,
+
+
+                        casa:
+
+                            match[0],
+
+
+                        ospite:
+
+                            match[1],
+
+
+                        campo:
+
+                            null,
+
+
+                        slot:
+
+                            null
+
+
+                    });
+
+
+
+                });
+
+
+
+            });
+
+
+
+        });
+
 
 
     }
 
 
-    // ✅ Campi dinamici per tutti i gironi
-    let campiPerGirone = {
-        A:[2,3],
-        B:[4,5],
-        C:[6,7],
-        D:[8,9],
-        E:[10,11],
-        F:[12,13]
-    };
 
 
-    let durata =
-        Number(
-            state.rules.duration || 30
-        );
 
-
-    let start =
-        String(
-            state.rules.start || "20:00"
-        );
-
-
-    let partiOra =
-        start.split(":");
-
-
-    let oraBase =
-        Number(
-            partiOra[0]
-        ) || 20;
-
-
-    let minutiBase =
-        Number(
-            partiOra[1]
-        ) || 0;
-
-
-    let calendario=[];
-
-
-    // ✅ Loop dinamico su tutti i gironi A-F
-    [
-        "A", "B", "C", "D", "E", "F"
-    ]
-    .forEach(tag=>{
-
-        let squadre = state[tag];
-
-        if(
-            !Array.isArray(squadre) ||
-            squadre.length < 2
-        ) return;
-
-        let rounds =
-            generaRoundRobin(
-                squadre.length
-            );
-
-        rounds.forEach(round=>{
-
-            round.forEach(match=>{
-
-                calendario.push({
-
-                    girone:tag,
-                    casa:match[0],
-                    ospite:match[1],
-                    campo:null,
-                    slot:null
-
-                });
-
-            });
-
-        });
-
-    });
+    /*
+    ============================
+    ASSEGNA CAMPI E SLOT
+    SOLO PARTITE NUOVE
+    ============================
+    */
 
 
     let occupazioni=[];
 
-    calendario.forEach(partita=>{
+
+
+    state.calendario.forEach(partita=>{
+
+
+
+        if(
+
+            partita.campo!==null
+
+            &&
+
+            partita.slot!==null
+
+        ){
+
+            occupazioni.push({
+
+                slot:
+                    partita.slot,
+
+                campo:
+                    partita.campo,
+
+                squadre:[
+
+                    partita.casa,
+
+                    partita.ospite
+
+                ]
+
+            });
+
+
+        }
+
+
+
+    });
+
+
+
+
+    state.calendario.forEach(partita=>{
+
+
+
+        if(
+
+            partita.campo!==null
+
+            &&
+
+            partita.slot!==null
+
+        ){
+
+            return;
+
+        }
+
+
+
 
         let assegnata=false;
+
+
+
         let slot=0;
 
+
+
         let campiDisponibili =
-            campiPerGirone[partita.girone] || [2,3];
+
+            campiPerGirone[partita.girone]
+
+            ||
+
+            [2,3];
+
+
 
         while(!assegnata){
 
+
+
             for(
+
                 let i=0;
+
                 i<campiDisponibili.length;
+
                 i++
+
             ){
 
-                let campo = campiDisponibili[i];
+
+
+                let campo =
+
+                    campiDisponibili[i];
+
+
+
                 let conflitto=false;
+
+
 
                 occupazioni.forEach(o=>{
 
+
+
                     if(
-                        o.slot===slot &&
-                        o.campo===campo &&
+
+                        o.slot===slot
+
+                        &&
+
+                        o.campo===campo
+
+                        &&
+
                         (
+
                             o.squadre.includes(
                                 partita.casa
-                            ) ||
+                            )
+
+                            ||
+
                             o.squadre.includes(
                                 partita.ospite
                             )
+
                         )
+
                     ){
+
 
                         conflitto=true;
 
+
                     }
+
+
 
                 });
 
+
+
                 if(!conflitto){
 
-                    partita.campo = campo;
-                    partita.slot = slot;
+
+
+                    partita.campo=
+
+                        campo;
+
+
+
+                    partita.slot=
+
+                        slot;
+
+
 
                     occupazioni.push({
 
-                        slot:slot,
-                        campo:campo,
+                        slot:
+
+                            slot,
+
+
+                        campo:
+
+                            campo,
+
+
                         squadre:[
+
                             partita.casa,
+
                             partita.ospite
+
                         ]
 
                     });
 
+
+
                     assegnata=true;
+
+
+
                     break;
+
+
 
                 }
 
+
+
             }
 
-            if(!assegnata) slot++;
+
+
+
+            if(!assegnata)
+
+                slot++;
+
+
 
         }
 
+
+
     });
+       /*
+    ============================
+    PREPARAZIONE RENDER GIRONI
+    ============================
+    */
 
 
-    // ✅ Render dinamico per tutti i gironi
     [
-        "A", "B", "C", "D", "E", "F"
-    ]
-    .forEach(tag=>{
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+
+    ].forEach(tag=>{
+
+
+
+        let partite =
+
+            state.calendario.filter(
+
+                p =>
+
+                p.girone===tag
+
+            );
+
+
+
+
+        let res =
+
+            tag+"res";
+
+
+
+        let time =
+
+            tag+"time";
+
+
+
+        let camp =
+
+            tag+"camp";
+
+
+
+
+
+        if(
+
+            !Array.isArray(
+                state[res]
+            )
+
+        ){
+
+            state[res]=[];
+
+        }
+
+
+
+        if(
+
+            !Array.isArray(
+                state[time]
+            )
+
+        ){
+
+            state[time]=[];
+
+        }
+
+
+
+        if(
+
+            !Array.isArray(
+                state[camp]
+            )
+
+        ){
+
+            state[camp]=[];
+
+        }
+
+
+
+
+
+        while(
+
+            state[res].length < partite.length
+
+        ){
+
+
+            state[res].push("-");
+
+
+        }
+
+
+
+
+
+        while(
+
+            state[time].length < partite.length
+
+        ){
+
+
+            state[time].push("");
+
+
+        }
+
+
+
+
+
+        while(
+
+            state[camp].length < partite.length
+
+        ){
+
+
+            state[camp].push("");
+
+
+        }
+
+
+
+
+
+        partite.forEach((m,i)=>{
+
+
+
+            let minuti =
+
+                minutiBase +
+
+                (
+
+                    m.slot *
+
+                    durata
+
+                );
+
+
+
+            let ora =
+
+                oraBase +
+
+                Math.floor(
+                    minuti / 60
+                );
+
+
+
+            let min =
+
+                minuti % 60;
+
+
+
+            let tempo =
+
+
+                String(ora)
+                .padStart(2,"0")
+
+                +
+
+                ":"
+
+                +
+
+                String(min)
+                .padStart(2,"0");
+
+
+
+
+            if(
+
+                !state[time][i]
+
+                ||
+
+                state[time][i]===""
+
+            ){
+
+                state[time][i]=tempo;
+
+            }
+
+
+
+
+            if(
+
+                !state[camp][i]
+
+            ){
+
+                state[camp][i]=m.campo;
+
+            }
+
+
+
+        });
+
+
+
+    });
+       /*
+    ============================
+    RENDER HTML GIRONI
+    ============================
+    */
+
+
+    [
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+
+    ].forEach(tag=>{
+
+
 
         let box =
+
             document.getElementById(
                 tag+"rows"
             );
 
-        if(!box) return;
+
+
+        if(!box)
+
+            return;
+
+
+
 
         let partite =
-            calendario.filter(
-                p=> p.girone===tag
+
+            state.calendario.filter(
+
+                p =>
+
+                p.girone===tag
+
             );
 
-        // Garantisce array risultati
-        if(!Array.isArray(state[tag+"res"]))
-            state[tag+"res"]=[];
 
-        while(state[tag+"res"].length < partite.length)
-            state[tag+"res"].push("-");
-
-        if(state[tag+"res"].length > partite.length)
-            state[tag+"res"] =
-                state[tag+"res"].slice(0, partite.length);
-
-
-        if(!Array.isArray(state[tag+"time"]))
-            state[tag+"time"]=[];
-
-        while(state[tag+"time"].length < partite.length)
-            state[tag+"time"].push("-");
-
-        if(state[tag+"time"].length > partite.length)
-            state[tag+"time"]=
-                state[tag+"time"].slice(0, partite.length);
-
-
-        if(!Array.isArray(state[tag+"camp"]))
-            state[tag+"camp"]=[];
-
-        while(state[tag+"camp"].length < partite.length)
-            state[tag+"camp"].push("");
-
-        if(state[tag+"camp"].length > partite.length)
-            state[tag+"camp"]=
-                state[tag+"camp"].slice(0, partite.length);
 
 
         let rows="";
 
+
+
+
+
         partite.forEach((m,i)=>{
 
-            let minuti =
-                minutiBase + (m.slot * durata);
 
-            let ora =
-                oraBase + Math.floor(minuti / 60);
-
-            let min =
-                minuti % 60;
-
-            let tempo =
-                String(ora).padStart(2,"0") +
-                ":" +
-                String(min).padStart(2,"0");
-
-            state[tag+"time"][i]=tempo;
-            state[tag+"camp"][i]=m.campo;
-
-            if(!state[tag+"res"][i])
-                state[tag+"res"][i]="-";
 
             let risultato =
-                String(state[tag+"res"][i]).split("-");
+
+                String(
+
+                    state[tag+"res"][i]
+
+                )
+
+                .split("-");
+
+
+
+
 
             rows += `
+
 <tr>
-<td>
-<input
-value="${m.campo}"
-oninput="updateCamp('${tag}',${i},this.value)"
-style="width:45px">
-</td>
 
 <td>
+
 <input
-value="${tempo}"
-oninput="updateTime('${tag}',${i},0,this.value)">
+
+value="${state[tag+"camp"][i]}"
+
+oninput="updateCamp('${tag}',${i},this.value)"
+
+style="width:45px">
+
 </td>
+
+
+
+<td>
+
+<input
+
+value="${state[tag+"time"][i]}"
+
+oninput="updateTime('${tag}',${i},0,this.value)"
+
+style="width:65px">
+
+</td>
+
+
 
 <td class="match-cell">
+
 <div class="team-line">
-${state[tag][m.casa]}
+
+${state[tag][m.casa] || ""}
+
 </div>
+
+
 <div class="vs-line">
+
 <b>VS</b>
+
 </div>
+
+
 <div class="team-line">
-${state[tag][m.ospite]}
+
+${state[tag][m.ospite] || ""}
+
 </div>
+
 </td>
 
+
+
+
 <td class="db-cell">
+
+
 <input
+
 value="${risultato[0]==='-'?'':risultato[0]}"
+
 oninput="updateRes('${tag}',${i},0,this.value)"
+
+style="width:35px"
+
 >
+
+
+
 <input
+
 value="${risultato[1] || ''}"
+
 oninput="updateRes('${tag}',${i},1,this.value)"
+
+style="width:35px"
+
 >
+
+
+
 </td>
+
+
 </tr>
+
 `;
+
+
 
         });
 
-        box.innerHTML=rows;
+
+
+
+        box.innerHTML = rows;
+
+
 
     });
+       /*
+    ============================
+    SALVATAGGIO CALENDARIO
+    ============================
+    */
 
-    updateAndSync();
+
+    localStorage.setItem(
+
+        "torneoCalendario",
+
+        JSON.stringify(
+            state.calendario
+        )
+
+    );
+
+
 
 }
+   
 function getFinalQualified(){
 
     ensureRules();
