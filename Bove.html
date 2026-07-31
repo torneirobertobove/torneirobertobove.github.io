@@ -7037,6 +7037,7 @@ async function loadState(){
 
     }
 
+       
 
     catch(e){
 
@@ -9517,180 +9518,6 @@ function renderGironiFinale(){
     `;
 
 }
-function render(){
-
-    /*
-    NON richiamare ensureRules qui.
-    Il regolamento viene già caricato
-    da initDefaults() con i dati del link Admin.
-    */
-
-    /*
-        AGGIORNA INTESTAZIONE TORNEO
-    */
-
-    const titolo =
-        document.getElementById(
-            "titoloTorneo"
-        );
-
-
-    if(titolo){
-
-        titolo.innerHTML =
-            "🏆 " +
-            (
-                state.nomeTorneo ||
-                "Torneo Amatoriale Padel"
-            );
-
-    }
-
-
-
-    const inputNome =
-        document.getElementById(
-            "nomeTorneoInput"
-        );
-
-
-    if(inputNome){
-
-        inputNome.value =
-            state.nomeTorneo || "";
-
-    }
-
-
-
-    const dataTorneo =
-    document.querySelector(
-        'input[type="date"].date-input-field'
-    );
-
-
-if(dataTorneo){
-
-    dataTorneo.value =
-        state.dataTorneo || "";
-
-}
-
-
-    if(typeof aggiornaNomeFormulaTorneo==="function")
-        aggiornaNomeFormulaTorneo();
-
-
-    /*
-        RENDER BASE
-        parte solo se esiste una configurazione reale
-    */
-
-
-    if(
-        typeof renderTables==="function" &&
-        state &&
-        state.rules &&
-        state.rules.numeroSquadre>0
-    ){
-
-        renderTables();
-
-    }
-
-
-
-    if(typeof renderClass==="function")
-        renderClass();
-
-
-
-    /*
-        TORNEI SPECIALI
-    */
-
-
-    if(typeof renderSvizzero==="function")
-        renderSvizzero();
-
-    if(typeof renderAmericano==="function")
-        renderAmericano();
-
-    if(typeof renderMexicano==="function")
-        renderMexicano();
-
-    if(typeof renderKing==="function")
-        renderKing();
-
-    if(typeof renderShort==="function")
-        renderShort();
-
-
-
-    /*
-        TORNEI CLASSICI
-    */
-
-
-    if(typeof renderItaliana==="function")
-        renderItaliana();
-
-    if(typeof renderGironiFinale==="function")
-        renderGironiFinale();
-
-    if(typeof renderEliminazione==="function")
-        renderEliminazione();
-
-    if(typeof renderPersonalizzato==="function")
-        renderPersonalizzato();
-
-
-
-    /*
-        FASE FINALE
-    */
-
-
-    if(typeof renderKO==="function")
-        renderKO();
-
-
-
-    if(typeof renderManuale==="function")
-        renderManuale();
-
-
-}
-function updateCamp(g,i,val){
-
-    let s;
-
-    if(g==="A")
-        s=state.Acamp;
-
-    else if(g==="B")
-        s=state.Bcamp;
-
-    else if(g==="C")
-        s=state.Ccamp;
-
-    else if(g==="D")
-        s=state.Dcamp;
-
-    else
-        return;
-
-    if(!Array.isArray(s))
-        return;
-
-    if(i<0 || i>=s.length)
-        return;
-
-    s[i]=val;
-
-    updateAndSync();
-
-}
 function renderTables(){
 
     ensureRules();
@@ -9844,171 +9671,98 @@ function renderTables(){
     }
 
 
-
-
-
-
+    // ✅ Campi dinamici per tutti i gironi
     let campiPerGirone = {
-
-
         A:[2,3],
-
         B:[4,5],
-
         C:[6,7],
-
-        D:[8,9]
-
-
+        D:[8,9],
+        E:[10,11],
+        F:[12,13]
     };
 
 
-
-
-
     let durata =
-
         Number(
             state.rules.duration || 30
         );
 
 
-
-
     let start =
-
         String(
             state.rules.start || "20:00"
         );
 
 
-
     let partiOra =
-
         start.split(":");
 
 
-
     let oraBase =
-
         Number(
             partiOra[0]
-        )
-        ||
-        20;
-
+        ) || 20;
 
 
     let minutiBase =
-
         Number(
             partiOra[1]
-        )
-        ||
-        0;
-
-
-
-
-
+        ) || 0;
 
 
     let calendario=[];
 
 
-
+    // ✅ Loop dinamico su tutti i gironi A-F
     [
-        "A",
-        "B",
-        "C",
-        "D"
-
+        "A", "B", "C", "D", "E", "F"
     ]
     .forEach(tag=>{
 
-
-
-        let squadre =
-            state[tag];
-
-
+        let squadre = state[tag];
 
         if(
             !Array.isArray(squadre) ||
-            squadre.length<2
-        )
-
-            return;
-
-
+            squadre.length < 2
+        ) return;
 
         let rounds =
-
             generaRoundRobin(
                 squadre.length
             );
 
-
-
         rounds.forEach(round=>{
 
-
             round.forEach(match=>{
-
 
                 calendario.push({
 
                     girone:tag,
-
                     casa:match[0],
-
                     ospite:match[1],
-
                     campo:null,
-
                     slot:null
-
 
                 });
 
-
             });
 
-
         });
-
-
 
     });
 
 
-
-
-
     let occupazioni=[];
-       calendario.forEach(partita=>{
 
+    calendario.forEach(partita=>{
 
         let assegnata=false;
-
-
         let slot=0;
 
-
-
         let campiDisponibili =
-
-            campiPerGirone[partita.girone]
-
-            ||
-
-            [2,3];
-
-
+            campiPerGirone[partita.girone] || [2,3];
 
         while(!assegnata){
-
-
 
             for(
                 let i=0;
@@ -10016,364 +9770,141 @@ function renderTables(){
                 i++
             ){
 
-
-
-                let campo =
-
-                    campiDisponibili[i];
-
-
-
+                let campo = campiDisponibili[i];
                 let conflitto=false;
-
-
 
                 occupazioni.forEach(o=>{
 
-
                     if(
-
                         o.slot===slot &&
-
                         o.campo===campo &&
-
                         (
-
                             o.squadre.includes(
                                 partita.casa
-                            )
-
-                            ||
-
+                            ) ||
                             o.squadre.includes(
                                 partita.ospite
                             )
-
                         )
-
                     ){
 
                         conflitto=true;
 
                     }
 
-
                 });
-
-
-
-
 
                 if(!conflitto){
 
-
-
-                    partita.campo =
-                        campo;
-
-
-
-                    partita.slot =
-                        slot;
-
-
-
+                    partita.campo = campo;
+                    partita.slot = slot;
 
                     occupazioni.push({
 
                         slot:slot,
-
                         campo:campo,
-
                         squadre:[
-
                             partita.casa,
-
                             partita.ospite
-
                         ]
 
                     });
 
-
-
-
                     assegnata=true;
-
-
                     break;
-
 
                 }
 
-
-
             }
 
-
-
-            if(!assegnata)
-
-                slot++;
-
-
+            if(!assegnata) slot++;
 
         }
-
-
 
     });
 
 
-
-
-
-
-
+    // ✅ Render dinamico per tutti i gironi
     [
-        "A",
-        "B",
-        "C",
-        "D"
-
+        "A", "B", "C", "D", "E", "F"
     ]
     .forEach(tag=>{
 
-
-
         let box =
-
             document.getElementById(
                 tag+"rows"
             );
 
-
-
-        if(!box)
-
-            return;
-
-
-
+        if(!box) return;
 
         let partite =
-
             calendario.filter(
-
-                p=>
-
-                p.girone===tag
-
+                p=> p.girone===tag
             );
 
-
-
-        /*
-        ===================================
-        NON RESETTARE I RISULTATI ESISTENTI
-        ===================================
-        */
-
-
-        if(
-            !Array.isArray(
-                state[tag+"res"]
-            )
-        )
-
+        // Garantisce array risultati
+        if(!Array.isArray(state[tag+"res"]))
             state[tag+"res"]=[];
 
-
-
-
-        while(
-            state[tag+"res"].length <
-            partite.length
-        )
-
+        while(state[tag+"res"].length < partite.length)
             state[tag+"res"].push("-");
 
-
-
-
-        if(
-            state[tag+"res"].length >
-            partite.length
-        )
-
+        if(state[tag+"res"].length > partite.length)
             state[tag+"res"] =
-
-                state[tag+"res"]
-                .slice(
-                    0,
-                    partite.length
-                );
+                state[tag+"res"].slice(0, partite.length);
 
 
-
-
-
-
-        if(
-            !Array.isArray(
-                state[tag+"time"]
-            )
-        )
-
+        if(!Array.isArray(state[tag+"time"]))
             state[tag+"time"]=[];
 
-
-
-
-        while(
-            state[tag+"time"].length <
-            partite.length
-        )
-
+        while(state[tag+"time"].length < partite.length)
             state[tag+"time"].push("-");
 
-
-
-
-        if(
-            state[tag+"time"].length >
-            partite.length
-        )
-
+        if(state[tag+"time"].length > partite.length)
             state[tag+"time"]=
-
-                state[tag+"time"]
-                .slice(
-                    0,
-                    partite.length
-                );
+                state[tag+"time"].slice(0, partite.length);
 
 
-
-
-
-
-        if(
-            !Array.isArray(
-                state[tag+"camp"]
-            )
-        )
-
+        if(!Array.isArray(state[tag+"camp"]))
             state[tag+"camp"]=[];
 
-
-
-
-        while(
-            state[tag+"camp"].length <
-            partite.length
-        )
-
+        while(state[tag+"camp"].length < partite.length)
             state[tag+"camp"].push("");
 
-
-
-
-        if(
-            state[tag+"camp"].length >
-            partite.length
-        )
-
+        if(state[tag+"camp"].length > partite.length)
             state[tag+"camp"]=
-
-                state[tag+"camp"]
-                .slice(
-                    0,
-                    partite.length
-                );
-
-
-
-
+                state[tag+"camp"].slice(0, partite.length);
 
 
         let rows="";
 
-
-
-
         partite.forEach((m,i)=>{
 
-
             let minuti =
-
-                minutiBase +
-
-                (
-                    m.slot *
-                    durata
-                );
-
-
+                minutiBase + (m.slot * durata);
 
             let ora =
-
-                oraBase +
-
-                Math.floor(
-                    minuti / 60
-                );
-
-
+                oraBase + Math.floor(minuti / 60);
 
             let min =
-
                 minuti % 60;
 
-
-
-
             let tempo =
-
-                String(ora)
-                .padStart(2,"0")
-
-                +
-
-                ":"
-
-                +
-
-                String(min)
-                .padStart(2,"0");
-
-
+                String(ora).padStart(2,"0") +
+                ":" +
+                String(min).padStart(2,"0");
 
             state[tag+"time"][i]=tempo;
-
-
-
             state[tag+"camp"][i]=m.campo;
 
-
-
-
-            if(
-                !state[tag+"res"][i]
-            )
-
+            if(!state[tag+"res"][i])
                 state[tag+"res"][i]="-";
 
-
-
             let risultato =
-
-                String(
-                    state[tag+"res"][i]
-                )
-                .split("-");
-
-
-
+                String(state[tag+"res"][i]).split("-");
 
             rows += `
 <tr>
-
 <td>
 <input
 value="${m.campo}"
@@ -10381,62 +9912,44 @@ oninput="updateCamp('${tag}',${i},this.value)"
 style="width:45px">
 </td>
 
-
 <td>
 <input
 value="${tempo}"
 oninput="updateTime('${tag}',${i},0,this.value)">
 </td>
 
-
 <td class="match-cell">
-
 <div class="team-line">
 ${state[tag][m.casa]}
 </div>
-
 <div class="vs-line">
 <b>VS</b>
 </div>
-
 <div class="team-line">
 ${state[tag][m.ospite]}
 </div>
-
 </td>
 
-
 <td class="db-cell">
-
 <input
 value="${risultato[0]==='-'?'':risultato[0]}"
 oninput="updateRes('${tag}',${i},0,this.value)"
 >
-
-
 <input
 value="${risultato[1] || ''}"
 oninput="updateRes('${tag}',${i},1,this.value)"
 >
-
 </td>
-
 </tr>
 `;
 
-
-
         });
-
-
 
         box.innerHTML=rows;
 
-
-
     });
-       updateAndSync();
 
+    updateAndSync();
 
 }
 function getFinalQualified(){
