@@ -1204,12 +1204,59 @@ renderAdmin();
 
 
 
-function caricaRichiesteIscrizione(){
+async function caricaRichiesteIscrizione(){
 
-renderRichiesteIscrizione();
+let torneo=
+getTorneoAdminCorrente();
+
+
+if(!torneo){
+
+return;
 
 }
 
+
+
+const {
+data,
+error
+}=await sb
+.from("iscrizioni")
+.select("*")
+.eq(
+"torneo_id",
+torneo.id
+);
+
+
+
+if(error){
+
+console.error(
+"Errore caricamento iscritti:",
+error
+);
+
+return;
+
+}
+
+
+
+torneo.iscritti=
+data || [];
+
+
+
+salvaAdminState();
+
+
+
+renderRichiesteIscrizione();
+
+
+}
 
 
 
@@ -1236,7 +1283,6 @@ getTorneoAdminCorrente();
 
 
 
-
 if(!torneo){
 
 box.innerHTML=
@@ -1248,15 +1294,13 @@ return;
 
 
 
-
-if(torneo.iscritti.length===0){
+if(!Array.isArray(torneo.iscritti) || torneo.iscritti.length===0){
 
 
 box.innerHTML=
 "<p>Nessuna richiesta iscrizione</p>";
 
 return;
-
 
 }
 
@@ -1275,18 +1319,19 @@ torneo.iscritti.map(
 
 
 <b>
-${g.nome}
+${g.nome || ""}
+${g.cognome || ""}
 </b>
 
 
 <br>
 
-📧 ${g.email}
+📧 ${g.email || ""}
 
 
 <br>
 
-📱 ${g.telefono}
+📱 ${g.telefono || ""}
 
 
 <br>
@@ -1325,7 +1370,6 @@ onclick="rifiutaIscritto(${i})">
 ).join("");
 
 }
-
 
 
 
