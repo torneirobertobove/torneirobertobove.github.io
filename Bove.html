@@ -5246,100 +5246,120 @@ function applyRules(){
 
 }
    }
-function loadSavedTeams(){
+function saveTeams(){
 
     ensureRules();
 
 
+    if(checkRulesLocked())
 
-    let saved =
-        localStorage.getItem(
-            "savedTeams"
+        return;
+
+
+
+    let input =
+        document.getElementById(
+            "teamInput"
         );
 
 
-
-    if(!saved)
+    if(!input)
 
         return;
 
 
 
+    let teams =
 
-    let teams;
+        input.value
+        .split("\n")
+        .map(x=>
+
+            x
+            .replace(/\s+/g," ")
+            .replace(/\s*\/\s*/g,"/")
+            .trim()
+
+        )
+        .filter(Boolean);
 
 
 
-    try{
 
-        teams =
-            JSON.parse(saved);
+    for(let i=0;i<teams.length;i++){
+
+
+        let squadra =
+            teams[i];
+
+
+        if(!squadra.includes("/")){
+
+
+            alert(
+                "Squadra n° "+
+                (i+1)+
+                " non valida.\n\n"+
+                "Inserire:\n\n"+
+                "Giocatore1/Giocatore2"
+            );
+
+
+            return;
+
+        }
+
+
+
+        let giocatori =
+
+            squadra
+            .split("/")
+            .map(x=>x.trim())
+            .filter(Boolean);
+
+
+
+        if(
+            giocatori.length!==2
+        ){
+
+
+            alert(
+                "La squadra n° "+
+                (i+1)+
+                " deve avere 2 giocatori."
+            );
+
+
+            return;
+
+        }
 
     }
-    catch(e){
-
-        console.error(
-            "Errore caricamento squadre:",
-            e
-        );
-
-        return;
-
-    }
-
-
-
-
-
-    if(!Array.isArray(teams))
-
-        return;
-
-
-
 
 
 
 
     let richieste =
+
         Number(
             state.rules.numeroSquadre
         ) || 8;
 
 
 
-
-
-    /*
-        ============================
-        CONTROLLO COMPATIBILITA'
-        ============================
-    */
-
-
     if(
-        teams.length === 0
-    ){
-
-        return;
-
-    }
-
-
-
-
-    if(
-        teams.length !== richieste
+        teams.length!==richieste
     ){
 
 
-        console.warn(
-
-            "Numero squadre salvate incompatibile:",
-            teams.length,
-            "richieste:",
-            richieste
-
+        alert(
+            "Il regolamento richiede "+
+            richieste+
+            " squadre.\n\n"+
+            "Inserite: "+
+            teams.length
         );
 
 
@@ -5350,30 +5370,101 @@ function loadSavedTeams(){
 
 
 
+    /*
+    ============================
+    SALVATAGGIO DEFINITIVO
+    ============================
+    */
+
+
+    localStorage.setItem(
+
+        "savedTeams",
+
+        JSON.stringify(teams)
+
+    );
+
+
+
+
+    /*
+    ============================
+    CREAZIONE COPPIE
+    ============================
+    */
+
+
+    state.coppie =
+
+        teams.map((t,i)=>{
+
+
+            let p =
+
+                t
+                .split("/")
+                .map(x=>x.trim());
+
+
+            return {
+
+                id:
+                    "C"+(i+1),
+
+                g1:
+                    p[0],
+
+                g2:
+                    p[1]
+
+            };
+
+
+        });
+
 
 
 
 
 
     /*
-        ============================
-        RESET GIRONI
-        ============================
+    ============================
+    RESET GIRONI
+    ============================
     */
 
 
-  if(
-    state.coppie &&
-    state.coppie.length>0
-){
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
 
-    state.A=[];
-    state.B=[];
-    state.C=[];
-    state.D=[];
+    ].forEach(g=>{
+
+
+        state[g]=[];
+
+        state[g+"res"]=[];
+
+        state[g+"time"]=[];
+
+        state[g+"camp"]=[];
+
+
+    });
+
+
+
+
+
 
 
     let numeroGironi =
+
         Number(
             state.rules.numeroGironi
         ) || 2;
@@ -5381,87 +5472,209 @@ function loadSavedTeams(){
 
 
     let squadrePerGirone =
+
         Number(
             state.rules.squadrePerGirone
         ) || 4;
 
 
 
-    let teams =
-        state.coppie;
 
 
 
-    if(
 
-        numeroGironi *
-        squadrePerGirone !==
-        teams.length
+    /*
+    ============================
+    CREAZIONE GIRONI
+    ============================
+    */
 
+
+    let lettere = [
+
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+
+    ];
+
+
+
+
+    for(
+        let i=0;
+        i<numeroGironi;
+        i++
     ){
 
-        console.warn(
-            "Regolamento gironi non valido.",
-            numeroGironi,
-            squadrePerGirone,
-            teams.length
-        );
 
-        return;
+        let inizio =
+
+            i *
+            squadrePerGirone;
+
+
+
+        let fine =
+
+            inizio +
+            squadrePerGirone;
+
+
+
+        state[lettere[i]] =
+
+            state.coppie
+
+            .slice(
+                inizio,
+                fine
+            )
+            .map(
+                c =>
+                c.g1+
+                " / "+
+                c.g2
+            );
+
 
     }
 
 
 
-    [
-        "A",
-        "B",
-        "C",
-        "D"
-
-    ].forEach((g,i)=>{
-
-
-        if(i < numeroGironi){
-
-
-            let start =
-                i * squadrePerGirone;
-
-
-            let end =
-                start + squadrePerGirone;
 
 
 
-            state[g] =
-                teams
-                .slice(start,end)
-                .map(
-                    c =>
-                    c.g1 +
-                    " / " +
-                    c.g2
-                );
 
+    /*
+    ============================
+    CREA ARRAY RISULTATI
+    ============================
+    */
+
+
+    function creaPartite(nome){
+
+
+        let n =
+
+            Array.isArray(
+                state[nome]
+            )
+
+            ?
+
+            state[nome].length
+
+            :
+
+            0;
+
+
+
+        let totale=0;
+
+
+
+        for(
+            let i=0;
+            i<n;
+            i++
+        ){
+
+
+            for(
+                let j=i+1;
+                j<n;
+                j++
+            ){
+
+                totale++;
+
+            }
 
         }
+
+
+
+        state[nome+"res"] =
+
+            Array(totale)
+            .fill("-");
+
+
+
+        state[nome+"time"] =
+
+            Array(totale)
+            .fill("-");
+
+
+
+        state[nome+"camp"] =
+
+            Array(totale)
+            .fill("");
+
+    }
+
+
+
+
+    lettere.forEach(g=>{
+
+
+        creaPartite(g);
 
 
     });
 
 
 
-    if(numeroGironi < 3)
-
-        state.C=[];
 
 
 
-    if(numeroGironi < 4)
 
-        state.D=[];
+    /*
+    ============================
+    RESET KO
+    ============================
+    */
 
+
+    state.qRes =
+        Array(4).fill("-");
+
+
+    state.sTopRes =
+        Array(2).fill("-");
+
+
+    state.fTopRes =
+        "-";
+
+
+    state.finalTop=[];
+
+
+    state.campioneTop=null;
+
+
+
+
+
+
+    /*
+    ============================
+    REGOLAMENTO MODIFICABILE
+    ============================
+    */
+
+
+    state.rules.locked=false;
 
 
     state.formato =
@@ -5469,11 +5682,50 @@ function loadSavedTeams(){
 
 
 
+
+
+
+    /*
+    ============================
+    CHIUSURA FINESTRA
+    ============================
+    */
+
+
+    let modal =
+
+        document.getElementById(
+            "teamModal"
+        );
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+
+
+
+
+
+    /*
+    ============================
+    SALVA E RENDER
+    ============================
+    */
+
+
     updateAndSync();
 
 
-}
 
+    if(typeof render==="function")
+
+        render();
+
+
+}
 function saveTeams(){
 
     ensureRules();
