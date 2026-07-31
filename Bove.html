@@ -6701,62 +6701,49 @@ async function loadState(){
 
         /*
         ============================
-        RECUPERO COPPIE DA TORNEO LINK
+        DISTRIBUZIONE DINAMICA GIRONI
         ============================
         */
 
         if(
-
-            Array.isArray(
-                state.coppie
-            )
-
-            &&
-
-            state.coppie.length>0
-
+            Array.isArray(state.coppie) &&
+            state.coppie.length > 0
         ){
 
-
-            const squadre =
-
-                state.coppie.map(
-
-                    c =>
-
-                    c.g1
-                    +
-                    "/"
-                    +
-                    c.g2
-
-                );
-
-
-
-            const meta =
-
-                Math.ceil(
-                    squadre.length / 2
-                );
-
-
-
-            state.A =
-
-                squadre.slice(
-                    0,
-                    meta
-                );
-
-
-
-            state.B =
-
-                squadre.slice(
-                    meta
-                );
-
+            const squadre = state.coppie.map(c => c.g1 + "/" + c.g2);
+            const totaleSquadre = squadre.length;
+            
+            // Calcola numero gironi in base alle squadre
+            let numGironi = 2;
+            
+            if(totaleSquadre >= 16){
+                numGironi = 4;
+            } else if(totaleSquadre >= 12){
+                numGironi = 3;
+            } else if(totaleSquadre <= 6){
+                numGironi = 2;
+            }
+            
+            const squadrePerGirone = Math.ceil(totaleSquadre / numGironi);
+            
+            // Inizializza e distribuisce squadre nei gironi
+            const nomiGironi = ["A", "B", "C", "D", "E", "F"];
+            
+            for(let i = 0; i < numGironi; i++){
+                const inizio = i * squadrePerGirone;
+                const fine = Math.min(inizio + squadrePerGirone, totaleSquadre);
+                state[nomiGironi[i]] = squadre.slice(inizio, fine);
+            }
+            
+            // Pulisce gironi non usati
+            for(let i = numGironi; i < nomiGironi.length; i++){
+                state[nomiGironi[i]] = [];
+            }
+            
+            console.log(
+                `Distribuite ${totaleSquadre} squadre in ${numGironi} gironi`,
+                state.A, state.B, state.C, state.D
+            );
 
         }
 
@@ -7093,7 +7080,6 @@ async function loadState(){
                 "Errore render:",
                 err
             );
-
 
         }
 
