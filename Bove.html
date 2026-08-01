@@ -2520,36 +2520,24 @@ function setFormat(n){
 
     ensureRules();
 
-
-
     if(checkRulesLocked())
 
         return;
 
 
-
     n = Number(n);
 
 
-
     if(
-        n!==8 &&
-        n!==12 &&
-        n!==16 &&
-        n!==20 &&
-        n!==24
+        ![8,12,16,20,24].includes(n)
     )
 
         n=8;
 
 
 
-
-
     /*
-        ============================
         FORMATO MASTER
-        ============================
     */
 
 
@@ -2557,45 +2545,19 @@ function setFormat(n){
 
     state.rules.numeroSquadre=n;
 
+    state.rules.squadrePerGirone=4;
 
-
-
-
-    /*
-        ============================
-        STRUTTURA AUTOMATICA
-        ============================
-    */
-
-
-    let numeroGironi =
+    state.rules.numeroGironi =
         n / 4;
 
 
 
-    state.rules.numeroGironi =
-        numeroGironi;
-
-
-
-    state.rules.squadrePerGirone =
-        4;
-
-
-
-
-
-
-
     /*
-        ============================
-        CREAZIONE GIRONI DINAMICI
-        NON CANCELLA SQUADRE ESISTENTI
-        ============================
+        GIRONI DINAMICI A-F
     */
 
 
-    let lettereGironi=[
+    const lettereGironi=[
 
         "A",
         "B",
@@ -2611,16 +2573,31 @@ function setFormat(n){
     lettereGironi.forEach((g,index)=>{
 
 
-        if(index < numeroGironi){
+        if(index < state.rules.numeroGironi){
+
+
+            if(!Array.isArray(state[g]))
+
+                state[g]=[];
+
+
+
+            while(
+                state[g].length < 4
+            ){
+
+                state[g].push("");
+
+            }
+
 
 
             if(
-                !Array.isArray(state[g]) ||
-                state[g].length!==4
+                state[g].length > 4
             ){
 
                 state[g]=
-                    Array(4).fill("");
+                    state[g].slice(0,4);
 
             }
 
@@ -2641,14 +2618,8 @@ function setFormat(n){
 
 
 
-
-
-
-
     /*
-        ============================
         RESET PARTITE GIRONI
-        ============================
     */
 
 
@@ -2658,40 +2629,22 @@ function setFormat(n){
         let totale=0;
 
 
-
         let len =
-
             Array.isArray(girone)
-
             ?
-
             girone.length
-
             :
-
             0;
 
 
 
-        for(
-            let i=0;
-            i<len;
-            i++
-        ){
+        for(let i=0;i<len;i++){
 
-
-            for(
-                let j=i+1;
-                j<len;
-                j++
-            ){
-
+            for(let j=i+1;j<len;j++){
 
                 totale++;
 
-
             }
-
 
         }
 
@@ -2725,11 +2678,7 @@ function setFormat(n){
             state[nome+"camp"] =
                 Array(totale).fill("");
 
-
     }
-
-
-
 
 
 
@@ -2752,14 +2701,8 @@ function setFormat(n){
 
 
 
-
-
-
-
     /*
-        ============================
         RESET FASE FINALE
-        ============================
     */
 
 
@@ -2767,32 +2710,25 @@ function setFormat(n){
         Array(4).fill("-");
 
 
-
     state.sTopRes =
         Array(2).fill("-");
-
 
 
     state.fTopRes =
         "-";
 
 
-
-    state.campioneTop =
-        null;
+    state.finalTop=[];
 
 
-
-
+    state.campioneTop=null;
 
 
 
 
 
     /*
-        ============================
-        VISIBILITA' GIRONI
-        ============================
+        VISIBILITA' CARDS GIRONI
     */
 
 
@@ -2800,18 +2736,17 @@ function setFormat(n){
 
 
         let card =
-
             document.getElementById(
                 "card"+g
             );
 
 
+        if(card){
 
-        if(card)
 
             card.style.display =
 
-                state[g].length
+                state[g].length>0
 
                 ?
 
@@ -2822,29 +2757,24 @@ function setFormat(n){
                 "none";
 
 
+        }
+
+
     });
 
 
 
 
 
-
-
-
-
     /*
-        ============================
         CHIUSURA MODAL
-        ============================
     */
 
 
     let modal =
-
         document.getElementById(
             "formatModal"
         );
-
 
 
     if(modal)
@@ -2855,18 +2785,26 @@ function setFormat(n){
 
 
 
-
-
-
-
     /*
-        ============================
-        SINCRONIZZAZIONE
-        ============================
+        SALVATAGGIO
     */
 
 
     updateAndSync();
+
+
+
+    console.log(
+
+        "FORMATO IMPOSTATO",
+
+        state.rules.numeroSquadre,
+
+        state.rules.numeroGironi,
+
+        state.rules.squadrePerGirone
+
+    );
 
 
 }
