@@ -5301,13 +5301,6 @@ async function loadState(){
 
 
 
-        /*
-        ============================
-        TORNEO PASSATO DA ADMIN
-        ============================
-        */
-
-
         if(
             idParam ||
             torneoParam
@@ -5326,13 +5319,6 @@ async function loadState(){
 
             let configurazione = null;
 
-
-
-            /*
-            ============================
-            CARICAMENTO DA JSON URL
-            ============================
-            */
 
 
             if(torneoParam){
@@ -5362,11 +5348,22 @@ async function loadState(){
 
                             ...state.rules,
 
-                            ...(configurazione.rules || {})
+                            ...(configurazione.configurazione?.rules || configurazione.rules || {})
 
                         }
 
                     };
+
+
+
+                    if(
+                        configurazione.configurazione
+                    ){
+
+                        configurazione =
+                            configurazione.configurazione;
+
+                    }
 
 
 
@@ -5386,13 +5383,6 @@ async function loadState(){
 
 
 
-
-
-            /*
-            ============================
-            CARICAMENTO DA SUPABASE
-            ============================
-            */
 
 
             if(idParam){
@@ -5470,17 +5460,11 @@ async function loadState(){
                     };
 
 
-
                 }
 
 
             }
-
-
-
-
-
-            /*
+                       /*
             ============================
             RECUPERO DATI CONFIGURAZIONE
             ============================
@@ -5542,15 +5526,14 @@ async function loadState(){
 
 
 
-                if(
-                    configurazione.campioneTop!==undefined
-                ){
 
-                    state.campioneTop =
-                        configurazione.campioneTop;
 
-                }
 
+                /*
+                ============================
+                CARICAMENTO COPPIE ADMIN
+                ============================
+                */
 
 
                 if(
@@ -5564,8 +5547,140 @@ async function loadState(){
                     state.coppie =
                         configurazione.coppie;
 
-                }
 
+
+                    /*
+                    ============================
+                    CREAZIONE GIRONI AUTOMATICA
+                    SE VUOTI
+                    ============================
+                    */
+
+
+                    let totaleSquadre =
+                        Number(
+                            state.rules.numeroSquadre
+                        )
+                        ||
+                        state.coppie.length;
+
+
+
+                    let squadreGirone =
+                        4;
+
+
+
+                    let numeroGironi =
+                        Math.ceil(
+                            totaleSquadre /
+                            squadreGirone
+                        );
+
+
+
+                    let lettere =
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F"
+                    ];
+
+
+
+                    let vuoti = true;
+
+
+
+                    for(
+                        let i=0;
+                        i<numeroGironi;
+                        i++
+                    ){
+
+                        if(
+                            Array.isArray(
+                                state[lettere[i]]
+                            )
+                            &&
+                            state[lettere[i]].length>0
+                        ){
+
+                            vuoti=false;
+
+                        }
+
+                    }
+
+
+
+                    if(
+                        vuoti
+                        &&
+                        state.coppie.length
+                    ){
+
+
+                        lettere.forEach(g=>{
+
+                            state[g]=[];
+
+                        });
+
+
+
+                        state.coppie.forEach(
+                            (coppia,index)=>{
+
+
+                                let girone =
+                                    lettere[
+                                        Math.floor(
+                                            index /
+                                            squadreGirone
+                                        )
+                                    ];
+
+
+
+                                if(
+                                    girone
+                                ){
+
+                                    state[girone].push(
+                                        coppia.nome
+                                        ||
+                                        coppia.id
+                                        ||
+                                        (
+                                            coppia.g1
+                                            +
+                                            " / "
+                                            +
+                                            coppia.g2
+                                        )
+                                    );
+
+                                }
+
+
+                            }
+                        );
+
+
+
+                    }
+
+
+                }
+                               /*
+                ============================
+                CARICAMENTO GIRONI DIRETTI
+                ============================
+                */
 
 
                 if(
@@ -5579,12 +5694,43 @@ async function loadState(){
                     .forEach(g=>{
 
 
-                        state[g]=
-                            configurazione.gironi[g];
+                        /*
+                        Non sovrascrivere
+                        eventuali gironi
+                        appena creati dalle coppie
+                        */
+
+
+                        if(
+                            Array.isArray(
+                                configurazione.gironi[g]
+                            )
+                            &&
+                            configurazione.gironi[g].length>0
+                        ){
+
+
+                            state[g]=
+                                configurazione.gironi[g];
+
+
+                        }
 
 
                     });
 
+
+                }
+
+
+
+
+                if(
+                    configurazione.campioneTop!==undefined
+                ){
+
+                    state.campioneTop =
+                        configurazione.campioneTop;
 
                 }
 
@@ -5719,7 +5865,10 @@ async function loadState(){
 
         if(
             state.A.length>0 ||
-            state.B.length>0
+            state.B.length>0 ||
+            state.C.length>0 ||
+            state.D.length>0 ||
+            state.E.length>0
         ){
 
             localStorage.setItem(
