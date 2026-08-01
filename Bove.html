@@ -5301,6 +5301,13 @@ async function loadState(){
 
 
 
+        /*
+        ============================
+        TORNEO PASSATO DA ADMIN
+        ============================
+        */
+
+
         if(
             idParam ||
             torneoParam
@@ -5321,6 +5328,13 @@ async function loadState(){
 
 
 
+            /*
+            ============================
+            CARICAMENTO JSON DA URL
+            ============================
+            */
+
+
             if(torneoParam){
 
 
@@ -5336,6 +5350,16 @@ async function loadState(){
 
 
 
+                    console.log(
+                        "DATI TORNEO ADMIN CARICATI",
+                        configurazione.nome,
+                        configurazione.posti,
+                        configurazione.configurazione?.rules?.numeroSquadre,
+                        configurazione.configurazione?.rules?.numeroGironi
+                    );
+
+
+
                     state = {
 
                         ...state,
@@ -5348,7 +5372,9 @@ async function loadState(){
 
                             ...state.rules,
 
-                            ...(configurazione.configurazione?.rules || configurazione.rules || {})
+                            ...(configurazione.configurazione?.rules || {}),
+
+                            ...(configurazione.rules || {})
 
                         }
 
@@ -5356,15 +5382,76 @@ async function loadState(){
 
 
 
+                    /*
+                    ============================
+                    CARICAMENTO COPPIE
+                    ============================
+                    */
+
+
                     if(
-                        configurazione.configurazione
+                        Array.isArray(
+                            configurazione.coppie
+                        )
                     ){
 
-                        configurazione =
-                            configurazione.configurazione;
+                        state.coppie =
+                            configurazione.coppie;
+
+                    }
+                    else{
+
+                        state.coppie=[];
 
                     }
 
+
+
+                    if(
+                        Array.isArray(
+                            configurazione.partecipanti
+                        )
+                    ){
+
+                        state.partecipanti =
+                            configurazione.partecipanti;
+
+                    }
+                    else{
+
+                        state.partecipanti=[];
+
+                    }
+
+
+
+                    /*
+                    ============================
+                    CARICAMENTO GIRONI
+                    ============================
+                    */
+
+
+                    if(
+                        configurazione.configurazione &&
+                        configurazione.configurazione.gironi
+                    ){
+
+
+                        Object.keys(
+                            configurazione.configurazione.gironi
+                        )
+                        .forEach(g=>{
+
+
+                            state[g] =
+                                configurazione.configurazione.gironi[g];
+
+
+                        });
+
+
+                    }
 
 
                 }
@@ -5380,9 +5467,11 @@ async function loadState(){
 
 
             }
-
-
-
+                       /*
+            ============================
+            CARICAMENTO DA SUPABASE
+            ============================
+            */
 
 
             if(idParam){
@@ -5448,6 +5537,7 @@ async function loadState(){
                             "",
 
 
+
                         rules:
                         {
 
@@ -5460,13 +5550,66 @@ async function loadState(){
                     };
 
 
+
+                    if(
+                        Array.isArray(
+                            configurazione.coppie
+                        )
+                    ){
+
+                        state.coppie =
+                            configurazione.coppie;
+
+                    }
+
+
+
+                    if(
+                        Array.isArray(
+                            configurazione.partecipanti
+                        )
+                    ){
+
+                        state.partecipanti =
+                            configurazione.partecipanti;
+
+                    }
+
+
+
+                    if(
+                        configurazione.gironi
+                    ){
+
+
+                        Object.keys(
+                            configurazione.gironi
+                        )
+                        .forEach(g=>{
+
+
+                            state[g]=
+                                configurazione.gironi[g];
+
+
+                        });
+
+
+                    }
+
+
                 }
 
 
             }
-                       /*
+
+
+
+
+
+            /*
             ============================
-            RECUPERO DATI CONFIGURAZIONE
+            RECUPERO ARRAY CONFIGURAZIONE
             ============================
             */
 
@@ -5475,12 +5618,14 @@ async function loadState(){
 
 
                 [
+
                     "A",
                     "B",
                     "C",
                     "D",
                     "E",
                     "F",
+
 
                     "Ares",
                     "Bres",
@@ -5489,12 +5634,14 @@ async function loadState(){
                     "Eres",
                     "Fres",
 
+
                     "Atime",
                     "Btime",
                     "Ctime",
                     "Dtime",
                     "Etime",
                     "Ftime",
+
 
                     "Acamp",
                     "Bcamp",
@@ -5503,11 +5650,14 @@ async function loadState(){
                     "Ecamp",
                     "Fcamp",
 
+
                     "qRes",
                     "sTopRes",
                     "finalTop"
 
-                ].forEach(k=>{
+
+                ]
+                .forEach(k=>{
 
 
                     if(
@@ -5527,201 +5677,96 @@ async function loadState(){
 
 
 
-
-
                 /*
                 ============================
-                CARICAMENTO COPPIE ADMIN
+                RECUPERO DATI ANNIDATI ADMIN
                 ============================
                 */
 
 
                 if(
-                    configurazione.coppie
-                    &&
-                    Array.isArray(
-                        configurazione.coppie
-                    )
+                    configurazione.configurazione
                 ){
 
-                    state.coppie =
-                        configurazione.coppie;
+
+                    let cfg =
+                        configurazione.configurazione;
 
 
 
-                    /*
-                    ============================
-                    CREAZIONE GIRONI AUTOMATICA
-                    SE VUOTI
-                    ============================
-                    */
-
-
-                    let totaleSquadre =
-                        Number(
-                            state.rules.numeroSquadre
-                        )
-                        ||
-                        state.coppie.length;
-
-
-
-                    let squadreGirone =
-                        4;
-
-
-
-                    let numeroGironi =
-                        Math.ceil(
-                            totaleSquadre /
-                            squadreGirone
-                        );
-
-
-
-                    let lettere =
-                    [
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "E",
-                        "F"
-                    ];
-
-
-
-                    let vuoti = true;
-
-
-
-                    for(
-                        let i=0;
-                        i<numeroGironi;
-                        i++
+                    if(
+                        cfg.gironi
                     ){
 
-                        if(
-                            Array.isArray(
-                                state[lettere[i]]
-                            )
-                            &&
-                            state[lettere[i]].length>0
-                        ){
 
-                            vuoti=false;
+                        Object.keys(
+                            cfg.gironi
+                        )
+                        .forEach(g=>{
 
-                        }
+
+                            if(
+                                Array.isArray(
+                                    cfg.gironi[g]
+                                )
+                            ){
+
+                                state[g]=
+                                    cfg.gironi[g];
+
+                            }
+
+
+                        });
+
 
                     }
 
 
 
                     if(
-                        vuoti
-                        &&
-                        state.coppie.length
+                        Array.isArray(
+                            cfg.coppie
+                        )
                     ){
 
+                        state.coppie =
+                            cfg.coppie;
 
-                        lettere.forEach(g=>{
-
-                            state[g]=[];
-
-                        });
+                    }
 
 
 
-                        state.coppie.forEach(
-                            (coppia,index)=>{
+                    if(
+                        Array.isArray(
+                            cfg.partecipanti
+                        )
+                    ){
+
+                        state.partecipanti =
+                            cfg.partecipanti;
+
+                    }
 
 
-                                let girone =
-                                    lettere[
-                                        Math.floor(
-                                            index /
-                                            squadreGirone
-                                        )
-                                    ];
 
+                    if(
+                        cfg.rules
+                    ){
 
+                        state.rules =
+                        {
 
-                                if(
-                                    girone
-                                ){
+                            ...state.rules,
 
-                                    state[girone].push(
-                                        coppia.nome
-                                        ||
-                                        coppia.id
-                                        ||
-                                        (
-                                            coppia.g1
-                                            +
-                                            " / "
-                                            +
-                                            coppia.g2
-                                        )
-                                    );
+                            ...cfg.rules
 
-                                }
-
-
-                            }
-                        );
-
-
+                        };
 
                     }
 
 
                 }
-                               /*
-                ============================
-                CARICAMENTO GIRONI DIRETTI
-                ============================
-                */
-
-
-                if(
-                    configurazione.gironi
-                ){
-
-
-                    Object.keys(
-                        configurazione.gironi
-                    )
-                    .forEach(g=>{
-
-
-                        /*
-                        Non sovrascrivere
-                        eventuali gironi
-                        appena creati dalle coppie
-                        */
-
-
-                        if(
-                            Array.isArray(
-                                configurazione.gironi[g]
-                            )
-                            &&
-                            configurazione.gironi[g].length>0
-                        ){
-
-
-                            state[g]=
-                                configurazione.gironi[g];
-
-
-                        }
-
-
-                    });
-
-
-                }
-
 
 
 
@@ -5736,9 +5781,9 @@ async function loadState(){
 
 
             }
+                   }
 
 
-        }
 
 
 
@@ -5800,14 +5845,24 @@ async function loadState(){
 
 
 
+
+
         /*
         ============================
-        GARANZIA GIRONI
+        GARANZIA STRUTTURA GIRONI
         ============================
         */
 
 
-        [
+        let numeroGironi =
+            Number(
+                state.rules.numeroGironi
+            ) || 2;
+
+
+
+        let lettereGironi = [
+
             "A",
             "B",
             "C",
@@ -5815,16 +5870,33 @@ async function loadState(){
             "E",
             "F"
 
-        ].forEach(g=>{
+        ];
 
 
-            if(
-                !Array.isArray(
-                    state[g]
-                )
-            ){
+
+        lettereGironi.forEach((g,index)=>{
+
+
+            if(index < numeroGironi){
+
+
+                if(
+                    !Array.isArray(
+                        state[g]
+                    )
+                ){
+
+                    state[g]=[];
+
+                }
+
+
+            }
+            else{
+
 
                 state[g]=[];
+
 
             }
 
@@ -5836,9 +5908,10 @@ async function loadState(){
 
 
 
+
         /*
         ============================
-        NORMALIZZA REGOLE
+        NORMALIZZAZIONE REGOLE
         ============================
         */
 
@@ -5856,6 +5929,27 @@ async function loadState(){
 
 
 
+
+        /*
+        ============================
+        CONTROLLO DATI CARICATI
+        ============================
+        */
+
+
+        console.log(
+            "TORNEO CARICATO:",
+            state.nomeTorneo,
+            state.rules.numeroSquadre,
+            state.rules.numeroGironi,
+            state.coppie
+        );
+
+
+
+
+
+
         /*
         ============================
         SALVATAGGIO SICURO
@@ -5864,11 +5958,8 @@ async function loadState(){
 
 
         if(
-            state.A.length>0 ||
-            state.B.length>0 ||
-            state.C.length>0 ||
-            state.D.length>0 ||
-            state.E.length>0
+            state.coppie &&
+            state.coppie.length>0
         ){
 
             localStorage.setItem(
@@ -5886,11 +5977,13 @@ async function loadState(){
 
 
             console.warn(
-                "Salvataggio bloccato: gironi vuoti"
+                "Salvataggio bloccato: nessuna coppia caricata"
             );
 
 
         }
+
+
 
 
 
