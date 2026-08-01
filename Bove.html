@@ -99,190 +99,65 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       }
   );
 
-  // Integrazione per aprire automaticamente le regole se richiesto dall'admin
-  window.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      let apriRegole = params.get("apriRegole");
+<script>
+// Integrazione per aprire automaticamente le regole se richiesto dall'admin
+window.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    let apriRegole = params.get("apriRegole");
 
-      if (apriRegole === "true") {
-          setTimeout(() => {
-              if (typeof openRules === "function") {
-                  openRules();
-              } else if (typeof apriRegoleModal === "function") {
-                  apriRegoleModal();
-              }
-          }, 600);
-      }
-  });
-</script>
+    if (apriRegole === "true") {
+        setTimeout(() => {
+            if (typeof openRules === "function") {
+                openRules();
+            } else if (typeof apriRegoleModal === "function") {
+                apriRegoleModal();
+            }
+        }, 600);
+    }
+});
 
 async function verifyAccess(){
-
-
-    const {
-        data:{
-            session
-        }
-    } = await sb.auth.getSession();
-
-
-
+    const { data: { session } } = await sb.auth.getSession();
 
     if(!session){
-
-
-        console.warn(
-            "Nessun utente autenticato"
-        );
-
-
+        console.warn("Nessun utente autenticato");
         bloccaGestionale();
-
-
         return;
-
-
     }
 
+    const userId = session.user.id;
 
+    const { data: profilo, error } = await sb
+        .from("profili")
+        .select("nome, ruolo")
+        .eq("user_id", userId)
+        .single();
 
-
-
-    const userId =
-        session.user.id;
-
-
-
-
-
-
-    const {
-        data:profilo,
-        error
-    }
-    =
-    await sb
-    .from("profili")
-    .select(
-        "nome,ruolo"
-    )
-    .eq(
-        "user_id",
-        userId
-    )
-    .single();
-
-
-
-
-
-
-
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
-    );
-
-
-
-
-
-
-
+    console.log("RISULTATO PROFILO:", profilo, error);
 
     if(error || !profilo){
-
-
-        console.warn(
-            "Profilo amministratore non trovato"
-        );
-
-
+        console.warn("Profilo amministratore non trovato");
         bloccaGestionale();
-
-
         return;
-
-
     }
 
-
-
-
-
-
-
-
-    if(
-        profilo.ruolo !== "admin"
-    ){
-
-
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-
-
+    if(profilo.ruolo !== "admin"){
+        console.warn("Utente senza permessi admin:", profilo);
         bloccaGestionale();
-
-
         return;
-
-
     }
 
-
-
-
-
-
-
-    console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
-    );
-
-
-
+    console.log("ACCESSO ADMIN:", profilo.nome);
 }
 
-
-
-
-
 function bloccaGestionale(){
-
-
-    document
-    .querySelectorAll(
-        'input, button, textarea, select'
-    )
-    .forEach(el=>{
-
-
-        if(
-            !el.classList.contains("back")
-            &&
-            el.innerText !== "Stampa"
-        ){
-
+    document.querySelectorAll('input, button, textarea, select').forEach(el => {
+        if(!el.classList.contains("back") && el.innerText !== "Stampa"){
             el.disabled = true;
-
             el.style.opacity = "0.6";
-
         }
-
-
     });
-
-
-    console.warn(
-        "Gestionale bloccato: serve un amministratore"
-    );
-
-
+    console.warn("Gestionale bloccato: serve un amministratore");
 }
 </script>
 </head>
