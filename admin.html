@@ -1114,90 +1114,400 @@ window.open(campo.value,"_blank");
 }
 
 function generaLinkBove(){
+
 let torneo=getTorneoAdminCorrente();
+
 if(!torneo){
+
 alert("Seleziona torneo");
+
 return;
+
 }
 
-let numeroSquadre=Number(torneo.posti)||8;
-let iscritti=torneo.iscritti || [];
 
-if(iscritti.length < numeroSquadre*2){
-alert("Giocatori insufficienti: servono "+(numeroSquadre*2)+" giocatori");
+
+let numeroSquadre=
+Number(torneo.posti)||8;
+
+
+
+/*
+============================
+RECUPERO COPPIE CREATE
+============================
+*/
+
+
+let coppie =
+Array.isArray(torneo.coppie)
+?
+torneo.coppie
+:
+[];
+
+
+
+
+if(
+coppie.length !== numeroSquadre
+){
+
+alert(
+"Numero coppie non corretto.\n\n"+
+"Servono "+
+numeroSquadre+
+" coppie, presenti "+
+coppie.length
+);
+
 return;
+
 }
 
-let partecipanti=[];
-let coppie=[];
 
-for(let i=0;i<numeroSquadre*2;i+=2){
-let giocatore1=iscritti[i];
-let giocatore2=iscritti[i+1];
 
-let coppia={
-id:"C"+(i/2+1),
-g1:giocatore1.nome+" "+(giocatore1.cognome||""),
-g2:giocatore2.nome+" "+(giocatore2.cognome||"")
+
+/*
+============================
+CREAZIONE PARTECIPANTI
+============================
+*/
+
+
+let partecipanti =
+coppie.map((c,i)=>{
+
+
+return {
+
+id:
+c.id ||
+"C"+(i+1),
+
+g1:
+c.g1 ||
+"",
+
+g2:
+c.g2 ||
+""
+
 };
 
-coppie.push(coppia);
-partecipanti.push(coppia);
-}
 
-torneo.partecipanti=partecipanti;
-torneo.coppie=coppie;
-salvaAdminState();
+});
 
-let numeroGironi=Math.ceil(numeroSquadre/4);
+
+
+
+
+
+/*
+============================
+CREAZIONE GIRONI
+============================
+*/
+
+
+let lettere=[
+
+"A",
+"B",
+"C",
+"D",
+"E",
+"F"
+
+];
+
+
+let numeroGironi =
+Math.ceil(numeroSquadre/4);
+
+
+
 let gironi={};
-let lettere=["A","B","C","D","E","F"];
 
-for(let i=0;i<numeroGironi;i++){
+
+
+for(
+let i=0;
+i<numeroGironi;
+i++
+){
+
 gironi[lettere[i]]=[];
+
 }
+
+
+
+
+
+coppie.forEach((c,i)=>{
+
+
+let indice =
+Math.floor(
+i/4
+);
+
+
+let girone =
+lettere[indice];
+
+
+
+if(gironi[girone]){
+
+gironi[girone].push(c);
+
+}
+
+
+});
+
+
+
+
+
+
+/*
+============================
+CONFIGURAZIONE BOVE
+============================
+*/
+
 
 let configurazione={
-idTorneo:torneo.id,
-nomeTorneo:torneo.nome || "",
-data:torneo.data || "",
-posti:numeroSquadre,
-formula:torneo.formula || "italiana",
-configurazione:{
+
+
+idTorneo:
+torneo.id,
+
+
+nomeTorneo:
+torneo.nome || "",
+
+
+dataTorneo:
+torneo.data || "",
+
+
+nome:
+torneo.nome || "",
+
+
+data:
+torneo.data || "",
+
+
+posti:
+numeroSquadre,
+
+
+
 rules:{
-tipoTorneo:torneo.formula || "italiana",
-formatoTorneo:"gironi",
-numeroSquadre:numeroSquadre,
-numeroGironi:numeroGironi,
-squadrePerGirone:4,
-usaQuarti:numeroSquadre>=8,
-usaSemifinali:true,
-usaFinale:true,
-w:3,
-d:1,
-l:0,
-qualificatePerGirone:2,
-numeroQualificateFinali:4,
-killerPoint:false,
-rigori:true,
-tempoSupplementare:false
+
+tipoTorneo:
+torneo.formula ||
+"gironiFinale",
+
+
+formatoTorneo:
+"gironiFinale",
+
+
+numeroSquadre:
+numeroSquadre,
+
+
+numeroGironi:
+numeroGironi,
+
+
+squadrePerGirone:
+4,
+
+
+formulaGironi:
+"italiana",
+
+
+formulaFinale:
+"eliminazione_diretta",
+
+
+w:
+3,
+
+
+d:
+1,
+
+
+l:
+0,
+
+
+qualificatePerGirone:
+2,
+
+
+numeroQualificateFinali:
+numeroGironi*2,
+
+
+usaQuarti:
+numeroSquadre>=8,
+
+
+usaSemifinali:
+true,
+
+
+usaFinale:
+true,
+
+
+killerPoint:
+false,
+
+
+rigori:
+true,
+
+
+tempoSupplementare:
+true,
+
+
+garaAndataRitorno:
+false,
+
+
+start:
+"20:00",
+
+
+duration:
+30,
+
+
+crit1:
+"df",
+
+
+crit2:
+"gf",
+
+
+crit3:
+"gs",
+
+
+mostraQuarti:
+true
+
 },
-partecipanti:partecipanti,
-coppie:coppie,
-gironi:gironi
-}
+
+
+
+
+partecipanti:
+partecipanti,
+
+
+
+coppie:
+coppie,
+
+
+
+gironi:
+gironi
+
+
+
 };
 
-let json=encodeURIComponent(JSON.stringify(configurazione));
-let link="Bove.html?torneo="+json;
 
-let campo=document.getElementById("linkBoveGenerato");
+
+
+
+
+/*
+============================
+SALVA DATI TORNEO
+============================
+*/
+
+
+torneo.partecipanti=
+partecipanti;
+
+
+torneo.coppie=
+coppie;
+
+
+salvaAdminState();
+
+
+
+
+
+
+
+/*
+============================
+CREA LINK
+============================
+*/
+
+
+let json =
+encodeURIComponent(
+JSON.stringify(configurazione)
+);
+
+
+
+let link =
+"Bove.html?torneo="+json;
+
+
+
+let campo =
+document.getElementById(
+"linkBoveGenerato"
+);
+
+
+
 if(campo){
-campo.value=link;
-}
-renderAdmin();
+
+campo.value=
+link;
+
 }
 
+
+
+console.log(
+"LINK BOVE GENERATO",
+configurazione
+);
+
+
+
+alert(
+"Link torneo generato correttamente"
+);
+
+
+}
 function copiaLinkBove(){
 let campo=document.getElementById("linkBoveGenerato");
 if(!campo)return;
