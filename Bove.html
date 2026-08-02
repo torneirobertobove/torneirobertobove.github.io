@@ -5301,9 +5301,13 @@ async function loadState(){
 
 
 
+        let configurazione = null;
+
+
+
         /*
         ============================
-        TORNEO PASSATO DA ADMIN
+        CARICAMENTO TORNEO DA ADMIN
         ============================
         */
 
@@ -5314,23 +5318,16 @@ async function loadState(){
         ){
 
 
-            localStorage.removeItem(
-                "torneoState"
-            );
-
-            localStorage.removeItem(
-                "savedTeams"
-            );
-
-
-
-            let configurazione = null;
-
+            /*
+            NON CANCELLARE LOCAL STORAGE QUI
+            perché il salvataggio delle regole
+            deve poter completare il flusso
+            */
 
 
             /*
             ============================
-            CARICAMENTO JSON DA URL
+            LETTURA JSON DA URL ADMIN
             ============================
             */
 
@@ -5351,11 +5348,8 @@ async function loadState(){
 
 
                     console.log(
-                        "DATI TORNEO ADMIN CARICATI",
-                        configurazione.nome,
-                        configurazione.posti,
-                        configurazione.configurazione?.rules?.numeroSquadre,
-                        configurazione.configurazione?.rules?.numeroGironi
+                        "TORNEO ADMIN RICEVUTO:",
+                        configurazione
                     );
 
 
@@ -5372,7 +5366,9 @@ async function loadState(){
 
                             ...state.rules,
 
+
                             ...(configurazione.configurazione?.rules || {}),
+
 
                             ...(configurazione.rules || {})
 
@@ -5384,7 +5380,7 @@ async function loadState(){
 
                     /*
                     ============================
-                    CARICAMENTO COPPIE
+                    COPPIE
                     ============================
                     */
 
@@ -5399,12 +5395,32 @@ async function loadState(){
                             configurazione.coppie;
 
                     }
+
+
+
                     else{
 
-                        state.coppie=[];
+
+                        if(
+                            !Array.isArray(
+                                state.coppie
+                            )
+                        ){
+
+                            state.coppie=[];
+
+                        }
+
 
                     }
 
+
+
+                    /*
+                    ============================
+                    PARTECIPANTI
+                    ============================
+                    */
 
 
                     if(
@@ -5417,9 +5433,22 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
+
+
+
                     else{
 
-                        state.partecipanti=[];
+
+                        if(
+                            !Array.isArray(
+                                state.partecipanti
+                            )
+                        ){
+
+                            state.partecipanti=[];
+
+                        }
+
 
                     }
 
@@ -5427,7 +5456,7 @@ async function loadState(){
 
                     /*
                     ============================
-                    CARICAMENTO GIRONI
+                    GIRONI ANNIDATI ADMIN
                     ============================
                     */
 
@@ -5456,12 +5485,15 @@ async function loadState(){
 
                 }
 
+
                 catch(e){
+
 
                     console.error(
                         "Errore lettura torneo URL:",
                         e
                     );
+
 
                 }
 
@@ -5477,122 +5509,177 @@ async function loadState(){
             if(idParam){
 
 
-                const {
-                    data:torneo,
-                    error
-                } =
-                await sb
-                .from("tornei")
-                .select("*")
-                .eq(
-                    "id",
-                    Number(idParam)
-                )
-                .single();
-
-
-
-                if(error){
+                if(
+                    typeof sb === "undefined"
+                ){
 
                     console.error(
-                        "Errore caricamento torneo:",
-                        error
+                        "Supabase non disponibile durante caricamento torneo"
                     );
 
                 }
 
 
-
-                if(torneo){
-
-
-                    configurazione =
-                        torneo.configurazione
-                        ||
-                        {};
+                else{
 
 
+                    const {
+                        data:torneo,
+                        error
+                    } =
+                    await sb
+                    .from("tornei")
+                    .select("*")
+                    .eq(
+                        "id",
+                        Number(idParam)
+                    )
+                    .single();
 
-                    state = {
-
-                        ...state,
-
-                        idTorneo:
-                            torneo.id,
 
 
-                        nomeTorneo:
-                            torneo.nome
+                    if(error){
+
+
+                        console.error(
+                            "Errore caricamento torneo Supabase:",
+                            error
+                        );
+
+
+                    }
+
+
+
+                    if(torneo){
+
+
+                        configurazione =
+                            torneo.configurazione
                             ||
-                            state.nomeTorneo
-                            ||
-                            "",
-
-
-                        dataTorneo:
-                            torneo.data
-                            ||
-                            state.dataTorneo
-                            ||
-                            "",
+                            {};
 
 
 
-                        rules:
-                        {
+                        state = {
 
-                            ...state.rules,
+                            ...state,
 
-                            ...(configurazione.rules || {})
+
+                            idTorneo:
+                                torneo.id,
+
+
+                            nomeTorneo:
+                                torneo.nome
+                                ||
+                                state.nomeTorneo
+                                ||
+                                "",
+
+
+
+                            dataTorneo:
+                                torneo.data
+                                ||
+                                state.dataTorneo
+                                ||
+                                "",
+
+
+
+                            rules:
+                            {
+
+                                ...state.rules,
+
+
+                                ...(configurazione.rules || {})
+
+
+                            }
+
+
+                        };
+
+
+
+
+
+                        /*
+                        ============================
+                        RECUPERO COPPIE
+                        ============================
+                        */
+
+
+                        if(
+                            Array.isArray(
+                                configurazione.coppie
+                            )
+                        ){
+
+
+                            state.coppie =
+                                configurazione.coppie;
+
 
                         }
 
-                    };
 
 
 
-                    if(
-                        Array.isArray(
-                            configurazione.coppie
-                        )
-                    ){
 
-                        state.coppie =
-                            configurazione.coppie;
-
-                    }
+                        /*
+                        ============================
+                        RECUPERO PARTECIPANTI
+                        ============================
+                        */
 
 
+                        if(
+                            Array.isArray(
+                                configurazione.partecipanti
+                            )
+                        ){
 
-                    if(
-                        Array.isArray(
-                            configurazione.partecipanti
-                        )
-                    ){
 
-                        state.partecipanti =
-                            configurazione.partecipanti;
+                            state.partecipanti =
+                                configurazione.partecipanti;
 
-                    }
+
+                        }
 
 
 
-                    if(
-                        configurazione.gironi
-                    ){
 
 
-                        Object.keys(
+                        /*
+                        ============================
+                        RECUPERO GIRONI
+                        ============================
+                        */
+
+
+                        if(
                             configurazione.gironi
-                        )
-                        .forEach(g=>{
+                        ){
 
 
-                            state[g]=
-                                configurazione.gironi[g];
+                            Object.keys(
+                                configurazione.gironi
+                            )
+                            .forEach(g=>{
 
 
-                        });
+                                state[g] =
+                                    configurazione.gironi[g];
+
+
+                            });
+
+
+                        }
 
 
                     }
@@ -5609,193 +5696,269 @@ async function loadState(){
 
             /*
             ============================
-            RECUPERO ARRAY CONFIGURAZIONE
+            FINE CARICAMENTO ADMIN
             ============================
             */
 
 
-            if(configurazione){
+        }
+
+               /*
+        ============================
+        CARICAMENTO DATI CONFIGURAZIONE
+        ============================
+        */
 
 
-                [
-
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F",
+        if(configurazione){
 
 
-                    "Ares",
-                    "Bres",
-                    "Cres",
-                    "Dres",
-                    "Eres",
-                    "Fres",
+            let arrayDaRecuperare = [
 
 
-                    "Atime",
-                    "Btime",
-                    "Ctime",
-                    "Dtime",
-                    "Etime",
-                    "Ftime",
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
 
 
-                    "Acamp",
-                    "Bcamp",
-                    "Ccamp",
-                    "Dcamp",
-                    "Ecamp",
-                    "Fcamp",
+                "Ares",
+                "Bres",
+                "Cres",
+                "Dres",
+                "Eres",
+                "Fres",
 
 
-                    "qRes",
-                    "sTopRes",
-                    "finalTop"
+                "Atime",
+                "Btime",
+                "Ctime",
+                "Dtime",
+                "Etime",
+                "Ftime",
 
 
-                ]
-                .forEach(k=>{
+                "Acamp",
+                "Bcamp",
+                "Ccamp",
+                "Dcamp",
+                "Ecamp",
+                "Fcamp",
 
 
-                    if(
-                        Array.isArray(
-                            configurazione[k]
-                        )
-                    ){
-
-                        state[k]=
-                            configurazione[k];
-
-                    }
+                "qRes",
+                "sTopRes",
+                "finalTop"
 
 
-                });
+            ];
+
+
+
+
+
+            arrayDaRecuperare.forEach(k=>{
+
+
+                if(
+                    Array.isArray(
+                        configurazione[k]
+                    )
+                ){
+
+
+                    state[k] =
+                        configurazione[k];
+
+
+                }
+
+
+            });
+
+
+
+
+
+
+
+            /*
+            ============================
+            RECUPERO CONFIGURAZIONE
+            ANNIDATA ADMIN
+            ============================
+            */
+
+
+            if(
+                configurazione.configurazione
+            ){
+
+
+                let cfg =
+                    configurazione.configurazione;
+
 
 
 
 
                 /*
-                ============================
-                RECUPERO DATI ANNIDATI ADMIN
-                ============================
+                GIRONI
                 */
 
 
                 if(
-                    configurazione.configurazione
+                    cfg.gironi
                 ){
 
 
-                    let cfg =
-                        configurazione.configurazione;
-
-
-
-                    if(
+                    Object.keys(
                         cfg.gironi
-                    ){
+                    )
+                    .forEach(g=>{
 
 
-                        Object.keys(
-                            cfg.gironi
-                        )
-                        .forEach(g=>{
+                        if(
+                            Array.isArray(
+                                cfg.gironi[g]
+                            )
+                        ){
 
 
-                            if(
-                                Array.isArray(
-                                    cfg.gironi[g]
-                                )
-                            ){
-
-                                state[g]=
-                                    cfg.gironi[g];
-
-                            }
+                            state[g] =
+                                cfg.gironi[g];
 
 
-                        });
+                        }
 
 
-                    }
-
-
-
-                    if(
-                        Array.isArray(
-                            cfg.coppie
-                        )
-                    ){
-
-                        state.coppie =
-                            cfg.coppie;
-
-                    }
-
-
-
-                    if(
-                        Array.isArray(
-                            cfg.partecipanti
-                        )
-                    ){
-
-                        state.partecipanti =
-                            cfg.partecipanti;
-
-                    }
-
-
-
-                    if(
-                        cfg.rules
-                    ){
-
-                        state.rules =
-                        {
-
-                            ...state.rules,
-
-                            ...cfg.rules
-
-                        };
-
-                    }
+                    });
 
 
                 }
 
+
+
+
+
+
+
+                /*
+                COPPIE
+                */
 
 
                 if(
-                    configurazione.campioneTop!==undefined
+                    Array.isArray(
+                        cfg.coppie
+                    )
                 ){
 
-                    state.campioneTop =
-                        configurazione.campioneTop;
+
+                    state.coppie =
+                        cfg.coppie;
+
 
                 }
 
 
+
+
+
+
+
+                /*
+                PARTECIPANTI
+                */
+
+
+                if(
+                    Array.isArray(
+                        cfg.partecipanti
+                    )
+                ){
+
+
+                    state.partecipanti =
+                        cfg.partecipanti;
+
+
+                }
+
+
+
+
+
+
+
+                /*
+                REGOLE
+                */
+
+
+                if(
+                    cfg.rules
+                ){
+
+
+                    state.rules =
+                    {
+
+                        ...state.rules,
+
+                        ...cfg.rules
+
+
+                    };
+
+
+                }
+
+
+
             }
-                   }
 
 
 
 
 
 
-        /*
+
+            /*
+            ============================
+            CAMPIONE TORNEO
+            ============================
+            */
+
+
+            if(
+                configurazione.campioneTop !== undefined
+            ){
+
+
+                state.campioneTop =
+                    configurazione.campioneTop;
+
+
+            }
+
+
+
+        }
+
+               /*
         ============================
-        CARICAMENTO LOCALE
+        CARICAMENTO STATO LOCALE
         ============================
         */
 
 
-        else{
+        if(
+            !idParam &&
+            !torneoParam
+        ){
 
 
             const locale =
@@ -5809,31 +5972,53 @@ async function loadState(){
             if(locale){
 
 
-                const salvato =
+                try{
 
-                    JSON.parse(
-                        locale
+
+                    const salvato =
+
+                        JSON.parse(
+                            locale
+                        );
+
+
+
+                    state = {
+
+                        ...state,
+
+                        ...salvato,
+
+
+                        rules:
+                        {
+
+                            ...state.rules,
+
+
+                            ...(salvato.rules || {})
+
+
+                        }
+
+
+                    };
+
+
+
+                }
+
+
+                catch(e){
+
+
+                    console.error(
+                        "Errore lettura torneoState locale:",
+                        e
                     );
 
 
-
-                state = {
-
-                    ...state,
-
-                    ...salvato,
-
-
-                    rules:
-                    {
-
-                        ...state.rules,
-
-                        ...(salvato.rules || {})
-
-                    }
-
-                };
+                }
 
 
             }
@@ -5855,13 +6040,19 @@ async function loadState(){
 
 
         let numeroGironi =
+
             Number(
                 state.rules.numeroGironi
-            ) || 2;
+            )
+            ||
+            2;
+
+
 
 
 
         let lettereGironi = [
+
 
             "A",
             "B",
@@ -5870,38 +6061,49 @@ async function loadState(){
             "E",
             "F"
 
+
         ];
 
 
 
-        lettereGironi.forEach((g,index)=>{
 
 
-            if(index < numeroGironi){
+        lettereGironi.forEach(
+            (g,index)=>{
 
 
                 if(
-                    !Array.isArray(
-                        state[g]
-                    )
+                    index < numeroGironi
                 ){
 
+
+                    if(
+                        !Array.isArray(
+                            state[g]
+                        )
+                    ){
+
+
+                        state[g]=[];
+
+
+                    }
+
+
+                }
+
+
+                else{
+
+
                     state[g]=[];
+
 
                 }
 
 
             }
-            else{
-
-
-                state[g]=[];
-
-
-            }
-
-
-        });
+        );
 
 
 
@@ -5917,10 +6119,12 @@ async function loadState(){
 
 
         if(
-            typeof ensureRules==="function"
+            typeof ensureRules === "function"
         ){
 
+
             ensureRules();
+
 
         }
 
@@ -5938,12 +6142,55 @@ async function loadState(){
 
 
         console.log(
+
             "TORNEO CARICATO:",
-            state.nomeTorneo,
-            state.rules.numeroSquadre,
-            state.rules.numeroGironi,
-            state.coppie
+
+            {
+
+                nome:
+                    state.nomeTorneo,
+
+
+                squadre:
+                    state.rules.numeroSquadre,
+
+
+                gironi:
+                    state.rules.numeroGironi,
+
+
+                coppie:
+                    state.coppie
+
+            }
+
         );
+
+               /*
+        ============================
+        SALVATAGGIO SICURO STATO
+        ============================
+        */
+
+
+        /*
+        Salvo sempre il torneo ricevuto
+        da Admin anche senza coppie,
+        perché le regole devono rimanere
+        disponibili per la configurazione.
+        */
+
+
+        localStorage.setItem(
+
+            "torneoState",
+
+            JSON.stringify(
+                state
+            )
+
+        );
+
 
 
 
@@ -5952,33 +6199,62 @@ async function loadState(){
 
         /*
         ============================
-        SALVATAGGIO SICURO
+        SALVATAGGIO SQUADRE
         ============================
         */
 
 
         if(
-            state.coppie &&
-            state.coppie.length>0
+
+            Array.isArray(state.A) &&
+            state.A.length>0 &&
+
+            Array.isArray(state.B) &&
+            state.B.length>0
+
         ){
+
 
             localStorage.setItem(
 
-                "torneoState",
+                "savedTeams",
 
                 JSON.stringify(
-                    state
+
+                    [
+
+                        ...state.A,
+
+                        ...state.B
+
+                    ]
+
                 )
 
             );
 
+
         }
-        else{
 
 
-            console.warn(
-                "Salvataggio bloccato: nessuna coppia caricata"
-            );
+
+
+
+
+
+        /*
+        ============================
+        RENDER PAGINA
+        ============================
+        */
+
+
+        if(
+            typeof render === "function"
+        ){
+
+
+            render();
 
 
         }
@@ -5991,33 +6267,100 @@ async function loadState(){
 
         /*
         ============================
-        RENDER
+        APERTURA AUTOMATICA REGOLE
+        DA ADMIN
         ============================
         */
 
 
+        const apriRegole =
+
+            params.get(
+                "apriRegole"
+            );
+
+
+
         if(
-            typeof render==="function"
+            apriRegole === "true"
         ){
 
-            render();
+
+            setTimeout(()=>{
+
+
+                if(
+                    typeof openRules === "function"
+                ){
+
+
+                    openRules();
+
+
+                }
+
+
+            },300);
+
 
         }
 
 
 
+
+
+
+
     }
+
 
     catch(e){
 
+
         console.error(
+
             "Errore loadState:",
+
             e
+
         );
+
 
     }
 
+           /*
+        ============================
+        FINE LOAD STATE
+        ============================
+        */
+
+
+        return state;
+
+
+    }
+
+
+    catch(e){
+
+
+        console.error(
+
+            "Errore loadState:",
+
+            e
+
+        );
+
+
+        return null;
+
+
+    }
+
+
 }
+   
 function handleFile(e){
     let r=new FileReader();
     r.onload=function(evt){
