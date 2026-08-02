@@ -5282,6 +5282,7 @@ async function updateAndSync(){
     }
 
 }
+
 async function loadState(){
 
     try{
@@ -5300,57 +5301,183 @@ async function loadState(){
             params.get("torneo");
 
 
-
         let configurazione = null;
 
 
 
         /*
-        ============================
-        CARICAMENTO TORNEO DA ADMIN
-        ============================
+        ====================================
+        CARICAMENTO TORNEO DA ADMIN URL
+        ====================================
         */
 
 
         if(
-            idParam ||
             torneoParam
         ){
 
+            try{
 
-            /*
-            NON CANCELLARE LOCAL STORAGE QUI
-            perché il salvataggio delle regole
-            deve poter completare il flusso
-            */
-
-
-            /*
-            ============================
-            LETTURA JSON DA URL ADMIN
-            ============================
-            */
+                configurazione =
+                    JSON.parse(
+                        decodeURIComponent(
+                            torneoParam
+                        )
+                    );
 
 
-            if(torneoParam){
+                console.log(
+                    "TORNEO ADMIN CARICATO:",
+                    configurazione
+                );
 
 
-                try{
+
+                state = {
+
+                    ...state,
+
+                    ...configurazione,
+
+
+                    rules:
+                    {
+
+                        ...state.rules,
+
+
+                        ...(configurazione.configurazione?.rules || {}),
+
+
+                        ...(configurazione.rules || {})
+
+                    }
+
+                };
+
+
+
+                if(
+                    Array.isArray(
+                        configurazione.coppie
+                    )
+                ){
+
+                    state.coppie =
+                        configurazione.coppie;
+
+                }
+                else{
+
+                    state.coppie=[];
+
+                }
+
+
+
+                if(
+                    Array.isArray(
+                        configurazione.partecipanti
+                    )
+                ){
+
+                    state.partecipanti =
+                        configurazione.partecipanti;
+
+                }
+                else{
+
+                    state.partecipanti=[];
+
+                }
+
+
+
+                if(
+                    configurazione.configurazione &&
+                    configurazione.configurazione.gironi
+                ){
+
+                    Object.keys(
+                        configurazione.configurazione.gironi
+                    )
+                    .forEach(g=>{
+
+                        state[g] =
+                            configurazione.configurazione.gironi[g];
+
+                    });
+
+                }
+
+
+
+            }
+
+            catch(err){
+
+                console.error(
+                    "Errore lettura torneo URL:",
+                    err
+                );
+
+            }
+
+        }
+               /*
+        ====================================
+        CARICAMENTO TORNEO DA SUPABASE
+        ====================================
+        */
+
+
+        if(
+            idParam &&
+            typeof sb !== "undefined"
+        ){
+
+            try{
+
+
+                const {
+
+                    data:torneo,
+
+                    error
+
+                } = await sb
+
+                .from("tornei")
+
+                .select("*")
+
+                .eq(
+                    "id",
+                    Number(idParam)
+                )
+
+                .single();
+
+
+
+                if(error){
+
+                    console.error(
+                        "Errore caricamento Supabase:",
+                        error
+                    );
+
+                }
+
+
+
+                if(torneo){
 
 
                     configurazione =
-                        JSON.parse(
-                            decodeURIComponent(
-                                torneoParam
-                            )
-                        );
-
-
-
-                    console.log(
-                        "TORNEO ADMIN RICEVUTO:",
-                        configurazione
-                    );
+                        torneo.configurazione
+                        ||
+                        {};
 
 
 
@@ -5358,7 +5485,26 @@ async function loadState(){
 
                         ...state,
 
-                        ...configurazione,
+
+                        idTorneo:
+                            torneo.id,
+
+
+                        nomeTorneo:
+                            torneo.nome
+                            ||
+                            state.nomeTorneo
+                            ||
+                            "",
+
+
+                        dataTorneo:
+                            torneo.data
+                            ||
+                            state.dataTorneo
+                            ||
+                            "",
+
 
 
                         rules:
@@ -5367,10 +5513,8 @@ async function loadState(){
                             ...state.rules,
 
 
-                            ...(configurazione.configurazione?.rules || {}),
-
-
                             ...(configurazione.rules || {})
+
 
                         }
 
@@ -5378,11 +5522,6 @@ async function loadState(){
 
 
 
-                    /*
-                    ============================
-                    COPPIE
-                    ============================
-                    */
 
 
                     if(
@@ -5398,31 +5537,6 @@ async function loadState(){
 
 
 
-                    else{
-
-
-                        if(
-                            !Array.isArray(
-                                state.coppie
-                            )
-                        ){
-
-                            state.coppie=[];
-
-                        }
-
-
-                    }
-
-
-
-                    /*
-                    ============================
-                    PARTECIPANTI
-                    ============================
-                    */
-
-
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -5436,252 +5550,22 @@ async function loadState(){
 
 
 
-                    else{
-
-
-                        if(
-                            !Array.isArray(
-                                state.partecipanti
-                            )
-                        ){
-
-                            state.partecipanti=[];
-
-                        }
-
-
-                    }
-
-
-
-                    /*
-                    ============================
-                    GIRONI ANNIDATI ADMIN
-                    ============================
-                    */
-
-
                     if(
-                        configurazione.configurazione &&
-                        configurazione.configurazione.gironi
+                        configurazione.gironi
                     ){
 
-
                         Object.keys(
-                            configurazione.configurazione.gironi
+                            configurazione.gironi
                         )
                         .forEach(g=>{
 
 
                             state[g] =
-                                configurazione.configurazione.gironi[g];
+                                configurazione.gironi[g];
 
 
                         });
 
-
-                    }
-
-
-                }
-
-
-                catch(e){
-
-
-                    console.error(
-                        "Errore lettura torneo URL:",
-                        e
-                    );
-
-
-                }
-
-
-            }
-                       /*
-            ============================
-            CARICAMENTO DA SUPABASE
-            ============================
-            */
-
-
-            if(idParam){
-
-
-                if(
-                    typeof sb === "undefined"
-                ){
-
-                    console.error(
-                        "Supabase non disponibile durante caricamento torneo"
-                    );
-
-                }
-
-
-                else{
-
-
-                    const {
-                        data:torneo,
-                        error
-                    } =
-                    await sb
-                    .from("tornei")
-                    .select("*")
-                    .eq(
-                        "id",
-                        Number(idParam)
-                    )
-                    .single();
-
-
-
-                    if(error){
-
-
-                        console.error(
-                            "Errore caricamento torneo Supabase:",
-                            error
-                        );
-
-
-                    }
-
-
-
-                    if(torneo){
-
-
-                        configurazione =
-                            torneo.configurazione
-                            ||
-                            {};
-
-
-
-                        state = {
-
-                            ...state,
-
-
-                            idTorneo:
-                                torneo.id,
-
-
-                            nomeTorneo:
-                                torneo.nome
-                                ||
-                                state.nomeTorneo
-                                ||
-                                "",
-
-
-
-                            dataTorneo:
-                                torneo.data
-                                ||
-                                state.dataTorneo
-                                ||
-                                "",
-
-
-
-                            rules:
-                            {
-
-                                ...state.rules,
-
-
-                                ...(configurazione.rules || {})
-
-
-                            }
-
-
-                        };
-
-
-
-
-
-                        /*
-                        ============================
-                        RECUPERO COPPIE
-                        ============================
-                        */
-
-
-                        if(
-                            Array.isArray(
-                                configurazione.coppie
-                            )
-                        ){
-
-
-                            state.coppie =
-                                configurazione.coppie;
-
-
-                        }
-
-
-
-
-
-                        /*
-                        ============================
-                        RECUPERO PARTECIPANTI
-                        ============================
-                        */
-
-
-                        if(
-                            Array.isArray(
-                                configurazione.partecipanti
-                            )
-                        ){
-
-
-                            state.partecipanti =
-                                configurazione.partecipanti;
-
-
-                        }
-
-
-
-
-
-                        /*
-                        ============================
-                        RECUPERO GIRONI
-                        ============================
-                        */
-
-
-                        if(
-                            configurazione.gironi
-                        ){
-
-
-                            Object.keys(
-                                configurazione.gironi
-                            )
-                            .forEach(g=>{
-
-
-                                state[g] =
-                                    configurazione.gironi[g];
-
-
-                            });
-
-
-                        }
-
-
                     }
 
 
@@ -5690,31 +5574,27 @@ async function loadState(){
 
             }
 
+            catch(err){
 
+                console.error(
+                    "Errore recupero torneo Supabase:",
+                    err
+                );
 
-
-
-            /*
-            ============================
-            FINE CARICAMENTO ADMIN
-            ============================
-            */
-
+            }
 
         }
-
                /*
-        ============================
-        CARICAMENTO DATI CONFIGURAZIONE
-        ============================
+        ====================================
+        RECUPERO ARRAY TORNEO
+        ====================================
         */
 
 
         if(configurazione){
 
 
-            let arrayDaRecuperare = [
-
+            const arrayDaRecuperare = [
 
                 "A",
                 "B",
@@ -5723,14 +5603,12 @@ async function loadState(){
                 "E",
                 "F",
 
-
                 "Ares",
                 "Bres",
                 "Cres",
                 "Dres",
                 "Eres",
                 "Fres",
-
 
                 "Atime",
                 "Btime",
@@ -5739,7 +5617,6 @@ async function loadState(){
                 "Etime",
                 "Ftime",
 
-
                 "Acamp",
                 "Bcamp",
                 "Ccamp",
@@ -5747,14 +5624,13 @@ async function loadState(){
                 "Ecamp",
                 "Fcamp",
 
-
                 "qRes",
                 "sTopRes",
+                "fTopRes",
+
                 "finalTop"
 
-
             ];
-
 
 
 
@@ -5768,10 +5644,8 @@ async function loadState(){
                     )
                 ){
 
-
                     state[k] =
                         configurazione[k];
-
 
                 }
 
@@ -5782,13 +5656,10 @@ async function loadState(){
 
 
 
-
-
             /*
-            ============================
-            RECUPERO CONFIGURAZIONE
-            ANNIDATA ADMIN
-            ============================
+            ====================================
+            RECUPERO CONFIGURAZIONE ANNIDATA
+            ====================================
             */
 
 
@@ -5797,22 +5668,14 @@ async function loadState(){
             ){
 
 
-                let cfg =
+                const cfg =
                     configurazione.configurazione;
 
-
-
-
-
-                /*
-                GIRONI
-                */
 
 
                 if(
                     cfg.gironi
                 ){
-
 
                     Object.keys(
                         cfg.gironi
@@ -5826,28 +5689,17 @@ async function loadState(){
                             )
                         ){
 
-
                             state[g] =
                                 cfg.gironi[g];
-
 
                         }
 
 
                     });
 
-
                 }
 
 
-
-
-
-
-
-                /*
-                COPPIE
-                */
 
 
                 if(
@@ -5856,22 +5708,11 @@ async function loadState(){
                     )
                 ){
 
-
                     state.coppie =
                         cfg.coppie;
 
-
                 }
 
-
-
-
-
-
-
-                /*
-                PARTECIPANTI
-                */
 
 
                 if(
@@ -5880,28 +5721,16 @@ async function loadState(){
                     )
                 ){
 
-
                     state.partecipanti =
                         cfg.partecipanti;
-
 
                 }
 
 
 
-
-
-
-
-                /*
-                REGOLE
-                */
-
-
                 if(
                     cfg.rules
                 ){
-
 
                     state.rules =
                     {
@@ -5910,54 +5739,123 @@ async function loadState(){
 
                         ...cfg.rules
 
-
                     };
 
-
                 }
-
 
 
             }
 
 
-
-
-
-
-
-            /*
-            ============================
-            CAMPIONE TORNEO
-            ============================
-            */
 
 
             if(
                 configurazione.campioneTop !== undefined
             ){
 
-
                 state.campioneTop =
                     configurazione.campioneTop;
-
 
             }
 
 
-
         }
-
                /*
-        ============================
-        CARICAMENTO STATO LOCALE
-        ============================
+        ====================================
+        GARANZIA STRUTTURA GIRONI
+        ====================================
+        */
+
+
+        let numeroGironi =
+
+            Number(
+                state.rules.numeroGironi
+            )
+            ||
+            2;
+
+
+
+        const lettereGironi = [
+
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+
+        ];
+
+
+
+        lettereGironi.forEach((g,index)=>{
+
+
+            if(index < numeroGironi){
+
+
+                if(
+                    !Array.isArray(
+                        state[g]
+                    )
+                ){
+
+                    state[g]=[];
+
+                }
+
+
+            }
+            else{
+
+
+                state[g]=[];
+
+            }
+
+
+        });
+
+
+
+
+
+
+
+        /*
+        ====================================
+        NORMALIZZAZIONE REGOLE
+        ====================================
         */
 
 
         if(
-            !idParam &&
-            !torneoParam
+            typeof ensureRules === "function"
+        ){
+
+            ensureRules();
+
+        }
+
+
+
+
+
+
+
+        /*
+        ====================================
+        CARICAMENTO STATO LOCALE
+        SOLO SE NON ARRIVA DA ADMIN
+        ====================================
+        */
+
+
+        if(
+            !torneoParam &&
+            !idParam
         ){
 
 
@@ -5995,29 +5893,22 @@ async function loadState(){
 
                             ...state.rules,
 
-
                             ...(salvato.rules || {})
 
-
                         }
-
 
                     };
 
 
-
                 }
 
-
-                catch(e){
-
+                catch(err){
 
                     console.error(
-                        "Errore lettura torneoState locale:",
-                        e
+                        "Errore lettura stato locale:",
+                        err
                     );
 
-
                 }
 
 
@@ -6025,119 +5916,10 @@ async function loadState(){
 
 
         }
-
-
-
-
-
-
-
-        /*
-        ============================
-        GARANZIA STRUTTURA GIRONI
-        ============================
-        */
-
-
-        let numeroGironi =
-
-            Number(
-                state.rules.numeroGironi
-            )
-            ||
-            2;
-
-
-
-
-
-        let lettereGironi = [
-
-
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F"
-
-
-        ];
-
-
-
-
-
-        lettereGironi.forEach(
-            (g,index)=>{
-
-
-                if(
-                    index < numeroGironi
-                ){
-
-
-                    if(
-                        !Array.isArray(
-                            state[g]
-                        )
-                    ){
-
-
-                        state[g]=[];
-
-
-                    }
-
-
-                }
-
-
-                else{
-
-
-                    state[g]=[];
-
-
-                }
-
-
-            }
-        );
-
-
-
-
-
-
-
-        /*
-        ============================
-        NORMALIZZAZIONE REGOLE
-        ============================
-        */
-
-
-        if(
-            typeof ensureRules === "function"
-        ){
-
-
-            ensureRules();
-
-
-        }
-
-
-
-
-
-
-
-        /*
-        ============================
-        CONTROLLO DATI CARICATI
-        ============================
+               /*
+        ====================================
+        CONTROLLO FINALE DATI CARICATI
+        ====================================
         */
 
 
@@ -6145,49 +5927,13 @@ async function loadState(){
 
             "TORNEO CARICATO:",
 
-            {
+            state.nomeTorneo,
 
-                nome:
-                    state.nomeTorneo,
+            state.rules.numeroSquadre,
 
+            state.rules.numeroGironi,
 
-                squadre:
-                    state.rules.numeroSquadre,
-
-
-                gironi:
-                    state.rules.numeroGironi,
-
-
-                coppie:
-                    state.coppie
-
-            }
-
-        );
-
-               /*
-        ============================
-        SALVATAGGIO SICURO STATO
-        ============================
-        */
-
-
-        /*
-        Salvo sempre il torneo ricevuto
-        da Admin anche senza coppie,
-        perché le regole devono rimanere
-        disponibili per la configurazione.
-        */
-
-
-        localStorage.setItem(
-
-            "torneoState",
-
-            JSON.stringify(
-                state
-            )
+            state.coppie
 
         );
 
@@ -6198,38 +5944,43 @@ async function loadState(){
 
 
         /*
-        ============================
-        SALVATAGGIO SQUADRE
-        ============================
+        ====================================
+        SALVATAGGIO LOCALE SICURO
+        ====================================
         */
 
 
         if(
 
-            Array.isArray(state.A) &&
-            state.A.length>0 &&
+            state.coppie &&
 
-            Array.isArray(state.B) &&
-            state.B.length>0
+            Array.isArray(
+                state.coppie
+            ) &&
+
+            state.coppie.length > 0
 
         ){
 
 
             localStorage.setItem(
 
-                "savedTeams",
+                "torneoState",
 
                 JSON.stringify(
-
-                    [
-
-                        ...state.A,
-
-                        ...state.B
-
-                    ]
-
+                    state
                 )
+
+            );
+
+
+        }
+        else{
+
+
+            console.warn(
+
+                "Salvataggio locale bloccato: nessuna coppia presente"
 
             );
 
@@ -6243,18 +5994,40 @@ async function loadState(){
 
 
         /*
-        ============================
-        RENDER PAGINA
-        ============================
+        ====================================
+        RENDER TORNEO
+        ====================================
         */
 
 
         if(
+
             typeof render === "function"
+
         ){
 
 
-            render();
+            try{
+
+
+                render();
+
+
+            }
+
+            catch(err){
+
+
+                console.error(
+
+                    "Errore render torneo:",
+
+                    err
+
+                );
+
+
+            }
 
 
         }
@@ -6266,10 +6039,10 @@ async function loadState(){
 
 
         /*
-        ============================
+        ====================================
         APERTURA AUTOMATICA REGOLE
         DA ADMIN
-        ============================
+        ====================================
         */
 
 
@@ -6282,7 +6055,9 @@ async function loadState(){
 
 
         if(
+
             apriRegole === "true"
+
         ){
 
 
@@ -6290,7 +6065,9 @@ async function loadState(){
 
 
                 if(
+
                     typeof openRules === "function"
+
                 ){
 
 
@@ -6307,15 +6084,10 @@ async function loadState(){
 
 
 
-
-
-
-
-    }
-
+        return state;
+           }
 
     catch(e){
-
 
         console.error(
 
@@ -6326,35 +6098,9 @@ async function loadState(){
         );
 
 
+        return null;
+
     }
-
-              /*
-    ============================
-    FINE LOAD STATE
-    ============================
-    */
-
-
-    return state;
-
-
-}
-catch(e){
-
-
-    console.error(
-
-        "Errore loadState:",
-
-        e
-
-    );
-
-
-    return null;
-
-
-}
 
 }
    
