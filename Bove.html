@@ -5535,25 +5535,41 @@ const params=new URLSearchParams(window.location.search);
 const idParam=params.get("idTorneo");
 const torneoParam=params.get("torneo");
 let configurazione=null;
+
 if(torneoParam){
 try{
 configurazione=JSON.parse(decodeURIComponent(torneoParam));
 console.log("TORNEO ADMIN CARICATO:",configurazione);
-state={...state,...configurazione,rules:{...state.rules,...(configurazione.configurazione?.rules||{}),...(configurazione.rules||{})}};
+
+state={
+    ...state,
+    ...configurazione,
+    rules:{
+        ...state.rules,
+        ...(configurazione.configurazione?.rules||{}),
+        ...(configurazione.rules||{})
+    }
+};
+
 if(Array.isArray(configurazione.coppie)){
 state.coppie=configurazione.coppie;
 }else{
 state.coppie=[];
 }
+
 if(Array.isArray(configurazione.partecipanti)){
 state.partecipanti=configurazione.partecipanti;
 }else{
 state.partecipanti=[];
 }
+
+generaPartiteGironi();
+
 }catch(err){
 console.error("Errore lettura torneo URL:",err);
 }
 }
+
 if(idParam&&typeof sb!=="undefined"){
 try{
 const {data:torneo,error}=await sb.from("tornei").select("*").eq("id",Number(idParam)).single();
@@ -7858,6 +7874,49 @@ function renderPersonalizzato(){
 
 
 }
+   function generaPartiteGironi(){
+
+    const crea = (girone) => {
+
+        const partite = [];
+
+        if(!girone || girone.length !== 4) return partite;
+
+        const coppie = girone;
+
+        partite.push([coppie[0], coppie[1]]);
+        partite.push([coppie[2], coppie[3]]);
+        partite.push([coppie[0], coppie[2]]);
+        partite.push([coppie[1], coppie[3]]);
+        partite.push([coppie[0], coppie[3]]);
+        partite.push([coppie[1], coppie[2]]);
+
+        return partite;
+    };
+
+
+    state.Amatches = crea(state.A);
+    state.Bmatches = crea(state.B);
+
+
+    state.Ares = Array(state.Amatches.length).fill("-");
+    state.Bres = Array(state.Bmatches.length).fill("-");
+
+
+    state.Atime = Array(state.Amatches.length).fill("");
+    state.Btime = Array(state.Bmatches.length).fill("");
+
+    state.Acamp = Array(state.Amatches.length).fill("");
+    state.Bcamp = Array(state.Bmatches.length).fill("");
+
+
+    console.log(
+        "PARTITE GENERATE",
+        state.Amatches,
+        state.Bmatches
+    );
+}
+   
   function render(){
 
     ensureRules();
