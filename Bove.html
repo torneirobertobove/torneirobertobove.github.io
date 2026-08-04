@@ -9774,436 +9774,8 @@ async function initDefaults(){
 
     try{
 
-        const torneoDaAdmin =
-            new URLSearchParams(
-                window.location.search
-            )
-            .get("torneo");
-
 
         /*
-        ============================
-        CARICAMENTO TORNEO DA ADMIN
-        ============================
-        */
-
-        if(torneoDaAdmin){
-
-            try{
-
-                const torneo =
-                    JSON.parse(
-                        decodeURIComponent(
-                            torneoDaAdmin
-                        )
-                    );
-
-
-                const rulesAdmin =
-                    torneo.configurazione?.rules
-                    ||
-                    torneo.rules
-                    ||
-                    {};
-
-
-                const numeroSquadre =
-                    Number(
-                        torneo.posti
-                    )
-                    ||
-                    Number(
-                        rulesAdmin.numeroSquadre
-                    )
-                    ||
-                    8;
-
-
-                let numeroGironi =
-                    Number(
-                        rulesAdmin.numeroGironi
-                    );
-
-
-                if(!numeroGironi){
-
-                    if(numeroSquadre >= 16)
-
-                        numeroGironi = 4;
-
-                    else if(numeroSquadre >= 12)
-
-                        numeroGironi = 3;
-
-                    else
-
-                        numeroGironi = 2;
-
-                }
-
-
-                state = {
-
-                    ...state,
-
-                    idTorneo:
-                        torneo.idTorneo
-                        ||
-                        torneo.id
-                        ||
-                        Date.now(),
-
-                    nomeTorneo:
-                        torneo.nomeTorneo
-                        ||
-                        torneo.nome
-                        ||
-                        "",
-
-                    dataTorneo:
-                        torneo.data
-                        ||
-                        torneo.dataTorneo
-                        ||
-                        "",
-
-                    formato:
-                        numeroSquadre,
-
-
-                    rules:{
-
-                        ...state.rules,
-
-                        ...rulesAdmin,
-
-                        numeroSquadre:
-                            numeroSquadre,
-
-                        numeroGironi:
-                            numeroGironi,
-
-                        squadrePerGirone:
-                            Number(
-                                rulesAdmin.squadrePerGirone
-                            )
-                            ||
-                            4
-
-                    },
-
-
-                    partecipanti:
-                        torneo.configurazione?.partecipanti
-                        ||
-                        torneo.partecipanti
-                        ||
-                        [],
-
-
-                    coppie:
-                        torneo.configurazione?.coppie
-                        ||
-                        torneo.coppie
-                        ||
-                        []
-
-                };
-
-
-                console.log(
-
-                    "DATI TORNEO ADMIN CARICATI",
-
-                    state.nomeTorneo,
-
-                    state.formato,
-
-                    state.rules.numeroSquadre,
-
-                    state.rules.numeroGironi
-
-                );
-
-
-                /*
-                ============================
-                CREAZIONE GIRONI DA COPPIE
-                ============================
-                */
-
-
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
-
-                ].forEach(g=>{
-
-                    state[g]=[];
-
-                });
-
-
-                let squadre =
-
-                    Array.isArray(
-                        state.coppie
-                    )
-
-                    ?
-
-                    state.coppie.map(
-
-                        c =>
-                            c.g1 +
-                            " / " +
-                            c.g2
-
-                    )
-
-                    :
-
-                    [];
-
-
-                let perGirone =
-
-                    Number(
-                        state.rules.squadrePerGirone
-                    )
-
-                    ||
-                    4;
-
-
-                let lettere =
-
-                    [
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "E",
-                        "F"
-                    ];
-
-
-
-                for(
-
-                    let i=0;
-
-                    i<numeroGironi;
-
-                    i++
-
-                ){
-
-                    let inizio =
-                        i *
-                        perGirone;
-
-
-                    let fine =
-                        inizio +
-                        perGirone;
-
-
-                    state[lettere[i]] =
-
-                        squadre.slice(
-
-                            inizio,
-
-                            fine
-
-                        );
-
-                }
-                   /*
-                ============================
-                RESET ARRAY PARTITE
-                ============================
-                */
-
-
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
-
-                ].forEach(g=>{
-
-                    state[g+"res"] = [];
-
-                    state[g+"time"] = [];
-
-                    state[g+"camp"] = [];
-
-                });
-
-
-
-
-
-                /*
-                ============================
-                RESET FASE FINALE
-                ============================
-                */
-
-
-                state.qRes =
-
-                    Array(4)
-
-                    .fill("-");
-
-
-
-                state.sTopRes =
-
-                    Array(2)
-
-                    .fill("-");
-
-
-
-                state.fTopRes =
-
-                    "-";
-
-
-
-                state.finalTop = [];
-
-
-
-                state.campioneTop = null;
-
-
-
-
-
-                /*
-                ============================
-                GARANZIA REGOLE ADMIN
-                ============================
-                */
-
-
-                if(
-                    typeof ensureRules==="function"
-                ){
-
-                    ensureRules();
-
-                }
-
-
-
-
-
-                /*
-                ============================
-                SALVATAGGIO STATO ADMIN
-                ============================
-                */
-
-
-                localStorage.setItem(
-
-                    "torneoState",
-
-                    JSON.stringify(
-                        state
-                    )
-
-                );
-
-
-
-
-
-                console.log(
-
-                    "TORNEO ADMIN CARICATO",
-
-                    state.nomeTorneo,
-
-                    state.formato,
-
-                    state.rules.numeroSquadre,
-
-                    state.rules.numeroGironi,
-
-                    state.A,
-
-                    state.B,
-
-                    state.C,
-
-                    state.D
-
-                );
-
-
-
-
-
-                      if(
-                    typeof render === "function"
-                ){
-
-                    try{
-
-                        render();
-
-                    }
-                    catch(err){
-
-                        console.error(
-
-                            "Errore render torneo Admin:",
-
-                            err
-
-                        );
-
-                    }
-
-                }
-
-
-                return;
-
-
-            }
-
-
-            catch(e){
-
-                console.error(
-
-                    "Errore caricamento torneo Admin:",
-
-                    e
-
-                );
-
-            }
-
-        }
-
-      
-               /*
         ============================
         CARICAMENTO STATO LOCALE
         ============================
@@ -10236,7 +9808,15 @@ async function initDefaults(){
 
                     ...state,
 
-                    ...vecchio
+                    ...vecchio,
+
+                    rules:{
+
+                        ...state.rules,
+
+                        ...(vecchio.rules || {})
+
+                    }
 
                 };
 
@@ -10280,13 +9860,12 @@ async function initDefaults(){
 
 
 
-
-
         /*
         ============================
         RECUPERO SQUADRE SALVATE
         ============================
         */
+
 
         if(
 
@@ -10358,102 +9937,20 @@ async function initDefaults(){
 
         if(
 
-            typeof ensureRules==="function"
+            !state.rules
 
         ){
 
-            ensureRules();
-
-        }
-
-
-
-
-        /*
-        ============================
-        GARANZIA FASI FINALI
-        ============================
-        */
-
-
-        if(
-            !Array.isArray(
-                state.qRes
-            )
-        ){
-
-            state.qRes =
-
-                Array(4)
-
-                .fill("-");
+            state.rules={};
 
         }
 
 
 
         if(
-            !Array.isArray(
-                state.sTopRes
-            )
-        ){
 
-            state.sTopRes =
-
-                Array(2)
-
-                .fill("-");
-
-        }
-
-        if(
-            state.fTopRes===undefined
-        ){
-
-            state.fTopRes =
-
-                "-";
-
-        }
-
-
-
-        if(
-            !Array.isArray(
-                state.finalTop
-            )
-        ){
-
-            state.finalTop = [];
-
-        }
-
-
-
-        if(
-            state.campioneTop===undefined
-        ){
-
-            state.campioneTop =
-
-                null;
-
-        }
-
-
-
-
-
-
-        /*
-        ============================
-        GARANZIA FORMATO TORNEO
-        ============================
-        */
-
-
-        if(
             !state.formato
+
         ){
 
             state.formato =
@@ -10468,10 +9965,10 @@ async function initDefaults(){
 
 
 
-
-
         if(
+
             !state.rules.numeroSquadre
+
         ){
 
             state.rules.numeroSquadre =
@@ -10482,15 +9979,16 @@ async function initDefaults(){
 
 
 
-
-
         if(
+
             !state.rules.numeroGironi
+
         ){
 
             state.rules.numeroGironi =
 
                 (
+
                     state.formato >= 16
 
                     ?
@@ -10515,10 +10013,10 @@ async function initDefaults(){
 
 
 
-
-
         if(
+
             !state.rules.squadrePerGirone
+
         ){
 
             state.rules.squadrePerGirone =
@@ -10527,6 +10025,190 @@ async function initDefaults(){
 
         }
                /*
+        ============================
+        GARANZIA FASE FINALE
+        ============================
+        */
+
+
+        if(
+
+            !Array.isArray(
+                state.qRes
+            )
+
+        ){
+
+            state.qRes =
+
+                Array(4)
+
+                .fill("-");
+
+        }
+
+
+
+
+
+        if(
+
+            !Array.isArray(
+                state.sTopRes
+            )
+
+        ){
+
+            state.sTopRes =
+
+                Array(2)
+
+                .fill("-");
+
+        }
+
+
+
+
+
+        if(
+
+            state.fTopRes===undefined
+
+        ){
+
+            state.fTopRes =
+
+                "-";
+
+        }
+
+
+
+
+
+        if(
+
+            !Array.isArray(
+                state.finalTop
+            )
+
+        ){
+
+            state.finalTop = [];
+
+        }
+
+
+
+
+
+        if(
+
+            state.campioneTop===undefined
+
+        ){
+
+            state.campioneTop =
+
+                null;
+
+        }
+
+
+
+
+
+        /*
+        ============================
+        GARANZIA ARRAY PARTITE
+        ============================
+        */
+
+
+        [
+
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+
+        ].forEach(g=>{
+
+
+            if(
+
+                !Array.isArray(
+                    state[g+"res"]
+                )
+
+            ){
+
+                state[g+"res"]=[];
+
+            }
+
+
+
+            if(
+
+                !Array.isArray(
+                    state[g+"time"]
+                )
+
+            ){
+
+                state[g+"time"]=[];
+
+            }
+
+
+
+            if(
+
+                !Array.isArray(
+                    state[g+"camp"]
+                )
+
+            ){
+
+                state[g+"camp"]=[];
+
+            }
+
+
+        });
+
+
+
+
+
+
+
+        /*
+        ============================
+        GARANZIA VISUALIZZAZIONE
+        ============================
+        */
+
+
+        if(
+
+            state.mostraQuarti===undefined
+
+        ){
+
+            state.mostraQuarti=true;
+
+        }
+
+
+
+
+
+        /*
         ============================
         SALVATAGGIO STATO CORRETTO
         ============================
@@ -10580,11 +10262,9 @@ async function initDefaults(){
                 D:
                     state.D
 
-
             }
 
         );
-
 
 
 
@@ -10606,11 +10286,14 @@ async function initDefaults(){
 
             try{
 
+
                 render();
+
 
             }
 
             catch(err){
+
 
                 console.error(
 
@@ -10620,9 +10303,11 @@ async function initDefaults(){
 
                 );
 
+
             }
 
         }
+
 
 
     }
@@ -10644,7 +10329,7 @@ async function initDefaults(){
 
 
 }
-window.addEventListener("load", async()=>{
+   window.addEventListener("load", async()=>{
 
 
     const parametroTorneo =
@@ -10667,6 +10352,7 @@ window.addEventListener("load", async()=>{
     ============================
     */
 
+
     if(
 
         parametroTorneo &&
@@ -10675,7 +10361,13 @@ window.addEventListener("load", async()=>{
 
     ){
 
+        console.log(
+            "APERTURA TORNEO DA ADMIN"
+        );
+
+
         await loadState();
+
 
         return;
 
@@ -10703,7 +10395,8 @@ window.addEventListener("load", async()=>{
     }
 
 
+
 });
-</script>
+   </script>
 </body>
 </html>
