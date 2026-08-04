@@ -8314,12 +8314,7 @@ function renderTables(){
             squadre=[fisso,...resto];
         }
         if(state.rules.garaAndataRitorno===true){
-            let ritorno=rounds.map(round=>
-                round.map(match=>[
-                    match[1],
-                    match[0]
-                ])
-            );
+            let ritorno=rounds.map(round=>round.map(match=>[match[1],match[0]]));
             rounds=rounds.concat(ritorno);
         }
         return rounds;
@@ -8336,15 +8331,9 @@ function renderTables(){
     let oraBase=Number(partiOra[0])||20;
     let minutiBase=Number(partiOra[1])||0;
     let calendario=[];
-       [
-        "A",
-        "B",
-        "C",
-        "D"
-    ].forEach(tag=>{
+    ["A","B","C","D"].forEach(tag=>{
         let squadre=state[tag];
-        if(!Array.isArray(squadre)||squadre.length<2)
-            return;
+        if(!Array.isArray(squadre)||squadre.length<2)return;
         let partite=[];
         if(state.partiteGironi&&Array.isArray(state.partiteGironi[tag])){
             partite=state.partiteGironi[tag];
@@ -8376,14 +8365,7 @@ function renderTables(){
                 let campo=campiDisponibili[i];
                 let conflitto=false;
                 occupazioni.forEach(o=>{
-                    if(
-                        o.slot===slot &&
-                        (
-                            o.campo===campo ||
-                            o.squadre.includes(partita.casa) ||
-                            o.squadre.includes(partita.ospite)
-                        )
-                    ){
+                    if(o.slot===slot&&(o.campo===campo||o.squadre.includes(partita.casa)||o.squadre.includes(partita.ospite))){
                         conflitto=true;
                     }
                 });
@@ -8393,108 +8375,60 @@ function renderTables(){
                     occupazioni.push({
                         slot:slot,
                         campo:campo,
-                        squadre:[
-                            partita.casa,
-                            partita.ospite
-                        ]
+                        squadre:[partita.casa,partita.ospite]
                     });
                     assegnata=true;
                     break;
                 }
             }
-            if(!assegnata)
-                slot++;
+            if(!assegnata)slot++;
         }
     });
-       [
-        "A",
-        "B",
-        "C",
-        "D"
-    ].forEach(tag=>{
+    ["A","B","C","D"].forEach(tag=>{
         let box=document.getElementById(tag+"rows");
-        if(!box)
-            return;
+        if(!box)return;
         let partite=calendario.filter(p=>p.girone===tag);
-        if(!Array.isArray(state[tag+"res"]))
-            state[tag+"res"]=[];
-        while(state[tag+"res"].length<partite.length)
-            state[tag+"res"].push("-");
-        if(state[tag+"res"].length>partite.length){
-            state[tag+"res"]=state[tag+"res"].slice(0,partite.length);
-        }
-        if(!Array.isArray(state[tag+"time"]))
-            state[tag+"time"]=[];
-        if(!Array.isArray(state[tag+"camp"]))
-            state[tag+"camp"]=[];
-        while(state[tag+"time"].length<partite.length)
-            state[tag+"time"].push("-");
-        while(state[tag+"camp"].length<partite.length)
-            state[tag+"camp"].push("");
+        if(!Array.isArray(state[tag+"res"]))state[tag+"res"]=[];
+        while(state[tag+"res"].length<partite.length)state[tag+"res"].push("-");
+        if(state[tag+"res"].length>partite.length)state[tag+"res"]=state[tag+"res"].slice(0,partite.length);
+        if(!Array.isArray(state[tag+"time"]))state[tag+"time"]=[];
+        if(!Array.isArray(state[tag+"camp"]))state[tag+"camp"]=[];
+        while(state[tag+"time"].length<partite.length)state[tag+"time"].push("-");
+        while(state[tag+"camp"].length<partite.length)state[tag+"camp"].push("");
         let rows="";
         partite.forEach((m,i)=>{
             let minuti=minutiBase+(m.slot*durata);
             let ora=oraBase+Math.floor(minuti/60);
             let min=minuti%60;
-            let tempo=
-                String(ora).padStart(2,"0")
-                +":"
-                +String(min).padStart(2,"0");
+            let tempo=String(ora).padStart(2,"0")+":"+String(min).padStart(2,"0");
             state[tag+"time"][i]=tempo;
             state[tag+"camp"][i]=m.campo;
-            if(!state[tag+"res"][i])
-                state[tag+"res"][i]="-";
+            if(!state[tag+"res"][i])state[tag+"res"][i]="-";
             let risultato=String(state[tag+"res"][i]).split("-");
             rows+=`
 <tr>
-<td>
-<input
-value="${m.campo}"
-oninput="updateCamp('${tag}',${i},this.value)"
-style="width:45px">
-</td>
-<td>
-<input
-value="${tempo}"
-oninput="updateTime('${tag}',${i},0,this.value)">
-</td>
+<td><input value="${m.campo}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px"></td>
+<td><input value="${tempo}" oninput="updateTime('${tag}',${i},0,this.value)"></td>
 <td class="match-cell">
-<div class="team-line">
-${state[tag][m.casa]}
-</div>
-<div class="vs-line">
-<b>VS</b>
-</div>
-<div class="team-line">
-${state[tag][m.ospite]}
-</div>
+<div class="team-line">${state[tag][m.casa]}</div>
+<div class="vs-line"><b>VS</b></div>
+<div class="team-line">${state[tag][m.ospite]}</div>
 </td>
 <td class="db-cell">
-<input
-value="${risultato[0]==='-'?'':risultato[0]}"
-oninput="updateRes('${tag}',${i},0,this.value)">
-<input
-value="${risultato[1]||''}"
-oninput="updateRes('${tag}',${i},1,this.value)">
+<input value="${risultato[0]==='-'?'':risultato[0]}" oninput="updateRes('${tag}',${i},0,this.value)">
+<input value="${risultato[1]||''}" oninput="updateRes('${tag}',${i},1,this.value)">
 </td>
-</tr>
-`;
+</tr>`;
         });
         box.innerHTML=rows;
-               let card=document.getElementById("card"+tag);
+        let card=document.getElementById("card"+tag);
         if(card){
-            if(
-                state[tag] &&
-                state[tag].length
-            ){
-                card.style.display="block";
-            }else{
-                card.style.display="none";
-            }
+            card.style.display=(state[tag]&&state[tag].length)?"block":"none";
         }
     });
     updateAndSync();
 }
+   
    
 function getFinalQualified(){
 
