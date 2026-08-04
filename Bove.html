@@ -9774,33 +9774,66 @@ async function initDefaults(){
 
     try{
 
+        const torneoDaAdmin =
+            new URLSearchParams(
+                window.location.search
+            )
+            .get("torneo");
+
 
         /*
         ============================
-        CARICAMENTO STATO LOCALE
+        CARICAMENTO TORNEO DA ADMIN
         ============================
         */
 
-
-        let salvato =
-
-            localStorage.getItem(
-                "torneoState"
-            );
-
-
-
-        if(salvato){
-
+        if(torneoDaAdmin){
 
             try{
 
-
-                let vecchio =
-
+                const torneo =
                     JSON.parse(
-                        salvato
+                        decodeURIComponent(
+                            torneoDaAdmin
+                        )
                     );
+
+
+                const rulesAdmin =
+                    torneo.configurazione?.rules
+                    ||
+                    torneo.rules
+                    ||
+                    {};
+
+
+                const numeroSquadre =
+                    Number(torneo.posti)
+                    ||
+                    Number(rulesAdmin.numeroSquadre)
+                    ||
+                    8;
+
+
+                let numeroGironi =
+                    Number(rulesAdmin.numeroGironi);
+
+
+
+                if(!numeroGironi){
+
+                    numeroGironi =
+                        numeroSquadre >= 16
+                        ?
+                        4
+                        :
+                        numeroSquadre >= 12
+                        ?
+                        3
+                        :
+                        2;
+
+                }
 
 
 
@@ -9808,82 +9841,300 @@ async function initDefaults(){
 
                     ...state,
 
-                    ...vecchio,
+                    idTorneo:
+                        torneo.id
+                        ||
+                        Date.now(),
+
+
+                    nomeTorneo:
+                        torneo.nome
+                        ||
+                        torneo.nomeTorneo
+                        ||
+                        "",
+
+
+                    dataTorneo:
+                        torneo.data
+                        ||
+                        "",
+
+
+                    formato:
+                        numeroSquadre,
+
 
                     rules:{
 
                         ...state.rules,
 
-                        ...(vecchio.rules || {})
+                        ...rulesAdmin,
 
-                    }
+                        numeroSquadre,
+
+                        numeroGironi,
+
+                        squadrePerGirone:
+                            Number(
+                                rulesAdmin.squadrePerGirone
+                            )
+                            ||
+                            4
+
+                    },
+
+
+                    partecipanti:
+                        torneo.configurazione?.partecipanti
+                        ||
+                        torneo.partecipanti
+                        ||
+                        [],
+
+
+
+                    coppie:
+                        torneo.configurazione?.coppie
+                        ||
+                        torneo.coppie
+                        ||
+                        []
 
                 };
 
 
 
+
                 console.log(
-
-                    "STATO LOCALE RECUPERATO",
-
+                    "DATI TORNEO ADMIN CARICATI",
                     state.nomeTorneo,
-
                     state.formato,
-
                     state.rules.numeroSquadre,
-
-                    state.rules.numeroGironi
-
+                    state.rules.numeroGironi,
+                    state.coppie
                 );
 
 
+
+
+
+                /*
+                ============================
+                RESET GIRONI
+                ============================
+                */
+
+
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+
+                ].forEach(g=>{
+
+                    state[g]=[];
+
+                });
+
+
+
+
+
+                /*
+                ============================
+                CONVERSIONE COPPIE CORRETTA
+                ============================
+                */
+
+
+                let squadre = [];
+
+
+                if(
+                    Array.isArray(state.coppie)
+                ){
+
+                    squadre =
+                        state.coppie.map(c=>{
+
+
+                            if(
+                                typeof c === "string"
+                            ){
+
+                                return c;
+
+                            }
+
+
+                            if(
+                                c.nome
+                            ){
+
+                                return c.nome;
+
+                            }
+
+
+                            if(
+                                c.g1 &&
+                                c.g2
+                            ){
+
+                                return c.g1 +
+                                " / " +
+                                c.g2;
+
+                            }
+
+
+                            if(
+                                c.giocatore1 &&
+                                c.giocatore2
+                            ){
+
+                                return c.giocatore1 +
+                                " / " +
+                                c.giocatore2;
+
+                            }
+
+
+                            return JSON.stringify(c);
+
+
+                        });
+
+                }
+
+
+
+
+
+                let perGirone =
+
+                    Number(
+                        state.rules.squadrePerGirone
+                    )
+                    ||
+                    4;
+
+
+
+                let lettere =
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ];
+
+
+
+                for(
+                    let i=0;
+                    i<numeroGironi;
+                    i++
+                ){
+
+                    state[lettere[i]] =
+
+                        squadre.slice(
+                            i * perGirone,
+                            (i + 1) * perGirone
+                        );
+
+                }
+
+
+
+
+
+                /*
+                ============================
+                RESET PARTITE
+                ============================
+                */
+
+
+                lettere.forEach(g=>{
+
+                    state[g+"res"]=[];
+                    state[g+"time"]=[];
+                    state[g+"camp"]=[];
+
+                });
+
+
+
+
+
+                state.qRes =
+                    Array(4).fill("-");
+
+
+                state.sTopRes =
+                    Array(2).fill("-");
+
+
+                state.fTopRes =
+                    "-";
+
+
+                state.finalTop=[];
+
+
+                state.campioneTop=null;
+
+
+
+
+
+                localStorage.setItem(
+                    "torneoState",
+                    JSON.stringify(state)
+                );
+
+
+
+
+                console.log(
+                    "GIRONI CREATI:",
+                    state.A,
+                    state.B,
+                    state.C,
+                    state.D
+                );
+
+
+
+
+                if(typeof render==="function"){
+
+                    render();
+
+                }
+
+
+                return;
+
+
             }
-
-
             catch(e){
 
-
                 console.error(
-
-                    "Errore lettura localStorage:",
-
+                    "Errore caricamento torneo Admin:",
                     e
-
                 );
 
-
             }
 
-
-        }
-
-
-
-
-        /*
-        ============================
-        RECUPERO SQUADRE SALVATE
-        ============================
-        */
-
-
-        if(
-
-            (!Array.isArray(state.A) ||
-            state.A.length===0)
-
-            &&
-
-            typeof loadSavedTeams==="function"
-
-            &&
-
-            !state.idTorneo
-
-        ){
-
-            loadSavedTeams();
-
         }
 
 
@@ -9892,417 +10143,48 @@ async function initDefaults(){
 
         /*
         ============================
-        GARANZIA ARRAY GIRONI
+        CARICAMENTO NORMALE
         ============================
         */
 
 
-        [
+        let salvato =
+            localStorage.getItem(
+                "torneoState"
+            );
 
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F"
 
-        ].forEach(g=>{
-
-
-            if(
-
-                !Array.isArray(
-                    state[g]
-                )
-
-            ){
-
-                state[g]=[];
-
-            }
-
-
-        });
-
-
-
-
-
-        /*
-        ============================
-        GARANZIA REGOLE
-        ============================
-        */
-
-
-        if(
-
-            !state.rules
-
-        ){
-
-            state.rules={};
-
-        }
-
-
-
-        if(
-
-            !state.formato
-
-        ){
-
-            state.formato =
-
-                Number(
-                    state.rules.numeroSquadre
-                )
-                ||
-                8;
-
-        }
-
-
-
-        if(
-
-            !state.rules.numeroSquadre
-
-        ){
-
-            state.rules.numeroSquadre =
-
-                state.formato;
-
-        }
-
-
-
-        if(
-
-            !state.rules.numeroGironi
-
-        ){
-
-            state.rules.numeroGironi =
-
-                (
-
-                    state.formato >= 16
-
-                    ?
-
-                    4
-
-                    :
-
-                    state.formato >= 12
-
-                    ?
-
-                    3
-
-                    :
-
-                    2
-
-                );
-
-        }
-
-
-
-        if(
-
-            !state.rules.squadrePerGirone
-
-        ){
-
-            state.rules.squadrePerGirone =
-
-                4;
-
-        }
-               /*
-        ============================
-        GARANZIA FASE FINALE
-        ============================
-        */
-
-
-        if(
-
-            !Array.isArray(
-                state.qRes
-            )
-
-        ){
-
-            state.qRes =
-
-                Array(4)
-
-                .fill("-");
-
-        }
-
-
-
-
-
-        if(
-
-            !Array.isArray(
-                state.sTopRes
-            )
-
-        ){
-
-            state.sTopRes =
-
-                Array(2)
-
-                .fill("-");
-
-        }
-
-
-
-
-
-        if(
-
-            state.fTopRes===undefined
-
-        ){
-
-            state.fTopRes =
-
-                "-";
-
-        }
-
-
-
-
-
-        if(
-
-            !Array.isArray(
-                state.finalTop
-            )
-
-        ){
-
-            state.finalTop = [];
-
-        }
-
-
-
-
-
-        if(
-
-            state.campioneTop===undefined
-
-        ){
-
-            state.campioneTop =
-
-                null;
-
-        }
-
-
-
-
-
-        /*
-        ============================
-        GARANZIA ARRAY PARTITE
-        ============================
-        */
-
-
-        [
-
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F"
-
-        ].forEach(g=>{
-
-
-            if(
-
-                !Array.isArray(
-                    state[g+"res"]
-                )
-
-            ){
-
-                state[g+"res"]=[];
-
-            }
-
-
-
-            if(
-
-                !Array.isArray(
-                    state[g+"time"]
-                )
-
-            ){
-
-                state[g+"time"]=[];
-
-            }
-
-
-
-            if(
-
-                !Array.isArray(
-                    state[g+"camp"]
-                )
-
-            ){
-
-                state[g+"camp"]=[];
-
-            }
-
-
-        });
-
-
-
-
-
-
-
-        /*
-        ============================
-        GARANZIA VISUALIZZAZIONE
-        ============================
-        */
-
-
-        if(
-
-            state.mostraQuarti===undefined
-
-        ){
-
-            state.mostraQuarti=true;
-
-        }
-
-
-
-
-
-        /*
-        ============================
-        SALVATAGGIO STATO CORRETTO
-        ============================
-        */
-
-
-        localStorage.setItem(
-
-            "torneoState",
-
-            JSON.stringify(
-                state
-            )
-
-        );
-
-
-
-
-
-        console.log(
-
-            "INIT DEFAULTS COMPLETATO",
-
-            {
-
-                nome:
-                    state.nomeTorneo,
-
-
-                squadre:
-                    state.rules.numeroSquadre,
-
-
-                gironi:
-                    state.rules.numeroGironi,
-
-
-                A:
-                    state.A,
-
-
-                B:
-                    state.B,
-
-
-                C:
-                    state.C,
-
-
-                D:
-                    state.D
-
-            }
-
-        );
-
-
-
-
-
-
-        /*
-        ============================
-        RENDER PAGINA
-        ============================
-        */
-
-
-        if(
-
-            typeof render==="function"
-
-        ){
+        if(salvato){
 
             try{
 
+                let vecchio =
+                    JSON.parse(
+                        salvato
+                    );
 
-                render();
+
+                state={
+
+                    ...state,
+
+                    ...vecchio,
+
+                    rules:{
+                        ...state.rules,
+                        ...(vecchio.rules||{})
+                    }
+
+                };
 
 
             }
-
-            catch(err){
-
+            catch(e){
 
                 console.error(
-
-                    "Errore render initDefaults:",
-
-                    err
-
+                    "Errore localStorage:",
+                    e
                 );
-
 
             }
 
@@ -10310,23 +10192,31 @@ async function initDefaults(){
 
 
 
-    }
 
 
-    catch(e){
+        if(typeof render==="function"){
+
+            render();
+
+        }
 
 
-        console.error(
-
-            "Errore initDefaults:",
-
-            e
-
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
         );
 
 
-    }
 
+    }
+    catch(e){
+
+        console.error(
+            "Errore initDefaults:",
+            e
+        );
+
+    }
 
 }
    window.addEventListener("load", async()=>{
