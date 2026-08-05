@@ -940,6 +940,34 @@ input{
     }
 
 }
+   .ko-info{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    color:#94a3b8;
+    margin-bottom:8px;
+}
+
+
+.ko-teams{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    font-weight:600;
+}
+
+
+.ko-vs{
+    font-weight:bold;
+}
+
+
+.ko-result input{
+    width:45px;
+    height:28px;
+    text-align:center;
+} 
 </style>
 
    
@@ -9500,6 +9528,84 @@ function renderKO(){
 
 
 
+    /*
+    =================================
+    INIZIALIZZAZIONE DATI KO
+    =================================
+    */
+
+
+    if(!Array.isArray(state.qTime))
+        state.qTime=[];
+
+    if(!Array.isArray(state.qCamp))
+        state.qCamp=[];
+
+
+    if(!Array.isArray(state.sTime))
+        state.sTime=[];
+
+    if(!Array.isArray(state.sCamp))
+        state.sCamp=[];
+
+
+    if(!Array.isArray(state.fTime))
+        state.fTime=[];
+
+    if(!Array.isArray(state.fCamp))
+        state.fCamp=[];
+
+
+
+    let start =
+        String(state.rules.start || "20:00");
+
+
+    let durata =
+        Number(state.rules.duration || 30);
+
+
+
+    function calcolaOra(index){
+
+        let p =
+            start.split(":");
+
+
+        let ora =
+            Number(p[0]) || 20;
+
+
+        let minuti =
+            Number(p[1]) || 0;
+
+
+
+        minuti += index * durata;
+
+
+        ora +=
+            Math.floor(minuti / 60);
+
+
+        minuti =
+            minuti % 60;
+
+
+
+        return (
+            String(ora).padStart(2,"0")
+            +
+            ":"
+            +
+            String(minuti).padStart(2,"0")
+        );
+
+    }
+
+
+
+
     q.style.display =
         state.rules.usaQuarti===true
         ?
@@ -9527,10 +9633,11 @@ function renderKO(){
 
 
 
+
     /*
-        ============================
-        QUARTI
-        ============================
+    ============================
+    QUARTI
+    ============================
     */
 
 
@@ -9538,6 +9645,7 @@ function renderKO(){
         state.rules.usaQuarti===true &&
         teams.length>=8
     ){
+
 
 
         let quarti=[
@@ -9561,7 +9669,20 @@ function renderKO(){
         quarti.forEach((match,index)=>{
 
 
+            state.qCamp[index] =
+                "Campo "
+                +
+                (index+2);
+
+
+
+            state.qTime[index] =
+                calcolaOra(index);
+
+
+
             q.innerHTML +=
+
 
             renderMatchCard(
 
@@ -9624,6 +9745,8 @@ function renderKO(){
 
 
     }
+
+
     else{
 
 
@@ -9662,11 +9785,10 @@ function renderKO(){
 
 
 
-
     /*
-        ============================
-        SEMIFINALI
-        ============================
+    ============================
+    SEMIFINALI
+    ============================
     */
 
 
@@ -9680,10 +9802,25 @@ function renderKO(){
     ){
 
 
+
         semifinali.forEach((match,index)=>{
 
 
+
+            state.sCamp[index] =
+                "Campo "
+                +
+                (index+2);
+
+
+
+            state.sTime[index] =
+                calcolaOra(index+4);
+
+
+
             s.innerHTML +=
+
 
             renderMatchCard(
 
@@ -9724,6 +9861,7 @@ function renderKO(){
 
 
     }
+
     else{
 
 
@@ -9751,10 +9889,11 @@ function renderKO(){
 
 
 
+
     /*
-        ============================
-        FINALE
-        ============================
+    ============================
+    FINALE
+    ============================
     */
 
 
@@ -9778,7 +9917,15 @@ function renderKO(){
 
 
 
+
+    state.fCamp[0]="Campo 1";
+
+    state.fTime[0]=calcolaOra(6);
+
+
+
     f.innerHTML =
+
 
     renderMatchCard(
 
@@ -9793,6 +9940,7 @@ function renderKO(){
         state.fTopRes
 
     );
+
 
 
 
@@ -9862,12 +10010,91 @@ function renderMatchCard(titolo,match,type,index,risultato){
 
 
 
+    let campo =
+        "Campo " + (index + 1);
+
+
+    let tempo =
+        "-";
+
+
+
+    if(type==="Q"){
+
+        campo =
+            state.qCamp?.[index]
+            ||
+            campo;
+
+
+        tempo =
+            state.qTime?.[index]
+            ||
+            tempo;
+
+    }
+
+
+
+    if(type==="S"){
+
+        campo =
+            state.sCamp?.[index]
+            ||
+            campo;
+
+
+        tempo =
+            state.sTime?.[index]
+            ||
+            tempo;
+
+    }
+
+
+
+    if(type==="F"){
+
+        campo =
+            state.fCamp?.[index]
+            ||
+            "Campo 1";
+
+
+        tempo =
+            state.fTime?.[index]
+            ||
+            tempo;
+
+    }
+
+
+
     return `
 
 <div class="match-card">
 
 
 <h4>${titolo}</h4>
+
+
+
+<div class="ko-info">
+
+<span>
+${campo}
+</span>
+
+
+<span>
+${tempo}
+</span>
+
+</div>
+
+
+
+<div class="ko-teams">
 
 
 <div class="team">
@@ -9877,19 +10104,9 @@ ${match[0]}
 </div>
 
 
-<div class="ko-result">
+<div class="ko-vs">
 
-<input
-
-type="text"
-
-value="${res}"
-
-onchange="updateKOResult('${type}',${index},this.value)"
-
-style="width:70px;text-align:center"
-
->
+VS
 
 </div>
 
@@ -9901,16 +10118,29 @@ ${match[1]}
 </div>
 
 
+</div>
 
-<div>
 
-Campo: Campo ${index+1}
+
+<div class="ko-result">
+
+
+<input
+
+type="text"
+
+value="${res}"
+
+onchange="updateKOResult('${type}',${index},this.value)"
+
+>
+
 
 </div>
 
 
 
-<div>
+<div class="ko-status">
 
 Stato: ${stato}
 
@@ -9934,6 +10164,7 @@ winner
 ""
 
 }
+
 
 
 </div>
