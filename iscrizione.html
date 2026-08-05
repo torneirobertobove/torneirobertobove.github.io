@@ -624,330 +624,249 @@ ${utente.email}
 
 async function confermaIscrizione(){
 
+    if(!torneo || !utente){
 
-if(!torneo || !utente){
+        mostraMessaggio(
+            "❌ Dati torneo o utente mancanti",
+            "errore"
+        );
 
-
-mostraMessaggio(
-
-"❌ Dati mancanti",
-
-"errore"
-
-);
+        return;
+    }
 
 
-return;
+    if(torneo.stato==="chiuso"){
+
+        mostraMessaggio(
+            "❌ Torneo chiuso",
+            "errore"
+        );
+
+        return;
+    }
+
+
+
+    const squadre=getNumeroSquadre();
+
+    const limite=squadre*2;
+
+
+
+    const {
+        data:iscritti,
+        error:erroreLista
+    } = await sb
+    .from("iscrizioni")
+    .select("id")
+    .eq(
+        "torneo_id",
+        torneo.id
+    );
+
+
+
+    if(erroreLista){
+
+        console.error(
+            "Errore controllo iscritti:",
+            erroreLista
+        );
+
+        mostraMessaggio(
+            "❌ Errore controllo posti",
+            "errore"
+        );
+
+        return;
+    }
+
+
+
+    if(iscritti.length>=limite){
+
+        mostraMessaggio(
+            "❌ Torneo completo",
+            "errore"
+        );
+
+        return;
+    }
+
+
+
+
+
+    const {
+        data:giaIscritto,
+        error:erroreControllo
+    } = await sb
+    .from("iscrizioni")
+    .select("id")
+    .eq(
+        "torneo_id",
+        torneo.id
+    )
+    .eq(
+        "user_id",
+        utente.id
+    );
+
+
+
+    if(erroreControllo){
+
+        console.error(
+            erroreControllo
+        );
+
+        return;
+    }
+
+
+
+
+    if(giaIscritto && giaIscritto.length>0){
+
+        mostraMessaggio(
+            "⚠️ Sei già iscritto a questo torneo",
+            "errore"
+        );
+
+        return;
+    }
+
+
+
+
+
+    const nome =
+        profilo?.nome ||
+        utente.email.split("@")[0];
+
+
+    const cognome =
+        profilo?.cognome ||
+        "";
+
+
+
+    const alias =
+
+        cognome
+
+        ?
+
+        cognome.substring(0,6).toUpperCase()
+
+        :
+
+        nome.substring(0,6).toUpperCase();
+
+
+
+
+
+
+    const {data:nuovaIscrizione,error:erroreInsert}
+
+    =
+
+    await sb
+    .from("iscrizioni")
+    .insert({
+
+        torneo_id:torneo.id,
+
+        user_id:utente.id,
+
+
+        nome_giocatore:alias,
+
+
+        nome:nome,
+
+
+        cognome:cognome,
+
+
+        email:utente.email,
+
+
+        telefono:profilo?.telefono || "",
+
+
+        livello:profilo?.livello || "",
+
+
+        note:profilo?.note || "",
+
+
+        categoria:"Open",
+
+
+        stato:"iscritto",
+
+
+        approvato:true,
+
+
+        data_iscrizione:
+            new Date().toISOString()
+
+    })
+    .select()
+    .single();
+
+
+
+
+
+
+    if(erroreInsert){
+
+        console.error(
+            "Errore inserimento iscrizione:",
+            erroreInsert
+        );
+
+
+        mostraMessaggio(
+            "❌ Errore iscrizione: "+erroreInsert.message,
+            "errore"
+        );
+
+
+        return;
+
+    }
+
+
+
+
+    console.log(
+        "ISCRIZIONE CREATA:",
+        nuovaIscrizione
+    );
+
+
+
+    mostraMessaggio(
+        "✅ Iscrizione completata",
+        "successo"
+    );
+
+
+
+    setTimeout(()=>{
+
+        window.location.href=
+        "visitatore.html";
+
+    },1500);
 
 
 }
-
-
-
-
-
-if(torneo.stato==="chiuso"){
-
-
-mostraMessaggio(
-
-"❌ Torneo chiuso",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-const squadre=getNumeroSquadre();
-
-
-const limite=squadre*2;
-
-
-
-
-const {
-
-data:iscritti,
-
-error:erroreLista
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select("id")
-
-.eq(
-"torneo_id",
-torneoId
-);
-
-
-
-
-if(erroreLista){
-
-
-mostraMessaggio(
-
-"❌ Errore controllo posti",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-const totaleIscritti=
-
-iscritti ?
-
-iscritti.length :
-
-0;
-
-
-
-
-
-if(totaleIscritti>=limite){
-
-
-mostraMessaggio(
-
-"❌ Torneo completo",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-const {
-
-data:giaIscritto
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.select("id")
-
-.eq(
-"torneo_id",
-torneoId
-)
-
-.eq(
-"user_id",
-utente.id
-);
-
-
-
-
-
-if(giaIscritto && giaIscritto.length>0){
-
-
-mostraMessaggio(
-
-"⚠️ Sei già iscritto",
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-const nome=
-
-profilo?.nome ||
-
-utente.email;
-
-
-
-const cognome=
-
-profilo?.cognome ||
-
-"";
-
-
-
-
-
-const alias=
-
-cognome
-
-?
-
-cognome.substring(0,6)
-
-.toUpperCase()
-
-:
-
-utente.email.substring(0,6)
-
-.toUpperCase();
-
-
-
-
-
-
-
-const {
-
-error:erroreInsert
-
-}
-
-=
-
-await sb
-
-.from("iscrizioni")
-
-.insert({
-
-
-torneo_id:torneoId,
-
-
-user_id:utente.id,
-
-
-nome_giocatore:alias,
-
-
-nome:nome,
-
-
-cognome:cognome,
-
-
-email:utente.email || "",
-
-
-telefono:profilo?.telefono || "",
-
-
-livello:profilo?.livello || "",
-
-
-note:profilo?.note || "",
-
-
-categoria:"Open",
-
-
-stato:"richiesta",
-
-
-approvato:false,
-
-
-data_iscrizione:
-
-new Date().toISOString()
-
-
-});
-
-
-
-
-
-
-if(erroreInsert){
-
-
-mostraMessaggio(
-
-"❌ Errore iscrizione: "+erroreInsert.message,
-
-"errore"
-
-);
-
-
-return;
-
-
-}
-
-
-
-
-
-
-mostraMessaggio(
-
-"✅ Iscrizione completata",
-
-"successo"
-
-);
-
-
-
-
-setTimeout(()=>{
-
-
-window.location.href="visitatore.html";
-
-
-},1500);
-
-
-
-}
-
 
 
 
