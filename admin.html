@@ -2515,23 +2515,38 @@ ${c.g1} / ${c.g2}
 
 
 
-function generaCoppieAutomatiche(){
+async function generaCoppieAutomatiche(){
 
 let torneo=getTorneoAdminCorrente();
 
 if(!torneo)return;
 
 
-let lista=torneo.partecipanti || [];
+let lista = torneo.partecipanti || [];
+
+
+if(lista.length < 2){
+
+alert("Servono almeno due giocatori per creare le coppie");
+
+return;
+
+}
+
 
 
 let coppie=[];
+
 
 
 for(let i=0;i<lista.length-1;i+=2){
 
 
 coppie.push({
+
+id:
+"C"+((i/2)+1),
+
 
 g1:
 lista[i].cognome ||
@@ -2542,7 +2557,15 @@ lista[i].nome ||
 g2:
 lista[i+1].cognome ||
 lista[i+1].nome ||
-""
+"",
+
+
+giocatore1:
+lista[i],
+
+
+giocatore2:
+lista[i+1]
 
 });
 
@@ -2551,16 +2574,97 @@ lista[i+1].nome ||
 
 
 
+
 torneo.coppie=coppie;
+
+
+
+
+/*
+    AGGIORNA SUPABASE
+*/
+
+
+if(typeof sb!=="undefined"){
+
+
+const configurazione =
+
+torneo.configurazione || {};
+
+
+
+configurazione.coppie = coppie;
+
+
+
+const {error}=await sb
+
+.from("tornei")
+
+.update({
+
+configurazione:configurazione
+
+})
+
+.eq(
+
+"id",
+
+torneo.id
+
+);
+
+
+
+if(error){
+
+console.error(
+
+"Errore salvataggio coppie Supabase:",
+
+error
+
+);
+
+alert("Errore salvataggio coppie");
+
+return;
+
+}
+
+
+torneo.configurazione=configurazione;
+
+
+}
+
+
+
+/*
+    SALVATAGGIO ADMIN
+*/
 
 
 salvaAdminState();
 
 
+
 renderAdmin();
 
-}
 
+
+console.log(
+
+"COPPIE CREATE:",
+
+coppie
+
+);
+
+
+}
 
 
 
