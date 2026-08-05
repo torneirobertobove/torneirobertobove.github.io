@@ -2731,7 +2731,7 @@ window.open(
 
 
 
-function generaLinkBove(){
+async function generaLinkBove(){
 
 let torneo=getTorneoAdminCorrente();
 
@@ -2747,7 +2747,9 @@ return;
 
 
 let numeroSquadre =
-Number(torneo.posti)||8;
+Number(torneo.posti) ||
+Number(torneo.configurazione?.rules?.numeroSquadre) ||
+8;
 
 
 
@@ -2760,55 +2762,80 @@ torneo.coppie
 
 
 
+
+
+/*
+    Se mancano le coppie,
+    le crea dai partecipanti approvati
+*/
+
+
 if(
 coppie.length===0 &&
 Array.isArray(torneo.partecipanti) &&
 torneo.partecipanti.length>0
 ){
 
-let lista=torneo.partecipanti;
 
 coppie=[];
 
 
-for(let i=0;i<lista.length;i+=2){
+for(let i=0;i<torneo.partecipanti.length;i+=2){
+
+
+if(!torneo.partecipanti[i+1]) break;
+
+
 
 coppie.push({
 
 id:"C"+((i/2)+1),
 
+
 g1:
-lista[i].cognome ||
-lista[i].nome ||
+torneo.partecipanti[i].cognome ||
+torneo.partecipanti[i].nome ||
 "",
 
+
 g2:
-lista[i+1]
-?
-(
-lista[i+1].cognome ||
-lista[i+1].nome ||
-""
-)
-:
+torneo.partecipanti[i+1].cognome ||
+torneo.partecipanti[i+1].nome ||
 ""
 
 });
 
-}
 
 }
+
+
+}
+
+
 
 
 
 if(coppie.length!==numeroSquadre){
 
+
 alert(
-"Servono "+
-numeroSquadre+
-" coppie. Presenti: "+
+
+"Numero coppie errato.\nRichieste: "
+
++
+
+numeroSquadre
+
++
+
+"\nPresenti: "
+
++
+
 coppie.length
+
 );
+
 
 return;
 
@@ -2816,121 +2843,52 @@ return;
 
 
 
-let rules =
-torneo.configurazione?.rules ||
-{};
 
 
+const rules={
 
-let configurazione={
-
-
-idTorneo:
-torneo.id,
+...(torneo.configurazione?.rules || {}),
 
 
-nomeTorneo:
-torneo.nome,
-
-
-dataTorneo:
-torneo.data,
-
-
-posti:
-numeroSquadre,
-
-
-
-rules:{
-
-
-tipoTorneo:
-rules.tipoTorneo ||
-torneo.formula ||
-"gironiFinale",
-
-
-formatoTorneo:
-rules.formatoTorneo ||
-rules.tipoTorneo ||
-torneo.formula ||
-"gironiFinale",
-
-
-numeroSquadre:
-numeroSquadre,
+numeroSquadre:numeroSquadre,
 
 
 numeroGironi:
-rules.numeroGironi ||
+Number(torneo.configurazione?.rules?.numeroGironi)
+||
 Math.ceil(numeroSquadre/4),
 
 
 squadrePerGirone:
-rules.squadrePerGirone ||
-4,
+Number(torneo.configurazione?.rules?.squadrePerGirone)
+||
+4
 
 
-formulaGironi:
-rules.formulaGironi ||
-"italiana",
+};
 
 
-formulaFinale:
-rules.formulaFinale ||
-"eliminazione_diretta",
 
 
-w:
-rules.w || 3,
 
 
-d:
-rules.d || 1,
+
+const configurazione={
 
 
-l:
-rules.l || 0,
+idTorneo:torneo.id,
 
 
-qualificatePerGirone:
-rules.qualificatePerGirone || 2,
+nomeTorneo:torneo.nome,
 
 
-usaQuarti:
-rules.usaQuarti ?? true,
+dataTorneo:torneo.data,
 
 
-usaSemifinali:
-rules.usaSemifinali ?? true,
+posti:numeroSquadre,
 
 
-usaFinale:
-rules.usaFinale ?? true,
-
-
-start:
-rules.start || "20:00",
-
-
-duration:
-rules.duration || 30,
-
-
-crit1:
-rules.crit1 || "df",
-
-
-crit2:
-rules.crit2 || "gf",
-
-
-crit3:
-rules.crit3 || "gs"
-
-
-},
+rules:rules,
 
 
 coppie:coppie,
@@ -2940,46 +2898,93 @@ partecipanti:coppie
 
 
 };
- let link=
 
-"Bove.html?torneo="+
+
+
+
+
+let link=
+
+"Bove.html?torneo="
+
++
 
 encodeURIComponent(
+
 JSON.stringify(configurazione)
+
 );
 
 
 
-let campo=
+
+
+const campo=
 
 document.getElementById(
 "linkBoveGenerato"
 );
 
 
-if(campo)
+if(campo){
 
 campo.value=link;
 
+}
+
+
+
+
+/*
+    aggiorna stato admin
+*/
 
 
 torneo.coppie=coppie;
+
+
+torneo.configurazione={
+
+...(torneo.configurazione||{}),
+
+coppie:coppie,
+
+rules:rules
+
+};
+
 
 
 salvaAdminState();
 
 
 
+console.log(
+
+"LINK BOVE GENERATO:",
+
+configurazione
+
+);
+
+
+
 alert(
-"Link Bove creato con "+
-coppie.length+
+
+"Link Bove creato con "
+
++
+
+coppie.length
+
++
+
 " coppie"
+
 );
 
 
 }
-
-
 
 
 
