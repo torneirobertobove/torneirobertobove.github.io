@@ -2262,7 +2262,7 @@ ${g.nome || ""} ${g.cognome || ""}
 
 
 
-function approvaIscritto(index){
+async function approvaIscritto(index){
 
 let torneo=getTorneoAdminCorrente();
 
@@ -2274,7 +2274,62 @@ let giocatore=torneo.iscritti[index];
 if(!giocatore)return;
 
 
+
+/*
+    AGGIORNAMENTO DATABASE
+*/
+
+const {error}=await sb
+
+.from("iscrizioni")
+
+.update({
+
+    stato:"approvato",
+
+    approvato:true
+
+})
+
+.eq(
+
+    "id",
+
+    giocatore.id
+
+);
+
+
+
+if(error){
+
+console.error(
+"Errore approvazione iscrizione:",
+error
+);
+
+alert(
+"Errore approvazione"
+);
+
+return;
+
+}
+
+
+
+
+
+/*
+    AGGIORNAMENTO STATO ADMIN
+*/
+
+
 giocatore.stato="approvato";
+
+
+giocatore.approvato=true;
+
 
 
 if(!torneo.partecipanti)
@@ -2283,13 +2338,21 @@ torneo.partecipanti=[];
 
 
 
+
 if(!torneo.partecipanti.some(
+
 g=>g.email===giocatore.email
+
 )){
 
-torneo.partecipanti.push(giocatore);
+
+torneo.partecipanti.push(
+giocatore
+);
+
 
 }
+
 
 
 
@@ -2297,6 +2360,13 @@ salvaAdminState();
 
 
 renderAdmin();
+
+
+console.log(
+"Giocatore approvato:",
+giocatore
+);
+
 
 }
  function rifiutaIscritto(index){
