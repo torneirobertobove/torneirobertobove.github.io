@@ -3139,121 +3139,73 @@ function apriBoveConTorneo(idTorneo){
 
 
 
-function eliminaTorneoAdmin(id){
+async function eliminaTorneoAdmin(id){
 
-if(!confirm("Eliminare torneo?"))
-
+if(!confirm("Eliminare torneo definitivamente?"))
 return;
 
 
+// 1) elimina iscrizioni collegate
+const {error: erroreIscrizioni}=await sb
+.from("iscrizioni")
+.delete()
+.eq("torneo_id", id);
 
-adminState.tornei =
-adminState.tornei.filter(
 
-t=>t.id!==id
+if(erroreIscrizioni){
 
+console.error(
+"Errore eliminazione iscrizioni:",
+erroreIscrizioni
 );
 
-
-
-if(
-adminState.torneoSelezionato===id
-)
-
-adminState.torneoSelezionato=null;
-
-
-
-salvaAdminState();
-
-
-renderAdmin();
-
-}
-
-
-
-
-
-/*
-==============================
-NEWS
-==============================
-*/
-
-
-async function creaNews(){
-
-let titolo =
-document.getElementById("newsTitolo")
-.value.trim();
-
-
-
-let testo =
-document.getElementById("newsTesto")
-.value.trim();
-
-
-
-let immagine =
-document.getElementById("newsImmagine")
-.value.trim();
-
-
-
-
-
-if(!titolo){
-
-alert(
-"Inserire titolo"
-);
+alert("Errore eliminazione iscrizioni");
 
 return;
 
 }
 
 
-
-
-
+// 2) elimina torneo
 const {error}=await sb
-.from("news")
-.insert({
-
-titolo,
-
-testo,
-
-immagine,
-
-pubblicata:true
-
-});
-
-
-
+.from("tornei")
+.delete()
+.eq("id", id);
 
 
 if(error){
 
-console.error(error);
+console.error(
+"Errore eliminazione torneo:",
+error
+);
+
+alert("Errore eliminazione torneo");
 
 return;
 
 }
 
 
+// 3) aggiorna stato locale admin
+adminState.tornei =
+adminState.tornei.filter(
+t=>t.id!==id
+);
 
 
+if(adminState.torneoSelezionato===id)
+adminState.torneoSelezionato=null;
 
-caricaNewsAdmin();
 
+salvaAdminState();
+
+renderAdmin();
+
+
+alert("Torneo eliminato definitivamente");
 
 }
- 
-
 
 
 async function caricaNewsAdmin(){
