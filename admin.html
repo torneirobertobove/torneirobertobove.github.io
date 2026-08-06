@@ -3515,78 +3515,211 @@ window.sb=sb;
 
 
 
-window.addEventListener("DOMContentLoaded",()=>{
+window.addEventListener("DOMContentLoaded", async ()=>{
 
 
-caricaAdminState();
+    caricaAdminState();
 
 
-console.log(
-"STATO ADMIN CARICATO:",
-adminState
-);
-
-
-
-if(adminState.adminLoggato===true){
-
-
-let login=
-document.getElementById("loginAdmin");
-
-
-let area=
-document.getElementById("areaAdmin");
+    console.log(
+        "STATO ADMIN CARICATO:",
+        adminState
+    );
 
 
 
-if(login)
-
-login.style.display="none";
-
-
-
-if(area)
-
-area.classList.remove("hidden");
+    const login =
+        document.getElementById(
+            "loginAdmin"
+        );
 
 
-
-renderAdmin();
+    const area =
+        document.getElementById(
+            "areaAdmin"
+        );
 
 
 
-}else{
+    /*
+        CONTROLLO REALE SUPABASE
+    */
+
+
+    try{
+
+
+        const { data:{ session } } =
+            await sb.auth.getSession();
 
 
 
-let login=
-document.getElementById("loginAdmin");
+        if(!session){
+
+
+            console.warn(
+                "Nessuna sessione Supabase"
+            );
+
+
+            adminState.adminLoggato=false;
+
+            salvaAdminState();
 
 
 
-let area=
-document.getElementById("areaAdmin");
+            if(login)
+                login.style.display="block";
+
+
+            if(area)
+                area.classList.add("hidden");
+
+
+            aggiornaGiocatoriAdmin();
+
+
+            return;
+
+        }
 
 
 
-if(login)
 
-login.style.display="block";
-
-
-
-if(area)
-
-area.classList.add("hidden");
+        const userId =
+            session.user.id;
 
 
 
-}
+
+        const { data: profilo, error } =
+
+            await sb
+
+            .from("profili")
+
+            .select(
+                "nome, ruolo"
+            )
+
+            .eq(
+                "user_id",
+                userId
+            )
+
+            .single();
 
 
 
-aggiornaGiocatoriAdmin();
+
+
+        console.log(
+            "PROFILO ADMIN:",
+            profilo,
+            error
+        );
+
+
+
+
+
+
+        if(
+            error ||
+            !profilo ||
+            profilo.ruolo !== "admin"
+        ){
+
+
+            console.warn(
+                "ACCESSO ADMIN NEGATO"
+            );
+
+
+
+            adminState.adminLoggato=false;
+
+            adminState.adminEmail="";
+
+            salvaAdminState();
+
+
+
+            if(login)
+                login.style.display="block";
+
+
+            if(area)
+                area.classList.add("hidden");
+
+
+            aggiornaGiocatoriAdmin();
+
+
+            return;
+
+        }
+
+
+
+
+        /*
+            ADMIN CONFERMATO
+        */
+
+
+        adminState.adminLoggato=true;
+
+        adminState.adminEmail =
+            session.user.email || "";
+
+        salvaAdminState();
+
+
+
+
+        if(login)
+
+            login.style.display="none";
+
+
+
+        if(area)
+
+            area.classList.remove("hidden");
+
+
+
+        renderAdmin();
+
+
+
+    }
+
+    catch(e){
+
+
+        console.error(
+            "Errore controllo admin:",
+            e
+        );
+
+
+        if(login)
+
+            login.style.display="block";
+
+
+        if(area)
+
+            area.classList.add("hidden");
+
+
+    }
+
+
+
+    aggiornaGiocatoriAdmin();
 
 
 
