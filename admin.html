@@ -2092,20 +2092,101 @@ window.location.href=
 
 
 
-function pubblicaTorneo(){
+async function pubblicaTorneo(){
 
-let torneo=getTorneoAdminCorrente();
-
-if(!torneo)return;
+    let torneo = getTorneoAdminCorrente();
 
 
-torneo.stato="pubblicato";
+    if(!torneo){
+
+        alert("Nessun torneo selezionato");
+
+        return;
+
+    }
 
 
-salvaAdminState();
+
+    /*
+    ============================
+    AGGIORNA STATO LOCALE
+    ============================
+    */
 
 
-renderAdmin();
+    torneo.stato = "pubblicato";
+
+
+
+    salvaAdminState();
+
+
+
+    /*
+    ============================
+    AGGIORNA SUPABASE
+    ============================
+    */
+
+
+    if(typeof sb !== "undefined"){
+
+
+        const { error } = await sb
+
+        .from("tornei")
+
+        .update({
+
+            stato:"pubblicato",
+
+            pubblicato:true
+
+        })
+
+        .eq(
+            "id",
+            torneo.id
+        );
+
+
+
+        if(error){
+
+            console.error(
+                "ERRORE PUBBLICAZIONE SUPABASE:",
+                error
+            );
+
+
+            alert(
+                "Errore pubblicazione torneo"
+            );
+
+
+            return;
+
+        }
+
+
+
+        console.log(
+            "TORNEO PUBBLICATO SUPABASE:",
+            torneo.id
+        );
+
+
+    }
+
+
+
+    renderAdmin();
+
+
+
+    alert(
+        "Torneo pubblicato correttamente"
+    );
 
 }
 
