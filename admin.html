@@ -1666,62 +1666,127 @@ window.location.href=
 async function creaNuovoTorneo(){
 
 let nome =
-    document.getElementById("adminNomeTorneo")
-    .value.trim()
-    || "Nuovo Torneo";
+document.getElementById("adminNomeTorneo")
+.value.trim()
+|| "Nuovo Torneo";
 
 
 let data =
-    document.getElementById("adminDataTorneo")
-    .value
-    || "";
+document.getElementById("adminDataTorneo")
+.value
+|| "";
 
 
 let posti =
-    Number(
-        document.getElementById("adminPosti").value
-    )
-    || 8;
+Number(
+document.getElementById("adminPosti").value
+)
+|| 8;
 
 
 let descrizione =
-    document.getElementById("adminDescrizione")
-    .value.trim()
-    || "";
+document.getElementById("adminDescrizione")
+.value.trim()
+|| "";
 
 
 
 /*
 =====================================
-CREAZIONE COPPIE VUOTE
+CREAZIONE COPPIE
 =====================================
 */
 
 let coppie=[];
 
 
+for(let i=1;i<=posti;i++){
+
+    coppie.push({
+
+        id:"C"+i,
+
+        g1:"Giocatore"+i+"A",
+
+        g2:"Giocatore"+i+"B"
+
+    });
+
+}
+
+
+console.log(
+    "COPPIE CREATE:",
+    coppie
+);
+
+
 
 /*
 =====================================
-CREAZIONE GIRONI VUOTI
+CREAZIONE GIRONI
 =====================================
 */
 
+
 let gironi={
+
     A:[],
     B:[],
     C:[],
     D:[],
     E:[],
     F:[]
+
 };
 
 
 
+let lettere=[
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+];
+
+
+
+coppie.forEach((c,i)=>{
+
+
+    let indice =
+        Math.floor(
+            i / 4
+        );
+
+
+    if(gironi[lettere[indice]]){
+
+
+        gironi[lettere[indice]]
+        .push(c);
+
+
+    }
+
+
+});
+
+
+
+console.log(
+    "GIRONI CREATE:",
+    gironi
+);
+
+
+
 let numeroGironi =
-    Math.ceil(
-        posti / 4
-    );
+Math.ceil(
+    posti / 4
+);
 
 
 
@@ -1735,29 +1800,51 @@ CREAZIONE TORNEO
 let nuovoTorneo={
 
 
-    id:Date.now(),
+id:Date.now(),
 
 
-    nome:nome,
+nome:nome,
 
 
-    data:data,
+data:data,
 
 
-    posti:posti,
+posti:posti,
 
 
-    descrizione:descrizione,
+descrizione:descrizione,
 
 
-    formula:"gironiFinale",
+formula:"gironiFinale",
 
 
-    stato:"bozza",
+stato:"bozza",
 
 
 
-    iscritti:[],
+iscritti:[],
+
+
+coppie:coppie,
+
+
+partecipanti:coppie,
+
+
+
+gironi:gironi,
+
+
+
+configurazione:{
+
+
+    A:gironi.A,
+    B:gironi.B,
+    C:gironi.C,
+    D:gironi.D,
+    E:gironi.E,
+    F:gironi.F,
 
 
     coppie:coppie,
@@ -1766,110 +1853,95 @@ let nuovoTorneo={
     partecipanti:coppie,
 
 
-
     gironi:gironi,
 
 
 
-    configurazione:{
+    rules:{
 
 
-        rules:{
+        locked:false,
 
 
-            locked:false,
+        tipoTorneo:"gironiFinale",
 
 
-            tipoTorneo:"gironiFinale",
+        formatoTorneo:"gironiFinale",
 
 
-            formatoTorneo:"gironiFinale",
+        numeroSquadre:posti,
 
 
-            numeroSquadre:posti,
+        numeroGironi:numeroGironi,
 
 
-            numeroGironi:numeroGironi,
+        squadrePerGirone:4,
 
 
-            squadrePerGirone:4,
+        formulaGironi:"italiana",
 
 
-            formulaGironi:"italiana",
-
-
-            formulaFinale:"eliminazione_diretta",
+        formulaFinale:"eliminazione_diretta",
 
 
 
-            w:3,
+        w:3,
 
-            d:1,
+        d:1,
 
-            l:0,
-
-
-            qualificatePerGirone:2,
+        l:0,
 
 
-            numeroQualificateFinali:
-                numeroGironi*2,
+        qualificatePerGirone:2,
 
 
-            usaQuarti:true,
-
-            usaSemifinali:true,
-
-            usaFinale:true,
+        numeroQualificateFinali:
+            numeroGironi*2,
 
 
+        usaQuarti:true,
 
-            killerPoint:false,
+        usaSemifinali:true,
 
-
-            rigori:true,
-
-
-            tempoSupplementare:true,
-
-
-            garaAndataRitorno:false,
+        usaFinale:true,
 
 
 
-            start:"20:00",
+        killerPoint:false,
 
 
-            duration:30,
+        rigori:true,
+
+
+        tempoSupplementare:true,
+
+
+        garaAndataRitorno:false,
 
 
 
-            crit1:"df",
-
-            crit2:"gf",
-
-            crit3:"gs",
+        start:"20:00",
 
 
-            mostraQuarti:true
+        duration:30,
 
 
-        },
+
+        crit1:"df",
+
+        crit2:"gf",
+
+        crit3:"gs",
 
 
-        coppie:coppie,
-
-
-        partecipanti:coppie,
-
-
-        gironi:gironi
+        mostraQuarti:true
 
 
     }
 
 
-};
+
+},
 
 
 
@@ -1883,6 +1955,7 @@ SALVATAGGIO ADMIN
 adminState.tornei.push(
     nuovoTorneo
 );
+
 
 
 adminState.torneoSelezionato =
@@ -1903,59 +1976,81 @@ SALVATAGGIO SUPABASE
 
 if(typeof sb!=="undefined"){
 
-    const {error}=await sb
-    .from("tornei")
-    .insert({
 
-        id: nuovoTorneo.id,
+const {error}=await sb
 
-        nome: nuovoTorneo.nome,
+.from("tornei")
 
-        data: nuovoTorneo.data,
-
-        data_torneo: nuovoTorneo.data,
-
-        ora_inizio:"20:00",
-
-        posti: nuovoTorneo.posti,
-
-        descrizione: nuovoTorneo.descrizione,
-
-        formula: nuovoTorneo.formula,
-
-        stato: nuovoTorneo.stato,
-
-        pubblicato:false,
-
-        iscrizioni_chiuse:false,
-
-        configurazione:
-            nuovoTorneo.configurazione
-
-    });
+.insert({
 
 
-
-    if(error){
-
-        console.error(
-            "ERRORE SALVATAGGIO SUPABASE:",
-            error
-        );
-
-        alert(
-            "Errore salvataggio torneo su Supabase"
-        );
-
-        return;
-
-    }
+    id:nuovoTorneo.id,
 
 
-    console.log(
-        "TORNEO SALVATO SUPABASE:",
-        nuovoTorneo.id
+    nome:nuovoTorneo.nome,
+
+
+    data:nuovoTorneo.data,
+
+
+    data_torneo:nuovoTorneo.data,
+
+
+    ora_inizio:"20:00",
+
+
+    posti:nuovoTorneo.posti,
+
+
+    descrizione:nuovoTorneo.descrizione,
+
+
+    formula:nuovoTorneo.formula,
+
+
+    stato:nuovoTorneo.stato,
+
+
+    pubblicato:false,
+
+
+    iscrizioni_chiuse:false,
+
+
+    configurazione:
+        nuovoTorneo.configurazione
+
+
+});
+
+
+
+if(error){
+
+
+    console.error(
+        "ERRORE SALVATAGGIO SUPABASE:",
+        error
     );
+
+
+    alert(
+        "Errore salvataggio torneo su Supabase"
+    );
+
+
+    return;
+
+
+}
+
+
+
+console.log(
+    "TORNEO SALVATO SUPABASE:",
+    nuovoTorneo.id
+);
+
 
 }
 
@@ -1969,17 +2064,21 @@ APERTURA BOVE
 
 
 window.location.href =
+
 "Bove.html?idTorneo="
+
 +
+
 encodeURIComponent(
     nuovoTorneo.id
 )
+
 +
+
 "&apriRegole=true";
 
 
 }
-
 function renderListaTornei(){
 
 let box=document.getElementById("listaTorneiAdmin");
