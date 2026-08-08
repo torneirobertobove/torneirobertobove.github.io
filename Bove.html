@@ -10158,156 +10158,29 @@ function chiudiMenuAutomatico(){
     });
 
 }
-   
 window.initDefaults = async function initDefaults(){
-```
-try{
 
-    const params =
-        new URLSearchParams(
-            window.location.search
-        );
+    try{
 
-    const torneoDaAdmin =
-        params.get("torneo");
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
 
-    const idTorneo =
-        params.get("idTorneo");
+        const torneoDaAdmin =
+            params.get("torneo");
 
-
-    /*
-    ============================================================
-    CARICAMENTO TORNEO PASSATO DA ADMIN
-    ============================================================
-    */
-
-    if(torneoDaAdmin){
-
-        try{
-
-            const torneo =
-                JSON.parse(
-                    decodeURIComponent(
-                        torneoDaAdmin
-                    )
-                );
+        const idTorneo =
+            params.get("idTorneo");
 
 
-            const rulesAdmin =
-                torneo.configurazione?.rules
-                ||
-                torneo.rules
-                ||
-                {};
+        /*
+        ============================================================
+        FUNZIONE DI NORMALIZZAZIONE GIRONI
+        ============================================================
+        */
 
-
-            const numeroSquadre =
-                Number(torneo.posti)
-                ||
-                Number(
-                    rulesAdmin.numeroSquadre
-                )
-                ||
-                8;
-
-
-            let numeroGironi =
-                Number(
-                    rulesAdmin.numeroGironi
-                );
-
-
-            if(!numeroGironi){
-
-                numeroGironi =
-                    numeroSquadre >= 16
-                    ?
-                    4
-                    :
-                    numeroSquadre >= 12
-                    ?
-                    3
-                    :
-                    2;
-
-            }
-
-
-            state = {
-
-                ...state,
-
-                idTorneo:
-                    torneo.id
-                    ||
-                    Date.now(),
-
-                nomeTorneo:
-                    torneo.nome
-                    ||
-                    torneo.nomeTorneo
-                    ||
-                    "",
-
-                dataTorneo:
-                    torneo.data
-                    ||
-                    "",
-
-                formato:
-                    numeroSquadre,
-
-                rules:{
-
-                    ...state.rules,
-
-                    ...rulesAdmin,
-
-                    numeroSquadre,
-
-                    numeroGironi,
-
-                    formatoTorneo:
-                        rulesAdmin.formatoTorneo
-                        ||
-                        "gironiFinale",
-
-                    tipoTorneo:
-                        rulesAdmin.tipoTorneo
-                        ||
-                        "gironiFinale",
-
-                    squadrePerGirone:
-                        Number(
-                            rulesAdmin.squadrePerGirone
-                        )
-                        ||
-                        4
-
-                },
-
-                partecipanti:
-                    torneo.configurazione?.partecipanti
-                    ||
-                    torneo.partecipanti
-                    ||
-                    [],
-
-                coppie:
-                    torneo.configurazione?.coppie
-                    ||
-                    torneo.coppie
-                    ||
-                    []
-
-            };
-
-
-            /*
-            ====================================================
-            GIRONI
-            ====================================================
-            */
+        const inizializzaGironi = () => {
 
             [
                 "A",
@@ -10317,29 +10190,26 @@ try{
                 "E",
                 "F",
                 "G"
-
             ].forEach(g=>{
 
-                const origine =
-                    torneo.configurazione?.[g]
-                    ||
-                    torneo[g];
+                if(!Array.isArray(state[g])){
 
-                state[g] =
-                    Array.isArray(origine)
-                    ?
-                    origine
-                    :
-                    [];
+                    state[g]=[];
+
+                }
 
             });
 
+        };
 
-            /*
-            ====================================================
-            PARTITE / ORARI / CAMPI
-            ====================================================
-            */
+
+        /*
+        ============================================================
+        INIZIALIZZAZIONE ARRAY TORNEO
+        ============================================================
+        */
+
+        const inizializzaArray = () => {
 
             [
                 "Ares",
@@ -10373,233 +10243,580 @@ try{
                 "rankE",
                 "rankF",
                 "rankG"
-
             ].forEach(k=>{
 
-                const origine =
-                    torneo.configurazione?.[k]
-                    ||
-                    torneo[k];
+                if(!Array.isArray(state[k])){
 
-                if(Array.isArray(origine)){
-
-                    state[k]=origine;
+                    state[k]=[];
 
                 }
 
             });
 
 
-            /*
-            ====================================================
-            RISULTATI FASI FINALI
-            ====================================================
-            */
-
-            const cfg =
-                torneo.configurazione
-                ||
-                {};
+            if(!Array.isArray(state.qRes))
+                state.qRes=Array(4).fill("-");
 
 
-            if(Array.isArray(cfg.qRes))
-                state.qRes=cfg.qRes;
-
-            if(Array.isArray(cfg.sTopRes))
-                state.sTopRes=cfg.sTopRes;
-
-            if(typeof cfg.fTopRes==="string")
-                state.fTopRes=cfg.fTopRes;
-
-            if(Array.isArray(cfg.finalTop))
-                state.finalTop=cfg.finalTop;
+            if(!Array.isArray(state.sTopRes))
+                state.sTopRes=Array(2).fill("-");
 
 
-            /*
-            ====================================================
-            SALVA STATO
-            ====================================================
-            */
-
-            localStorage.setItem(
-                "torneoState",
-                JSON.stringify(state)
-            );
+            if(typeof state.fTopRes!=="string")
+                state.fTopRes="-";
 
 
-            console.log(
-                "DATI TORNEO ADMIN CARICATI",
-                state.nomeTorneo,
-                state.formato,
-                state.rules.numeroSquadre,
-                state.rules.numeroGironi,
-                state.coppie
-            );
+            if(!Array.isArray(state.finalTop))
+                state.finalTop=[];
 
 
-            console.log(
-                "GIRONI CARICATI:",
-                state.A,
-                state.B,
-                state.C,
-                state.D,
-                state.E,
-                state.F,
-                state.G
-            );
+            if(state.campioneTop===undefined)
+                state.campioneTop=null;
 
+        };
 
-            /*
-            ====================================================
-            QUI IL TORNEO È GIÀ COMPLETAMENTE CARICATO
-            ====================================================
-            */
-
-            if(typeof render==="function"){
-
-                render();
-
-            }
-
-
-            return state;
-
-        }
-        catch(e){
-
-            console.error(
-                "Errore caricamento torneo Admin:",
-                e
-            );
-
-        }
-
-    }
-
-
-    /*
-    ============================================================
-    ATTENZIONE:
-    SE C'È idTorneo, NON CARICARE torneoState LOCALE
-    E NON FARE render() QUI.
-    
-    loadState() deve prima leggere SUPABASE.
-    ============================================================
-    */
-
-    if(idTorneo){
-
-        console.log(
-            "INIT DEFAULTS: idTorneo presente -> " +
-            "attendo loadState() da Supabase"
-        );
 
         /*
-        NON fare render().
+        ============================================================
+        1. PRIORITÀ ASSOLUTA:
+           SE ESISTE idTorneo, IL TORNEO È ESTERNO
+        ============================================================
 
-        NON leggere torneoState.
+        NON deve essere caricato torneoState da localStorage.
 
-        NON sovrascrivere state.
-
-        Il caricamento corretto è:
-
-            initDefaults()
-                ↓
-            loadState()
-                ↓
-            Supabase
-                ↓
-            state.A / state.B / ...
-                ↓
-            render()
+        loadState() dovrà occuparsi del caricamento
+        definitivo da Supabase.
+        ============================================================
         */
 
-        return state;
-
-    }
-
-
-    /*
-    ============================================================
-    CARICAMENTO NORMALE DA LOCALSTORAGE
-    SOLO QUANDO NON C'È idTorneo
-    ============================================================
-    */
-
-    let salvato =
-        localStorage.getItem(
-            "torneoState"
-        );
-
-
-    if(salvato){
-
-        try{
-
-            let vecchio =
-                JSON.parse(
-                    salvato
-                );
-
+        if(idTorneo){
 
             state = {
 
                 ...state,
 
-                ...vecchio,
-
-                rules:{
-
-                    ...state.rules,
-
-                    ...(vecchio.rules || {})
-
-                }
+                idTorneo:idTorneo
 
             };
 
-        }
-        catch(e){
 
-            console.error(
-                "Errore localStorage:",
-                e
+            inizializzaGironi();
+            inizializzaArray();
+
+
+            console.log(
+                "INIT DEFAULTS: TORNEO ESTERNO",
+                idTorneo
             );
 
+
+            /*
+            IMPORTANTE:
+            nessun localStorage viene letto qui.
+
+            nessun render viene eseguito qui.
+
+            nessun salvataggio viene eseguito qui.
+
+            Il flusso corretto sarà:
+
+                initDefaults()
+                    ↓
+                loadState()
+                    ↓
+                Supabase
+                    ↓
+                state
+                    ↓
+                render()
+            */
+
+
+            return state;
+
         }
 
+
+        /*
+        ============================================================
+        2. TORNEO PASSATO DIRETTAMENTE DA ADMIN
+        ============================================================
+
+        Questo percorso viene utilizzato SOLO se Admin ha passato
+        il JSON e NON è presente idTorneo.
+        ============================================================
+        */
+
+        if(torneoDaAdmin){
+
+            try{
+
+                const torneo =
+                    JSON.parse(
+                        decodeURIComponent(
+                            torneoDaAdmin
+                        )
+                    );
+
+
+                const configurazione =
+                    torneo.configurazione
+                    ||
+                    {};
+
+
+                const rulesAdmin =
+                    configurazione.rules
+                    ||
+                    torneo.rules
+                    ||
+                    {};
+
+
+                const numeroSquadre =
+                    Number(
+                        torneo.posti
+                    )
+                    ||
+                    Number(
+                        rulesAdmin.numeroSquadre
+                    )
+                    ||
+                    8;
+
+
+                let numeroGironi =
+                    Number(
+                        rulesAdmin.numeroGironi
+                    );
+
+
+                if(
+                    !Number.isFinite(numeroGironi) ||
+                    numeroGironi<1
+                ){
+
+                    numeroGironi =
+                        numeroSquadre>=20
+                        ?
+                        5
+                        :
+                        numeroSquadre>=16
+                        ?
+                        4
+                        :
+                        numeroSquadre>=12
+                        ?
+                        3
+                        :
+                        2;
+
+                }
+
+
+                state = {
+
+                    ...state,
+
+                    idTorneo:
+                        torneo.id
+                        ||
+                        null,
+
+                    nomeTorneo:
+                        torneo.nome
+                        ||
+                        torneo.nomeTorneo
+                        ||
+                        "",
+
+                    dataTorneo:
+                        torneo.data
+                        ||
+                        torneo.dataTorneo
+                        ||
+                        "",
+
+                    formato:
+                        numeroSquadre,
+
+                    rules:{
+
+                        ...state.rules,
+
+                        ...rulesAdmin,
+
+                        numeroSquadre:
+                            numeroSquadre,
+
+                        numeroGironi:
+                            numeroGironi,
+
+                        formatoTorneo:
+                            rulesAdmin.formatoTorneo
+                            ||
+                            "gironiFinale",
+
+                        tipoTorneo:
+                            rulesAdmin.tipoTorneo
+                            ||
+                            "gironiFinale",
+
+                        squadrePerGirone:
+                            Number(
+                                rulesAdmin.squadrePerGirone
+                            )
+                            ||
+                            4
+
+                    },
+
+                    partecipanti:
+                        Array.isArray(
+                            configurazione.partecipanti
+                        )
+                        ?
+                        configurazione.partecipanti
+                        :
+                        Array.isArray(
+                            torneo.partecipanti
+                        )
+                        ?
+                        torneo.partecipanti
+                        :
+                        [],
+
+                    coppie:
+                        Array.isArray(
+                            configurazione.coppie
+                        )
+                        ?
+                        configurazione.coppie
+                        :
+                        Array.isArray(
+                            torneo.coppie
+                        )
+                        ?
+                        torneo.coppie
+                        :
+                        []
+
+                };
+
+
+                /*
+                ====================================================
+                CARICAMENTO GIRONI
+                ====================================================
+                */
+
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G"
+                ].forEach(g=>{
+
+                    const origine =
+                        configurazione[g]
+                        ??
+                        torneo[g];
+
+
+                    if(Array.isArray(origine)){
+
+                        state[g]=origine;
+
+                    }
+                    else{
+
+                        state[g]=[];
+
+                    }
+
+                });
+
+
+                /*
+                ====================================================
+                CARICAMENTO DATI ACCESSORI
+                ====================================================
+                */
+
+                [
+                    "Ares",
+                    "Bres",
+                    "Cres",
+                    "Dres",
+                    "Eres",
+                    "Fres",
+                    "Gres",
+
+                    "Atime",
+                    "Btime",
+                    "Ctime",
+                    "Dtime",
+                    "Etime",
+                    "Ftime",
+                    "Gtime",
+
+                    "Acamp",
+                    "Bcamp",
+                    "Ccamp",
+                    "Dcamp",
+                    "Ecamp",
+                    "Fcamp",
+                    "Gcamp",
+
+                    "rankA",
+                    "rankB",
+                    "rankC",
+                    "rankD",
+                    "rankE",
+                    "rankF",
+                    "rankG"
+                ].forEach(k=>{
+
+                    const origine =
+                        configurazione[k]
+                        ??
+                        torneo[k];
+
+
+                    if(Array.isArray(origine)){
+
+                        state[k]=origine;
+
+                    }
+
+                });
+
+
+                /*
+                ====================================================
+                FASE FINALE
+                ====================================================
+                */
+
+                if(Array.isArray(configurazione.qRes))
+                    state.qRes=[
+                        ...configurazione.qRes
+                    ];
+
+
+                if(Array.isArray(configurazione.sTopRes))
+                    state.sTopRes=[
+                        ...configurazione.sTopRes
+                    ];
+
+
+                if(
+                    typeof configurazione.fTopRes==="string"
+                ){
+
+                    state.fTopRes =
+                        configurazione.fTopRes;
+
+                }
+
+
+                if(Array.isArray(configurazione.finalTop)){
+
+                    state.finalTop=[
+                        ...configurazione.finalTop
+                    ];
+
+                }
+
+
+                if(
+                    configurazione.campioneTop !== undefined
+                ){
+
+                    state.campioneTop =
+                        configurazione.campioneTop;
+
+                }
+
+
+                /*
+                ====================================================
+                NORMALIZZAZIONE
+                ====================================================
+                */
+
+                inizializzaGironi();
+                inizializzaArray();
+
+
+                /*
+                ====================================================
+                SALVATAGGIO LOCALE DELLO STATO APPENA CARICATO
+                ====================================================
+                */
+
+                localStorage.setItem(
+                    "torneoState",
+                    JSON.stringify(state)
+                );
+
+
+                console.log(
+                    "TORNEO ADMIN CARICATO:",
+                    {
+                        idTorneo:state.idTorneo,
+                        nome:state.nomeTorneo,
+                        squadre:state.rules.numeroSquadre,
+                        gironi:state.rules.numeroGironi
+                    }
+                );
+
+
+                /*
+                ====================================================
+                IL TORNEO È GIÀ DISPONIBILE:
+                POSSIAMO RENDERIZZARE
+                ====================================================
+                */
+
+                if(
+                    typeof render==="function"
+                ){
+
+                    render();
+
+                }
+
+
+                return state;
+
+            }
+            catch(e){
+
+                console.error(
+                    "Errore caricamento torneo Admin:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        /*
+        ============================================================
+        3. APERTURA NORMALE SENZA idTorneo E SENZA JSON ADMIN
+        ============================================================
+        */
+
+        const salvato =
+            localStorage.getItem(
+                "torneoState"
+            );
+
+
+        if(salvato){
+
+            try{
+
+                const vecchio =
+                    JSON.parse(
+                        salvato
+                    );
+
+
+                if(
+                    vecchio &&
+                    typeof vecchio==="object"
+                ){
+
+                    state = {
+
+                        ...state,
+
+                        ...vecchio,
+
+                        rules:{
+
+                            ...state.rules,
+
+                            ...(vecchio.rules || {})
+
+                        }
+
+                    };
+
+                }
+
+            }
+            catch(e){
+
+                console.error(
+                    "Errore lettura torneoState:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        /*
+        ============================================================
+        NORMALIZZAZIONE STATO LOCALE
+        ============================================================
+        */
+
+        inizializzaGironi();
+        inizializzaArray();
+
+
+        /*
+        ============================================================
+        RENDER SOLO NEL PERCORSO LOCALE
+        ============================================================
+        */
+
+        if(
+            typeof render==="function"
+        ){
+
+            render();
+
+        }
+
+
+        /*
+        ============================================================
+        SALVATAGGIO STATO LOCALE NORMALIZZATO
+        ============================================================
+        */
+
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+
+
+        return state;
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore initDefaults:",
+            e
+        );
+
+        return null;
+
     }
 
-
-    if(typeof render==="function"){
-
-        render();
-
-    }
-
-
-    localStorage.setItem(
-        "torneoState",
-        JSON.stringify(state)
-    );
-
-
-    return state;
-
-}
-catch(e){
-
-    console.error(
-        "Errore initDefaults:",
-        e
-    );
-
-    return null;
-
-}
-
-
-}
-
+};
+   
+</script>
 </body>
 </html>
