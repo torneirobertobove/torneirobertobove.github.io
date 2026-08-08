@@ -975,7 +975,7 @@ input{
   const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
   const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
 
- const sb = supabase.createClient(
+  const sb = supabase.createClient(
       supabaseUrl,
       supabaseKey,
       {
@@ -987,185 +987,53 @@ input{
       }
   );
 
-// --- AGGIUNGI QUI QUESTE DUE RIGHE DI SICUREZZA ---
-let torneo = {};
-let rulesDb = {};
-
-// Integrazione per aprire automaticamente le regole se richiesto dall'admin
-window.addEventListener("DOMContentLoaded", () => {
-
-
-
-
-async function verifyAccess(){
-
-    const { data: { session } } =
-        await sb.auth.getSession();
-
-
-    if(!session){
-
-        console.warn(
-            "Nessun utente autenticato"
-        );
-
-        bloccaGestionale();
-
-        return;
-
-    }
-
-
-    const userId =
-        session.user.id;
-
-
-
-    const { data: profilo, error } =
-        await sb
-
-        .from("profili")
-
-        .select("nome, ruolo")
-
-        .eq(
-            "user_id",
-            userId
-        )
-
-        .single();
-
-
-
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
-    );
-
-
-
-    if(error || !profilo){
-
-        console.warn(
-            "Profilo amministratore non trovato"
-        );
-
-        bloccaGestionale();
-
-        return;
-
-    }
-
-
-
-    if(profilo.ruolo !== "admin"){
-
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-
-        bloccaGestionale();
-
-        return;
-
-    }
-
-
-
-       console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
-    );
-
-}
-
-
-// avvia controllo accesso amministratore
-verifyAccess();
-
-
-// chiude DOMContentLoaded
-});
-
-
-
-function bloccaGestionale(){
-
-    console.warn(
-        "GESTIONALE BLOCCATO: utente non amministratore"
-    );
-
-
-    /*
-        NASCONDE TUTTE LE SEZIONI ADMIN
-    */
-
-    const elementiAdmin = document.querySelectorAll(
-        ".admin-only, #adminMenu, #adminPanel, #gestionale, .gestionale"
-    );
-
-
-    elementiAdmin.forEach(
-        elemento => {
-
-            elemento.style.display = "none";
-
-        }
-    );
-
-
-
-    /*
-        DISABILITA EVENTUALI PULSANTI ADMIN
-    */
-
-    const pulsantiAdmin = document.querySelectorAll(
-        "[data-admin]"
-    );
-
-
-    pulsantiAdmin.forEach(
-        elemento => {
-
-            elemento.disabled = true;
-
-        }
-    );
-
-
-
-    /*
-        MOSTRA EVENTUALE AREA VISITATORE
-    */
-
-    const areaVisitatore =
-        document.querySelector(
-            "#areaVisitatore"
-        );
-
-
-    if(areaVisitatore){
-
-        areaVisitatore.style.display = "block";
-
-    }
-
-
-
-    /*
-        BLOCCO DEFINITIVO
-    */
-
-    document.body.classList.add(
-        "accesso-negato"
-    );
-
-
-}
-    
-   </script>
+  // --- BLOCCO PROTEZIONE GLOBALE (NON CANCELLARE) ---
+  // Inizializziamo tutte le variabili che il codice cerca di leggere globalmente
+  window.torneo = {};
+  window.rulesDb = {};
+  window.newsData = []; 
+  window.state = {};    
+  // --------------------------------------------------
+
+  // Integrazione per aprire automaticamente le regole se richiesto dall'admin
+  window.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      // Recupera l'ID del torneo se presente
+      const idTorneo = urlParams.get("idTorneo");
+      if (idTorneo) {
+          console.log("ID Torneo caricato:", idTorneo);
+      }
+
+      // Controlla se l'admin ha richiesto l'apertura automatica delle regole
+      const fullQuery = window.location.search;
+      if (urlParams.get("apriRegole") === "true" || fullQuery.includes("apriRegole=true")) {
+          console.log("Richiesta apertura automatica regolamento rilevata");
+          setTimeout(() => {
+              // Verifica esistenza funzione prima di chiamarla
+              if (typeof openRules === 'function') {
+                  openRules();
+              }
+          }, 500);
+      }
+  });
+
+  // Funzioni di supporto globali
+  function toggleMenu() {
+      const menu = document.getElementById("menuComandi");
+      if (menu) menu.classList.toggle("show");
+  }
+
+  function openRules() {
+      const modal = document.getElementById("rulesModal");
+      if (modal) modal.style.display = "block";
+  }
+
+  function closeRules() {
+      const modal = document.getElementById("rulesModal");
+      if (modal) modal.style.display = "none";
+  }
+</script>
 </head>
 
 <body>
