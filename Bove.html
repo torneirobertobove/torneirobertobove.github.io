@@ -9991,17 +9991,22 @@ async function initDefaults(){
 
     try{
 
-        const torneoDaAdmin =
+        const params =
             new URLSearchParams(
                 window.location.search
-            )
-            .get("torneo");
+            );
+
+        const torneoDaAdmin =
+            params.get("torneo");
+
+        const idTorneo =
+            params.get("idTorneo");
 
 
         /*
-        ============================
-        CARICAMENTO TORNEO DA ADMIN
-        ============================
+        ============================================================
+        CARICAMENTO TORNEO PASSATO DA ADMIN
+        ============================================================
         */
 
         if(torneoDaAdmin){
@@ -10027,14 +10032,17 @@ async function initDefaults(){
                 const numeroSquadre =
                     Number(torneo.posti)
                     ||
-                    Number(rulesAdmin.numeroSquadre)
+                    Number(
+                        rulesAdmin.numeroSquadre
+                    )
                     ||
                     8;
 
 
                 let numeroGironi =
-                    Number(rulesAdmin.numeroGironi);
-
+                    Number(
+                        rulesAdmin.numeroGironi
+                    );
 
 
                 if(!numeroGironi){
@@ -10053,7 +10061,6 @@ async function initDefaults(){
                 }
 
 
-
                 state = {
 
                     ...state,
@@ -10063,7 +10070,6 @@ async function initDefaults(){
                         ||
                         Date.now(),
 
-
                     nomeTorneo:
                         torneo.nome
                         ||
@@ -10071,44 +10077,42 @@ async function initDefaults(){
                         ||
                         "",
 
-
                     dataTorneo:
                         torneo.data
                         ||
                         "",
 
-
                     formato:
                         numeroSquadre,
 
-
                     rules:{
 
-    ...state.rules,
+                        ...state.rules,
 
-    ...rulesAdmin,
+                        ...rulesAdmin,
 
-    numeroSquadre,
+                        numeroSquadre,
 
-    numeroGironi,
+                        numeroGironi,
 
-    formatoTorneo:
-        String(numeroSquadre),
+                        formatoTorneo:
+                            rulesAdmin.formatoTorneo
+                            ||
+                            "gironiFinale",
 
-    tipoTorneo:
-        rulesAdmin.tipoTorneo
-        ||
-        "gironiFinale",
+                        tipoTorneo:
+                            rulesAdmin.tipoTorneo
+                            ||
+                            "gironiFinale",
 
-    squadrePerGirone:
-        Number(
-            rulesAdmin.squadrePerGirone
-        )
-        ||
-        4
+                        squadrePerGirone:
+                            Number(
+                                rulesAdmin.squadrePerGirone
+                            )
+                            ||
+                            4
 
-},
-
+                    },
 
                     partecipanti:
                         torneo.configurazione?.partecipanti
@@ -10116,8 +10120,6 @@ async function initDefaults(){
                         torneo.partecipanti
                         ||
                         [],
-
-
 
                     coppie:
                         torneo.configurazione?.coppie
@@ -10129,6 +10131,128 @@ async function initDefaults(){
                 };
 
 
+                /*
+                ====================================================
+                GIRONI
+                ====================================================
+                */
+
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G"
+
+                ].forEach(g=>{
+
+                    const origine =
+                        torneo.configurazione?.[g]
+                        ||
+                        torneo[g];
+
+                    state[g] =
+                        Array.isArray(origine)
+                        ?
+                        origine
+                        :
+                        [];
+
+                });
+
+
+                /*
+                ====================================================
+                PARTITE / ORARI / CAMPI
+                ====================================================
+                */
+
+                [
+                    "Ares",
+                    "Bres",
+                    "Cres",
+                    "Dres",
+                    "Eres",
+                    "Fres",
+                    "Gres",
+
+                    "Atime",
+                    "Btime",
+                    "Ctime",
+                    "Dtime",
+                    "Etime",
+                    "Ftime",
+                    "Gtime",
+
+                    "Acamp",
+                    "Bcamp",
+                    "Ccamp",
+                    "Dcamp",
+                    "Ecamp",
+                    "Fcamp",
+                    "Gcamp",
+
+                    "rankA",
+                    "rankB",
+                    "rankC",
+                    "rankD",
+                    "rankE",
+                    "rankF",
+                    "rankG"
+
+                ].forEach(k=>{
+
+                    const origine =
+                        torneo.configurazione?.[k]
+                        ||
+                        torneo[k];
+
+                    if(Array.isArray(origine)){
+
+                        state[k]=origine;
+
+                    }
+
+                });
+
+
+                /*
+                ====================================================
+                RISULTATI FASI FINALI
+                ====================================================
+                */
+
+                const cfg =
+                    torneo.configurazione
+                    ||
+                    {};
+
+
+                if(Array.isArray(cfg.qRes))
+                    state.qRes=cfg.qRes;
+
+                if(Array.isArray(cfg.sTopRes))
+                    state.sTopRes=cfg.sTopRes;
+
+                if(typeof cfg.fTopRes==="string")
+                    state.fTopRes=cfg.fTopRes;
+
+                if(Array.isArray(cfg.finalTop))
+                    state.finalTop=cfg.finalTop;
+
+
+                /*
+                ====================================================
+                SALVA STATO
+                ====================================================
+                */
+
+                localStorage.setItem(
+                    "torneoState",
+                    JSON.stringify(state)
+                );
 
 
                 console.log(
@@ -10141,203 +10265,16 @@ async function initDefaults(){
                 );
 
 
-
-
-
-                /*
-                ============================
-                RESET GIRONI
-                ============================
-                */
-
-
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
-
-                ].forEach(g=>{
-
-                    state[g]=[];
-
-                });
-
-
-
-
-
-                /*
-                ============================
-                CONVERSIONE COPPIE CORRETTA
-                ============================
-                */
-
-
-                let squadre = [];
-
-
-                if(
-                    Array.isArray(state.coppie)
-                ){
-
-                    squadre =
-                        state.coppie.map(c=>{
-
-
-                            if(
-                                typeof c === "string"
-                            ){
-
-                                return c;
-
-                            }
-
-
-                            if(
-                                c.nome
-                            ){
-
-                                return c.nome;
-
-                            }
-
-
-                            if(
-                                c.g1 &&
-                                c.g2
-                            ){
-
-                                return c.g1 +
-                                " / " +
-                                c.g2;
-
-                            }
-
-
-                            if(
-                                c.giocatore1 &&
-                                c.giocatore2
-                            ){
-
-                                return c.giocatore1 +
-                                " / " +
-                                c.giocatore2;
-
-                            }
-
-
-                            return JSON.stringify(c);
-
-
-                        });
-
-                }
-
-
-
-
-
-                let perGirone =
-
-                    Number(
-                        state.rules.squadrePerGirone
-                    )
-                    ||
-                    4;
-
-
-
-                let lettere =
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
-                ];
-
-
-
-                for(
-                    let i=0;
-                    i<numeroGironi;
-                    i++
-                ){
-
-                    state[lettere[i]] =
-
-                        squadre.slice(
-                            i * perGirone,
-                            (i + 1) * perGirone
-                        );
-
-                }
-
-
-
-
-
-                /*
-                ============================
-                RESET PARTITE
-                ============================
-                */
-
-
-                lettere.forEach(g=>{
-
-                    state[g+"res"]=[];
-                    state[g+"time"]=[];
-                    state[g+"camp"]=[];
-
-                });
-
-
-
-
-
-                state.qRes =
-                    Array(4).fill("-");
-
-
-                state.sTopRes =
-                    Array(2).fill("-");
-
-
-                state.fTopRes =
-                    "-";
-
-
-                state.finalTop=[];
-
-
-                state.campioneTop=null;
-
-
-
-
-
-                localStorage.setItem(
-                    "torneoState",
-                    JSON.stringify(state)
-                );
-
-
-
-
                 console.log(
-                    "GIRONI CREATI:",
+                    "GIRONI CARICATI:",
                     state.A,
                     state.B,
                     state.C,
-                    state.D
+                    state.D,
+                    state.E,
+                    state.F,
+                    state.G
                 );
-
-
 
 
                 if(typeof render==="function"){
@@ -10347,8 +10284,7 @@ async function initDefaults(){
                 }
 
 
-                return;
-
+                return state;
 
             }
             catch(e){
@@ -10363,15 +10299,42 @@ async function initDefaults(){
         }
 
 
+        /*
+        ============================================================
+        ATTENZIONE:
+        SE C'È idTorneo, NON CARICARE torneoState LOCALE
+        ============================================================
+        */
 
+        if(idTorneo){
+
+            console.log(
+                "INIT DEFAULTS: idTorneo presente -> " +
+                "NON carico torneoState locale"
+            );
+
+            /*
+            Il caricamento da Supabase viene gestito
+            da loadState().
+            */
+
+            if(typeof render==="function"){
+
+                render();
+
+            }
+
+            return state;
+
+        }
 
 
         /*
-        ============================
-        CARICAMENTO NORMALE
-        ============================
+        ============================================================
+        CARICAMENTO NORMALE DA LOCALSTORAGE
+        SOLO QUANDO NON C'È idTorneo
+        ============================================================
         */
-
 
         let salvato =
             localStorage.getItem(
@@ -10389,19 +10352,21 @@ async function initDefaults(){
                     );
 
 
-                state={
+                state = {
 
                     ...state,
 
                     ...vecchio,
 
                     rules:{
+
                         ...state.rules,
-                        ...(vecchio.rules||{})
+
+                        ...(vecchio.rules || {})
+
                     }
 
                 };
-
 
             }
             catch(e){
@@ -10414,9 +10379,6 @@ async function initDefaults(){
             }
 
         }
-
-
-
 
 
         if(typeof render==="function"){
@@ -10432,6 +10394,7 @@ async function initDefaults(){
         );
 
 
+        return state;
 
     }
     catch(e){
@@ -10441,110 +10404,11 @@ async function initDefaults(){
             e
         );
 
+        return null;
+
     }
 
 }
-window.addEventListener("load", async()=>{
-
-
-    const parametroTorneo =
-
-        new URLSearchParams(
-
-            window.location.search
-
-        )
-
-        .get("torneo");
-
-
-
-
-
-    /*
-    ============================
-    APERTURA DA ADMIN
-    ============================
-    */
-
-
-    if(
-
-        parametroTorneo &&
-
-        typeof loadState==="function"
-
-    ){
-
-        console.log(
-            "APERTURA TORNEO DA ADMIN"
-        );
-
-
-        await loadState();
-
-
-        let campoData =
-            document.getElementById(
-                "dataTorneoInput"
-            );
-
-
-        if(campoData){
-
-            campoData.value =
-                state.dataTorneo || "";
-
-        }
-
-
-        if(
-            typeof chiudiMenuAutomatico==="function"
-        ){
-
-            chiudiMenuAutomatico();
-
-        }
-
-
-        return;
-
-    }
-
-
-
-
-
-    /*
-    ============================
-    APERTURA NORMALE BOVE
-    ============================
-    */
-
-
-    if(
-
-        typeof loadState==="function"
-
-    ){
-
-        await loadState();
-
-    }
-
-
-
-    if(
-        typeof chiudiMenuAutomatico==="function"
-    ){
-
-        chiudiMenuAutomatico();
-
-    }
-
-
-
-});
    </script>
 </body>
 </html>
