@@ -7940,45 +7940,9 @@ function renderPersonalizzato(){
 
 
 }
-function generaPartiteGironi(){
+function renderClass(){
 
-    const crea = (girone) => {
-
-        const partite = [];
-
-        if(!Array.isArray(girone) || girone.length !== 4)
-            return partite;
-
-
-        const coppie = [
-            [0,1],
-            [2,3],
-            [0,2],
-            [1,3],
-            [0,3],
-            [1,2]
-        ];
-
-
-        coppie.forEach(x=>{
-
-            partite.push({
-
-                casa:x[0],
-
-                ospite:x[1]
-
-            });
-
-        });
-
-
-        return partite;
-
-    };
-
-
-    state.partiteGironi = {};
+    ensureRules();
 
 
     [
@@ -7988,65 +7952,111 @@ function generaPartiteGironi(){
         "D",
         "E",
         "F"
-    ].forEach(tag=>{
+    ].forEach(tag => {
+
+        const squadre =
+            state[tag];
+
+
+        /*
+        ========================================================
+        NASCONDI GIRONE INESISTENTE
+        ========================================================
+        */
 
         if(
-            Array.isArray(state[tag]) &&
-            state[tag].length===4
+            !Array.isArray(squadre) ||
+            squadre.length === 0
         ){
 
-            state.partiteGironi[tag] =
-                crea(state[tag]);
+            return;
 
         }
 
+
+        const box =
+            document.getElementById(
+                tag+"class"
+            );
+
+
+        if(!box)
+            return;
+
+
+        const classifica =
+            calc(
+                squadre,
+                state[tag+"res"]
+            );
+
+
+        state["rank"+tag] =
+            Array.isArray(classifica)
+            ?
+            classifica
+            :
+            [];
+
+
+        box.innerHTML =
+            state["rank"+tag]
+            .map((x,i) => {
+
+                const nome =
+                    typeof x.n === "object"
+                    ?
+                    (
+                        String(x.n.g1 || "") +
+                        " / " +
+                        String(x.n.g2 || "")
+                    )
+                    :
+                    String(x.n || "");
+
+
+                return `
+
+                    <div class="classifica-row">
+
+                        <span class="${
+                            x.qual
+                            ?
+                            "qual-arrow-up"
+                            :
+                            "qual-arrow-down"
+                        }">
+
+                            ${
+                                x.qual
+                                ?
+                                "▲"
+                                :
+                                "▼"
+                            }
+
+                        </span>
+
+                        <span class="classifica-pos">
+                            ${i+1}
+                        </span>
+
+                        <span class="classifica-team">
+                            ${nome}
+                        </span>
+
+                        <span class="classifica-pt">
+                            ${x.pt}
+                        </span>
+
+                    </div>
+
+                `;
+
+            })
+            .join("");
+
     });
-
-
-
-    [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
-    ].forEach(tag=>{
-
-
-        if(state.partiteGironi[tag]){
-
-
-            state[tag+"res"] =
-                Array(
-                    state.partiteGironi[tag].length
-                )
-                .fill("-");
-
-
-            state[tag+"time"] =
-                Array(
-                    state.partiteGironi[tag].length
-                )
-                .fill("");
-
-
-            state[tag+"camp"] =
-                Array(
-                    state.partiteGironi[tag].length
-                )
-                .fill("");
-
-        }
-
-    });
-
-
-
-    console.log(
-        "PARTITE GENERATE:",
-        state.partiteGironi
-    );
 
 }
  function render(){
