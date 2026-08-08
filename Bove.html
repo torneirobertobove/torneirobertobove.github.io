@@ -1,978 +1,4 @@
-<!DOCTYPE html>
-<html lang="it">   
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Torneo 8 Squadre</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui;background:linear-gradient(160deg,#0b1020,#111827);color:var(--text);padding-bottom:50px}
-.container{max-width:1000px;margin:0 auto;padding:10px}
-.header-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;margin-bottom:20px}
-@media(min-width:600px){.header-box{flex-direction:row;gap:30px;}}
-.subtitle{font-size:0.7rem;color:#94a3b8;line-height:1.1;text-align:center;margin-top:5px}
-.date-input-field{background:#0b1220; border:1px solid #334155; color:#fff; padding:2px 5px; border-radius:4px; font-family:system-ui; font-size:0.9rem; cursor:pointer; width:110px; text-align:center;}
-.topbar{display:flex;justify-content:center;gap:20px;margin-bottom:15px;flex-wrap:wrap;}
-.btn-group{display:flex;gap:4px;}
-button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:#2563eb;color:#fff;font-size:14px;font-family:system-ui;}
-button.reset{background:#dc2626}
-button.back{background:#475569}
-.modal{display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); padding:20px;}
-.modal-content{background:#111827; margin:auto; padding:20px; max-width:500px; border-radius:12px; border:1px solid #243041; color:#e5e7eb; overflow-y:auto; max-height:90vh;}
-textarea{width:100%; height:150px; background:#0b1220; color:#fff; border:1px solid #334155; padding:10px; margin-top:10px; border-radius:4px;font-family:system-ui;}
-.groups{display:grid;grid-template-columns:1fr;gap:12px;}
-@media(min-width:600px){.groups{grid-template-columns:1fr 1fr;}}
-.card{background:#111827;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:15px;overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
-th,td{padding:8px 4px;border-bottom:1px solid #1f2a3c;text-align:center;}
-input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px solid #334155;color:#fff;text-align:center;font-family:system-ui;}
-.db-cell{display:flex; gap:2px;}
-.db-cell input{width:50%;}
-
-.time-input{
-    width:55px !important;
-    height:28px;
-    padding:2px;
-    text-align:center;
-}
-
-.ko{margin-top:10px;display:grid;grid-template-columns:1fr;gap:12px;}
-@media(min-width:600px){.ko{grid-template-columns:1fr 1fr;}}
-.koBox{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px;}
-.match{padding:8px;margin-bottom:8px;border:1px solid #243041;border-radius:8px;text-align:center;font-size:13px;}
-.finalContainer{border:2px solid #eab308;padding:15px;margin-top:20px;border-radius:15px;background:#1e293b;}
-.winner-box{margin-top:10px;padding:15px;border-radius:8px;text-align:center;font-weight:bold;}
-.top-win{background:rgba(251,191,36,.2);color:#fbbf24;font-size:1.3em;}
-/* ============================
-   NUOVE CELLE PARTITE KO
-   ============================ */
-.match-card{
-    background:#0b1220;
-    border:1px solid #243041;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    text-align:center;
-}
-.match-title{
-    font-weight:bold;
-    font-size:16px;
-    margin-bottom:12px;
-}
-.match-row{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:6px 0;
-}
-.match-row span{
-    flex:1;
-    font-weight:600;
-}
-.match-row input{
-    width:45px;
-    height:32px;
-    text-align:center;
-}
-.match-vs{
-    font-weight:bold;
-    margin:5px 0;
-}
-.match-extra{
-    margin-top:10px;
-    padding-top:8px;
-    border-top:1px solid #243041;
-    font-size:12px;
-    color:#94a3b8;
-}
-.qual-arrow-up{color:#22c55e;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
-.qual-arrow-down{color:#ef4444;font-weight:bold;font-size:16px;display:inline-block;min-width:16px;}
-    .menu-container{
-
-    position:absolute;
-
-    top:75px;
-
-    right:20px;
-
-    left:auto;
-
-    z-index:9999;
-
-}
-
-
-
-.menu-button{
-
-    width:36px;
-
-    height:36px;
-
-    font-size:22px;
-
-    border-radius:8px;
-
-    cursor:pointer;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-}
-
-
-
-.menu-dropdown{
-
-    display:none;
-
-    position:absolute;
-
-    top:55px;
-
-    right:0;
-
-    left:auto;
-
-    width:220px;
-
-    padding:10px;
-
-    border-radius:12px;
-
-    flex-direction:column;
-
-    gap:8px;
-
-}
-
-
-
-.menu-dropdown.show{
-
-    display:flex;
-
-    flex-direction:column;
-
-}
-
-
-
-.menu-dropdown button{
-
-    display:block;
-
-    width:100%;
-
-    text-align:left;
-
-}
-
-
-@media(max-width:599px){
-
-    body{
-        overflow-x:hidden;
-    }
-
-
-    .container{
-        width:100%;
-        padding:8px;
-    }
-
-
-    .header-box{
-        padding-top:55px;
-        gap:8px;
-    }
-
-
-    .header-box h1{
-        font-size:22px;
-        text-align:center;
-    }
-
-
-    .topbar{
-        display:none;
-    }
-
-
-    .menu-container{
-        top:10px;
-        left:10px;
-    }
-
-
-    .menu-dropdown{
-        width:230px;
-        max-width:90vw;
-    }
-
-
-    .groups{
-        display:block;
-        width:100%;
-    }
-
-
-    .card{
-        width:100%;
-        overflow-x:auto;
-        padding:8px;
-    }
-
-
-    table{
-        min-width:420px;
-        font-size:12px;
-    }
-
-
-    th,
-    td{
-        padding:6px 3px;
-    }
-
-
-    .time-input{
-        width:55px !important;
-        max-width:55px;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-
-
-    .db-cell{
-        justify-content:center;
-        gap:3px;
-    }
-
-
-    .db-cell input{
-        width:28px !important;
-        max-width:28px;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-
-
-    .ko{
-        display:block;
-    }
-
-
-    .koBox{
-        width:100%;
-        margin-bottom:12px;
-    }
-
-
-    .match-card{
-        width:100%;
-        padding:8px;
-    }
-
-
-    .match-title{
-        font-size:14px;
-        margin-bottom:8px;
-    }
-
-
-    .match-row{
-        flex-direction:row;
-        gap:5px;
-        padding:4px 0;
-    }
-
-
-    .match-row span{
-        font-size:12px;
-    }
-
-
-    .match-row input{
-        width:35px !important;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-
-
-    .match-extra{
-        font-size:11px;
-    }
-
-
-    .winner-box{
-        padding:8px;
-        font-size:13px;
-    }
-        .modal{
-        padding:10px;
-    }
-
-
-    .modal-content{
-        width:95%;
-        padding:15px;
-    }
-
-
-    button{
-        font-size:13px;
-        padding:8px 10px;
-    }
-
-}
-<style>
-:root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
-*{box-sizing:border-box}
-
-body{
-    margin:0;
-    font-family:system-ui;
-    background:linear-gradient(160deg,#0b1020,#111827);
-    color:var(--text);
-    padding-bottom:50px
-}
-
-.container{
-    max-width:1000px;
-    margin:0 auto;
-    padding:10px
-}
-
-.header-box{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:15px;
-    margin-bottom:20px
-}
-
-@media(min-width:600px){
-    .header-box{
-        flex-direction:row;
-        gap:30px;
-    }
-}
-
-.subtitle{
-    font-size:0.7rem;
-    color:#94a3b8;
-    line-height:1.1;
-    text-align:center;
-    margin-top:5px
-}
-
-.date-input-field{
-    background:#0b1220;
-    border:1px solid #334155;
-    color:#fff;
-    padding:2px 5px;
-    border-radius:4px;
-    font-family:system-ui;
-    font-size:0.9rem;
-    cursor:pointer;
-    width:110px;
-    text-align:center;
-}
-
-.topbar{
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    margin-bottom:15px;
-    flex-wrap:wrap;
-}
-
-.btn-group{
-    display:flex;
-    gap:4px;
-}
-
-button{
-    padding:8px 12px;
-    border-radius:8px;
-    border:0;
-    cursor:pointer;
-    background:#2563eb;
-    color:#fff;
-    font-size:14px;
-    font-family:system-ui;
-}
-
-button.reset{
-    background:#dc2626
-}
-
-button.back{
-    background:#475569
-}
-
-.modal{
-    display:none;
-    position:fixed;
-    z-index:1000;
-    left:0;
-    top:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.9);
-    padding:20px;
-}
-
-.modal-content{
-    background:#111827;
-    margin:auto;
-    padding:20px;
-    max-width:500px;
-    border-radius:12px;
-    border:1px solid #243041;
-    color:#e5e7eb;
-    overflow-y:auto;
-    max-height:90vh;
-}
-
-textarea{
-    width:100%;
-    height:150px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-    padding:10px;
-    margin-top:10px;
-    border-radius:4px;
-    font-family:system-ui;
-}
-
-.groups{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:12px;
-}
-
-@media(min-width:600px){
-    .groups{
-        grid-template-columns:1fr 1fr;
-    }
-}
-
-.card{
-    background:#111827;
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:10px;
-    margin-bottom:15px;
-    overflow-x:auto;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:13px;
-    margin-top:10px;
-}
-
-th,td{
-    padding:8px 4px;
-    border-bottom:1px solid #1f2a3c;
-    text-align:center;
-}
-
-input{
-    width:100%;
-    padding:5px;
-    border-radius:4px;
-    background:#0b1220;
-    border:1px solid #334155;
-    color:#fff;
-    text-align:center;
-    font-family:system-ui;
-}
-
-.db-cell{
-    display:flex;
-    gap:2px;
-}
-
-.db-cell input{
-    width:50%;
-}
-
-.time-input{
-    width:55px !important;
-    height:28px;
-    padding:2px;
-    text-align:center;
-}
-
-
-/* ============================
-   TABELLONE KO
-============================ */
-
-.ko{
-    margin-top:20px;
-    display:flex;
-    flex-direction:column;
-    gap:25px;
-}
-
-
-#Q{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:12px;
-}
-
-
-#S{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:25px;
-    width:70%;
-    margin:20px auto;
-}
-
-
-#finaleBox,
-#F{
-    width:350px;
-    max-width:100%;
-    margin:25px auto;
-}
-
-
-.koBox{
-    background:#0b1220;
-    border:1px solid var(--line);
-    border-radius:10px;
-    padding:10px;
-}
-
-
-.match{
-    padding:8px;
-    margin-bottom:8px;
-    border:1px solid #243041;
-    border-radius:8px;
-    text-align:center;
-    font-size:13px;
-}
-
-.finalContainer{
-    border:2px solid #eab308;
-    padding:15px;
-    margin-top:20px;
-    border-radius:15px;
-    background:#1e293b;
-}
-    .winner-box{
-    margin-top:10px;
-    padding:15px;
-    border-radius:8px;
-    text-align:center;
-    font-weight:bold;
-}
-
-.top-win{
-    background:rgba(251,191,36,.2);
-    color:#fbbf24;
-    font-size:1.3em;
-}
-
-
-/* ============================
-   NUOVE CELLE PARTITE KO
-   ============================ */
-
-.match-card{
-    background:#0b1220;
-    border:1px solid #243041;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    text-align:center;
-}
-
-.match-title{
-    font-weight:bold;
-    font-size:16px;
-    margin-bottom:12px;
-}
-
-.match-row{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:6px 0;
-}
-
-.match-row span{
-    flex:1;
-    font-weight:600;
-}
-
-.match-row input{
-    width:45px;
-    height:32px;
-    text-align:center;
-}
-
-.match-vs{
-    font-weight:bold;
-    margin:5px 0;
-}
-
-.match-extra{
-    margin-top:10px;
-    padding-top:8px;
-    border-top:1px solid #243041;
-    font-size:12px;
-    color:#94a3b8;
-}
-
-.qual-arrow-up{
-    color:#22c55e;
-    font-weight:bold;
-    font-size:16px;
-    display:inline-block;
-    min-width:16px;
-}
-
-.qual-arrow-down{
-    color:#ef4444;
-    font-weight:bold;
-    font-size:16px;
-    display:inline-block;
-    min-width:16px;
-}
-
-
-
-/* ============================
-        MENU
-============================ */
-
-.menu-container{
-
-    position:absolute;
-
-    top:75px;
-
-    right:20px;
-
-    left:auto;
-
-    z-index:9999;
-
-}
-
-
-.menu-button{
-
-    width:36px;
-
-    height:36px;
-
-    font-size:22px;
-
-    border-radius:8px;
-
-    cursor:pointer;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-}
-
-
-.menu-dropdown{
-
-    display:none;
-
-    position:absolute;
-
-    top:55px;
-
-    right:0;
-
-    left:auto;
-
-    width:220px;
-
-    padding:10px;
-
-    border-radius:12px;
-
-    flex-direction:column;
-
-    gap:8px;
-
-}
-
-
-.menu-dropdown.show{
-
-    display:flex;
-
-    flex-direction:column;
-
-}
-
-
-.menu-dropdown button{
-
-    display:block;
-
-    width:100%;
-
-    text-align:left;
-
-}
-
-
-
-/* ============================
-        MOBILE
-============================ */
-
-
-@media(max-width:599px){
-
-    body{
-        overflow-x:hidden;
-    }
-
-
-    .container{
-        width:100%;
-        padding:8px;
-    }
-
-
-    .header-box{
-        padding-top:55px;
-        gap:8px;
-    }
-
-
-    .header-box h1{
-        font-size:22px;
-        text-align:center;
-    }
-
-
-    .topbar{
-        display:none;
-    }
-
-
-    .menu-container{
-        top:10px;
-        left:10px;
-    }
-
-
-    .menu-dropdown{
-        width:230px;
-        max-width:90vw;
-    }
-
-
-    .groups{
-        display:block;
-        width:100%;
-    }
-
-
-    .card{
-        width:100%;
-        overflow-x:auto;
-        padding:8px;
-    }
-
-
-    table{
-        min-width:420px;
-        font-size:12px;
-    }
-
-
-    th,
-    td{
-        padding:6px 3px;
-    }
-
-
-    .time-input{
-        width:55px !important;
-        max-width:55px;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-
-
-    .db-cell{
-        justify-content:center;
-        gap:3px;
-    }
-
-
-    .db-cell input{
-        width:28px !important;
-        max-width:28px;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-        .ko{
-        display:flex;
-        flex-direction:column;
-        gap:15px;
-    }
-
-
-    #Q{
-        display:grid;
-        grid-template-columns:repeat(2,1fr);
-        gap:8px;
-    }
-
-
-    #S{
-        display:grid;
-        grid-template-columns:1fr;
-        width:100%;
-        gap:12px;
-        margin:15px auto;
-    }
-
-
-    #finaleBox,
-    #F{
-        width:100%;
-        margin:15px auto;
-    }
-
-
-    .koBox{
-        width:100%;
-        margin-bottom:12px;
-    }
-
-
-    .match-card{
-        width:100%;
-        padding:8px;
-    }
-
-
-    .match-title{
-        font-size:14px;
-        margin-bottom:8px;
-    }
-
-
-    .match-row{
-        flex-direction:row;
-        gap:5px;
-        padding:4px 0;
-    }
-
-
-    .match-row span{
-        font-size:12px;
-    }
-
-
-    .match-row input{
-        width:35px !important;
-        height:26px;
-        padding:2px;
-        font-size:12px;
-    }
-
-
-    .match-extra{
-        font-size:11px;
-    }
-
-
-    .winner-box{
-        padding:8px;
-        font-size:13px;
-    }
-
-
-    .modal{
-        padding:10px;
-    }
-
-
-    .modal-content{
-        width:95%;
-        padding:15px;
-    }
-
-
-    button{
-        font-size:13px;
-        padding:8px 10px;
-    }
-
-}
-   .ko-info{
-    display:flex;
-    justify-content:space-between;
-    font-size:12px;
-    color:#94a3b8;
-    margin-bottom:8px;
-}
-
-
-.ko-teams{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    font-weight:600;
-}
-
-
-.ko-vs{
-    font-weight:bold;
-}
-
-
-.ko-result input{
-    width:45px;
-    height:28px;
-    text-align:center;
-} 
-</style>
-
-   
-<script>
-  const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
+const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
   const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
 
   const sb = supabase.createClient(
@@ -987,53 +13,182 @@ input{
       }
   );
 
-  // --- BLOCCO PROTEZIONE GLOBALE (NON CANCELLARE) ---
-  // Inizializziamo tutte le variabili che il codice cerca di leggere globalmente
-  window.torneo = {};
-  window.rulesDb = {};
-  window.newsData = []; 
-  window.state = {};    
-  // --------------------------------------------------
 
-  // Integrazione per aprire automaticamente le regole se richiesto dall'admin
-  window.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      
-      // Recupera l'ID del torneo se presente
-      const idTorneo = urlParams.get("idTorneo");
-      if (idTorneo) {
-          console.log("ID Torneo caricato:", idTorneo);
-      }
+// Integrazione per aprire automaticamente le regole se richiesto dall'admin
+window.addEventListener("DOMContentLoaded", () => {
 
-      // Controlla se l'admin ha richiesto l'apertura automatica delle regole
-      const fullQuery = window.location.search;
-      if (urlParams.get("apriRegole") === "true" || fullQuery.includes("apriRegole=true")) {
-          console.log("Richiesta apertura automatica regolamento rilevata");
-          setTimeout(() => {
-              // Verifica esistenza funzione prima di chiamarla
-              if (typeof openRules === 'function') {
-                  openRules();
-              }
-          }, 500);
-      }
-  });
 
-  // Funzioni di supporto globali
-  function toggleMenu() {
-      const menu = document.getElementById("menuComandi");
-      if (menu) menu.classList.toggle("show");
-  }
 
-  function openRules() {
-      const modal = document.getElementById("rulesModal");
-      if (modal) modal.style.display = "block";
-  }
 
-  function closeRules() {
-      const modal = document.getElementById("rulesModal");
-      if (modal) modal.style.display = "none";
-  }
-</script>
+async function verifyAccess(){
+
+    const { data: { session } } =
+        await sb.auth.getSession();
+
+
+    if(!session){
+
+        console.warn(
+            "Nessun utente autenticato"
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+    const userId =
+        session.user.id;
+
+
+
+    const { data: profilo, error } =
+        await sb
+
+        .from("profili")
+
+        .select("nome, ruolo")
+
+        .eq(
+            "user_id",
+            userId
+        )
+
+        .single();
+
+
+
+    console.log(
+        "RISULTATO PROFILO:",
+        profilo,
+        error
+    );
+
+
+
+    if(error || !profilo){
+
+        console.warn(
+            "Profilo amministratore non trovato"
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+
+    if(profilo.ruolo !== "admin"){
+
+        console.warn(
+            "Utente senza permessi admin:",
+            profilo
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+
+       console.log(
+        "ACCESSO ADMIN:",
+        profilo.nome
+    );
+
+}
+
+
+// avvia controllo accesso amministratore
+verifyAccess();
+
+
+// chiude DOMContentLoaded
+});
+
+
+
+function bloccaGestionale(){
+
+    console.warn(
+        "GESTIONALE BLOCCATO: utente non amministratore"
+    );
+
+
+    /*
+        NASCONDE TUTTE LE SEZIONI ADMIN
+    */
+
+    const elementiAdmin = document.querySelectorAll(
+        ".admin-only, #adminMenu, #adminPanel, #gestionale, .gestionale"
+    );
+
+
+    elementiAdmin.forEach(
+        elemento => {
+
+            elemento.style.display = "none";
+
+        }
+    );
+
+
+
+    /*
+        DISABILITA EVENTUALI PULSANTI ADMIN
+    */
+
+    const pulsantiAdmin = document.querySelectorAll(
+        "[data-admin]"
+    );
+
+
+    pulsantiAdmin.forEach(
+        elemento => {
+
+            elemento.disabled = true;
+
+        }
+    );
+
+
+
+    /*
+        MOSTRA EVENTUALE AREA VISITATORE
+    */
+
+    const areaVisitatore =
+        document.querySelector(
+            "#areaVisitatore"
+        );
+
+
+    if(areaVisitatore){
+
+        areaVisitatore.style.display = "block";
+
+    }
+
+
+
+    /*
+        BLOCCO DEFINITIVO
+    */
+
+    document.body.classList.add(
+        "accesso-negato"
+    );
+
+
+}
+    
+   </script>
 </head>
 
 <body>
@@ -1905,7 +1060,7 @@ style="width:80px">
     </button>
 
 
-<button onclick="window.location.href='admin.html'">
+    <button onclick="window.location.href='admin.html'">
         ⬅️ Torna ad Admin
     </button>
 
