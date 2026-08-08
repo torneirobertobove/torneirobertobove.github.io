@@ -6802,48 +6802,126 @@ String(x.n || "")
 
 
 }
-function updateRes(g,i,pos,val){
+function updateRes(g, i, pos, val){
 
-    let s;
+    /*
+    ============================================================
+    VALIDAZIONE GIRONE
+    ============================================================
+    */
+
+    const gironiValidi = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ];
 
 
-    if(g==="A")
-        s=state.Ares;
+    if(
+        !gironiValidi.includes(g)
+    ){
 
-    else if(g==="B")
-        s=state.Bres;
-
-    else if(g==="C")
-        s=state.Cres;
-
-    else if(g==="D")
-        s=state.Dres;
-
-    else
         return;
 
+    }
 
 
-    if(!Array.isArray(s))
+    /*
+    ============================================================
+    VALIDAZIONE INDICE
+    ============================================================
+    */
+
+    const indice =
+        Number(i);
+
+
+    const posizione =
+        Number(pos);
+
+
+    if(
+        !Number.isInteger(indice) ||
+        indice < 0
+    ){
+
         return;
 
+    }
 
 
-    if(!s[i])
-        s[i]="-";
+    if(
+        posizione !== 0 &&
+        posizione !== 1
+    ){
+
+        return;
+
+    }
 
 
+    /*
+    ============================================================
+    RECUPERO ARRAY RISULTATI
+    ============================================================
+    */
 
-    let p =
-        s[i]
-        .toString()
+    const chiave =
+        g + "res";
+
+
+    if(
+        !Array.isArray(state[chiave])
+    ){
+
+        state[chiave] = [];
+
+    }
+
+
+    const risultati =
+        state[chiave];
+
+
+    /*
+    ============================================================
+    INIZIALIZZA IL RISULTATO
+    ============================================================
+    */
+
+    if(
+        risultati[indice] === undefined ||
+        risultati[indice] === null ||
+        risultati[indice] === ""
+    ){
+
+        risultati[indice] = "-";
+
+    }
+
+
+    /*
+    ============================================================
+    LETTURA RISULTATO ATTUALE
+    ============================================================
+    */
+
+    let parti =
+        String(
+            risultati[indice]
+        )
         .split("-");
 
 
+    if(
+        parti.length !== 2
+    ){
 
-    if(p.length<2){
-
-        p=[
+        parti = [
             "",
             ""
         ];
@@ -6851,25 +6929,148 @@ function updateRes(g,i,pos,val){
     }
 
 
+    /*
+    ============================================================
+    NORMALIZZAZIONE VALORE INSERITO
+    ============================================================
+    */
 
-    p[pos]=val;
+    let nuovoValore =
+        String(
+            val === undefined ||
+            val === null
+            ?
+            ""
+            :
+            val
+        )
+        .trim();
 
 
+    /*
+    ------------------------------------------------------------
+    CONSENTIAMO SOLO NUMERI INTERI NON NEGATIVI
+    ------------------------------------------------------------
+    */
 
-    s[i]=
-        p.join("-");
+    if(nuovoValore !== ""){
+
+        nuovoValore =
+            nuovoValore
+            .replace(/[^\d]/g, "");
+
+    }
 
 
+    /*
+    ============================================================
+    AGGIORNA UNA SOLA PARTE DEL RISULTATO
+    ============================================================
+    */
 
-    renderClass();
+    parti[posizione] =
+        nuovoValore;
 
 
-    if(typeof renderKO==="function")
+    /*
+    ============================================================
+    RISULTATO COMPLETO
+    ============================================================
+    */
+
+    const sinistra =
+        String(
+            parti[0] || ""
+        )
+        .trim();
+
+
+    const destra =
+        String(
+            parti[1] || ""
+        )
+        .trim();
+
+
+    /*
+    ------------------------------------------------------------
+    ENTRAMBI VUOTI
+    ------------------------------------------------------------
+    */
+
+    if(
+        sinistra === "" &&
+        destra === ""
+    ){
+
+        risultati[indice] = "-";
+
+    }
+
+
+    /*
+    ------------------------------------------------------------
+    RISULTATO PARZIALE
+    ------------------------------------------------------------
+
+    Manteniamo il valore parziale per permettere
+    l'inserimento del secondo punteggio.
+    ------------------------------------------------------------
+    */
+
+    else{
+
+        risultati[indice] =
+            sinistra +
+            "-" +
+            destra;
+
+    }
+
+
+    /*
+    ============================================================
+    AGGIORNAMENTO CLASSIFICHE
+    ============================================================
+    */
+
+    if(
+        typeof renderClass === "function"
+    ){
+
+        renderClass();
+
+    }
+
+
+    /*
+    ============================================================
+    AGGIORNAMENTO FASE FINALE
+    ============================================================
+    */
+
+    if(
+        typeof renderKO === "function"
+    ){
+
         renderKO();
 
+    }
 
 
-    updateAndSync();
+    /*
+    ============================================================
+    PERSISTENZA
+    ============================================================
+    */
+
+    if(
+        typeof updateAndSync === "function"
+    ){
+
+        updateAndSync();
+
+    }
 
 }
 async function salvaTorneoSupabase(){
@@ -9803,6 +10004,7 @@ function getFinalQualified(){
 
 
 }
+   
 function renderKO(){
 
     ensureRules();
