@@ -9433,7 +9433,6 @@ function renderTables(){
 
     ensureRules();
 
-
     /*
     ============================================================
     ROUND ROBIN
@@ -9448,7 +9447,6 @@ function renderTables(){
                 (_,i)=>i
             );
 
-
         if(
             squadre.length % 2 !== 0
         ){
@@ -9456,7 +9454,6 @@ function renderTables(){
             squadre.push(null);
 
         }
-
 
         const rounds = [];
 
@@ -9469,7 +9466,6 @@ function renderTables(){
         const meta =
             totale / 2;
 
-
         for(
             let r = 0;
             r < turni;
@@ -9477,7 +9473,6 @@ function renderTables(){
         ){
 
             const round = [];
-
 
             for(
                 let i = 0;
@@ -9493,7 +9488,6 @@ function renderTables(){
                         totale - 1 - i
                     ];
 
-
                 if(
                     a !== null &&
                     b !== null
@@ -9508,9 +9502,7 @@ function renderTables(){
 
             }
 
-
             rounds.push(round);
-
 
             const fisso =
                 squadre[0];
@@ -9518,11 +9510,9 @@ function renderTables(){
             const resto =
                 squadre.slice(1);
 
-
             resto.unshift(
                 resto.pop()
             );
-
 
             squadre = [
                 fisso,
@@ -9530,8 +9520,6 @@ function renderTables(){
             ];
 
         }
-
-
 
         /*
         ========================================================
@@ -9554,13 +9542,11 @@ function renderTables(){
                         )
                 );
 
-
             rounds.push(
                 ...ritorno
             );
 
         }
-
 
         return rounds;
 
@@ -9605,22 +9591,18 @@ function renderTables(){
             state.rules?.duration
         ) || 30;
 
-
     const start =
         String(
             state.rules?.start || "20:00"
         );
 
-
     const partiOra =
         start.split(":");
-
 
     const oraBase =
         Number(
             partiOra[0]
         ) || 20;
-
 
     const minutiBase =
         Number(
@@ -9636,8 +9618,6 @@ function renderTables(){
     */
 
     const calendario = [];
-
-
 
     const lettereGironi = [
 
@@ -9665,7 +9645,6 @@ function renderTables(){
             const squadre =
                 state[tag];
 
-
             if(
                 !Array.isArray(squadre) ||
                 squadre.length < 2
@@ -9675,10 +9654,7 @@ function renderTables(){
 
             }
 
-
             let partite = [];
-
-
 
             /*
             ----------------------------------------------------
@@ -9710,6 +9686,7 @@ function renderTables(){
             }
 
 
+
             /*
             ----------------------------------------------------
             GENERA NUOVO CALENDARIO
@@ -9724,7 +9701,6 @@ function renderTables(){
                     generaRoundRobin(
                         squadre.length
                     );
-
 
                 rounds.forEach(
                     round => {
@@ -9758,12 +9734,13 @@ function renderTables(){
             ----------------------------------------------------
             */
 
-            if(!state.partiteGironi){
+            if(
+                !state.partiteGironi
+            ){
 
                 state.partiteGironi = {};
 
             }
-
 
             state.partiteGironi[tag] =
                 partite.map(
@@ -9824,8 +9801,6 @@ function renderTables(){
 
     const occupazioni = [];
 
-
-
     calendario.forEach(
         partita => {
 
@@ -9833,14 +9808,11 @@ function renderTables(){
 
             let slot = 0;
 
-
             const campiDisponibili =
                 campiPerGirone[
                     partita.girone
                 ] ||
                 [2,3];
-
-
 
             while(
                 !assegnata
@@ -9855,10 +9827,7 @@ function renderTables(){
                     const campo =
                         campiDisponibili[i];
 
-
                     let conflitto = false;
-
-
 
                     occupazioni.forEach(
                         occupazione => {
@@ -9871,11 +9840,10 @@ function renderTables(){
 
                             }
 
-
                             /*
-                            ------------------------------------------------
+                            ----------------------------------------
                             STESSO CAMPO
-                            ------------------------------------------------
+                            ----------------------------------------
                             */
 
                             if(
@@ -9888,12 +9856,10 @@ function renderTables(){
 
                             }
 
-
-
                             /*
-                            ------------------------------------------------
+                            ----------------------------------------
                             STESSA SQUADRA
-                            ------------------------------------------------
+                            ----------------------------------------
                             */
 
                             if(
@@ -9912,8 +9878,6 @@ function renderTables(){
                         }
                     );
 
-
-
                     if(
                         !conflitto
                     ){
@@ -9923,7 +9887,6 @@ function renderTables(){
 
                         partita.slot =
                             slot;
-
 
                         occupazioni.push({
 
@@ -9943,7 +9906,6 @@ function renderTables(){
 
                         });
 
-
                         assegnata = true;
 
                         break;
@@ -9952,13 +9914,11 @@ function renderTables(){
 
                 }
 
-
-
                 /*
-                ----------------------------------------------------
+                ------------------------------------------------
                 SE NON TROVA UN CAMPO:
                 PASSA ALLO SLOT SUCCESSIVO
-                ----------------------------------------------------
+                ------------------------------------------------
                 */
 
                 if(
@@ -9978,6 +9938,95 @@ function renderTables(){
 
     /*
     ============================================================
+    FUNZIONE LETTURA RISULTATO
+    ============================================================
+    */
+
+    function analizzaRisultato(risultato){
+
+        const testo =
+            String(
+                risultato || ""
+            ).trim();
+
+        if(
+            !testo ||
+            testo === "-"
+        ){
+
+            return null;
+
+        }
+
+        /*
+        --------------------------------------------------------
+        ACCETTA FORMATI COME:
+        6-4
+        6-4 4-6 10-8
+        6/4
+        6 : 4
+        --------------------------------------------------------
+        */
+
+        const regex =
+            /(\d+)\s*[-/:]\s*(\d+)/g;
+
+        let match;
+
+        let giochiCasa = 0;
+
+        let giochiOspite = 0;
+
+        let trovati = 0;
+
+        while(
+            (match = regex.exec(testo)) !== null
+        ){
+
+            giochiCasa +=
+                Number(
+                    match[1]
+                );
+
+            giochiOspite +=
+                Number(
+                    match[2]
+                );
+
+            trovati++;
+
+        }
+
+        if(
+            trovati === 0
+        ){
+
+            return null;
+
+        }
+
+        return {
+
+            gf:
+                giochiCasa,
+
+            gs:
+                giochiOspite,
+
+            df:
+                giochiCasa - giochiOspite,
+
+            giocata:
+                true
+
+        };
+
+    }
+
+
+
+    /*
+    ============================================================
     RENDER DEI GIRONI
     ============================================================
     */
@@ -9990,14 +10039,13 @@ function renderTables(){
                     tag + "rows"
                 );
 
-
-            if(!box){
+            if(
+                !box
+            ){
 
                 return;
 
             }
-
-
 
             const partite =
                 calendario.filter(
@@ -10016,7 +10064,6 @@ function renderTables(){
             const chiaveRes =
                 tag + "res";
 
-
             if(
                 !Array.isArray(
                     state[chiaveRes]
@@ -10027,7 +10074,6 @@ function renderTables(){
 
             }
 
-
             while(
                 state[chiaveRes].length <
                 partite.length
@@ -10036,7 +10082,6 @@ function renderTables(){
                 state[chiaveRes].push("-");
 
             }
-
 
             if(
                 state[chiaveRes].length >
@@ -10062,7 +10107,6 @@ function renderTables(){
             const chiaveTime =
                 tag + "time";
 
-
             if(
                 !Array.isArray(
                     state[chiaveTime]
@@ -10072,7 +10116,6 @@ function renderTables(){
                 state[chiaveTime] = [];
 
             }
-
 
             while(
                 state[chiaveTime].length <
@@ -10094,7 +10137,6 @@ function renderTables(){
             const chiaveCamp =
                 tag + "camp";
 
-
             if(
                 !Array.isArray(
                     state[chiaveCamp]
@@ -10104,7 +10146,6 @@ function renderTables(){
                 state[chiaveCamp] = [];
 
             }
-
 
             while(
                 state[chiaveCamp].length <
@@ -10136,7 +10177,6 @@ function renderTables(){
 
             }
 
-
             if(
                 state[chiaveCamp].length >
                 partite.length
@@ -10154,13 +10194,22 @@ function renderTables(){
 
             /*
             ====================================================
+            CREA DATI CLASSIFICA
+            ====================================================
+            */
+
+            const classifica =
+                squadreClassifica(tag);
+
+
+
+            /*
+            ====================================================
             HTML PARTITE
             ====================================================
             */
 
             let rows = "";
-
-
 
             partite.forEach(
                 (match,index) => {
@@ -10172,17 +10221,14 @@ function renderTables(){
                             durata
                         );
 
-
                     const ora =
                         oraBase +
                         Math.floor(
                             minuti / 60
                         );
 
-
                     const min =
                         minuti % 60;
-
 
                     const tempo =
                         String(
@@ -10199,16 +10245,11 @@ function renderTables(){
                             "0"
                         );
 
-
-
                     state[chiaveTime][index] =
                         tempo;
 
-
                     state[chiaveCamp][index] =
                         match.campo;
-
-
 
                     if(
                         !state[chiaveRes][index]
@@ -10218,8 +10259,6 @@ function renderTables(){
                             "-";
 
                     }
-
-
 
                     const risultato =
                         String(
@@ -10248,7 +10287,6 @@ function renderTables(){
                         )
                         :
                         "";
-
 
                     const squadraOspite =
                         state[tag][match.ospite]
@@ -10283,13 +10321,11 @@ function renderTables(){
 
                             </div>
 
-
                             <div class="match-camp">
 
                                 Campo ${match.campo}
 
                             </div>
-
 
                             <div class="match-teams">
 
@@ -10299,13 +10335,11 @@ function renderTables(){
 
                                 </span>
 
-
                                 <strong>
 
                                     VS
 
                                 </strong>
-
 
                                 <span>
 
@@ -10314,7 +10348,6 @@ function renderTables(){
                                 </span>
 
                             </div>
-
 
                             <input
 
@@ -10335,6 +10368,8 @@ function renderTables(){
                                         ${index},
                                         this.value
                                     );
+
+                                    renderTables();
                                 "
 
                             >
@@ -10348,8 +10383,152 @@ function renderTables(){
 
 
 
+            /*
+            ====================================================
+            HTML CLASSIFICA
+            ====================================================
+            */
+
+            let htmlClassifica = `
+
+                <div
+                    class="card"
+                    id="classifica${tag}"
+                    style="
+                        margin-top:15px;
+                        width:100%;
+                        overflow-x:auto;
+                    "
+                >
+
+                    <h4
+                        style="
+                            margin:8px 0 12px 0;
+                            text-align:center;
+                        "
+                    >
+                        📊 Classifica Girone ${tag}
+                    </h4>
+
+                    <table
+                        style="
+                            width:100%;
+                            border-collapse:collapse;
+                            text-align:center;
+                        "
+                    >
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Pos.</th>
+
+                                <th>Squadra</th>
+
+                                <th>Pt</th>
+
+                                <th>G</th>
+
+                                <th>V</th>
+
+                                <th>P</th>
+
+                                <th>GF</th>
+
+                                <th>GS</th>
+
+                                <th>DF</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+            `;
+
+
+
+            classifica.forEach(
+                (riga,posizione) => {
+
+                    htmlClassifica += `
+
+                        <tr>
+
+                            <td>
+                                ${posizione + 1}
+                            </td>
+
+                            <td
+                                style="
+                                    text-align:left;
+                                    padding-left:6px;
+                                "
+                            >
+                                ${riga.nome}
+                            </td>
+
+                            <td>
+                                <strong>
+                                    ${riga.pt}
+                                </strong>
+                            </td>
+
+                            <td>
+                                ${riga.g}
+                            </td>
+
+                            <td>
+                                ${riga.v}
+                            </td>
+
+                            <td>
+                                ${riga.p}
+                            </td>
+
+                            <td>
+                                ${riga.gf}
+                            </td>
+
+                            <td>
+                                ${riga.gs}
+                            </td>
+
+                            <td>
+                                ${riga.df}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            );
+
+
+
+            htmlClassifica += `
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `;
+
+
+
+            /*
+            ====================================================
+            INSERISCE PARTITE + CLASSIFICA
+            ====================================================
+            */
+
             box.innerHTML =
-                rows;
+                rows +
+                htmlClassifica;
 
 
 
@@ -10364,20 +10543,19 @@ function renderTables(){
                     "card" + tag
                 );
 
-
-            if(card){
+            if(
+                card
+            ){
 
                 const numeroGironi =
                     Number(
                         state.rules?.numeroGironi
                     ) || 2;
 
-
                 const indiceGirone =
                     lettereGironi.indexOf(
                         tag
                     );
-
 
                 card.style.display =
                     indiceGirone >= 0 &&
@@ -10391,6 +10569,287 @@ function renderTables(){
 
         }
     );
+
+
+
+    /*
+    ============================================================
+    FUNZIONE CLASSIFICA GIRONE
+    ============================================================
+    */
+
+    function squadreClassifica(tag){
+
+        const squadre =
+            Array.isArray(
+                state[tag]
+            )
+            ?
+            state[tag]
+            :
+            [];
+
+        const chiaveRes =
+            tag + "res";
+
+        const partite =
+            calendario.filter(
+                partita =>
+                    partita.girone === tag
+            );
+
+        const dati =
+            squadre.map(
+                (squadra,index) => ({
+
+                    index:
+                        index,
+
+                    nome:
+                        (
+                            String(
+                                squadra?.g1 || ""
+                            ) +
+                            " / " +
+                            String(
+                                squadra?.g2 || ""
+                            )
+                        ).trim(),
+
+                    pt: 0,
+
+                    g: 0,
+
+                    v: 0,
+
+                    p: 0,
+
+                    gf: 0,
+
+                    gs: 0,
+
+                    df: 0
+
+                })
+            );
+
+
+
+        /*
+        --------------------------------------------------------
+        CALCOLO RISULTATI
+        --------------------------------------------------------
+        */
+
+        partite.forEach(
+            (partita,index) => {
+
+                const risultato =
+                    state[chiaveRes]?.[index];
+
+                const datiRisultato =
+                    analizzaRisultato(
+                        risultato
+                    );
+
+                if(
+                    !datiRisultato
+                ){
+
+                    return;
+
+                }
+
+                const casa =
+                    dati[
+                        partita.casa
+                    ];
+
+                const ospite =
+                    dati[
+                        partita.ospite
+                    ];
+
+                if(
+                    !casa ||
+                    !ospite
+                ){
+
+                    return;
+
+                }
+
+
+
+                /*
+                ------------------------------------------------
+                PARTITA GIOCATA
+                ------------------------------------------------
+                */
+
+                casa.g++;
+
+                ospite.g++;
+
+                casa.gf +=
+                    datiRisultato.gf;
+
+                casa.gs +=
+                    datiRisultato.gs;
+
+                ospite.gf +=
+                    datiRisultato.gs;
+
+                ospite.gs +=
+                    datiRisultato.gf;
+
+
+
+                /*
+                ------------------------------------------------
+                VITTORIA / SCONFITTA / PAREGGIO
+                ------------------------------------------------
+                */
+
+                if(
+                    datiRisultato.gf >
+                    datiRisultato.gs
+                ){
+
+                    casa.v++;
+
+                    ospite.p++;
+
+                    casa.pt +=
+                        Number(
+                            state.rules?.w ??
+                            3
+                        );
+
+                }
+                else if(
+                    datiRisultato.gf <
+                    datiRisultato.gs
+                ){
+
+                    ospite.v++;
+
+                    casa.p++;
+
+                    ospite.pt +=
+                        Number(
+                            state.rules?.w ??
+                            3
+                        );
+
+                }
+                else{
+
+                    casa.pt +=
+                        Number(
+                            state.rules?.d ??
+                            1
+                        );
+
+                    ospite.pt +=
+                        Number(
+                            state.rules?.d ??
+                            1
+                        );
+
+                }
+
+            }
+        );
+
+
+
+        /*
+        --------------------------------------------------------
+        DIFFERENZA GIOCHI
+        --------------------------------------------------------
+        */
+
+        dati.forEach(
+            squadra => {
+
+                squadra.df =
+                    squadra.gf -
+                    squadra.gs;
+
+            }
+        );
+
+
+
+        /*
+        ========================================================
+        ORDINAMENTO CLASSIFICA
+        ========================================================
+        */
+
+        const criteri = [
+
+            state.rules?.crit1 || "df",
+
+            state.rules?.crit2 || "gf",
+
+            state.rules?.crit3 || "gs"
+
+        ];
+
+        dati.sort(
+            (a,b) => {
+
+                if(
+                    b.pt !== a.pt
+                ){
+
+                    return b.pt - a.pt;
+
+                }
+
+                for(
+                    const criterio of criteri
+                ){
+
+                    if(
+                        criterio === "df" &&
+                        b.df !== a.df
+                    ){
+
+                        return b.df - a.df;
+
+                    }
+
+                    if(
+                        criterio === "gf" &&
+                        b.gf !== a.gf
+                    ){
+
+                        return b.gf - a.gf;
+
+                    }
+
+                    if(
+                        criterio === "gs" &&
+                        b.gs !== a.gs
+                    ){
+
+                        return a.gs - b.gs;
+
+                    }
+
+                }
+
+                return 0;
+
+            }
+        );
+
+        return dati;
+
+    }
 
 }
 function renderMatchCard(titolo,match,type,index,risultato){
