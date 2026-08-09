@@ -209,86 +209,20 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       }
   );
 // Integrazione per aprire automaticamente le regole se richiesto dall'admin
-window.addEventListener("DOMContentLoaded", () => {
-async function verifyAccess(){
-    const { data: { session } } =
-        await sb.auth.getSession();
-    if(!session){
-        console.warn(
-            "Nessun utente autenticato"
-        );
-        bloccaGestionale();
-        return;
-    }
-    const userId =
-        session.user.id;
-    const { data: profilo, error } =
-        await sb
-        .from("profili")
-        .select("nome, ruolo")
-        .eq(
-            "user_id",
-            userId
-        )
-        .single();
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
-    );
-    if(error || !profilo){
-        console.warn(
-            "Profilo amministratore non trovato"
-        );
-        bloccaGestionale();
-        return;
-    }
-    if(profilo.ruolo !== "admin"){
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-        bloccaGestionale();
-        return;
-    }
-       console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
-    );
-}
-// avvia controllo accesso amministratore
-verifyAccess();
-// AVVIO CARICAMENTO TORNEO
-(async function(){
-    try{
-        await initDefaults();
-        await loadState();
-    }catch(e){
-        console.error(
-            "ERRORE AVVIO TORNEO:",
-            e
-        );
-    }
-})();
-// chiude DOMContentLoaded
-});
-function bloccaGestionale(){
-    document.querySelectorAll('input, button, textarea, select').forEach(el => {
-        if(
-            !el.classList.contains("back") &&
-            el.innerText !== "Stampa"
-        ){
-            el.disabled = true;
-            el.style.opacity = "0.6";
+document.addEventListener("DOMContentLoaded", async function(){
+    try {
+        if (typeof initDefaults === "function") {
+            await initDefaults();
+        } else {
+            console.error("initDefaults non è definita!");
         }
-    });
-    console.warn(
-        "Gestionale bloccato: serve un amministratore"
-    );
-}
-   </script>
-</head>
-<body>
+        if (typeof loadState === "function") {
+            await loadState();
+        }
+    } catch(e) {
+        console.error("ERRORE AVVIO TORNEO:", e);
+    }
+});
   
  
 <div id="teamModal" class="modal">
