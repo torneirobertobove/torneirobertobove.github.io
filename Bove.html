@@ -2647,135 +2647,283 @@ function setFormat(n){
     /*
         RESET PARTITE GIRONI
     */
-   function generaPartiteGironi() {
+   function generaPartiteGironi(){
 
-    ensureRules();
+```
+/*
+========================================================
+GENERAZIONE PARTITE GIRONI
+========================================================
+*/
 
-    if (!state || !state.rules) {
-        return;
-    }
+const lettereGironi = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+];
 
-    /*
-    ============================================================
-    GENERA IL CALENDARIO DEI GIRONI
-    ============================================================
-    */
 
-    if (typeof generaCalendarioGironi === "function") {
-        generaCalendarioGironi();
-    }
+/*
+========================================================
+NUMERO GIRONI
+========================================================
+*/
 
-    /*
-    ============================================================
-    SE NON CI SONO PARTITE NON C'È NULLA DA GENERARE
-    ============================================================
-    */
+let numeroGironi =
+    Number(
+        state.rules?.numeroGironi
+    ) ||
+    Number(
+        state.numeroGironi
+    ) ||
+    2;
 
-    if (
-        !Array.isArray(state.partiteGironi) ||
-        state.partiteGironi.length === 0
-    ) {
-        return;
-    }
 
-    /*
-    ============================================================
-    SINCRONIZZA RISULTATI / ORARI / CAMPI
-    ============================================================
-    */
-
-    const lettere = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
-    ];
-
-    lettere.forEach(girone => {
-
-        const partite = state.partiteGironi.filter(
-            partita =>
-                partita &&
-                partita.girone === girone
-        );
-
-        const resKey = girone + "res";
-        const timeKey = girone + "time";
-        const campKey = girone + "camp";
-
-        if (!Array.isArray(state[resKey])) {
-            state[resKey] = [];
-        }
-
-        if (!Array.isArray(state[timeKey])) {
-            state[timeKey] = [];
-        }
-
-        if (!Array.isArray(state[campKey])) {
-            state[campKey] = [];
-        }
-
-        while (state[resKey].length < partite.length) {
-            state[resKey].push("-");
-        }
-
-        while (state[timeKey].length < partite.length) {
-            state[timeKey].push("-");
-        }
-
-        while (state[campKey].length < partite.length) {
-            state[campKey].push("");
-        }
-
-        state[resKey] = state[resKey].slice(
-            0,
-            partite.length
-        );
-
-        state[timeKey] = state[timeKey].slice(
-            0,
-            partite.length
-        );
-
-        state[campKey] = state[campKey].slice(
-            0,
-            partite.length
-        );
-
-        partite.forEach((partita, index) => {
-
-            state[timeKey][index] =
-                partita.time || "-";
-
-            state[campKey][index] =
-                partita.campo || "";
-
-        });
-
-    });
-
-    /*
-    ============================================================
-    SALVA
-    ============================================================
-    */
-
-    try {
-        localStorage.setItem(
-            "torneoState",
-            JSON.stringify(state)
-        );
-    }
-    catch (e) {
-        console.error(
-            "Errore salvataggio generaPartiteGironi:",
-            e
-        );
-    }
+if(numeroGironi < 1){
+    numeroGironi = 1;
 }
+
+
+if(numeroGironi > lettereGironi.length){
+    numeroGironi = lettereGironi.length;
+}
+
+
+/*
+========================================================
+CONTENITORE PARTITE
+========================================================
+*/
+
+state.partiteGironi = {};
+
+
+/*
+========================================================
+CREA LE 6 PARTITE DI UN GIRONE DA 4 SQUADRE
+========================================================
+*/
+
+const creaPartite = (squadre) => {
+
+    const partite = [];
+
+
+    if(
+        !Array.isArray(squadre) ||
+        squadre.length < 2
+    ){
+
+        return partite;
+
+    }
+
+
+    for(
+        let i = 0;
+        i < squadre.length;
+        i++
+    ){
+
+        for(
+            let j = i + 1;
+            j < squadre.length;
+            j++
+        ){
+
+            partite.push({
+
+                casa: i,
+
+                ospite: j,
+
+                risultato: "-",
+
+                campo: "",
+
+                ora: ""
+
+            });
+
+        }
+
+    }
+
+
+    return partite;
+
+};
+
+
+/*
+========================================================
+GENERAZIONE GIRONI ATTIVI
+========================================================
+*/
+
+for(
+    let indice = 0;
+    indice < numeroGironi;
+    indice++
+){
+
+    const tag =
+        lettereGironi[indice];
+
+
+    let squadre =
+        state[tag];
+
+
+    if(
+        !Array.isArray(squadre)
+    ){
+
+        squadre = [];
+
+    }
+
+
+    state[tag] =
+        squadre;
+
+
+    state.partiteGironi[tag] =
+        creaPartite(
+            squadre
+        );
+
+
+    /*
+    ====================================================
+    RISULTATI
+    ====================================================
+    */
+
+    state[tag + "res"] =
+        Array(
+            state.partiteGironi[tag].length
+        ).fill("-");
+
+
+    /*
+    ====================================================
+    ORARI
+    ====================================================
+    */
+
+    state[tag + "time"] =
+        Array(
+            state.partiteGironi[tag].length
+        ).fill("");
+
+
+    /*
+    ====================================================
+    CAMPI
+    ====================================================
+    */
+
+    state[tag + "camp"] =
+        Array(
+            state.partiteGironi[tag].length
+        ).fill("");
+
+
+    /*
+    ====================================================
+    CLASSIFICA
+    ====================================================
+    */
+
+    if(
+        !Array.isArray(
+            state["rank" + tag]
+        )
+    ){
+
+        state["rank" + tag] = [];
+
+    }
+
+}
+
+
+/*
+========================================================
+PULIZIA GIRONI NON UTILIZZATI
+========================================================
+*/
+
+for(
+    let indice = numeroGironi;
+    indice < lettereGironi.length;
+    indice++
+){
+
+    const tag =
+        lettereGironi[indice];
+
+
+    state.partiteGironi[tag] = [];
+
+
+    state[tag + "res"] = [];
+
+    state[tag + "time"] = [];
+
+    state[tag + "camp"] = [];
+
+    state["rank" + tag] = [];
+
+}
+
+
+/*
+========================================================
+SALVATAGGIO
+========================================================
+*/
+
+try{
+
+    localStorage.setItem(
+        "torneoState",
+        JSON.stringify(state)
+    );
+
+}
+catch(e){
+
+    console.error(
+        "Errore salvataggio partite gironi:",
+        e
+    );
+
+}
+
+
+/*
+========================================================
+DEBUG
+========================================================
+*/
+
+console.log(
+    "PARTITE GIRONI GENERATE:",
+    state.partiteGironi
+);
+
+
+return state.partiteGironi;
+```
+
+}
+
     function resetGirone(nome,girone){
         let totale=0;
         let len =
