@@ -5417,557 +5417,827 @@ function renderManuale() {
 }
 function renderTables() {
 
-```
-ensureRules();
+    ensureRules();
 
-if (!state || !state.rules) {
-    return;
-}
+    if (!state || !state.rules) {
+        return;
+    }
 
-const tags = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G"
-];
+    const tags = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ];
 
-let numeroGironi =
-    Number(state.rules.numeroGironi) ||
-    Number(state.numeroGironi) ||
-    2;
+    let numeroGironi =
+        Number(state.rules.numeroGironi) ||
+        Number(state.numeroGironi) ||
+        2;
 
-if (numeroGironi < 1) {
-    numeroGironi = 1;
-}
+    if (numeroGironi < 1) {
+        numeroGironi = 1;
+    }
 
-if (numeroGironi > tags.length) {
-    numeroGironi = tags.length;
-}
+    if (numeroGironi > tags.length) {
+        numeroGironi = tags.length;
+    }
 
 
-/*
-========================================================
-FUNZIONE SALVATAGGIO
-========================================================
-*/
+    /*
+    ========================================================
+    FUNZIONE SALVATAGGIO
+    ========================================================
+    */
 
-const salvaModifica = function() {
-
-    localStorage.setItem(
-        "torneoState",
-        JSON.stringify(state)
-    );
-
-    if (
-        typeof updateAndSync ===
-        "function"
-    ) {
+    const salvaModifica = function() {
 
         try {
 
-            updateAndSync();
+            localStorage.setItem(
+                "torneoState",
+                JSON.stringify(state)
+            );
 
         }
         catch (e) {
 
             console.error(
-                "Errore sincronizzazione:",
+                "Errore salvataggio locale:",
                 e
             );
 
         }
 
-    }
-
-};
-
-
-/*
-========================================================
-GIRONI
-========================================================
-*/
-
-tags.forEach(function(tag, gruppoIndex) {
-
-    const card =
-        document.getElementById(
-            "card" + tag
-        );
-
-    const tabella =
-        document.getElementById(tag);
-
-    const rows =
-        document.getElementById(
-            tag + "rows"
-        );
-
-    const classifica =
-        document.getElementById(
-            tag + "class"
-        );
-
-
-    if (!card) {
-        return;
-    }
-
-
-    /*
-    ----------------------------------------------------
-    MOSTRA SOLO I GIRONI CONFIGURATI
-    ----------------------------------------------------
-    */
-
-    if (gruppoIndex < numeroGironi) {
-
-        card.style.display = "";
-
-    }
-    else {
-
-        card.style.display = "none";
-
-        if (rows) {
-            rows.innerHTML = "";
-        }
-
-        if (classifica) {
-            classifica.innerHTML = "";
-        }
-
-        return;
-
-    }
-
-
-    if (!tabella || !rows) {
-        return;
-    }
-
-
-    /*
-    ----------------------------------------------------
-    SQUADRE
-    ----------------------------------------------------
-    */
-
-    let squadre =
-        state[tag];
-
-    if (!Array.isArray(squadre)) {
-        squadre = [];
-    }
-
-
-    /*
-    ----------------------------------------------------
-    ARRAY DATI DEL GIRONE
-    ----------------------------------------------------
-    */
-
-    if (!Array.isArray(state[tag + "res"])) {
-        state[tag + "res"] = [];
-    }
-
-    if (!Array.isArray(state[tag + "time"])) {
-        state[tag + "time"] = [];
-    }
-
-    if (!Array.isArray(state[tag + "camp"])) {
-        state[tag + "camp"] = [];
-    }
-
-
-    const risultati =
-        state[tag + "res"];
-
-    const orari =
-        state[tag + "time"];
-
-    const campi =
-        state[tag + "camp"];
-
-
-    rows.innerHTML = "";
-
-
-    /*
-    ----------------------------------------------------
-    INTESTAZIONE
-    ----------------------------------------------------
-    */
-
-    const intestazione =
-        tabella.querySelector(
-            "thead tr"
-        );
-
-    if (intestazione) {
-
-        intestazione.innerHTML = "";
-
-        [
-            "Campo",
-            "Ora",
-            "Match",
-            "Ris"
-        ].forEach(function(testo) {
-
-            const th =
-                document.createElement("th");
-
-            th.textContent =
-                testo;
-
-            intestazione.appendChild(
-                th
-            );
-
-        });
-
-    }
-
-
-    /*
-    ----------------------------------------------------
-    NESSUNA PARTITA
-    ----------------------------------------------------
-    */
-
-    if (squadre.length < 2) {
-
-        if (classifica) {
-            classifica.innerHTML = "";
-        }
-
-        return;
-
-    }
-
-
-    /*
-    ====================================================
-    CREAZIONE PARTITE
-    ====================================================
-    */
-
-    let indicePartita = 0;
-
-
-    for (
-        let i = 0;
-        i < squadre.length;
-        i++
-    ) {
-
-        for (
-            let j = i + 1;
-            j < squadre.length;
-            j++
+        if (
+            typeof updateAndSync ===
+            "function"
         ) {
 
-            const indice =
-                indicePartita;
+            try {
 
+                updateAndSync();
 
-            const squadra1 =
-                squadre[i] == null
-                    ? ""
-                    : String(squadre[i]);
+            }
+            catch (e) {
 
-
-            const squadra2 =
-                squadre[j] == null
-                    ? ""
-                    : String(squadre[j]);
-
-
-            const tr =
-                document.createElement("tr");
-
-
-            /*
-            ====================================================
-            CAMPO
-            ====================================================
-            */
-
-            const tdCampo =
-                document.createElement("td");
-
-
-            const inputCampo =
-                document.createElement("input");
-
-
-            inputCampo.type =
-                "text";
-
-            inputCampo.value =
-                campi[indice] == null
-                    ? ""
-                    : String(campi[indice]);
-
-            inputCampo.placeholder =
-                "Campo";
-
-            inputCampo.style.width =
-                "70px";
-
-            inputCampo.style.textAlign =
-                "center";
-
-
-            inputCampo.addEventListener(
-                "change",
-                function() {
-
-                    state[tag + "camp"][indice] =
-                        this.value;
-
-                    salvaModifica();
-
-                }
-            );
-
-
-            tdCampo.appendChild(
-                inputCampo
-            );
-
-
-            /*
-            ====================================================
-            ORA
-            ====================================================
-            */
-
-            const tdOra =
-                document.createElement("td");
-
-
-            const inputOra =
-                document.createElement("input");
-
-
-            inputOra.type =
-                "time";
-
-            inputOra.value =
-                orari[indice] == null
-                    ? ""
-                    : String(orari[indice]);
-
-            inputOra.style.width =
-                "95px";
-
-
-            inputOra.addEventListener(
-                "change",
-                function() {
-
-                    state[tag + "time"][indice] =
-                        this.value;
-
-                    salvaModifica();
-
-                }
-            );
-
-
-            tdOra.appendChild(
-                inputOra
-            );
-
-
-            /*
-            ====================================================
-            MATCH
-            ====================================================
-            */
-
-            const tdMatch =
-                document.createElement("td");
-
-
-            tdMatch.textContent =
-                squadra1 +
-                " VS " +
-                squadra2;
-
-
-            /*
-            ====================================================
-            RISULTATO
-            ====================================================
-            */
-
-            const tdRis =
-                document.createElement("td");
-
-
-            const inputRis =
-                document.createElement("input");
-
-
-            inputRis.type =
-                "text";
-
-            inputRis.value =
-                risultati[indice] == null
-                    ? "-"
-                    : String(risultati[indice]);
-
-            inputRis.placeholder =
-                "Ris";
-
-            inputRis.style.width =
-                "60px";
-
-            inputRis.style.textAlign =
-                "center";
-
-
-            inputRis.addEventListener(
-                "change",
-                function() {
-
-                    state[tag + "res"][indice] =
-                        this.value;
-
-
-                    if (
-                        typeof updateRes ===
-                        "function"
-                    ) {
-
-                        updateRes(
-                            tag,
-                            indice,
-                            this.value
-                        );
-
-                    }
-
-
-                    if (
-                        typeof renderClass ===
-                        "function"
-                    ) {
-
-                        renderClass();
-
-                    }
-
-
-                    salvaModifica();
-
-                }
-            );
-
-
-            tdRis.appendChild(
-                inputRis
-            );
-
-
-            /*
-            ====================================================
-            INSERIMENTO RIGA
-            ====================================================
-            */
-
-            tr.appendChild(
-                tdCampo
-            );
-
-            tr.appendChild(
-                tdOra
-            );
-
-            tr.appendChild(
-                tdMatch
-            );
-
-            tr.appendChild(
-                tdRis
-            );
-
-
-            rows.appendChild(
-                tr
-            );
-
-
-            indicePartita++;
-
-        }
-
-    }
-
-
-    /*
-    ========================================================
-    CLASSIFICA
-    ========================================================
-    */
-
-    if (classifica) {
-
-        const tabellaClassifica =
-            classifica.closest("table");
-
-
-        if (tabellaClassifica) {
-
-            const rigaHead =
-                tabellaClassifica.querySelector(
-                    "thead tr"
+                console.error(
+                    "Errore sincronizzazione:",
+                    e
                 );
-
-
-            if (rigaHead) {
-
-                rigaHead.innerHTML = "";
-
-
-                [
-                    "Girone " + tag,
-                    "PT",
-                    "GF",
-                    "GS",
-                    "DR"
-                ].forEach(function(testo) {
-
-                    const th =
-                        document.createElement(
-                            "th"
-                        );
-
-                    th.textContent =
-                        testo;
-
-                    rigaHead.appendChild(
-                        th
-                    );
-
-                });
 
             }
 
         }
 
+    };
+
+
+    /*
+    ========================================================
+    FUNZIONE NOME SQUADRA
+    ========================================================
+    */
+
+    const nomeSquadra = function(squadra) {
+
+        if (squadra === null || squadra === undefined) {
+            return "";
+        }
+
+        if (typeof squadra === "object") {
+
+            if (
+                squadra.g1 !== undefined ||
+                squadra.g2 !== undefined
+            ) {
+
+                return (
+                    String(squadra.g1 || "") +
+                    (
+                        squadra.g2
+                            ? " / " +
+                              String(squadra.g2)
+                            : ""
+                    )
+                );
+
+            }
+
+            if (squadra.nome !== undefined) {
+
+                return String(
+                    squadra.nome
+                );
+
+            }
+
+            if (squadra.name !== undefined) {
+
+                return String(
+                    squadra.name
+                );
+
+            }
+
+            if (
+                squadra.coppia !== undefined
+            ) {
+
+                return String(
+                    squadra.coppia
+                );
+
+            }
+
+            return String(
+                squadra.n ||
+                ""
+            );
+
+        }
+
+        return String(squadra);
+
+    };
+
+
+    /*
+    ========================================================
+    PARTITE GIÀ PRESENTI NELLO STATE
+    ========================================================
+    */
+
+    const calendario =
+        Array.isArray(
+            state.partiteGironi
+        )
+            ? state.partiteGironi
+            : [];
+
+
+    /*
+    ========================================================
+    GIRONI
+    ========================================================
+    */
+
+    tags.forEach(function(tag, gruppoIndex) {
+
+        const card =
+            document.getElementById(
+                "card" + tag
+            );
+
+        const tabella =
+            document.getElementById(tag);
+
+        const rows =
+            document.getElementById(
+                tag + "rows"
+            );
+
+        const classifica =
+            document.getElementById(
+                tag + "class"
+            );
+
+
+        if (!card) {
+            return;
+        }
+
+
+        /*
+        ----------------------------------------------------
+        MOSTRA SOLO I GIRONI CONFIGURATI
+        ----------------------------------------------------
+        */
+
+        if (gruppoIndex < numeroGironi) {
+
+            card.style.display = "";
+
+        }
+        else {
+
+            card.style.display = "none";
+
+            if (rows) {
+                rows.innerHTML = "";
+            }
+
+            if (classifica) {
+                classifica.innerHTML = "";
+            }
+
+            return;
+
+        }
+
+
+        if (!tabella || !rows) {
+            return;
+        }
+
+
+        /*
+        ----------------------------------------------------
+        SQUADRE DEL GIRONE
+        ----------------------------------------------------
+        */
+
+        let squadre =
+            state[tag];
+
+        if (!Array.isArray(squadre)) {
+            squadre = [];
+        }
+
+
+        /*
+        ----------------------------------------------------
+        ARRAY RISULTATI / ORARI / CAMPI
+        ----------------------------------------------------
+        */
+
+        if (
+            !Array.isArray(
+                state[tag + "res"]
+            )
+        ) {
+
+            state[tag + "res"] = [];
+
+        }
+
+        if (
+            !Array.isArray(
+                state[tag + "time"]
+            )
+        ) {
+
+            state[tag + "time"] = [];
+
+        }
+
+        if (
+            !Array.isArray(
+                state[tag + "camp"]
+            )
+        ) {
+
+            state[tag + "camp"] = [];
+
+        }
+
+
+        const risultati =
+            state[tag + "res"];
+
+        const orari =
+            state[tag + "time"];
+
+        const campi =
+            state[tag + "camp"];
+
+
+        /*
+        ====================================================
+        PARTITE DEL SOLO GIRONE
+        ====================================================
+        */
+
+        const partiteGirone =
+            calendario.filter(
+                function(partita) {
+
+                    return (
+                        partita &&
+                        String(
+                            partita.girone || ""
+                        ).toUpperCase() ===
+                        tag
+                    );
+
+                }
+            );
+
+
+        rows.innerHTML = "";
+
+
+        /*
+        ====================================================
+        INTESTAZIONE
+        ====================================================
+        */
+
+        const intestazione =
+            tabella.querySelector(
+                "thead tr"
+            );
+
+        if (intestazione) {
+
+            intestazione.innerHTML = "";
+
+            [
+                "Campo",
+                "Ora",
+                "Match",
+                "Ris"
+            ].forEach(function(testo) {
+
+                const th =
+                    document.createElement(
+                        "th"
+                    );
+
+                th.textContent =
+                    testo;
+
+                intestazione.appendChild(
+                    th
+                );
+
+            });
+
+        }
+
+
+        /*
+        ====================================================
+        NESSUNA PARTITA
+        ====================================================
+        */
+
+        if (
+            partiteGirone.length === 0
+        ) {
+
+            if (squadre.length < 2) {
+
+                if (classifica) {
+                    classifica.innerHTML = "";
+                }
+
+            }
+
+            return;
+
+        }
+
+
+        /*
+        ====================================================
+        VISUALIZZAZIONE PARTITE ESISTENTI
+        ====================================================
+        */
+
+        partiteGirone.forEach(
+            function(partita, indice) {
+
+                /*
+                ------------------------------------------------
+                CASA / OSPITE
+                ------------------------------------------------
+                */
+
+                let squadra1 = "";
+                let squadra2 = "";
+
+
+                /*
+                Se casa/ospite sono indici numerici,
+                vengono recuperati dall'array del girone.
+                */
+
+                if (
+                    typeof partita.casa === "number" &&
+                    squadre[partita.casa] !== undefined
+                ) {
+
+                    squadra1 =
+                        nomeSquadra(
+                            squadre[partita.casa]
+                        );
+
+                }
+                else {
+
+                    squadra1 =
+                        nomeSquadra(
+                            partita.casa
+                        );
+
+                }
+
+
+                if (
+                    typeof partita.ospite === "number" &&
+                    squadre[partita.ospite] !== undefined
+                ) {
+
+                    squadra2 =
+                        nomeSquadra(
+                            squadre[partita.ospite]
+                        );
+
+                }
+                else {
+
+                    squadra2 =
+                        nomeSquadra(
+                            partita.ospite
+                        );
+
+                }
+
+
+                /*
+                ------------------------------------------------
+                RIGA
+                ------------------------------------------------
+                */
+
+                const tr =
+                    document.createElement(
+                        "tr"
+                    );
+
+
+                /*
+                =================================================
+                CAMPO
+                =================================================
+                */
+
+                const tdCampo =
+                    document.createElement(
+                        "td"
+                    );
+
+                const inputCampo =
+                    document.createElement(
+                        "input"
+                    );
+
+                inputCampo.type =
+                    "text";
+
+                inputCampo.value =
+                    partita.campo ??
+                    campi[indice] ??
+                    "";
+
+                inputCampo.placeholder =
+                    "Campo";
+
+                inputCampo.style.width =
+                    "70px";
+
+                inputCampo.style.textAlign =
+                    "center";
+
+
+                inputCampo.addEventListener(
+                    "change",
+                    function() {
+
+                        state[tag + "camp"][indice] =
+                            this.value;
+
+                        partita.campo =
+                            this.value;
+
+                        salvaModifica();
+
+                    }
+                );
+
+
+                tdCampo.appendChild(
+                    inputCampo
+                );
+
+
+                /*
+                =================================================
+                ORA
+                =================================================
+                */
+
+                const tdOra =
+                    document.createElement(
+                        "td"
+                    );
+
+                const inputOra =
+                    document.createElement(
+                        "input"
+                    );
+
+                inputOra.type =
+                    "time";
+
+                inputOra.value =
+                    partita.time ??
+                    orari[indice] ??
+                    "";
+
+                inputOra.style.width =
+                    "95px";
+
+
+                inputOra.addEventListener(
+                    "change",
+                    function() {
+
+                        state[tag + "time"][indice] =
+                            this.value;
+
+                        partita.time =
+                            this.value;
+
+                        salvaModifica();
+
+                    }
+                );
+
+
+                tdOra.appendChild(
+                    inputOra
+                );
+
+
+                /*
+                =================================================
+                MATCH
+                =================================================
+                */
+
+                const tdMatch =
+                    document.createElement(
+                        "td"
+                    );
+
+                tdMatch.textContent =
+                    squadra1 +
+                    " VS " +
+                    squadra2;
+
+
+                /*
+                =================================================
+                RISULTATO
+                =================================================
+                */
+
+                const tdRis =
+                    document.createElement(
+                        "td"
+                    );
+
+                const inputRis =
+                    document.createElement(
+                        "input"
+                    );
+
+                inputRis.type =
+                    "text";
+
+                inputRis.value =
+                    risultati[indice] == null
+                        ? "-"
+                        : String(
+                            risultati[indice]
+                        );
+
+                inputRis.placeholder =
+                    "Ris";
+
+                inputRis.style.width =
+                    "60px";
+
+                inputRis.style.textAlign =
+                    "center";
+
+
+                inputRis.addEventListener(
+                    "change",
+                    function() {
+
+                        state[tag + "res"][indice] =
+                            this.value;
+
+
+                        if (
+                            partita
+                        ) {
+
+                            partita.result =
+                                this.value;
+
+                        }
+
+
+                        if (
+                            typeof updateRes ===
+                            "function"
+                        ) {
+
+                            updateRes(
+                                tag,
+                                indice,
+                                this.value
+                            );
+
+                        }
+
+
+                        if (
+                            typeof renderClass ===
+                            "function"
+                        ) {
+
+                            renderClass();
+
+                        }
+
+
+                        salvaModifica();
+
+                    }
+                );
+
+
+                tdRis.appendChild(
+                    inputRis
+                );
+
+
+                /*
+                =================================================
+                INSERIMENTO CELLE
+                =================================================
+                */
+
+                tr.appendChild(
+                    tdCampo
+                );
+
+                tr.appendChild(
+                    tdOra
+                );
+
+                tr.appendChild(
+                    tdMatch
+                );
+
+                tr.appendChild(
+                    tdRis
+                );
+
+
+                rows.appendChild(
+                    tr
+                );
+
+            }
+        );
+
+
+        /*
+        ====================================================
+        CLASSIFICA
+        ====================================================
+        */
+
+        if (classifica) {
+
+            const tabellaClassifica =
+                classifica.closest(
+                    "table"
+                );
+
+
+            if (tabellaClassifica) {
+
+                const rigaHead =
+                    tabellaClassifica.querySelector(
+                        "thead tr"
+                    );
+
+
+                if (rigaHead) {
+
+                    rigaHead.innerHTML = "";
+
+
+                    [
+                        "Girone " + tag,
+                        "PT",
+                        "GF",
+                        "GS",
+                        "DR"
+                    ].forEach(
+                        function(testo) {
+
+                            const th =
+                                document.createElement(
+                                    "th"
+                                );
+
+                            th.textContent =
+                                testo;
+
+                            rigaHead.appendChild(
+                                th
+                            );
+
+                        }
+                    );
+
+                }
+
+            }
+
+        }
+
+    });
+
+
+    /*
+    ========================================================
+    NOME TORNEO
+    ========================================================
+    */
+
+    const titolo =
+        document.getElementById(
+            "titoloTorneo"
+        );
+
+
+    if (titolo) {
+
+        titolo.textContent =
+            "🏆 " +
+            (
+                state.nomeTorneo ||
+                "Torneo Amatoriale Padel"
+            );
+
     }
 
 
     /*
     ========================================================
-    AGGIORNA CLASSIFICA
+    CAMPO NOME TORNEO
+    ========================================================
+    */
+
+    const inputNome =
+        document.getElementById(
+            "nomeTorneoInput"
+        );
+
+
+    if (inputNome) {
+
+        inputNome.value =
+            state.nomeTorneo || "";
+
+    }
+
+
+    /*
+    ========================================================
+    DATA TORNEO
+    ========================================================
+    */
+
+    const inputData =
+        document.querySelector(
+            "input[type='date']"
+        );
+
+
+    if (inputData) {
+
+        inputData.value =
+            state.dataTorneo || "";
+
+    }
+
+
+    /*
+    ========================================================
+    CLASSIFICHE
     ========================================================
     */
 
@@ -5980,99 +6250,7 @@ tags.forEach(function(tag, gruppoIndex) {
 
     }
 
-});
-
-
-/*
-========================================================
-NOME TORNEO
-========================================================
-*/
-
-const titolo =
-    document.getElementById(
-        "titoloTorneo"
-    );
-
-
-if (titolo) {
-
-    titolo.textContent =
-        "🏆 " +
-        (
-            state.nomeTorneo ||
-            "Torneo Amatoriale Padel"
-        );
-
 }
-
-
-/*
-========================================================
-CAMPO NOME TORNEO
-========================================================
-*/
-
-const inputNome =
-    document.getElementById(
-        "nomeTorneoInput"
-    );
-
-
-if (inputNome) {
-
-    inputNome.value =
-        state.nomeTorneo || "";
-
-}
-
-
-/*
-========================================================
-DATA TORNEO
-========================================================
-*/
-
-const inputData =
-    document.querySelector(
-        "input[type='date']"
-    );
-
-
-if (inputData) {
-
-    inputData.value =
-        state.dataTorneo || "";
-
-}
-
-
-/*
-========================================================
-SALVATAGGIO FINALE
-========================================================
-*/
-
-try {
-
-    localStorage.setItem(
-        "torneoState",
-        JSON.stringify(state)
-    );
-
-}
-catch (e) {
-
-    console.error(
-        "Errore salvataggio renderTables:",
-        e
-    );
-
-}
-```
-
-}
-
 
 function nascondiFormuleTorneo() {
     let box = document.getElementById("formulaTorneoBox");
