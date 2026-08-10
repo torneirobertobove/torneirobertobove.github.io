@@ -5328,63 +5328,346 @@ function chiudiMenu(){
     );
 }
 function chiudiMenuAutomatico(){
-    const menu =
-        document.getElementById(
-            "menuComandi"
-        );
-    if(
-        !menu
-    ){
-        return;
-    }
-    menu.querySelectorAll(
-        "button"
-    ).forEach(
-        btn => {
-            btn.addEventListener(
-                "click",
-                () => {
-                    setTimeout(
-                        () => {
-                            menu.classList.remove(
-                                "show"
-                            );
-                        },
-                        100
-                    );
-                }
-            );
-        }
-    );
+const menu =
+document.getElementById(
+"menuComandi"
+);
+if(
+!menu
+){
+return;
 }
-/*
-============================================================
-INIT DEFAULTS
-============================================================
-*/
+menu.querySelectorAll(
+"button"
+).forEach(
+btn => {
+btn.addEventListener(
+"click",
+() => {
+setTimeout(
+() => {
+menu.classList.remove(
+"show"
+);
+},
+100
+);
+}
+);
+}
+);
+}
+
 window.initDefaults = function initDefaults() {
 
-    try {
+try {
 
-        const params =
-            new URLSearchParams(
-                window.location.search
-            );
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
 
-        const torneoDaAdmin =
-            params.get("torneo");
+    const torneoDaAdmin =
+        params.get("torneo");
 
-        const idTorneo =
-            params.get("idTorneo");
+    const idTorneo =
+        params.get("idTorneo");
 
 
-        /*
-        ========================================================
-        FUNZIONI INTERNE DI INIZIALIZZAZIONE
-        ========================================================
-        */
+    /*
+    ========================================================
+    FUNZIONI INTERNE DI INIZIALIZZAZIONE
+    ========================================================
+    */
 
-        const inizializzaGironi = () => {
+    const inizializzaGironi = () => {
+
+        [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G"
+        ].forEach(g => {
+
+            if (!Array.isArray(state[g])) {
+                state[g] = [];
+            }
+
+        });
+
+    };
+
+
+    const inizializzaArray = () => {
+
+        [
+            "Ares",
+            "Bres",
+            "Cres",
+            "Dres",
+            "Eres",
+            "Fres",
+            "Gres",
+
+            "Atime",
+            "Btime",
+            "Ctime",
+            "Dtime",
+            "Etime",
+            "Ftime",
+            "Gtime",
+
+            "Acamp",
+            "Bcamp",
+            "Ccamp",
+            "Dcamp",
+            "Ecamp",
+            "Fcamp",
+            "Gcamp",
+
+            "rankA",
+            "rankB",
+            "rankC",
+            "rankD",
+            "rankE",
+            "rankF",
+            "rankG"
+        ].forEach(k => {
+
+            if (!Array.isArray(state[k])) {
+                state[k] = [];
+            }
+
+        });
+
+
+        if (!Array.isArray(state.qRes)) {
+            state.qRes = Array(4).fill("-");
+        }
+
+        if (!Array.isArray(state.sTopRes)) {
+            state.sTopRes = Array(2).fill("-");
+        }
+
+        if (typeof state.fTopRes !== "string") {
+            state.fTopRes = "-";
+        }
+
+        if (!Array.isArray(state.finalTop)) {
+            state.finalTop = [];
+        }
+
+        if (state.campioneTop === undefined) {
+            state.campioneTop = null;
+        }
+
+    };
+
+
+    /*
+    ========================================================
+    TORNEO APERTO CON idTorneo
+    ========================================================
+    */
+
+    if (idTorneo) {
+
+        state = {
+            ...state,
+            idTorneo: idTorneo
+        };
+
+        inizializzaGironi();
+        inizializzaArray();
+
+        if (
+            typeof loadSavedTeams === "function"
+        ) {
+            loadSavedTeams();
+        }
+
+        if (
+            typeof generaCalendarioGironi === "function"
+        ) {
+            generaCalendarioGironi();
+        }
+
+        if (
+            typeof render === "function"
+        ) {
+            render();
+        }
+
+        if (
+            typeof renderGironi === "function"
+        ) {
+            renderGironi();
+        }
+
+        return state;
+    }
+
+
+    /*
+    ========================================================
+    TORNEO PASSATO DA ADMIN
+    ========================================================
+    */
+
+    if (torneoDaAdmin) {
+
+        try {
+
+            const torneo =
+                JSON.parse(
+                    decodeURIComponent(
+                        torneoDaAdmin
+                    )
+                );
+
+
+            const configurazione =
+                torneo.configurazione ||
+                {};
+
+
+            const rulesAdmin =
+                configurazione.rules ||
+                torneo.rules ||
+                {};
+
+
+            const numeroSquadre =
+                Number(torneo.posti) ||
+                Number(rulesAdmin.numeroSquadre) ||
+                8;
+
+
+            let numeroGironi =
+                Number(
+                    rulesAdmin.numeroGironi
+                );
+
+
+            if (
+                !Number.isFinite(numeroGironi) ||
+                numeroGironi < 1
+            ) {
+
+                numeroGironi =
+                    numeroSquadre >= 20
+                        ? 5
+                        : numeroSquadre >= 16
+                            ? 4
+                            : numeroSquadre >= 12
+                                ? 3
+                                : 2;
+            }
+
+
+            /*
+            ==================================================
+            RECUPERO SQUADRE
+            ==================================================
+            */
+
+            const partecipanti =
+                Array.isArray(
+                    configurazione.partecipanti
+                )
+                    ? configurazione.partecipanti
+                    : Array.isArray(
+                        torneo.partecipanti
+                    )
+                        ? torneo.partecipanti
+                        : [];
+
+
+            const coppie =
+                Array.isArray(
+                    configurazione.coppie
+                )
+                    ? configurazione.coppie
+                    : Array.isArray(
+                        torneo.coppie
+                    )
+                        ? torneo.coppie
+                        : [];
+
+
+            /*
+            ==================================================
+            AGGIORNAMENTO STATO
+            ==================================================
+            */
+
+            state = {
+
+                ...state,
+
+                idTorneo:
+                    torneo.id ||
+                    idTorneo ||
+                    null,
+
+                nomeTorneo:
+                    torneo.nome ||
+                    torneo.nomeTorneo ||
+                    "",
+
+                dataTorneo:
+                    torneo.data ||
+                    torneo.dataTorneo ||
+                    "",
+
+                formato:
+                    numeroSquadre,
+
+                rules: {
+
+                    ...state.rules,
+
+                    ...rulesAdmin,
+
+                    numeroSquadre:
+                        numeroSquadre,
+
+                    numeroGironi:
+                        numeroGironi,
+
+                    formatoTorneo:
+                        rulesAdmin.formatoTorneo ||
+                        "gironiFinale",
+
+                    tipoTorneo:
+                        rulesAdmin.tipoTorneo ||
+                        "gironiFinale",
+
+                    squadrePerGirone:
+                        Number(
+                            rulesAdmin.squadrePerGirone
+                        ) ||
+                        4
+
+                },
+
+                partecipanti:
+                    partecipanti,
+
+                coppie:
+                    coppie
+
+            };
+
+
+            /*
+            ==================================================
+            RECUPERO GIRONI
+            ==================================================
+            */
 
             [
                 "A",
@@ -5396,16 +5679,36 @@ window.initDefaults = function initDefaults() {
                 "G"
             ].forEach(g => {
 
-                if (!Array.isArray(state[g])) {
+                const origine =
+                    configurazione[g] ??
+                    torneo[g];
+
+                if (
+                    Array.isArray(origine) &&
+                    origine.length > 0
+                ) {
+
+                    state[g] = [
+                        ...origine
+                    ];
+
+                }
+                else if (
+                    !Array.isArray(state[g])
+                ) {
+
                     state[g] = [];
+
                 }
 
             });
 
-        };
 
-
-        const inizializzaArray = () => {
+            /*
+            ==================================================
+            RECUPERO DATI ACCESSORI
+            ==================================================
+            */
 
             [
                 "Ares",
@@ -5441,237 +5744,189 @@ window.initDefaults = function initDefaults() {
                 "rankG"
             ].forEach(k => {
 
-                if (!Array.isArray(state[k])) {
-                    state[k] = [];
+                const origine =
+                    configurazione[k] ??
+                    torneo[k];
+
+                if (Array.isArray(origine)) {
+
+                    state[k] = [
+                        ...origine
+                    ];
+
                 }
 
             });
 
 
-            if (!Array.isArray(state.qRes)) {
-                state.qRes = Array(4).fill("-");
+            /*
+            ==================================================
+            RECUPERO PARTITE GIRONI
+            ==================================================
+            */
+
+            if (
+                configurazione.partiteGironi &&
+                typeof configurazione.partiteGironi === "object"
+            ) {
+
+                state.partiteGironi = {
+                    A: Array.isArray(
+                        configurazione.partiteGironi.A
+                    )
+                        ? [...configurazione.partiteGironi.A]
+                        : [],
+
+                    B: Array.isArray(
+                        configurazione.partiteGironi.B
+                    )
+                        ? [...configurazione.partiteGironi.B]
+                        : [],
+
+                    C: Array.isArray(
+                        configurazione.partiteGironi.C
+                    )
+                        ? [...configurazione.partiteGironi.C]
+                        : [],
+
+                    D: Array.isArray(
+                        configurazione.partiteGironi.D
+                    )
+                        ? [...configurazione.partiteGironi.D]
+                        : [],
+
+                    E: Array.isArray(
+                        configurazione.partiteGironi.E
+                    )
+                        ? [...configurazione.partiteGironi.E]
+                        : [],
+
+                    F: Array.isArray(
+                        configurazione.partiteGironi.F
+                    )
+                        ? [...configurazione.partiteGironi.F]
+                        : [],
+
+                    G: Array.isArray(
+                        configurazione.partiteGironi.G
+                    )
+                        ? [...configurazione.partiteGironi.G]
+                        : []
+                };
+
             }
 
-            if (!Array.isArray(state.sTopRes)) {
-                state.sTopRes = Array(2).fill("-");
+
+            /*
+            ==================================================
+            FASE FINALE
+            ==================================================
+            */
+
+            if (
+                Array.isArray(
+                    configurazione.qRes
+                )
+            ) {
+
+                state.qRes = [
+                    ...configurazione.qRes
+                ];
+
             }
 
-            if (typeof state.fTopRes !== "string") {
-                state.fTopRes = "-";
+
+            if (
+                Array.isArray(
+                    configurazione.sTopRes
+                )
+            ) {
+
+                state.sTopRes = [
+                    ...configurazione.sTopRes
+                ];
+
             }
 
-            if (!Array.isArray(state.finalTop)) {
-                state.finalTop = [];
+
+            if (
+                typeof configurazione.fTopRes ===
+                "string"
+            ) {
+
+                state.fTopRes =
+                    configurazione.fTopRes;
+
             }
 
-            if (state.campioneTop === undefined) {
-                state.campioneTop = null;
+
+            if (
+                Array.isArray(
+                    configurazione.finalTop
+                )
+            ) {
+
+                state.finalTop = [
+                    ...configurazione.finalTop
+                ];
+
             }
 
-        };
+
+            if (
+                configurazione.campioneTop !==
+                undefined
+            ) {
+
+                state.campioneTop =
+                    configurazione.campioneTop;
+
+            }
 
 
-        /*
-        ========================================================
-        TORNEO APERTO CON idTorneo
-        ========================================================
-        */
-
-        if (idTorneo) {
-
-            state = {
-                ...state,
-                idTorneo: idTorneo
-            };
+            /*
+            ==================================================
+            INIZIALIZZAZIONE
+            ==================================================
+            */
 
             inizializzaGironi();
             inizializzaArray();
 
-            if (
-                typeof loadSavedTeams === "function"
-            ) {
-                loadSavedTeams();
-            }
+
+            /*
+            ==================================================
+            SQUADRE DA PARTECIPANTI/COPPIE
+            ==================================================
+            */
 
             if (
-                typeof generaCalendarioGironi === "function"
+                (
+                    state.A.length === 0 &&
+                    state.B.length === 0 &&
+                    state.C.length === 0 &&
+                    state.D.length === 0
+                ) &&
+                Array.isArray(state.coppie) &&
+                state.coppie.length > 0
             ) {
-                generaCalendarioGironi();
-            }
 
-            if (
-                typeof render === "function"
-            ) {
-                render();
-            }
-
-            if (
-                typeof renderGironi === "function"
-            ) {
-                renderGironi();
-            }
-
-            return state;
-        }
-
-
-        /*
-        ========================================================
-        TORNEO PASSATO DA ADMIN
-        ========================================================
-        */
-
-        if (torneoDaAdmin) {
-
-            try {
-
-                const torneo =
-                    JSON.parse(
-                        decodeURIComponent(
-                            torneoDaAdmin
-                        )
+                const squadre =
+                    state.coppie.slice(
+                        0,
+                        numeroSquadre
                     );
 
 
-                const configurazione =
-                    torneo.configurazione ||
-                    {};
-
-
-                const rulesAdmin =
-                    configurazione.rules ||
-                    torneo.rules ||
-                    {};
-
-
-                const numeroSquadre =
-                    Number(torneo.posti) ||
-                    Number(rulesAdmin.numeroSquadre) ||
-                    8;
-
-
-                let numeroGironi =
+                const perGirone =
                     Number(
-                        rulesAdmin.numeroGironi
+                        state.rules.squadrePerGirone
+                    ) ||
+                    Math.ceil(
+                        squadre.length /
+                        numeroGironi
                     );
 
-
-                if (
-                    !Number.isFinite(numeroGironi) ||
-                    numeroGironi < 1
-                ) {
-
-                    numeroGironi =
-                        numeroSquadre >= 20
-                            ? 5
-                            : numeroSquadre >= 16
-                                ? 4
-                                : numeroSquadre >= 12
-                                    ? 3
-                                    : 2;
-                }
-
-
-                /*
-                ==================================================
-                RECUPERO SQUADRE
-                ==================================================
-                */
-
-                const partecipanti =
-                    Array.isArray(
-                        configurazione.partecipanti
-                    )
-                        ? configurazione.partecipanti
-                        : Array.isArray(
-                            torneo.partecipanti
-                        )
-                            ? torneo.partecipanti
-                            : [];
-
-
-                const coppie =
-                    Array.isArray(
-                        configurazione.coppie
-                    )
-                        ? configurazione.coppie
-                        : Array.isArray(
-                            torneo.coppie
-                        )
-                            ? torneo.coppie
-                            : [];
-
-
-                /*
-                ==================================================
-                AGGIORNAMENTO STATO
-                ==================================================
-                */
-
-                state = {
-
-                    ...state,
-
-                    idTorneo:
-                        torneo.id ||
-                        idTorneo ||
-                        null,
-
-                    nomeTorneo:
-                        torneo.nome ||
-                        torneo.nomeTorneo ||
-                        "",
-
-                    dataTorneo:
-                        torneo.data ||
-                        torneo.dataTorneo ||
-                        "",
-
-                    formato:
-                        numeroSquadre,
-
-                    rules: {
-
-                        ...state.rules,
-
-                        ...rulesAdmin,
-
-                        numeroSquadre:
-                            numeroSquadre,
-
-                        numeroGironi:
-                            numeroGironi,
-
-                        formatoTorneo:
-                            rulesAdmin.formatoTorneo ||
-                            "gironiFinale",
-
-                        tipoTorneo:
-                            rulesAdmin.tipoTorneo ||
-                            "gironiFinale",
-
-                        squadrePerGirone:
-                            Number(
-                                rulesAdmin.squadrePerGirone
-                            ) ||
-                            4
-
-                    },
-
-                    partecipanti:
-                        partecipanti,
-
-                    coppie:
-                        coppie
-
-                };
-
-
-                /*
-                ==================================================
-                RECUPERO GIRONI
-                ==================================================
-                */
 
                 [
                     "A",
@@ -5681,470 +5936,210 @@ window.initDefaults = function initDefaults() {
                     "E",
                     "F",
                     "G"
-                ].forEach(g => {
+                ].forEach((g, indice) => {
 
-                    const origine =
-                        configurazione[g] ??
-                        torneo[g];
+                    const inizio =
+                        indice * perGirone;
 
-                    if (
-                        Array.isArray(origine) &&
-                        origine.length > 0
-                    ) {
+                    const fine =
+                        inizio + perGirone;
 
-                        state[g] = [
-                            ...origine
-                        ];
-
-                    }
-                    else if (
-                        !Array.isArray(state[g])
-                    ) {
-
-                        state[g] = [];
-
-                    }
+                    state[g] =
+                        squadre.slice(
+                            inizio,
+                            fine
+                        );
 
                 });
 
-
-                /*
-                ==================================================
-                RECUPERO DATI ACCESSORI
-                ==================================================
-                */
-
-                [
-                    "Ares",
-                    "Bres",
-                    "Cres",
-                    "Dres",
-                    "Eres",
-                    "Fres",
-                    "Gres",
-
-                    "Atime",
-                    "Btime",
-                    "Ctime",
-                    "Dtime",
-                    "Etime",
-                    "Ftime",
-                    "Gtime",
-
-                    "Acamp",
-                    "Bcamp",
-                    "Ccamp",
-                    "Dcamp",
-                    "Ecamp",
-                    "Fcamp",
-                    "Gcamp",
-
-                    "rankA",
-                    "rankB",
-                    "rankC",
-                    "rankD",
-                    "rankE",
-                    "rankF",
-                    "rankG"
-                ].forEach(k => {
-
-                    const origine =
-                        configurazione[k] ??
-                        torneo[k];
-
-                    if (Array.isArray(origine)) {
-
-                        state[k] = [
-                            ...origine
-                        ];
-
-                    }
-
-                });
-
-
-                /*
-                ==================================================
-                RECUPERO PARTITE GIRONI
-                ==================================================
-                */
-
-                if (
-                    configurazione.partiteGironi &&
-                    typeof configurazione.partiteGironi === "object"
-                ) {
-
-                    state.partiteGironi = {
-                        A: Array.isArray(
-                            configurazione.partiteGironi.A
-                        )
-                            ? [...configurazione.partiteGironi.A]
-                            : [],
-
-                        B: Array.isArray(
-                            configurazione.partiteGironi.B
-                        )
-                            ? [...configurazione.partiteGironi.B]
-                            : [],
-
-                        C: Array.isArray(
-                            configurazione.partiteGironi.C
-                        )
-                            ? [...configurazione.partiteGironi.C]
-                            : [],
-
-                        D: Array.isArray(
-                            configurazione.partiteGironi.D
-                        )
-                            ? [...configurazione.partiteGironi.D]
-                            : [],
-
-                        E: Array.isArray(
-                            configurazione.partiteGironi.E
-                        )
-                            ? [...configurazione.partiteGironi.E]
-                            : [],
-
-                        F: Array.isArray(
-                            configurazione.partiteGironi.F
-                        )
-                            ? [...configurazione.partiteGironi.F]
-                            : [],
-
-                        G: Array.isArray(
-                            configurazione.partiteGironi.G
-                        )
-                            ? [...configurazione.partiteGironi.G]
-                            : []
-                    };
-
-                }
-
-
-                /*
-                ==================================================
-                FASE FINALE
-                ==================================================
-                */
-
-                if (
-                    Array.isArray(
-                        configurazione.qRes
-                    )
-                ) {
-
-                    state.qRes = [
-                        ...configurazione.qRes
-                    ];
-
-                }
-
-
-                if (
-                    Array.isArray(
-                        configurazione.sTopRes
-                    )
-                ) {
-
-                    state.sTopRes = [
-                        ...configurazione.sTopRes
-                    ];
-
-                }
-
-
-                if (
-                    typeof configurazione.fTopRes ===
-                    "string"
-                ) {
-
-                    state.fTopRes =
-                        configurazione.fTopRes;
-
-                }
-
-
-                if (
-                    Array.isArray(
-                        configurazione.finalTop
-                    )
-                ) {
-
-                    state.finalTop = [
-                        ...configurazione.finalTop
-                    ];
-
-                }
-
-
-                if (
-                    configurazione.campioneTop !==
-                    undefined
-                ) {
-
-                    state.campioneTop =
-                        configurazione.campioneTop;
-
-                }
-
-
-                /*
-                ==================================================
-                INIZIALIZZAZIONE
-                ==================================================
-                */
-
-                inizializzaGironi();
-                inizializzaArray();
-
-
-                /*
-                ==================================================
-                SQUADRE DA PARTECIPANTI/COPPIE
-                ==================================================
-                */
-
-                if (
-                    (
-                        state.A.length === 0 &&
-                        state.B.length === 0 &&
-                        state.C.length === 0 &&
-                        state.D.length === 0
-                    ) &&
-                    Array.isArray(state.coppie) &&
-                    state.coppie.length > 0
-                ) {
-
-                    const squadre =
-                        state.coppie.slice(
-                            0,
-                            numeroSquadre
-                        );
-
-
-                    const perGirone =
-                        Number(
-                            state.rules.squadrePerGirone
-                        ) ||
-                        Math.ceil(
-                            squadre.length /
-                            numeroGironi
-                        );
-
-
-                    [
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "E",
-                        "F",
-                        "G"
-                    ].forEach((g, indice) => {
-
-                        const inizio =
-                            indice * perGirone;
-
-                        const fine =
-                            inizio + perGirone;
-
-                        state[g] =
-                            squadre.slice(
-                                inizio,
-                                fine
-                            );
-
-                    });
-
-                }
-
-
-                /*
-                ==================================================
-                CALENDARIO
-                ==================================================
-                */
-
-                if (
-                    typeof generaCalendarioGironi ===
-                    "function"
-                ) {
-
-                    generaCalendarioGironi();
-
-                }
-
-
-                /*
-                ==================================================
-                SALVATAGGIO
-                ==================================================
-                */
-
-                localStorage.setItem(
-                    "torneoState",
-                    JSON.stringify(state)
-                );
-
-
-                /*
-                ==================================================
-                RENDER
-                ==================================================
-                */
-
-                if (
-                    typeof render ===
-                    "function"
-                ) {
-
-                    render();
-
-                }
-
-
-                if (
-                    typeof renderGironi ===
-                    "function"
-                ) {
-
-                    renderGironi();
-
-                }
-
-
-                return state;
-
             }
-            catch (e) {
 
-                console.error(
-                    "Errore caricamento torneo Admin:",
-                    e
-                );
+
+            /*
+            ==================================================
+            CALENDARIO
+            ==================================================
+            */
+
+            if (
+                typeof generaCalendarioGironi ===
+                "function"
+            ) {
+
+                generaCalendarioGironi();
 
             }
 
-        }
 
+            /*
+            ==================================================
+            SALVATAGGIO
+            ==================================================
+            */
 
-        /*
-        ========================================================
-        APERTURA NORMALE
-        ========================================================
-        */
-
-        const salvato =
-            localStorage.getItem(
-                "torneoState"
+            localStorage.setItem(
+                "torneoState",
+                JSON.stringify(state)
             );
 
 
-        if (salvato) {
+            /*
+            ==================================================
+            RENDER
+            ==================================================
+            */
 
-            try {
+            if (
+                typeof render ===
+                "function"
+            ) {
 
-                const vecchio =
-                    JSON.parse(
-                        salvato
-                    );
-
-
-                if (
-                    vecchio &&
-                    typeof vecchio ===
-                    "object"
-                ) {
-
-                    state = {
-
-                        ...state,
-
-                        ...vecchio,
-
-                        rules: {
-
-                            ...state.rules,
-
-                            ...(
-                                vecchio.rules ||
-                                {}
-                            )
-
-                        }
-
-                    };
-
-                }
+                render();
 
             }
-            catch (e) {
 
-                console.error(
-                    "Errore lettura torneoState:",
-                    e
+
+            if (
+                typeof renderGironi ===
+                "function"
+            ) {
+
+                renderGironi();
+
+            }
+
+
+            return state;
+
+        }
+        catch (e) {
+
+            console.error(
+                "Errore caricamento torneo Admin:",
+                e
+            );
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+    APERTURA NORMALE
+    ========================================================
+    */
+
+    const salvato =
+        localStorage.getItem(
+            "torneoState"
+        );
+
+
+    if (salvato) {
+
+        try {
+
+            const vecchio =
+                JSON.parse(
+                    salvato
                 );
 
+
+            if (
+                vecchio &&
+                typeof vecchio ===
+                "object"
+            ) {
+
+                state = {
+
+                    ...state,
+
+                    ...vecchio,
+
+                    rules: {
+
+                        ...state.rules,
+
+                        ...(
+                            vecchio.rules ||
+                            {}
+                        )
+
+                    }
+
+                };
+
             }
 
         }
+        catch (e) {
 
-
-        inizializzaGironi();
-        inizializzaArray();
-
-
-        if (
-            typeof generaCalendarioGironi ===
-            "function"
-        ) {
-
-            generaCalendarioGironi();
+            console.error(
+                "Errore lettura torneoState:",
+                e
+            );
 
         }
-
-
-        if (
-            typeof render ===
-            "function"
-        ) {
-
-            render();
-
-        }
-
-
-        if (
-            typeof renderGironi ===
-            "function"
-        ) {
-
-            renderGironi();
-
-        }
-
-
-        localStorage.setItem(
-            "torneoState",
-            JSON.stringify(state)
-        );
-
-
-        return state;
 
     }
-    catch (e) {
 
-        console.error(
-            "Errore initDefaults:",
-            e
-        );
 
-        return null;
+    inizializzaGironi();
+    inizializzaArray();
+
+
+    if (
+        typeof generaCalendarioGironi ===
+        "function"
+    ) {
+
+        generaCalendarioGironi();
 
     }
+
+
+    if (
+        typeof render ===
+        "function"
+    ) {
+
+        render();
+
+    }
+
+
+    if (
+        typeof renderGironi ===
+        "function"
+    ) {
+
+        renderGironi();
+
+    }
+
+
+    localStorage.setItem(
+        "torneoState",
+        JSON.stringify(state)
+    );
+
+
+    return state;
 
 }
+catch (e) {
+
+    console.error(
+        "Errore initDefaults:",
+        e
+    );
+
+    return null;
+
+}
+};
 </script>
 </body>
 </html>
