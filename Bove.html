@@ -209,6 +209,645 @@ input{width:100%;padding:5px;border-radius:4px;background:#0b1220;border:1px sol
       }
   );
 // Integrazione per aprire automaticamente le regole se richiesto dall'admin
+    window.loadState = async function loadState(){
+
+    if(typeof ensureRules === "function"){
+        ensureRules();
+    }
+
+    try{
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const idParam =
+            params.get("idTorneo");
+
+
+        /*
+        ============================================================
+        DETERMINAZIONE ID TORNEO
+        ============================================================
+        */
+
+        let idTorneo =
+            idParam ||
+            state.idTorneo ||
+            null;
+
+
+        if(idTorneo !== null){
+
+            idTorneo =
+                Number(idTorneo);
+
+        }
+
+
+        /*
+        ============================================================
+        SE ESISTE UN ID TORNEO:
+        SUPABASE È LA FONTE PRINCIPALE
+        ============================================================
+        */
+
+        if(
+            idTorneo &&
+            typeof sb !== "undefined"
+        ){
+
+            console.log(
+                "LOADSTATE: caricamento torneo Supabase:",
+                idTorneo
+            );
+
+
+            const {
+                data,
+                error
+            } = await sb
+                .from("tornei")
+                .select("*")
+                .eq("id", idTorneo)
+                .maybeSingle();
+
+
+            if(error){
+
+                console.error(
+                    "Errore caricamento torneo Supabase:",
+                    error
+                );
+
+                return state;
+
+            }
+
+
+            if(!data){
+
+                console.warn(
+                    "Torneo non trovato in Supabase:",
+                    idTorneo
+                );
+
+                return state;
+
+            }
+
+
+            /*
+            ========================================================
+            CONFIGURAZIONE
+            ========================================================
+            */
+
+            const cfg =
+                data.configurazione &&
+                typeof data.configurazione === "object"
+                    ? data.configurazione
+                    : {};
+
+
+            const rules =
+                cfg.rules &&
+                typeof cfg.rules === "object"
+                    ? cfg.rules
+                    : (
+                        data.rules &&
+                        typeof data.rules === "object"
+                            ? data.rules
+                            : {}
+                    );
+
+
+            /*
+            ========================================================
+            RICOSTRUZIONE STATE
+            ========================================================
+            */
+
+            state = {
+
+                ...state,
+
+                ...cfg,
+
+
+                idTorneo:
+                    data.id ||
+                    idTorneo,
+
+
+                nomeTorneo:
+                    data.nome ||
+                    cfg.nomeTorneo ||
+                    state.nomeTorneo ||
+                    "",
+
+
+                dataTorneo:
+                    data.data ||
+                    cfg.dataTorneo ||
+                    state.dataTorneo ||
+                    "",
+
+
+                rules:{
+
+                    ...state.rules,
+
+                    ...rules
+
+                }
+
+            };
+
+
+            /*
+            ========================================================
+            GARANZIA ID
+            ========================================================
+            */
+
+            state.idTorneo =
+                data.id ||
+                idTorneo;
+
+
+            /*
+            ========================================================
+            GARANZIA NOME E DATA
+            ========================================================
+            */
+
+            state.nomeTorneo =
+                data.nome ||
+                cfg.nomeTorneo ||
+                state.nomeTorneo ||
+                "";
+
+
+            state.dataTorneo =
+                data.data ||
+                cfg.dataTorneo ||
+                state.dataTorneo ||
+                "";
+
+
+            /*
+            ========================================================
+            GARANZIA GIRONI A-G
+            ========================================================
+            */
+
+            [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G"
+            ].forEach(tag => {
+
+                if(!Array.isArray(state[tag])){
+
+                    state[tag] = [];
+
+                }
+
+            });
+
+
+            /*
+            ========================================================
+            GARANZIA RISULTATI / ORARI / CAMPI / CLASSIFICHE
+            ========================================================
+            */
+
+            [
+                "Ares",
+                "Bres",
+                "Cres",
+                "Dres",
+                "Eres",
+                "Fres",
+                "Gres",
+
+                "Atime",
+                "Btime",
+                "Ctime",
+                "Dtime",
+                "Etime",
+                "Ftime",
+                "Gtime",
+
+                "Acamp",
+                "Bcamp",
+                "Ccamp",
+                "Dcamp",
+                "Ecamp",
+                "Fcamp",
+                "Gcamp",
+
+                "rankA",
+                "rankB",
+                "rankC",
+                "rankD",
+                "rankE",
+                "rankF",
+                "rankG"
+            ].forEach(key => {
+
+                if(!Array.isArray(state[key])){
+
+                    state[key] = [];
+
+                }
+
+            });
+
+
+            /*
+            ========================================================
+            RECUPERO PARTITE GIRONI
+            ========================================================
+            */
+
+            if(
+                cfg.partiteGironi &&
+                typeof cfg.partiteGironi === "object"
+            ){
+
+                state.partiteGironi = {
+
+                    A:
+                        Array.isArray(
+                            cfg.partiteGironi.A
+                        )
+                            ? [...cfg.partiteGironi.A]
+                            : [],
+
+                    B:
+                        Array.isArray(
+                            cfg.partiteGironi.B
+                        )
+                            ? [...cfg.partiteGironi.B]
+                            : [],
+
+                    C:
+                        Array.isArray(
+                            cfg.partiteGironi.C
+                        )
+                            ? [...cfg.partiteGironi.C]
+                            : [],
+
+                    D:
+                        Array.isArray(
+                            cfg.partiteGironi.D
+                        )
+                            ? [...cfg.partiteGironi.D]
+                            : [],
+
+                    E:
+                        Array.isArray(
+                            cfg.partiteGironi.E
+                        )
+                            ? [...cfg.partiteGironi.E]
+                            : [],
+
+                    F:
+                        Array.isArray(
+                            cfg.partiteGironi.F
+                        )
+                            ? [...cfg.partiteGironi.F]
+                            : [],
+
+                    G:
+                        Array.isArray(
+                            cfg.partiteGironi.G
+                        )
+                            ? [...cfg.partiteGironi.G]
+                            : []
+
+                };
+
+            }
+
+
+            /*
+            ========================================================
+            FASE FINALE
+            ========================================================
+            */
+
+            if(
+                Array.isArray(cfg.qRes)
+            ){
+
+                state.qRes =
+                    [...cfg.qRes];
+
+            }
+
+            else if(
+                !Array.isArray(state.qRes)
+            ){
+
+                state.qRes =
+                    Array(4).fill("-");
+
+            }
+
+
+            if(
+                Array.isArray(cfg.sTopRes)
+            ){
+
+                state.sTopRes =
+                    [...cfg.sTopRes];
+
+            }
+
+            else if(
+                !Array.isArray(state.sTopRes)
+            ){
+
+                state.sTopRes =
+                    Array(2).fill("-");
+
+            }
+
+
+            if(
+                typeof cfg.fTopRes === "string"
+            ){
+
+                state.fTopRes =
+                    cfg.fTopRes;
+
+            }
+
+            else if(
+                typeof state.fTopRes !== "string"
+            ){
+
+                state.fTopRes =
+                    "-";
+
+            }
+
+
+            if(
+                Array.isArray(cfg.finalTop)
+            ){
+
+                state.finalTop =
+                    [...cfg.finalTop];
+
+            }
+
+            else if(
+                !Array.isArray(state.finalTop)
+            ){
+
+                state.finalTop =
+                    [];
+
+            }
+
+
+            if(
+                cfg.campioneTop !== undefined
+            ){
+
+                state.campioneTop =
+                    cfg.campioneTop;
+
+            }
+
+            else if(
+                state.campioneTop === undefined
+            ){
+
+                state.campioneTop =
+                    null;
+
+            }
+
+
+            /*
+            ========================================================
+            MOTORI SPECIALI
+            ========================================================
+            */
+
+            if(!("svizzero" in state))
+                state.svizzero = null;
+
+            if(!("americano" in state))
+                state.americano = null;
+
+            if(!("mexicano" in state))
+                state.mexicano = null;
+
+            if(!("king" in state))
+                state.king = null;
+
+            if(!("short" in state))
+                state.short = null;
+
+
+            /*
+            ========================================================
+            GARANZIA REGOLE
+            ========================================================
+            */
+
+            if(typeof ensureRules === "function"){
+
+                ensureRules();
+
+            }
+
+
+            /*
+            ========================================================
+            SALVATAGGIO LOCALE DEL TORNEO APPENA CARICATO
+            ========================================================
+            */
+
+            localStorage.setItem(
+                "torneoState",
+                JSON.stringify(state)
+            );
+
+
+            console.log(
+                "TORNEO SUPABASE CARICATO CORRETTAMENTE:",
+                {
+                    id: state.idTorneo,
+                    nome: state.nomeTorneo,
+                    data: state.dataTorneo,
+                    numeroSquadre:
+                        state.rules.numeroSquadre,
+                    numeroGironi:
+                        state.rules.numeroGironi
+                }
+            );
+
+
+            /*
+            ========================================================
+            CALENDARIO GIRONI
+            ========================================================
+            */
+
+            if(
+                typeof generaCalendarioGironi ===
+                "function"
+            ){
+
+                generaCalendarioGironi();
+
+            }
+
+
+            /*
+            ========================================================
+            RENDER
+            ========================================================
+            */
+
+            if(
+                typeof render ===
+                "function"
+            ){
+
+                render();
+
+            }
+
+
+            if(
+                typeof renderGironi ===
+                "function"
+            ){
+
+                renderGironi();
+
+            }
+
+
+            return state;
+
+        }
+
+
+        /*
+        ============================================================
+        NESSUN ID TORNEO:
+        USO LO STATO LOCALE
+        ============================================================
+        */
+
+        const salvato =
+            localStorage.getItem(
+                "torneoState"
+            );
+
+
+        if(salvato){
+
+            try{
+
+                const locale =
+                    JSON.parse(
+                        salvato
+                    );
+
+
+                if(
+                    locale &&
+                    typeof locale === "object"
+                ){
+
+                    state = {
+
+                        ...state,
+
+                        ...locale,
+
+                        rules:{
+
+                            ...state.rules,
+
+                            ...(locale.rules || {})
+
+                        }
+
+                    };
+
+                }
+
+            }
+            catch(e){
+
+                console.error(
+                    "Errore lettura torneoState:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        if(typeof ensureRules === "function"){
+
+            ensureRules();
+
+        }
+
+
+        if(
+            typeof render ===
+            "function"
+        ){
+
+            render();
+
+        }
+
+
+        if(
+            typeof renderGironi ===
+            "function"
+        ){
+
+            renderGironi();
+
+        }
+
+
+        return state;
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore loadState:",
+            e
+        );
+
+        return state;
+
+    }
+
+};
 document.addEventListener("DOMContentLoaded", async function () {
 
     try {
