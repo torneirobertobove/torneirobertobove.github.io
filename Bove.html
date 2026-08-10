@@ -8390,7 +8390,9 @@ let campiPerGirone={
 A:[2,3],
 B:[4,5],
 C:[6,7],
-D:[8,9]
+D:[8,9],
+E:[10,11],
+F:[12,13]
 };
 let durata=Number(state.rules.duration||30);
 let start=String(state.rules.start||"20:00");
@@ -8398,7 +8400,7 @@ let partiOra=start.split(":");
 let oraBase=Number(partiOra[0])||20;
 let minutiBase=Number(partiOra[1])||0;
 let calendario=[];
-["A","B","C","D"].forEach(tag=>{
+["A","B","C","D","E","F"].forEach(tag=>{
 let squadre=state[tag];
 if(!Array.isArray(squadre)||squadre.length<2)
 return;
@@ -8407,8 +8409,8 @@ rounds.forEach(round=>{
 round.forEach(match=>{
 calendario.push({
 girone:tag,
-casa:match[0],
-ospite:match[1],
+casa:match,
+ospite:match,
 campo:null,
 slot:null
 });
@@ -8445,16 +8447,11 @@ if(!assegnata)
 slot++;
 }
 });
-["A","B","C","D"].forEach(tag=>{
+["A","B","C","D","E","F"].forEach(tag=>{
 let box=document.getElementById(tag+"rows");
 if(!box)
 return;
 let partite=calendario.filter(p=>p.girone===tag);
-/*
-===================================
-NON RESETTARE I RISULTATI ESISTENTI
-===================================
-*/
 if(!Array.isArray(state[tag+"res"]))
 state[tag+"res"]=[];
 while(state[tag+"res"].length<partite.length)
@@ -8484,237 +8481,37 @@ state[tag+"camp"][i]=m.campo;
 if(!state[tag+"res"][i])
 state[tag+"res"][i]="-";
 let risultato=String(state[tag+"res"][i]).split("-");
+let squadraCasa=Array.isArray(state[tag])?state[tag][m.casa]:"";
+let squadraOspite=Array.isArray(state[tag])?state[tag][m.ospite]:"";
+if(squadraCasa===undefined||squadraCasa===null)
+squadraCasa="";
+if(squadraOspite===undefined||squadraOspite===null)
+squadraOspite="";
 rows+=`
+
+<tr>
+<td>Campo ${m.campo}</td>
+<td>${tempo}</td>
+<td>${squadraCasa} VS ${squadraOspite}</td>
+<td>
 <input
-value="${risultato[0]==='-'?'':risultato}"
+value="${risultato[0]||""}"
 oninput="updateRes('${tag}',${i},0,this.value)"
 >
+-
 <input
-value="${risultato[1]||''}"
+value="${risultato[1]||""}"
 oninput="updateRes('${tag}',${i},1,this.value)"
 >
+</td>
+</tr>
 `;
 });
 box.innerHTML=rows;
 });
 updateAndSync();
 }
-function getFinalQualified(){
 
-    ensureRules();
-
-
-    let qualificate=[];
-
-
-
-    [
-        "A",
-        "B",
-        "C",
-        "D"
-
-    ].forEach(tag=>{
-
-
-        let squadre =
-            state[tag];
-
-
-        if(
-            !Array.isArray(squadre) ||
-            squadre.length===0
-        )
-
-            return;
-
-
-
-
-        let classifica =
-
-            calc(
-
-                squadre,
-
-                state[tag+"res"]
-
-            );
-
-
-
-        if(
-            !Array.isArray(classifica) ||
-            classifica.length===0
-        )
-
-            return;
-
-
-
-
-        let q =
-
-            Number(
-                state.rules.qualificatePerGirone
-            );
-
-
-
-        if(
-            isNaN(q) ||
-            q<1
-        )
-
-            q=1;
-
-
-
-
-        /*
-        ============================
-        GESTIONE QUARTI
-        ============================
-
-        Se ci sono quarti e il girone
-        contiene 4 squadre, passano
-        tutte alla fase finale.
-
-        Esempio:
-        2 gironi x 4 squadre = 8
-        ============================
-        */
-
-
-        if(
-            state.rules.usaQuarti===true &&
-            squadre.length===4
-        ){
-
-            q=4;
-
-        }
-
-
-
-
-        classifica.forEach((x,i)=>{
-
-
-            if(
-                i<q
-            ){
-
-
-                qualificate.push({
-
-                    nome:x.n,
-
-                    pt:x.pt,
-
-                    gf:x.gf,
-
-                    gs:x.gs,
-
-                    df:x.df,
-
-                    girone:tag,
-
-                    posizione:i+1
-
-                });
-
-
-            }
-
-
-        });
-
-
-
-    });
-
-
-
-
-
-
-
-    /*
-    ============================
-    NUMERO QUALIFICATE FINALI
-    ============================
-    */
-
-
-    let limite =
-
-        Number(
-            state.rules.numeroQualificateFinali
-        );
-
-
-
-
-
-
-    /*
-    ============================
-    QUARTI DI FINALE
-    ============================
-
-    Servono 8 squadre solo se
-    realmente disponibili.
-    ============================
-    */
-
-
-    if(
-        state.rules.usaQuarti===true &&
-        qualificate.length>=8
-    ){
-
-        limite=8;
-
-    }
-
-
-
-
-
-
-    if(
-        !limite ||
-        limite<1
-    )
-
-        limite =
-            qualificate.length;
-
-
-
-
-
-    return qualificate
-
-        .slice(
-
-            0,
-
-            limite
-
-        )
-
-        .map(
-
-            x=>
-
-            x.nome
-
-        );
-
-
-}
 function renderKO(){
 
     ensureRules();
