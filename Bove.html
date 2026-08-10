@@ -2000,6 +2000,135 @@ function setFormat(n){
     /*
         RESET PARTITE GIRONI
     */
+   function generaPartiteGironi() {
+
+    ensureRules();
+
+    if (!state || !state.rules) {
+        return;
+    }
+
+    /*
+    ============================================================
+    GENERA IL CALENDARIO DEI GIRONI
+    ============================================================
+    */
+
+    if (typeof generaCalendarioGironi === "function") {
+        generaCalendarioGironi();
+    }
+
+    /*
+    ============================================================
+    SE NON CI SONO PARTITE NON C'È NULLA DA GENERARE
+    ============================================================
+    */
+
+    if (
+        !Array.isArray(state.partiteGironi) ||
+        state.partiteGironi.length === 0
+    ) {
+        return;
+    }
+
+    /*
+    ============================================================
+    SINCRONIZZA RISULTATI / ORARI / CAMPI
+    ============================================================
+    */
+
+    const lettere = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ];
+
+    lettere.forEach(girone => {
+
+        const partite = state.partiteGironi.filter(
+            partita =>
+                partita &&
+                partita.girone === girone
+        );
+
+        const resKey = girone + "res";
+        const timeKey = girone + "time";
+        const campKey = girone + "camp";
+
+        if (!Array.isArray(state[resKey])) {
+            state[resKey] = [];
+        }
+
+        if (!Array.isArray(state[timeKey])) {
+            state[timeKey] = [];
+        }
+
+        if (!Array.isArray(state[campKey])) {
+            state[campKey] = [];
+        }
+
+        while (state[resKey].length < partite.length) {
+            state[resKey].push("-");
+        }
+
+        while (state[timeKey].length < partite.length) {
+            state[timeKey].push("-");
+        }
+
+        while (state[campKey].length < partite.length) {
+            state[campKey].push("");
+        }
+
+        state[resKey] = state[resKey].slice(
+            0,
+            partite.length
+        );
+
+        state[timeKey] = state[timeKey].slice(
+            0,
+            partite.length
+        );
+
+        state[campKey] = state[campKey].slice(
+            0,
+            partite.length
+        );
+
+        partite.forEach((partita, index) => {
+
+            state[timeKey][index] =
+                partita.time || "-";
+
+            state[campKey][index] =
+                partita.campo || "";
+
+        });
+
+    });
+
+    /*
+    ============================================================
+    SALVA
+    ============================================================
+    */
+
+    try {
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+    }
+    catch (e) {
+        console.error(
+            "Errore salvataggio generaPartiteGironi:",
+            e
+        );
+    }
+}
     function resetGirone(nome,girone){
         let totale=0;
         let len =
