@@ -231,13 +231,14 @@ window.loadState = async function loadState(){
             state.idTorneo ||
             null;
 
-        if(idTorneo !== null){
+        if(idTorneo !== null && idTorneo !== ""){
             idTorneo = Number(idTorneo);
         }
 
         /*
         ========================================================
-        FUNZIONI INTERNE
+        FUNZIONE INTERNA
+        INIZIALIZZAZIONE STRUTTURE SENZA MODIFICARE I DATI
         ========================================================
         */
 
@@ -258,6 +259,7 @@ window.loadState = async function loadState(){
                 }
 
             });
+
 
             [
                 "Ares",
@@ -299,6 +301,7 @@ window.loadState = async function loadState(){
 
             });
 
+
             if(!Array.isArray(state.qRes)){
                 state.qRes =
                     Array(4).fill("-");
@@ -324,6 +327,13 @@ window.loadState = async function loadState(){
         };
 
 
+        /*
+        ========================================================
+        FUNZIONE INTERNA
+        RENDER COMPLETO
+        ========================================================
+        */
+
         const renderCompleto = () => {
 
             if(typeof render === "function"){
@@ -347,7 +357,7 @@ window.loadState = async function loadState(){
 
         /*
         ========================================================
-        TORNEO SUPABASE
+        CARICAMENTO TORNEO DA SUPABASE
         ========================================================
         */
 
@@ -361,6 +371,7 @@ window.loadState = async function loadState(){
                 idTorneo
             );
 
+
             const {
                 data,
                 error
@@ -370,6 +381,7 @@ window.loadState = async function loadState(){
                 .eq("id", idTorneo)
                 .maybeSingle();
 
+
             if(error){
 
                 console.error(
@@ -378,7 +390,9 @@ window.loadState = async function loadState(){
                 );
 
                 return state;
+
             }
+
 
             if(!data){
 
@@ -388,6 +402,7 @@ window.loadState = async function loadState(){
                 );
 
                 return state;
+
             }
 
 
@@ -418,7 +433,7 @@ window.loadState = async function loadState(){
 
             /*
             ====================================================
-            STATE BASE
+            CARICAMENTO STATO PRINCIPALE
             ====================================================
             */
 
@@ -521,7 +536,7 @@ window.loadState = async function loadState(){
 
             /*
             ====================================================
-            GIRONI
+            GIRONI A-G
             ====================================================
             */
 
@@ -541,8 +556,9 @@ window.loadState = async function loadState(){
 
                 if(Array.isArray(origine)){
 
-                    state[girone] =
-                        [...origine];
+                    state[girone] = [
+                        ...origine
+                    ];
 
                 }
 
@@ -595,8 +611,9 @@ window.loadState = async function loadState(){
 
                 if(Array.isArray(origine)){
 
-                    state[key] =
-                        [...origine];
+                    state[key] = [
+                        ...origine
+                    ];
 
                 }
 
@@ -606,6 +623,21 @@ window.loadState = async function loadState(){
             /*
             ====================================================
             PARTITE GIRONI
+            ====================================================
+
+            IMPORTANTE:
+
+            Il formato salvato attualmente può essere:
+
+            {
+                A: [...],
+                B: [...],
+                C: [...]
+            }
+
+            oppure un array.
+
+            NON dobbiamo ricrearlo se esiste già.
             ====================================================
             */
 
@@ -627,53 +659,44 @@ window.loadState = async function loadState(){
                 typeof partiteSalvate === "object"
             ){
 
-                /*
-                ----------------------------------------------
-                CONVERSIONE OGGETTO → ARRAY
-                ----------------------------------------------
-                */
+                state.partiteGironi = {
 
-                state.partiteGironi = [];
+                    A:
+                        Array.isArray(partiteSalvate.A)
+                            ? [...partiteSalvate.A]
+                            : [],
 
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F",
-                    "G"
-                ].forEach(girone => {
+                    B:
+                        Array.isArray(partiteSalvate.B)
+                            ? [...partiteSalvate.B]
+                            : [],
 
-                    const elenco =
-                        Array.isArray(
-                            partiteSalvate[girone]
-                        )
-                            ? partiteSalvate[girone]
-                            : [];
+                    C:
+                        Array.isArray(partiteSalvate.C)
+                            ? [...partiteSalvate.C]
+                            : [],
 
-                    elenco.forEach(partita => {
+                    D:
+                        Array.isArray(partiteSalvate.D)
+                            ? [...partiteSalvate.D]
+                            : [],
 
-                        state.partiteGironi.push({
+                    E:
+                        Array.isArray(partiteSalvate.E)
+                            ? [...partiteSalvate.E]
+                            : [],
 
-                            ...partita,
+                    F:
+                        Array.isArray(partiteSalvate.F)
+                            ? [...partiteSalvate.F]
+                            : [],
 
-                            girone:
-                                partita.girone ||
-                                girone
+                    G:
+                        Array.isArray(partiteSalvate.G)
+                            ? [...partiteSalvate.G]
+                            : []
 
-                        });
-
-                    });
-
-                });
-
-            }
-            else if(
-                !Array.isArray(state.partiteGironi)
-            ){
-
-                state.partiteGironi = [];
+                };
 
             }
 
@@ -689,10 +712,7 @@ window.loadState = async function loadState(){
                 data.qRes;
 
             if(Array.isArray(qRes)){
-
-                state.qRes =
-                    [...qRes];
-
+                state.qRes = [...qRes];
             }
 
 
@@ -701,10 +721,7 @@ window.loadState = async function loadState(){
                 data.sTopRes;
 
             if(Array.isArray(sTopRes)){
-
-                state.sTopRes =
-                    [...sTopRes];
-
+                state.sTopRes = [...sTopRes];
             }
 
 
@@ -713,10 +730,7 @@ window.loadState = async function loadState(){
                 data.fTopRes;
 
             if(typeof fTopRes === "string"){
-
-                state.fTopRes =
-                    fTopRes;
-
+                state.fTopRes = fTopRes;
             }
 
 
@@ -725,10 +739,7 @@ window.loadState = async function loadState(){
                 data.finalTop;
 
             if(Array.isArray(finalTop)){
-
-                state.finalTop =
-                    [...finalTop];
-
+                state.finalTop = [...finalTop];
             }
 
 
@@ -737,10 +748,7 @@ window.loadState = async function loadState(){
                 data.campioneTop;
 
             if(campioneTop !== undefined){
-
-                state.campioneTop =
-                    campioneTop;
-
+                state.campioneTop = campioneTop;
             }
 
 
@@ -784,7 +792,7 @@ window.loadState = async function loadState(){
 
             /*
             ====================================================
-            INIZIALIZZAZIONE STRUTTURA
+            INIZIALIZZAZIONE STRUTTURE
             ====================================================
             */
 
@@ -793,82 +801,23 @@ window.loadState = async function loadState(){
 
             /*
             ====================================================
-            IMPORTANTE
+            NON RIGENERARE LE PARTITE QUI
             ====================================================
 
-            NON rigeneriamo automaticamente le partite.
+            Se Supabase ha già salvato:
 
-            Se le partite sono già state salvate,
-            devono rimanere quelle caricate da Supabase.
-
-            Questo evita di perdere:
-
+            - gironi
+            - partite
             - risultati
             - orari
             - campi
-            - ordine delle partite
-            - classifiche
-            - stato del torneo
+
+            questi dati devono essere mantenuti.
+
+            La generazione viene lasciata alle funzioni
+            specifiche solo quando realmente necessaria.
             ====================================================
             */
-
-
-            /*
-            ====================================================
-            GENERAZIONE SOLO SE NON ESISTE ALCUN CALENDARIO
-            ====================================================
-            */
-
-            if(
-                (!Array.isArray(state.partiteGironi) ||
-                state.partiteGironi.length === 0) &&
-                typeof generaPartiteGironi === "function"
-            ){
-
-                generaPartiteGironi();
-
-            }
-
-
-            /*
-            ====================================================
-            CALENDARIO SOLO SE NECESSARIO
-            ====================================================
-            */
-
-            if(
-                Array.isArray(state.partiteGironi) &&
-                state.partiteGironi.length > 0
-            ){
-
-                if(
-                    typeof generaCalendarioGironi === "function"
-                ){
-
-                    /*
-                    Non ricreiamo il calendario.
-                    La funzione viene chiamata solo per
-                    completare eventuali dati mancanti.
-                    */
-
-                    state.partiteGironi.forEach(
-                        (partita, index) => {
-
-                            if(
-                                partita.slot === undefined ||
-                                partita.slot === null
-                            ){
-
-                                partita.slot = index;
-
-                            }
-
-                        }
-                    );
-
-                }
-
-            }
 
 
             /*
@@ -901,11 +850,6 @@ window.loadState = async function loadState(){
                     numeroGironi:
                         state.rules.numeroGironi,
 
-                    coppie:
-                        Array.isArray(state.coppie)
-                            ? state.coppie.length
-                            : 0,
-
                     A:
                         Array.isArray(state.A)
                             ? state.A.length
@@ -926,17 +870,22 @@ window.loadState = async function loadState(){
                             ? state.D.length
                             : 0,
 
-                    partite:
+                    partiteGironi:
                         Array.isArray(state.partiteGironi)
                             ? state.partiteGironi.length
-                            : 0
+                            : (
+                                state.partiteGironi &&
+                                typeof state.partiteGironi === "object"
+                                    ? "oggetto"
+                                    : 0
+                            )
                 }
             );
 
 
             /*
             ====================================================
-            RENDER COMPLETO
+            RENDER
             ====================================================
             */
 
@@ -968,6 +917,7 @@ window.loadState = async function loadState(){
                     JSON.parse(
                         salvato
                     );
+
 
                 if(
                     locale &&
@@ -1007,13 +957,20 @@ window.loadState = async function loadState(){
 
         /*
         ========================================================
-        GARANZIA STRUTTURA
+        GARANZIA REGOLE
         ========================================================
         */
 
         if(typeof ensureRules === "function"){
             ensureRules();
         }
+
+
+        /*
+        ========================================================
+        GARANZIA STRUTTURA
+        ========================================================
+        */
 
         inizializzaStruttura();
 
