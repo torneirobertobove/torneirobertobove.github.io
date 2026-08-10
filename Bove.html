@@ -11103,25 +11103,55 @@ async function initDefaults(){
                     8;
 
 
+                /*
+                ============================================
+                NUMERO SQUADRE PER GIRONE
+                ============================================
+                */
+
+                const squadrePerGirone =
+                    Number(
+                        rulesAdmin.squadrePerGirone
+                    )
+                    ||
+                    4;
+
+
+                /*
+                ============================================
+                NUMERO GIRONI
+                ============================================
+                */
+
                 let numeroGironi =
                     Number(
                         rulesAdmin.numeroGironi
                     );
 
 
-                if(!numeroGironi){
+                if(
+                    !numeroGironi ||
+                    numeroGironi < 1
+                ){
 
-                    if(numeroSquadre >= 16)
+                    numeroGironi =
+                        Math.ceil(
+                            numeroSquadre /
+                            squadrePerGirone
+                        );
 
-                        numeroGironi = 4;
+                }
 
-                    else if(numeroSquadre >= 12)
 
-                        numeroGironi = 3;
+                /*
+                ============================================
+                PROTEZIONE: NON SUPERARE I 6 GIRONI
+                ============================================
+                */
 
-                    else
+                if(numeroGironi > 6){
 
-                        numeroGironi = 2;
+                    numeroGironi = 6;
 
                 }
 
@@ -11130,12 +11160,14 @@ async function initDefaults(){
 
                     ...state,
 
+
                     idTorneo:
                         torneo.idTorneo
                         ||
                         torneo.id
                         ||
                         Date.now(),
+
 
                     nomeTorneo:
                         torneo.nomeTorneo
@@ -11144,12 +11176,14 @@ async function initDefaults(){
                         ||
                         "",
 
+
                     dataTorneo:
                         torneo.data
                         ||
                         torneo.dataTorneo
                         ||
                         "",
+
 
                     formato:
                         numeroSquadre,
@@ -11161,18 +11195,17 @@ async function initDefaults(){
 
                         ...rulesAdmin,
 
+
                         numeroSquadre:
                             numeroSquadre,
+
 
                         numeroGironi:
                             numeroGironi,
 
+
                         squadrePerGirone:
-                            Number(
-                                rulesAdmin.squadrePerGirone
-                            )
-                            ||
-                            4
+                            squadrePerGirone
 
                     },
 
@@ -11242,10 +11275,34 @@ async function initDefaults(){
 
                     state.coppie.map(
 
-                        c =>
-                            c.g1 +
-                            " / " +
-                            c.g2
+                        c => {
+
+                            if(
+                                !c
+                            ){
+
+                                return "";
+
+                            }
+
+
+                            const g1 =
+                                c.g1 ??
+                                "";
+
+
+                            const g2 =
+                                c.g2 ??
+                                "";
+
+
+                            return (
+                                String(g1) +
+                                " / " +
+                                String(g2)
+                            );
+
+                        }
 
                     )
 
@@ -11261,7 +11318,18 @@ async function initDefaults(){
                     )
 
                     ||
-                    4;
+
+                    squadrePerGirone;
+
+
+                if(perGirone < 1){
+
+                    perGirone = 4;
+
+                    state.rules.squadrePerGirone =
+                        perGirone;
+
+                }
 
 
                 let lettere =
@@ -11281,7 +11349,8 @@ async function initDefaults(){
 
                     let i=0;
 
-                    i<numeroGironi;
+                    i<numeroGironi &&
+                    i<lettere.length;
 
                     i++
 
@@ -11308,12 +11377,13 @@ async function initDefaults(){
                         );
 
                 }
-                   /*
-                ============================
-                RESET ARRAY PARTITE
-                ============================
-                */
 
+
+                /*
+                ============================================
+                RESET ARRAY PARTITE
+                ============================================
+                */
 
                 [
                     "A",
@@ -11334,22 +11404,17 @@ async function initDefaults(){
                 });
 
 
-
-
-
                 /*
-                ============================
+                ============================================
                 RESET FASE FINALE
-                ============================
+                ============================================
                 */
-
 
                 state.qRes =
 
                     Array(4)
 
                     .fill("-");
-
 
 
                 state.sTopRes =
@@ -11359,29 +11424,22 @@ async function initDefaults(){
                     .fill("-");
 
 
-
                 state.fTopRes =
-
                     "-";
-
 
 
                 state.finalTop = [];
 
 
-
-                state.campioneTop = null;
-
-
-
+                state.campioneTop =
+                    null;
 
 
                 /*
-                ============================
+                ============================================
                 GARANZIA REGOLE ADMIN
-                ============================
+                ============================================
                 */
-
 
                 if(
                     typeof ensureRules==="function"
@@ -11392,15 +11450,11 @@ async function initDefaults(){
                 }
 
 
-
-
-
                 /*
-                ============================
+                ============================================
                 SALVATAGGIO STATO ADMIN
-                ============================
+                ============================================
                 */
-
 
                 localStorage.setItem(
 
@@ -11411,9 +11465,6 @@ async function initDefaults(){
                     )
 
                 );
-
-
-
 
 
                 console.log(
@@ -11437,9 +11488,6 @@ async function initDefaults(){
                     state.D
 
                 );
-
-
-
 
 
                 if(
@@ -11467,9 +11515,6 @@ async function initDefaults(){
                 }
 
 
-
-
-
                 return;
 
 
@@ -11488,14 +11533,14 @@ async function initDefaults(){
 
             }
 
-
         }
-               /*
+
+
+        /*
         ============================
         CARICAMENTO STATO LOCALE
         ============================
         */
-
 
         let salvato =
 
@@ -11504,19 +11549,15 @@ async function initDefaults(){
             );
 
 
-
         if(salvato){
 
-
             try{
-
 
                 let vecchio =
 
                     JSON.parse(
                         salvato
                     );
-
 
 
                 state = {
@@ -11528,7 +11569,6 @@ async function initDefaults(){
                 };
 
 
-
                 console.log(
 
                     "STATO LOCALE RECUPERATO",
@@ -11537,18 +11577,16 @@ async function initDefaults(){
 
                     state.formato,
 
-                    state.rules.numeroSquadre,
+                    state.rules?.numeroSquadre,
 
-                    state.rules.numeroGironi
+                    state.rules?.numeroGironi
 
                 );
-
 
             }
 
 
             catch(e){
-
 
                 console.error(
 
@@ -11558,15 +11596,9 @@ async function initDefaults(){
 
                 );
 
-
             }
 
-
         }
-
-
-
-
 
 
         /*
@@ -11574,7 +11606,6 @@ async function initDefaults(){
         RECUPERO SQUADRE SALVATE
         ============================
         */
-
 
         if(
 
@@ -11592,15 +11623,11 @@ async function initDefaults(){
         }
 
 
-
-
-
         /*
         ============================
         GARANZIA ARRAY GIRONI
         ============================
         */
-
 
         [
 
@@ -11612,7 +11639,6 @@ async function initDefaults(){
             "F"
 
         ].forEach(g=>{
-
 
             if(
 
@@ -11626,11 +11652,7 @@ async function initDefaults(){
 
             }
 
-
         });
-
-
-
 
 
         /*
@@ -11638,7 +11660,6 @@ async function initDefaults(){
         GARANZIA REGOLE
         ============================
         */
-
 
         if(
 
@@ -11649,12 +11670,13 @@ async function initDefaults(){
             ensureRules();
 
         }
-           /*
+
+
+        /*
         ============================
         GARANZIA FASI FINALI
         ============================
         */
-
 
         if(
             !Array.isArray(
@@ -11669,7 +11691,6 @@ async function initDefaults(){
                 .fill("-");
 
         }
-
 
 
         if(
@@ -11687,7 +11708,6 @@ async function initDefaults(){
         }
 
 
-
         if(
             state.fTopRes===undefined
         ){
@@ -11697,7 +11717,6 @@ async function initDefaults(){
                 "-";
 
         }
-
 
 
         if(
@@ -11711,7 +11730,6 @@ async function initDefaults(){
         }
 
 
-
         if(
             state.campioneTop===undefined
         ){
@@ -11723,16 +11741,11 @@ async function initDefaults(){
         }
 
 
-
-
-
-
         /*
         ============================
         GARANZIA FORMATO TORNEO
         ============================
         */
-
 
         if(
             !state.formato
@@ -11749,9 +11762,6 @@ async function initDefaults(){
         }
 
 
-
-
-
         if(
             !state.rules.numeroSquadre
         ){
@@ -11763,40 +11773,51 @@ async function initDefaults(){
         }
 
 
-
-
+        /*
+        ============================================
+        CALCOLO GIRONI COERENTE CON IL FORMATO
+        ============================================
+        */
 
         if(
             !state.rules.numeroGironi
         ){
 
+            const perGirone =
+
+                Number(
+                    state.rules.squadrePerGirone
+                )
+                ||
+                4;
+
+
             state.rules.numeroGironi =
 
-                (
-                    state.formato >= 16
-
-                    ?
-
-                    4
-
-                    :
-
-                    state.formato >= 12
-
-                    ?
-
-                    3
-
-                    :
-
-                    2
-
+                Math.ceil(
+                    state.formato /
+                    perGirone
                 );
 
         }
 
 
+        if(
+            state.rules.numeroGironi < 1
+        ){
 
+            state.rules.numeroGironi = 1;
+
+        }
+
+
+        if(
+            state.rules.numeroGironi > 6
+        ){
+
+            state.rules.numeroGironi = 6;
+
+        }
 
 
         if(
@@ -11808,12 +11829,13 @@ async function initDefaults(){
                 4;
 
         }
-               /*
+
+
+        /*
         ============================
         SALVATAGGIO STATO CORRETTO
         ============================
         */
-
 
         localStorage.setItem(
 
@@ -11824,9 +11846,6 @@ async function initDefaults(){
             )
 
         );
-
-
-
 
 
         console.log(
@@ -11862,15 +11881,9 @@ async function initDefaults(){
                 D:
                     state.D
 
-
             }
 
         );
-
-
-
-
-
 
 
         /*
@@ -11878,7 +11891,6 @@ async function initDefaults(){
         RENDER PAGINA
         ============================
         */
-
 
         if(
 
@@ -11912,7 +11924,6 @@ async function initDefaults(){
 
     catch(e){
 
-
         console.error(
 
             "Errore initDefaults:",
@@ -11921,9 +11932,7 @@ async function initDefaults(){
 
         );
 
-
     }
-
 
 }
    window.addEventListener("load",async()=>{
