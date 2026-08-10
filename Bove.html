@@ -3754,60 +3754,380 @@ ensureRules();
 
 
 
-function render() {
+function renderTables() {
+
     ensureRules();
 
-    if (
-        typeof generaPartiteGironi === "function" &&
-        state &&
-        state.A &&
-        state.B &&
-        Array.isArray(state.A) &&
-        Array.isArray(state.B) &&
-        state.A.length > 0 &&
-        state.B.length > 0
-    ) {
-        generaPartiteGironi();
+    if (!state || !state.rules) {
+        return;
     }
 
-    const titolo = document.getElementById("titoloTorneo");
+    const tags = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+    ];
+
+    let numeroGironi =
+        Number(state.rules.numeroGironi) ||
+        Number(state.numeroGironi) ||
+        2;
+
+    if (numeroGironi < 1) {
+        numeroGironi = 1;
+    }
+
+    if (numeroGironi > tags.length) {
+        numeroGironi = tags.length;
+    }
+
+    tags.forEach(function(tag, gruppoIndex) {
+
+        const card =
+            document.getElementById(
+                "card" + tag
+            );
+
+        const tabella =
+            document.getElementById(tag);
+
+        const rows =
+            document.getElementById(
+                tag + "rows"
+            );
+
+        const classifica =
+            document.getElementById(
+                tag + "class"
+            );
+
+        if (!card) {
+            return;
+        }
+
+        if (gruppoIndex < numeroGironi) {
+
+            card.style.display = "";
+
+        }
+        else {
+
+            card.style.display = "none";
+
+            if (rows) {
+                rows.innerHTML = "";
+            }
+
+            if (classifica) {
+                classifica.innerHTML = "";
+            }
+
+            return;
+        }
+
+        if (!tabella || !rows) {
+            return;
+        }
+
+        let squadre =
+            state[tag];
+
+        if (!Array.isArray(squadre)) {
+            squadre = [];
+        }
+
+        rows.innerHTML = "";
+
+        if (squadre.length < 2) {
+            return;
+        }
+
+        let risultati =
+            state[tag + "res"];
+
+        let orari =
+            state[tag + "time"];
+
+        let campi =
+            state[tag + "camp"];
+
+        if (!Array.isArray(risultati)) {
+            risultati = [];
+        }
+
+        if (!Array.isArray(orari)) {
+            orari = [];
+        }
+
+        if (!Array.isArray(campi)) {
+            campi = [];
+        }
+
+        let indicePartita = 0;
+
+        for (
+            let i = 0;
+            i < squadre.length;
+            i++
+        ) {
+
+            for (
+                let j = i + 1;
+                j < squadre.length;
+                j++
+            ) {
+
+                const squadra1 =
+                    squadre[i] == null
+                        ? ""
+                        : String(squadre[i]);
+
+                const squadra2 =
+                    squadre[j] == null
+                        ? ""
+                        : String(squadre[j]);
+
+                const tr =
+                    document.createElement("tr");
+
+                const tdCampo =
+                    document.createElement("td");
+
+                const tdOra =
+                    document.createElement("td");
+
+                const tdMatch =
+                    document.createElement("td");
+
+                const tdRis =
+                    document.createElement("td");
+
+                const campo =
+                    campi[indicePartita] == null
+                        ? ""
+                        : String(
+                            campi[indicePartita]
+                        );
+
+                const ora =
+                    orari[indicePartita] == null
+                        ? ""
+                        : String(
+                            orari[indicePartita]
+                        );
+
+                const risultato =
+                    risultati[indicePartita] == null
+                        ? ""
+                        : String(
+                            risultati[indicePartita]
+                        );
+
+                tdCampo.textContent =
+                    campo;
+
+                tdOra.textContent =
+                    ora;
+
+                tdMatch.textContent =
+                    squadra1 +
+                    " VS " +
+                    squadra2;
+
+                const inputRis =
+                    document.createElement("input");
+
+                inputRis.type = "text";
+                inputRis.value = risultato;
+                inputRis.placeholder = "Ris";
+
+                inputRis.style.width = "55px";
+                inputRis.style.textAlign = "center";
+
+                inputRis.addEventListener(
+                    "change",
+                    function() {
+
+                        if (
+                            !Array.isArray(
+                                state[tag + "res"]
+                            )
+                        ) {
+                            state[tag + "res"] = [];
+                        }
+
+                        state[tag + "res"][
+                            indicePartita
+                        ] = this.value;
+
+                        if (
+                            typeof updateRes ===
+                            "function"
+                        ) {
+                            updateRes(
+                                tag,
+                                indicePartita,
+                                this.value
+                            );
+                        }
+
+                        if (
+                            typeof renderClass ===
+                            "function"
+                        ) {
+                            renderClass();
+                        }
+
+                        if (
+                            typeof updateAndSync ===
+                            "function"
+                        ) {
+                            updateAndSync();
+                        }
+                    }
+                );
+
+                tdRis.appendChild(
+                    inputRis
+                );
+
+                tr.appendChild(
+                    tdCampo
+                );
+
+                tr.appendChild(
+                    tdOra
+                );
+
+                tr.appendChild(
+                    tdMatch
+                );
+
+                tr.appendChild(
+                    tdRis
+                );
+
+                rows.appendChild(
+                    tr
+                );
+
+                indicePartita++;
+            }
+        }
+
+        const intestazione =
+            tabella.querySelector(
+                "thead tr"
+            );
+
+        if (intestazione) {
+
+            intestazione.innerHTML = "";
+
+            [
+                "Campo",
+                "Ora",
+                "Match",
+                "Ris"
+            ].forEach(function(testo) {
+
+                const th =
+                    document.createElement("th");
+
+                th.textContent =
+                    testo;
+
+                intestazione.appendChild(
+                    th
+                );
+            });
+        }
+
+        if (classifica) {
+
+            const tabellaClassifica =
+                classifica.closest("table");
+
+            if (tabellaClassifica) {
+
+                const rigaHead =
+                    tabellaClassifica.querySelector(
+                        "thead tr"
+                    );
+
+                if (rigaHead) {
+
+                    rigaHead.innerHTML = "";
+
+                    [
+                        "Girone " + tag,
+                        "PT",
+                        "GF",
+                        "GS",
+                        "DR"
+                    ].forEach(function(testo) {
+
+                        const th =
+                            document.createElement(
+                                "th"
+                            );
+
+                        th.textContent =
+                            testo;
+
+                        rigaHead.appendChild(
+                            th
+                        );
+                    });
+                }
+            }
+        }
+    });
+
+    /*
+    ========================================================
+    NOME E DATA TORNEO
+    ========================================================
+    */
+
+    const titolo =
+        document.getElementById(
+            "titoloTorneo"
+        );
+
     if (titolo) {
-        titolo.innerHTML = "🏆 " + (state.nomeTorneo || "Torneo Amatoriale Padel");
+
+        titolo.textContent =
+            "🏆 " +
+            (
+                state.nomeTorneo ||
+                "Torneo Amatoriale Padel"
+            );
     }
 
-    const inputNome = document.getElementById("nomeTorneoInput");
+    const inputNome =
+        document.getElementById(
+            "nomeTorneoInput"
+        );
+
     if (inputNome) {
-        inputNome.value = state.nomeTorneo || "";
+
+        inputNome.value =
+            state.nomeTorneo || "";
     }
-    
-    const inputData = document.querySelector("input[type='date']");
+
+    const inputData =
+        document.querySelector(
+            "input[type='date']"
+        );
+
     if (inputData) {
-        inputData.value = state.dataTorneo || "";
-    }
 
-    if (typeof aggiornaNomeFormulaTorneo === "function") {
-        aggiornaNomeFormulaTorneo();
-    }
-
-    if (typeof renderTables === "function" && state && state.rules) {
-        renderTables();
-    }
-
-    if (typeof renderClass === "function") renderClass();
-    if (typeof renderSvizzero === "function") renderSvizzero();
-    if (typeof renderAmericano === "function") renderAmericano();
-    if (typeof renderMexicano === "function") renderMexicano();
-    if (typeof renderKing === "function") renderKing();
-    if (typeof renderShort === "function") renderShort();
-    if (typeof renderItaliana === "function") renderItaliana();
-    if (typeof renderGironiFinale === "function") renderGironiFinale();
-    if (typeof renderEliminazione === "function") renderEliminazione();
-    if (typeof renderPersonalizzato === "function") renderPersonalizzato();
-    if (typeof renderKO === "function") renderKO();
-    if (typeof renderManuale === "function") renderManuale();
-
-    if (typeof updateAndSync === "function") {
-        updateAndSync();
+        inputData.value =
+            state.dataTorneo || "";
     }
 }
 
