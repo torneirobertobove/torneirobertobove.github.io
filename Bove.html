@@ -5337,281 +5337,104 @@ function saveTeams(){
 
 }
 async function updateAndSync(){
-
-    try{
-
-        const inputNome =
-            document.getElementById(
-                "nomeTorneoInput"
-            );
-
-
-        if(
-            inputNome &&
-            inputNome.value.trim()!==""
-        ){
-
-            state.nomeTorneo =
-                inputNome.value.trim();
-
-        }
-
-
-
-        if(!state.dataTorneo){
-
-            state.dataTorneo =
-                new Date()
-                .toISOString()
-                .split("T")[0];
-
-        }
-
-
-
-        if(!state.idTorneo){
-
-            state.idTorneo =
-                Date.now();
-
-        }
-
-
-
-        /*
-            PROTEZIONE CONTRO STATO VUOTO
-        */
-
-
-        let precedente =
-            localStorage.getItem(
-                "torneoState"
-            );
-
-
-        let statoDaSalvare = true;
-
-
-
-        if(precedente){
-
-
-            try{
-
-
-                let vecchio =
-                    JSON.parse(
-                        precedente
-                    );
-
-
-                let vecchioCompleto =
-
-                    Array.isArray(vecchio.A) &&
-                    vecchio.A.length>0 &&
-
-                    Array.isArray(vecchio.B) &&
-                    vecchio.B.length>0;
-
-
-
-                let nuovoVuoto =
-
-                    !Array.isArray(state.A) ||
-                    state.A.length===0 ||
-
-                    !Array.isArray(state.B) ||
-                    state.B.length===0;
-
-
-
-                if(
-                    vecchioCompleto &&
-                    nuovoVuoto
-                ){
-
-                    statoDaSalvare=false;
-
-                    console.warn(
-                        "Salvataggio bloccato: evitata perdita squadre"
-                    );
-
-                }
-
-
-            }
-
-            catch(e){
-
-                console.warn(
-                    "Errore controllo stato precedente",
-                    e
-                );
-
-            }
-
-
-        }
-
-
-
-
-
-
-        /*
-            SALVATAGGIO STATO LOCALE
-        */
-
-
-        if(statoDaSalvare){
-
-
-            localStorage.setItem(
-
-                "torneoState",
-
-                JSON.stringify(state)
-
-            );
-
-
-        }
-
-
-
-
-
-
-        /*
-            SALVATAGGIO SQUADRE
-        */
-
-
-        if(
-
-            Array.isArray(state.A) &&
-            state.A.length>0 &&
-
-            Array.isArray(state.B) &&
-            state.B.length>0
-
-        ){
-
-
-            localStorage.setItem(
-
-                "savedTeams",
-
-                JSON.stringify(
-
-                    [
-
-                        ...state.A,
-
-                        ...state.B
-
-                    ]
-
-                )
-
-            );
-
-
-        }
-
-
-
-
-
-
-
-        /*
-            SUPABASE
-        */
-
-
-        if(
-
-            typeof sb!=="undefined" &&
-
-            statoDaSalvare &&
-
-            state.nomeTorneo &&
-
-            state.nomeTorneo.trim()!==""
-
-        ){
-
-
-            const {error}=
-
-                await sb
-
-                .from("tornei")
-
-                .upsert(
-
-                    {
-
-                        id:
-                            state.idTorneo,
-
-
-                        nome:
-                            state.nomeTorneo,
-
-
-                        data:
-                            state.dataTorneo,
-
-
-                        stato:
-                            "attivo",
-
-
-                        configurazione:
-                            state
-
-                    },
-
-                    {
-
-                        onConflict:"id"
-
-                    }
-
-                );
-
-
-
-            if(error){
-
-                console.error(
-                    "Errore sincronizzazione Supabase:",
-                    error
-                );
-
-            }
-
-
-        }
-
-
-    }
-
-
-    catch(e){
-
-
-        console.error(
-            "Errore updateAndSync:",
-            e
-        );
-
-
-    }
-
+try{
+const inputNome=document.getElementById("nomeTorneoInput");
+if(inputNome&&inputNome.value.trim()!==""){
+state.nomeTorneo=inputNome.value.trim();
 }
+if(!state.dataTorneo){
+state.dataTorneo=new Date().toISOString().split("T")[0];
+}
+if(!state.idTorneo){
+state.idTorneo=Date.now();
+}
+/*
+PROTEZIONE CONTRO STATO VUOTO
+*/
+let precedente=localStorage.getItem("torneoState");
+let statoDaSalvare=true;
+if(precedente){
+try{
+let vecchio=JSON.parse(precedente);
+let vecchioCompleto=
+Array.isArray(vecchio.A)&&
+vecchio.A.length>0&&
+Array.isArray(vecchio.B)&&
+vecchio.B.length>0;
+let nuovoVuoto=
+(!Array.isArray(state.A)||state.A.length===0)&&
+(!Array.isArray(state.B)||state.B.length===0)&&
+(!Array.isArray(state.partecipanti)||state.partecipanti.length===0)&&
+(!Array.isArray(state.coppie)||state.coppie.length===0);
+if(vecchioCompleto&&nuovoVuoto){
+statoDaSalvare=false;
+console.warn("Salvataggio bloccato: evitata perdita squadre");
+}
+}
+catch(e){
+console.warn("Errore controllo stato precedente",e);
+}
+}
+/*
+SALVATAGGIO STATO LOCALE
+*/
+if(statoDaSalvare){
+localStorage.setItem("torneoState",JSON.stringify(state));
+}
+/*
+SALVATAGGIO SQUADRE
+*/
+if(
+Array.isArray(state.A)&&
+state.A.length>0&&
+Array.isArray(state.B)&&
+state.B.length>0
+){
+localStorage.setItem("savedTeams",JSON.stringify([...state.A,...state.B]));
+}
+/*
+SALVATAGGIO ISCRITTI E COPPIE
+*/
+if(
+Array.isArray(state.partecipanti)&&
+state.partecipanti.length>0
+){
+localStorage.setItem("savedPartecipanti",JSON.stringify(state.partecipanti));
+}
+if(
+Array.isArray(state.coppie)&&
+state.coppie.length>0
+){
+localStorage.setItem("savedCoppie",JSON.stringify(state.coppie));
+}
+/*
+SUPABASE
+*/
+if(
+typeof sb!=="undefined"&&
+statoDaSalvare&&
+state.nomeTorneo&&
+state.nomeTorneo.trim()!==""
+){
+const{error}=await sb.from("tornei").upsert({
+id:state.idTorneo,
+nome:state.nomeTorneo,
+data:state.dataTorneo,
+stato:"attivo",
+configurazione:state
+},{onConflict:"id"});
+if(error){
+console.error("Errore sincronizzazione Supabase:",error);
+}else{
+console.log("Torneo salvato correttamente:",state.idTorneo);
+}
+}
+}
+catch(e){
+console.error("Errore updateAndSync:",e);
+}
+}
+
 async function loadState(){
 try{
 const idParam=new URLSearchParams(window.location.search).get("idTorneo");
