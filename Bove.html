@@ -13,21 +13,20 @@
 body{
     margin:0;
     font-family:system-ui;
-    background-color:#0b1020;
-    /* Sfondo con fallback - se l'immagine non esiste, usa solo il gradiente */
-    background-image:linear-gradient(160deg,#0b1020,#111827);
+    /* Sfondo di base con gradiente */
+    background:#0b1020 linear-gradient(160deg,#0b1020,#111827);
+    background-attachment:fixed;
     background-size:cover;
     background-position:center;
-    background-attachment:fixed;
-    background-repeat:no-repeat;
     color:var(--text);
     padding-bottom:50px;
     min-height:100vh;
 }
 
-/* Se vuoi usare l'immagine di sfondo, assicurati che esista e usa questo */
-body.with-bg{
-    background-image:url("sfondo_tab.jpg"),linear-gradient(160deg,#0b1020,#111827);
+/* Classe opzionale per aggiungere immagine di sfondo */
+body.con-immagine{
+    background-image:url("sfondo_tab.jpg");
+    background-blend-mode:overlay;
 }
 
 .container{max-width:1000px;margin:0 auto;padding:10px}
@@ -300,12 +299,16 @@ input{
     min-width:16px;
 }
 
-/* Contenitore principale per il contenuto */
 .main-content{
     padding:20px;
 }
-</style>
 
+h1{
+    text-align:center;
+    color:#e5e7eb;
+    margin-bottom:5px;
+}
+</style>
 </head>
 
 <body>
@@ -315,12 +318,14 @@ input{
         <h1>Torneo 8 Squadre</h1>
         <p class="subtitle">Gestione torneo - Fase a gironi e KO</p>
         
-        <!-- Qui andrà il resto del tuo contenuto -->
         <div id="app"></div>
     </div>
 </div>
 
 <script>
+// ============================================
+// CONFIGURAZIONE SUPABASE
+// ============================================
 const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
 const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
 
@@ -336,21 +341,59 @@ const sb = supabase.createClient(
     }
 );
 
-/* ============================================================
-   INTEGRAZIONE PER APERTURA AUTOMATICA REGOLE DA ADMIN
-   ============================================================ */
+// ============================================
+// FUNZIONI DI ACCESSO E SICUREZZA
+// ============================================
+async function verifyAccess(){
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){
+        console.warn("Nessun utente autenticato");
+        bloccaGestionale();
+        return;
+    }
+    
+    const userId = session.user.id;
+    const { data: profilo, error } = await sb
+        .from("profili")
+        .select("nome, ruolo")
+        .eq("user_id", userId)
+        .single();
+    
+    console.log("RISULTATO PROFILO:", profilo, error);
+    
+    if(error || !profilo){
+        console.warn("Profilo amministratore non trovato");
+        bloccaGestionale();
+        return;
+    }
+    
+    if(profilo.ruolo !== "admin"){
+        console.warn("Utente senza permessi admin:", profilo);
+        bloccaGestionale();
+        return;
+    }
+    
+    console.log("ACCESSO ADMIN:", profilo.nome);
+}
 
+function bloccaGestionale(){
+    document.querySelectorAll('input, button, textarea, select').forEach(el => {
+        if(!el.classList.contains("back") && el.innerText !== "Stampa"){
+            el.disabled = true;
+            el.style.opacity = "0.6";
+        }
+    });
+    console.warn("Gestionale bloccato: serve un amministratore");
+}
+
+// ============================================
+// PULSANTE TORNA AD ADMIN
+// ============================================
 window.addEventListener("DOMContentLoaded", () => {
-
-    /* ========================================================
-       PULSANTE TORNA AD ADMIN
-       ======================================================== */
-
+    
     let btnIndietro = document.createElement("button");
-
     btnIndietro.innerText = "⬅️ Torna ad Admin";
     btnIndietro.className = "back";
-
     btnIndietro.style.cssFloat = "right";
     btnIndietro.style.background = "#475569";
     btnIndietro.style.color = "white";
@@ -359,28 +402,19 @@ window.addEventListener("DOMContentLoaded", () => {
     btnIndietro.style.borderRadius = "8px";
     btnIndietro.style.cursor = "pointer";
     btnIndietro.style.margin = "10px";
-
+    
     btnIndietro.onclick = () => {
-
-        let pathBase =
-            window.location.pathname.substring(
-                0,
-                window.location.pathname.lastIndexOf("/") + 1
-            );
-
-        window.location.href =
-            pathBase + "admin.html";
-    };
-
-    if(document.body){
-
-        document.body.insertBefore(
-            btnIndietro,
-            document.body.firstChild
+        let pathBase = window.location.pathname.substring(
+            0,
+            window.location.pathname.lastIndexOf("/") + 1
         );
-
+        window.location.href = pathBase + "admin.html";
+    };
+    
+    if(document.body){
+        document.body.insertBefore(btnIndietro, document.body.firstChild);
     }
-
+    
 });
 </script>
 
