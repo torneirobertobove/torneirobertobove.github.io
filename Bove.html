@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-
 <html lang="it">
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+>
+
 <title>Torneo 8 Squadre</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -10,8 +17,17 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
-*{box-sizing:border-box}
+
+:root{
+    --bg:#0f172a;
+    --card:#111827;
+    --line:#243041;
+    --text:#e5e7eb;
+}
+
+*{
+    box-sizing:border-box;
+}
 
 body{
     margin:0;
@@ -23,10 +39,14 @@ body{
     background-attachment:fixed;
     background-repeat:no-repeat;
     color:var(--text);
-    padding-bottom:50px
+    padding-bottom:50px;
 }
 
-.container{max-width:1000px;margin:0 auto;padding:10px}
+.container{
+    max-width:1000px;
+    margin:0 auto;
+    padding:10px;
+}
 
 .header-box{
     display:flex;
@@ -34,11 +54,16 @@ body{
     align-items:center;
     justify-content:center;
     gap:15px;
-    margin-bottom:20px
+    margin-bottom:20px;
 }
 
 @media(min-width:600px){
-    .header-box{flex-direction:row;gap:30px;}
+
+    .header-box{
+        flex-direction:row;
+        gap:30px;
+    }
+
 }
 
 .subtitle{
@@ -46,7 +71,7 @@ body{
     color:#94a3b8;
     line-height:1.1;
     text-align:center;
-    margin-top:5px
+    margin-top:5px;
 }
 
 .date-input-field{
@@ -70,7 +95,10 @@ body{
     flex-wrap:wrap;
 }
 
-.btn-group{display:flex;gap:4px;}
+.btn-group{
+    display:flex;
+    gap:4px;
+}
 
 button{
     padding:8px 12px;
@@ -83,8 +111,13 @@ button{
     font-family:system-ui;
 }
 
-button.reset{background:#dc2626}
-button.back{background:#475569}
+button.reset{
+    background:#dc2626;
+}
+
+button.back{
+    background:#475569;
+}
 
 .modal{
     display:none;
@@ -132,7 +165,11 @@ textarea{
 }
 
 @media(min-width:600px){
-    .groups{grid-template-columns:1fr 1fr;}
+
+    .groups{
+        grid-template-columns:1fr 1fr;
+    }
+
 }
 
 .card{
@@ -154,7 +191,8 @@ table{
     margin-top:10px;
 }
 
-th,td{
+th,
+td{
     padding:8px 4px;
     border-bottom:1px solid #1f2a3c;
     text-align:center;
@@ -171,8 +209,14 @@ input{
     font-family:system-ui;
 }
 
-.db-cell{display:flex;gap:2px;}
-.db-cell input{width:50%;}
+.db-cell{
+    display:flex;
+    gap:2px;
+}
+
+.db-cell input{
+    width:50%;
+}
 
 .ko{
     margin-top:10px;
@@ -182,7 +226,11 @@ input{
 }
 
 @media(min-width:600px){
-    .ko{grid-template-columns:1fr 1fr;}
+
+    .ko{
+        grid-template-columns:1fr 1fr;
+    }
+
 }
 
 .koBox{
@@ -369,9 +417,44 @@ input{
 
 #infoGironiContent{
     display:none;
+    margin-top:10px;
+    padding:12px;
+    background:rgba(11,18,32,0.75);
+    border:1px solid rgba(96,165,250,0.35);
+    border-radius:8px;
+    font-size:13px;
+    line-height:1.5;
+}
+
+#descrizioneTipoTorneo{
+    margin-top:15px;
+    padding:12px;
+    background:#0b1220;
+    border:1px solid #334155;
+    border-radius:8px;
+    font-size:13px;
+    line-height:1.5;
+    min-height:0;
+}
+
+#descrizioneTipoTorneo .descrizione-formula{
+    margin-top:10px;
+}
+
+#descrizioneTipoTorneo h4{
+    margin:0 0 8px 0;
+}
+
+#descrizioneTipoTorneo p{
+    margin:7px 0;
+}
+
+#descrizioneTipoTorneo strong{
+    color:#60a5fa;
 }
 
 /* Il nome della formula resta indipendente dal menu */
+
 #nomeFormulaTorneo{
     position:absolute;
     right:0;
@@ -396,23 +479,53 @@ body.visitatore .admin-only{
     display:none !important;
 }
 
+/* ============================
+   CORREZIONE LAYOUT FORM
+   ============================ */
+
+#rulesModal label{
+    display:block;
+    margin-top:10px;
+}
+
+#rulesModal input[type="checkbox"]{
+    width:auto;
+    margin-right:6px;
+}
+
+#rulesModal select,
+#rulesModal input[type="number"],
+#rulesModal input[type="time"]{
+    width:100%;
+}
+
+#formatModal button{
+    display:block;
+}
+
 </style>
 
 <script>
-const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
-const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
 
-const sb = supabase.createClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-        auth:{
-            persistSession:true,
-            autoRefreshToken:true,
-            detectSessionInUrl:true
+const supabaseUrl =
+    'https://iybjvtmfaupgthqqsngd.supabase.co';
+
+const supabaseKey =
+    'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
+
+const sb =
+    supabase.createClient(
+        supabaseUrl,
+        supabaseKey,
+        {
+            auth:{
+                persistSession:true,
+                autoRefreshToken:true,
+                detectSessionInUrl:true
+            }
         }
-    }
-);
+    );
+
 </script>
 
 <script>
@@ -425,21 +538,26 @@ MENU HAMBURGER
 
 function toggleAdminMenu(){
 
-    const menu = document.getElementById("adminMenu");
+    const menu =
+        document.getElementById("adminMenu");
 
     if(!menu){
         return;
     }
 
+    const aperto =
+        menu.style.display === "block";
+
     menu.style.display =
-        menu.style.display === "block"
+        aperto
             ? "none"
             : "block";
 }
 
 function chiudiAdminMenu(){
 
-    const menu = document.getElementById("adminMenu");
+    const menu =
+        document.getElementById("adminMenu");
 
     if(menu){
         menu.style.display = "none";
@@ -463,7 +581,8 @@ function esciDaTorneo(){
             window.location.pathname.lastIndexOf('/') + 1
         );
 
-    window.location.href = pathBase + "admin.html";
+    window.location.href =
+        pathBase + "admin.html";
 }
 
 /*
@@ -489,6 +608,141 @@ function toggleInfoGironi(){
 
 /*
 ========================================================
+DESCRIZIONE FORMULE TORNEO
+========================================================
+*/
+
+function aggiornaDescrizioneTipoTorneo(){
+
+    const select =
+        document.getElementById("tipoTorneo");
+
+    const descrizione =
+        document.getElementById("descrizioneTipoTorneo");
+
+    if(!select || !descrizione){
+        return;
+    }
+
+    const tipo =
+        select.value;
+
+    if(!tipo){
+
+        descrizione.innerHTML =
+            "Seleziona una formula per visualizzare la descrizione.";
+
+        return;
+    }
+
+    const descrizioni = {
+
+        italiana: `
+            <h4>🇮🇹 Torneo all'italiana</h4>
+            <p>
+                Tutte le squadre partecipano alla stessa classifica.
+            </p>
+            <p>
+                Ogni squadra affronta le altre secondo la formula scelta.
+            </p>
+        `,
+
+        gironiFinale: `
+            <h4>🏆 Formula torneo</h4>
+
+            <p>
+                Le squadre vengono divise in gironi.
+            </p>
+
+            <p>
+                Ogni squadra affronta le altre squadre del proprio girone.
+            </p>
+
+            <p>
+                Le migliori classificate accedono alla fase finale
+                ad eliminazione diretta.
+            </p>
+
+            <div class="descrizione-formula">
+                <strong>Qualificazione</strong>
+
+                <p>
+                    2 squadre qualificate per girone.
+                </p>
+            </div>
+
+            <div class="descrizione-formula">
+                <strong>Fase finale</strong>
+
+                <p>
+                    Quarti → Semifinali → Finale
+                </p>
+            </div>
+        `,
+
+        eliminazione: `
+            <h4>⚔️ Eliminazione Diretta</h4>
+            <p>
+                Le squadre vengono inserite direttamente nel tabellone
+                ad eliminazione diretta.
+            </p>
+        `,
+
+        svizzero: `
+            <h4>🇨🇭 Torneo Svizzero</h4>
+            <p>
+                Le squadre vengono abbinate progressivamente in base
+                ai risultati ottenuti.
+            </p>
+        `,
+
+        americano: `
+            <h4>🎾 Americano Padel</h4>
+            <p>
+                Formula con rotazione dei compagni e degli avversari
+                secondo il formato Americano.
+            </p>
+        `,
+
+        mexicano: `
+            <h4>🇲🇽 Mexicano Padel</h4>
+            <p>
+                Gli abbinamenti vengono aggiornati in base ai risultati
+                per creare incontri progressivamente equilibrati.
+            </p>
+        `,
+
+        king: `
+            <h4>👑 King of the Court</h4>
+            <p>
+                Le coppie avanzano o retrocedono sui campi in base
+                ai risultati degli incontri.
+            </p>
+        `,
+
+        short: `
+            <h4>⏱ Short Format</h4>
+            <p>
+                Formula rapida con partite di durata ridotta.
+            </p>
+        `,
+
+        manuale: `
+            <h4>⚙️ Torneo Personalizzato</h4>
+            <p>
+                L'organizzatore può configurare manualmente formula,
+                qualificazioni, fase finale e criteri di classifica.
+            </p>
+        `
+    };
+
+    descrizione.innerHTML =
+        descrizioni[tipo] ||
+        "Seleziona una formula per visualizzare la descrizione.";
+}
+
+/*
+========================================================
 VERIFICA ACCESSO
 ========================================================
 */
@@ -496,35 +750,53 @@ VERIFICA ACCESSO
 async function verifyAccess(){
 
     const {
-        data: { session }
-    } = await sb.auth.getSession();
+        data:{session}
+    } =
+        await sb.auth.getSession();
 
     if(!session){
 
-        console.warn("Nessun utente autenticato");
+        console.warn(
+            "Nessun utente autenticato"
+        );
 
-        document.body.classList.add("visitatore");
+        document.body.classList.add(
+            "visitatore"
+        );
 
         bloccaGestionale();
 
         return;
     }
 
-    const userId = session.user.id;
+    const userId =
+        session.user.id;
 
-    const { data: profilo, error } = await sb
-        .from("profili")
-        .select("nome, ruolo")
-        .eq("user_id", userId)
-        .single();
+    const {
+        data:profilo,
+        error
+    } =
+        await sb
+            .from("profili")
+            .select("nome, ruolo")
+            .eq("user_id", userId)
+            .single();
 
-    console.log("RISULTATO PROFILO:", profilo, error);
+    console.log(
+        "RISULTATO PROFILO:",
+        profilo,
+        error
+    );
 
     if(error || !profilo){
 
-        console.warn("Profilo amministratore non trovato");
+        console.warn(
+            "Profilo amministratore non trovato"
+        );
 
-        document.body.classList.add("visitatore");
+        document.body.classList.add(
+            "visitatore"
+        );
 
         bloccaGestionale();
 
@@ -538,16 +810,23 @@ async function verifyAccess(){
             profilo
         );
 
-        document.body.classList.add("visitatore");
+        document.body.classList.add(
+            "visitatore"
+        );
 
         bloccaGestionale();
 
         return;
     }
 
-    document.body.classList.remove("visitatore");
+    document.body.classList.remove(
+        "visitatore"
+    );
 
-    console.log("ACCESSO ADMIN:", profilo.nome);
+    console.log(
+        "ACCESSO ADMIN:",
+        profilo.nome
+    );
 }
 
 /*
@@ -558,30 +837,22 @@ BLOCCO GESTIONALE
 
 function bloccaGestionale(){
 
-    /*
-    I comandi amministrativi non vengono semplicemente
-    lasciati visibili/disabilitati: il menu viene nascosto.
-    */
-
     const menu =
-        document.getElementById("adminHamburger");
+        document.getElementById(
+            "adminHamburger"
+        );
 
     if(menu){
         menu.style.display = "none";
     }
 
-    /*
-    Non disabilitiamo la stampa del visitatore.
-    Non tocchiamo la logica delle tabelle e dei risultati.
-    */
+    document
+        .querySelectorAll(".admin-only")
+        .forEach(el => {
 
-    document.querySelectorAll(
-        '.admin-only'
-    ).forEach(el => {
+            el.style.display = "none";
 
-        el.style.display = "none";
-
-    });
+        });
 
     console.warn(
         "Gestionale amministrativo nascosto: serve un amministratore"
@@ -594,34 +865,42 @@ APERTURA AUTOMATICA
 ========================================================
 */
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-    /*
-    Controllo accesso amministrativo.
-    */
+        verifyAccess();
 
-    verifyAccess();
+        aggiornaDescrizioneTipoTorneo();
 
-    /*
-    Chiude il menu cliccando fuori.
-    */
+        document.addEventListener(
+            "click",
+            function(event){
 
-    document.addEventListener("click", function(event){
+                const menuContainer =
+                    document.getElementById(
+                        "adminHamburger"
+                    );
 
-        const menuContainer =
-            document.getElementById("adminHamburger");
+                if(!menuContainer){
+                    return;
+                }
 
-        if(!menuContainer){
-            return;
-        }
+                if(
+                    !menuContainer.contains(
+                        event.target
+                    )
+                ){
 
-        if(!menuContainer.contains(event.target)){
-            chiudiAdminMenu();
-        }
+                    chiudiAdminMenu();
 
-    });
+                }
 
-});
+            }
+        );
+
+    }
+);
 
 </script>
 
@@ -633,845 +912,1010 @@ window.addEventListener("DOMContentLoaded", () => {
      HAMBURGER AMMINISTRATIVO
      ===================================================== -->
 
-<div id="adminHamburger" class="admin-only">
-
-<button
-    id="adminMenuButton"
-    onclick="toggleAdminMenu()"
-    title="Menu amministratore">
-    ☰
-</button>
-
-<div id="adminMenu">
+<div
+    id="adminHamburger"
+    class="admin-only"
+>
 
     <button
-        onclick="
-            document.getElementById('formatModal').style.display='block';
-            chiudiAdminMenu();
-        ">
-        ⚙️ Formato
+        id="adminMenuButton"
+        onclick="toggleAdminMenu()"
+        title="Menu amministratore"
+    >
+        ☰
     </button>
 
-    <button
-        onclick="
-            document.getElementById('file').click();
-            chiudiAdminMenu();
-        ">
-        Import Excel
-    </button>
+    <div id="adminMenu">
 
-    <button
-        onclick="
-            openRules();
-            chiudiAdminMenu();
-        ">
-        📖 Regole
-    </button>
+        <button
+            onclick="
+                document.getElementById('formatModal').style.display='block';
+                chiudiAdminMenu();
+            "
+        >
+            ⚙️ Formato
+        </button>
 
-    <button
-        onclick="
-            generateTestTournament();
-            chiudiAdminMenu();
-        ">
-        🧪 Genera Test
-    </button>
+        <button
+            onclick="
+                document.getElementById('file').click();
+                chiudiAdminMenu();
+            "
+        >
+            Import Excel
+        </button>
 
-    <button
-        onclick="
-            salvaTorneoSupabase();
-            chiudiAdminMenu();
-        ">
-        💾 Salva
-    </button>
+        <button
+            onclick="
+                openRules();
+                chiudiAdminMenu();
+            "
+        >
+            📖 Regole
+        </button>
 
-    <button
-        onclick="
-            pubblicaTorneo();
-            chiudiAdminMenu();
-        ">
-        🌍 Pubblica
-    </button>
+        <button
+            onclick="
+                generateTestTournament();
+                chiudiAdminMenu();
+            "
+        >
+            🧪 Genera Test
+        </button>
 
-    <button
-        onclick="
-            document.getElementById('teamModal').style.display='block';
-            chiudiAdminMenu();
-        ">
-        📝 Squadre
-    </button>
+        <button
+            onclick="
+                salvaTorneoSupabase();
+                chiudiAdminMenu();
+            "
+        >
+            💾 Salva
+        </button>
 
-    <button
-        class="admin-reset"
-        onclick="
-            reset();
-            chiudiAdminMenu();
-        ">
-        Reset
-    </button>
+        <button
+            onclick="
+                pubblicaTorneo();
+                chiudiAdminMenu();
+            "
+        >
+            🌍 Pubblica
+        </button>
 
-    <button
-        onclick="
-            window.print();
-            chiudiAdminMenu();
-        ">
-        Stampa
-    </button>
+        <button
+            onclick="
+                document.getElementById('teamModal').style.display='block';
+                chiudiAdminMenu();
+            "
+        >
+            📝 Squadre
+        </button>
 
-    <button
-        class="admin-exit"
-        onclick="esciDaTorneo()">
-        🚪 Esci
-    </button>
+        <button
+            class="admin-reset"
+            onclick="
+                reset();
+                chiudiAdminMenu();
+            "
+        >
+            Reset
+        </button>
 
-</div>
+        <button
+            onclick="
+                window.print();
+                chiudiAdminMenu();
+            "
+        >
+            Stampa
+        </button>
+
+        <button
+            class="admin-exit"
+            onclick="esciDaTorneo()"
+        >
+            🚪 Esci
+        </button>
+
+    </div>
 
 </div>
 
 <!-- INPUT FILE ORIGINALE: mantenuto -->
 
 <input
- type="file"
- id="file"
- hidden
- onchange="handleFile(event)">
+    type="file"
+    id="file"
+    hidden
+    onchange="handleFile(event)"
+>
 
 <!-- =====================================================
      MODAL REGOLE
      ===================================================== -->
 
-<div id="rulesModal" class="modal">
-
-<div class="modal-content">
-
-<h3>
-  ⚙️ Regolamento e Criteri
-
-  <button
-    onclick="
-      let m=document.getElementById('manualeRegole');
-      m.style.display = m.style.display==='none' ? 'block' : 'none';
-    "
-    style="
-      background:none;
-      border:none;
-      cursor:pointer;
-      font-size:20px;
-      padding:0;
-      margin-left:8px;
-    ">
-    💡
-  </button>
-</h3>
-
-<div id="manualeRegole"
-  style="
-    display:none;
-    margin:15px 0;
-    padding:12px;
-    background:#0b1220;
-    border:1px solid #2563eb;
-    border-radius:8px;
-    font-size:13px;
-    line-height:1.5;
-  ">
-
-  <h4>💡 Manuale Istruzioni Torneo</h4>
-
-  <p>
-    <b>Configurazione automatica:</b><br>
-    Il sistema crea automaticamente gironi, calendario, classifiche e fase finale in base al formato scelto (8, 12 o 16 squadre).
-  </p>
-
-  <p>
-    <b>Inserimento squadre:</b><br>
-    Aprire il pulsante 📝 Squadre e inserire una squadra per ogni riga.
-    Il programma distribuirà automaticamente le squadre nei gironi.
-  </p>
-
-  <p>
-    <b>Gestione risultati:</b><br>
-    Inserendo i risultati delle partite il sistema aggiorna automaticamente:
-  </p>
-
-  <ul>
-    <li>Punti classifica</li>
-    <li>Giochi fatti</li>
-    <li>Giochi subiti</li>
-    <li>Differenza giochi</li>
-    <li>Qualificate alla fase finale</li>
-  </ul>
-
-  <p>
-    <b>Regole manuali organizzatore:</b><br>
-    L'organizzatore può modificare completamente la formula del torneo:
-  </p>
-
-  <ul>
-    <li>Punti vittoria e pareggio</li>
-    <li>Criteri di classifica</li>
-    <li>Numero squadre qualificate</li>
-    <li>Numero squadre fase finale</li>
-    <li>Uso di quarti, semifinali e finale</li>
-    <li>Ripescaggi</li>
-    <li>Killer Point negli spareggi</li>
-  </ul>
-
-  <p>
-    <b>Procedura consigliata:</b><br>
-    1) Scegli formato torneo<br>
-    2) Inserisci squadre<br>
-    3) Imposta regole personalizzate<br>
-    4) Salva configurazione<br>
-    5) Inserisci risultati durante il torneo
-  </p>
-
-  <p style="color:#60a5fa;">
-    💡 Consiglio: impostare tutte le regole prima dell'inizio delle partite.
-  </p>
-
-  <h4>📌 Esempi configurazione torneo</h4>
-
-  <p>
-    <b>Esempio 1 - Torneo 8 squadre con Quarti:</b><br>
-    Impostazione consigliata:
-  </p>
-
-  <ul>
-    <li>8 squadre totali</li>
-    <li>2 gironi da 4 squadre</li>
-    <li>4 qualificate per ogni girone</li>
-    <li>Totale fase finale: 8 squadre</li>
-    <li>Quarti, Semifinali e Finale attivi</li>
-  </ul>
-
-  <p>Risultato automatico:</p>
-
-  <ul>
-    <li>8 squadre qualificate</li>
-    <li>4 Quarti di Finale</li>
-    <li>2 Semifinali</li>
-    <li>1 Finale</li>
-  </ul>
-
-  <p>
-    <b>Esempio 2 - Torneo 8 squadre con Semifinali:</b><br>
-    Impostazione:
-  </p>
-
-  <ul>
-    <li>8 squadre totali</li>
-    <li>2 gironi da 4 squadre</li>
-    <li>2 qualificate per ogni girone</li>
-    <li>Totale fase finale: 4 squadre</li>
-    <li>Quarti disattivati</li>
-  </ul>
-
-  <p>Risultato automatico:</p>
-
-  <ul>
-    <li>2 Semifinali</li>
-    <li>1 Finale</li>
-  </ul>
-
-  <p>
-    <b>Esempio 3 - Torneo personalizzato:</b><br>
-    L'organizzatore può modificare:
-  </p>
-
-  <ul>
-    <li>Punti vittoria e pareggio</li>
-    <li>Criteri classifica</li>
-    <li>Numero qualificate</li>
-    <li>Ripescaggi</li>
-    <li>Killer Point</li>
-    <li>Rigori</li>
-    <li>Supplementari</li>
-    <li>Formula fase finale</li>
-  </ul>
-
-  <h4>🧪 Test consigliati prima del torneo</h4>
-
-  <p>
-    <b>Test 1 - Verifica Quarti:</b><br>
-    Creare un torneo con 8 squadre qualificate.<br>
-    Controllare che compaiano:
-  </p>
-
-  <ul>
-    <li>Quarti di Finale</li>
-    <li>Semifinali</li>
-    <li>Finale</li>
-  </ul>
-
-  <p>
-    <b>Test 2 - Eliminazione Quarti:</b><br>
-    Disattivare "Usa Quarti di Finale".<br>
-    Il sistema deve passare direttamente alle semifinali.
-  </p>
-
-  <p>
-    <b>Test 3 - Modifica regolamento:</b><br>
-    Cambiare:
-  </p>
-
-  <ul>
-    <li>Numero qualificate</li>
-    <li>Ripescaggi</li>
-    <li>Criteri classifica</li>
-  </ul>
-
-  <p>
-    e verificare che il tabellone venga aggiornato automaticamente.
-  </p>
-
-  <p style="color:#60a5fa;">
-    💡 Suggerimento: prima di iniziare il torneo effettuare sempre un torneo di prova per verificare la formula scelta.
-  </p>
-
-</div>
-
-<hr style="margin:15px 0;">
-
-<h4>🏟️ Struttura Torneo</h4>
-
-<label>
-  Scegli formula preimpostata:
-</label>
-
-<select
-    id="tipoTorneo"
-    onchange="applicaModelloTorneo(); aggiornaDescrizioneTipoTorneo()"
-    style="
-        width:100%;
-        padding:8px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-    ">
-
-    <option value="">
-        Seleziona formato torneo
-    </option>
-
-    <option value="italiana">
-        🇮🇹 Torneo all'italiana
-    </option>
-
-    <option value="gironiFinale">
-        🏆 Gironi + Fase Finale
-    </option>
-
-    <option value="eliminazione">
-        ⚔️ Eliminazione Diretta
-    </option>
-
-    <option value="svizzero">
-        🇨🇭 Torneo Svizzero
-    </option>
-
-    <option value="americano">
-        🎾 Americano Padel
-    </option>
-
-    <option value="mexicano">
-        🇲🇽 Mexicano Padel
-    </option>
-
-    <option value="king">
-        👑 King of the Court
-    </option>
-
-    <option value="short">
-        ⏱ Short Format
-    </option>
-
-    <option value="manuale">
-        ⚙️ Torneo Personalizzato
-    </option>
-
-</select>
-
 <div
-  id="descrizioneTipoTorneo"
-  style="
-    margin-top:15px;
-    padding:12px;
-    background:#0b1220;
-    border:1px solid #334155;
-    border-radius:8px;
-    font-size:13px;
-    line-height:1.5;
-  ">
-  Seleziona una formula per visualizzare la descrizione.
-</div>
-
-<label>
-  Formato torneo:
-</label>
-
-<select
-  id="formatoTorneo"
-  onchange="setFormat(this.value)"
-  style="
-    width:100%;
-    padding:8px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="8">8 Squadre</option>
-  <option value="12">12 Squadre</option>
-  <option value="16">16 Squadre</option>
-  <option value="20">20 Squadre</option>
-  <option value="24">24 Squadre</option>
-
-</select>
-
-<label style="display:block;margin-top:10px;">
-  Numero gironi:
-</label>
-
-<input
-  id="numeroGironi"
-  type="number"
-  min="1"
-  value="2">
-
-<label style="display:block;margin-top:10px;">
-  Squadre per girone:
-</label>
-
-<input
-  id="squadrePerGirone"
-  type="number"
-  min="1"
-  value="4">
-
-<hr style="margin:15px 0;">
-
-<h4>📋 Formula Torneo</h4>
-
-<label>
-  Formula gironi:
-</label>
-
-<select
-  id="formulaGironi"
-  style="
-    width:100%;
-    padding:8px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="tuttiControTutti">
-    Tutti contro tutti
-  </option>
-
-  <option value="andataRitorno">
-    Andata e ritorno
-  </option>
-
-</select>
-
-<label style="display:block;margin-top:10px;">
-  Formula fase finale:
-</label>
-
-<select
-  id="formulaFinale"
-  style="
-    width:100%;
-    padding:8px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="eliminazioneDiretta">
-    Eliminazione diretta
-  </option>
-
-  <option value="gironeFinale">
-    Girone finale
-  </option>
-
-</select>
-
-<label>
-  Criterio Classifica Principale:
-</label>
-
-<select
-  id="crit1"
-  style="
-    width:100%;
-    padding:8px;
-    margin-bottom:10px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="df">Differenza Giochi</option>
-  <option value="gf">Maggiori Giochi Vinti</option>
-  <option value="gs">Minor Giochi Persi</option>
-
-</select>
-
-<div style="margin-top:10px;">
-  <label>Punti Vittoria</label>
-  <input
-    id="wP"
-    type="number"
-    value="3">
-</div>
-
-<div style="margin-top:10px;">
-  <label>Punti Pareggio</label>
-  <input
-    id="dP"
-    type="number"
-    value="1">
-</div>
-
-<hr style="margin:15px 0;">
-
-<h4>🏆 Qualificazioni</h4>
-
-<label>
-  Squadre qualificate per ogni girone:
-</label>
-
-<input
-  id="qualificatePerGirone"
-  type="number"
-  min="1"
-  value="2">
-
-<label style="display:block;margin-top:10px;">
-  Numero totale squadre fase finale:
-</label>
-
-<input
-  id="numeroQualificateFinali"
-  type="number"
-  min="2"
-  value="8">
-
-<hr style="margin:15px 0;">
-
-<h4>📊 Criteri Classifica</h4>
-
-<label>
-  Criterio Classifica Secondario:
-</label>
-
-<select
-  id="crit2"
-  style="
-    width:100%;
-    padding:8px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="gf">Maggiori Giochi Vinti</option>
-  <option value="gs">Minor Giochi Persi</option>
-  <option value="df">Differenza Giochi</option>
-
-</select>
-
-<label style="display:block;margin-top:10px;">
-  Criterio Classifica Terziario:
-</label>
-
-<select
-  id="crit3"
-  style="
-    width:100%;
-    padding:8px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  ">
-
-  <option value="gs">Minor Giochi Persi</option>
-  <option value="gf">Maggiori Giochi Vinti</option>
-  <option value="df">Differenza Giochi</option>
-
-</select>
-
-<hr style="margin:15px 0;">
-
-<div id="faseEliminazioneBox">
-
-  <h4>⚔️ Fase Eliminazione Diretta</h4>
-
-  <label style="display:block;">
-    <input
-      id="usaQuarti"
-      type="checkbox"
-      checked>
-    Usa Quarti di Finale
-  </label>
-
-  <label style="display:block;margin-top:8px;">
-    <input
-      id="usaSemifinali"
-      type="checkbox"
-      checked>
-    Usa Semifinali
-  </label>
-
-  <label style="display:block;margin-top:8px;">
-    <input
-      id="usaFinale"
-      type="checkbox"
-      checked>
-    Usa Finale
-  </label>
-
-</div>
-
-<hr style="margin:15px 0;">
-
-<div id="ripescaggiBox">
-
-  <h4>🔄 Ripescaggi</h4>
-
-  <label style="display:block;">
-    <input
-      id="ripescaggio"
-      type="checkbox">
-    Attiva ripescaggio
-  </label>
-
-  <label style="display:block;margin-top:8px;">
-    Numero squadre ripescate:
-  </label>
-
-  <input
-    id="numeroRipescate"
-    type="number"
-    min="0"
-    value="0">
-
-</div>
-
-<hr style="margin:15px 0;">
-
-<div id="spareggiBox">
-
-  <h4>🏓 Spareggio</h4>
-
-  <select
-    id="killerPointSelect"
-    style="
-      width:100%;
-      padding:8px;
-      background:#0b1220;
-      color:#fff;
-      border:1px solid #334155;
-    ">
-
-    <option value="true">Attiva Killer Point</option>
-    <option value="false">Disattiva Killer Point</option>
-
-  </select>
-
-  <label style="display:block;margin-top:10px;">
-    Rigori:
-  </label>
-
-  <select
-    id="rigoriSelect"
-    style="
-      width:100%;
-      padding:8px;
-      background:#0b1220;
-      color:#fff;
-      border:1px solid #334155;
-    ">
-
-    <option value="true">Attivi</option>
-    <option value="false">Disattivi</option>
-
-  </select>
-
-  <label style="display:block;margin-top:10px;">
-    Supplementari:
-  </label>
-
-  <select
-    id="supplementariSelect"
-    style="
-      width:100%;
-      padding:8px;
-      background:#0b1220;
-      color:#fff;
-      border:1px solid #334155;
-    ">
-
-    <option value="true">Attivi</option>
-    <option value="false">Disattivi</option>
-
-  </select>
-
-  <label style="display:block;margin-top:10px;">
-    <input
-      id="garaAndataRitorno"
-      type="checkbox">
-    Gara Andata/Ritorno
-  </label>
-
-  <label style="display:block;margin-top:10px;">
-    Criterio extra parità:
-  </label>
-
-  <select
-    id="criterioParitaExtra"
-    style="
-      width:100%;
-      padding:8px;
-      background:#0b1220;
-      color:#fff;
-      border:1px solid #334155;
-    ">
-
-    <option value="scontroDiretto">Scontro diretto</option>
-    <option value="differenzaGiochi">Differenza giochi</option>
-    <option value="sorteggio">Sorteggio</option>
-
-  </select>
-
-  <label style="display:block;margin-top:15px;">
-    Quarti visibili:
-  </label>
-
-  <select
-    id="mostraQuartiSelect"
-    style="
-      width:100%;
-      padding:8px;
-      background:#0b1220;
-      color:#fff;
-      border:1px solid #334155;
-    ">
-
-    <option value="true">Mostra Quarti</option>
-    <option value="false">Nascondi Quarti</option>
-
-  </select>
-
-</div>
-
-<hr style="margin:15px 0;">
-
-<h4>⏱️ Programmazione</h4>
-
-<label>
-  Ora inizio:
-</label>
-
-<input
-  id="startTime"
-  type="time"
-  value="20:00">
-
-<label style="display:block;margin-top:10px;">
-  Durata partita:
-</label>
-
-<input
-  id="duration"
-  type="number"
-  min="1"
-  value="30">
-
-<label style="display:block;margin-top:15px;">
-  Note Regolamento:
-</label>
-
-<textarea
-  id="noteRegole"
-  style="
-    width:100%;
-    height:80px;
-    background:#0b1220;
-    color:#fff;
-    border:1px solid #334155;
-  "></textarea>
-
-<button
-  onclick="applyRules()"
-  style="
-    width:100%;
-    margin-top:15px;
-    background:#2563eb;
-  ">
-  💾 Salva Regole
-</button>
-
-<button
-  class="back"
-  onclick="closeRules()"
-  style="
-    width:100%;
-    margin-top:5px;
-  ">
-  Chiudi
-</button>
-
-
-  </div>
+    id="rulesModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+        <h3>
+
+            ⚙️ Regolamento e Criteri
+
+            <button
+                onclick="
+                    let m=document.getElementById('manualeRegole');
+                    m.style.display =
+                        m.style.display==='none'
+                            ? 'block'
+                            : 'none';
+                "
+                style="
+                    background:none;
+                    border:none;
+                    cursor:pointer;
+                    font-size:20px;
+                    padding:0;
+                    margin-left:8px;
+                "
+            >
+                💡
+            </button>
+
+        </h3>
+
+        <div
+            id="manualeRegole"
+            style="
+                display:none;
+                margin:15px 0;
+                padding:12px;
+                background:#0b1220;
+                border:1px solid #2563eb;
+                border-radius:8px;
+                font-size:13px;
+                line-height:1.5;
+            "
+        >
+
+            <h4>💡 Manuale Istruzioni Torneo</h4>
+
+            <p>
+                <b>Configurazione automatica:</b><br>
+                Il sistema crea automaticamente gironi, calendario,
+                classifiche e fase finale in base al formato scelto
+                (8, 12 o 16 squadre).
+            </p>
+
+            <p>
+                <b>Inserimento squadre:</b><br>
+                Aprire il pulsante 📝 Squadre e inserire una squadra
+                per ogni riga. Il programma distribuirà automaticamente
+                le squadre nei gironi.
+            </p>
+
+            <p>
+                <b>Gestione risultati:</b><br>
+                Inserendo i risultati delle partite il sistema aggiorna
+                automaticamente:
+            </p>
+
+            <ul>
+                <li>Punti classifica</li>
+                <li>Giochi fatti</li>
+                <li>Giochi subiti</li>
+                <li>Differenza giochi</li>
+                <li>Qualificate alla fase finale</li>
+            </ul>
+
+            <p>
+                <b>Regole manuali organizzatore:</b><br>
+                L'organizzatore può modificare completamente la formula
+                del torneo:
+            </p>
+
+            <ul>
+                <li>Punti vittoria e pareggio</li>
+                <li>Criteri di classifica</li>
+                <li>Numero squadre qualificate</li>
+                <li>Numero squadre fase finale</li>
+                <li>Uso di quarti, semifinali e finale</li>
+                <li>Ripescaggi</li>
+                <li>Killer Point negli spareggi</li>
+            </ul>
+
+            <p>
+                <b>Procedura consigliata:</b><br>
+                1) Scegli formato torneo<br>
+                2) Inserisci squadre<br>
+                3) Imposta regole personalizzate<br>
+                4) Salva configurazione<br>
+                5) Inserisci risultati durante il torneo
+            </p>
+
+            <p style="color:#60a5fa;">
+                💡 Consiglio: impostare tutte le regole prima dell'inizio
+                delle partite.
+            </p>
+
+            <h4>📌 Esempi configurazione torneo</h4>
+
+            <p>
+                <b>Esempio 1 - Torneo 8 squadre con Quarti:</b><br>
+                Impostazione consigliata:
+            </p>
+
+            <ul>
+                <li>8 squadre totali</li>
+                <li>2 gironi da 4 squadre</li>
+                <li>4 qualificate per ogni girone</li>
+                <li>Totale fase finale: 8 squadre</li>
+                <li>Quarti, Semifinali e Finale attivi</li>
+            </ul>
+
+            <p>Risultato automatico:</p>
+
+            <ul>
+                <li>8 squadre qualificate</li>
+                <li>4 Quarti di Finale</li>
+                <li>2 Semifinali</li>
+                <li>1 Finale</li>
+            </ul>
+
+            <p>
+                <b>Esempio 2 - Torneo 8 squadre con Semifinali:</b><br>
+                Impostazione:
+            </p>
+
+            <ul>
+                <li>8 squadre totali</li>
+                <li>2 gironi da 4 squadre</li>
+                <li>2 qualificate per girone</li>
+                <li>Totale fase finale: 4 squadre</li>
+                <li>Quarti disattivati</li>
+            </ul>
+
+            <p>Risultato automatico:</p>
+
+            <ul>
+                <li>2 Semifinali</li>
+                <li>1 Finale</li>
+            </ul>
+
+            <p>
+                <b>Esempio 3 - Torneo personalizzato:</b><br>
+                L'organizzatore può modificare:
+            </p>
+
+            <ul>
+                <li>Punti vittoria e pareggio</li>
+                <li>Criteri classifica</li>
+                <li>Numero qualificate</li>
+                <li>Ripescaggi</li>
+                <li>Killer Point</li>
+                <li>Rigori</li>
+                <li>Supplementari</li>
+                <li>Formula fase finale</li>
+            </ul>
+
+            <h4>🧪 Test consigliati prima del torneo</h4>
+
+            <p>
+                <b>Test 1 - Verifica Quarti:</b><br>
+                Creare un torneo con 8 squadre qualificate.<br>
+                Controllare che compaiano:
+            </p>
+
+            <ul>
+                <li>Quarti di Finale</li>
+                <li>Semifinali</li>
+                <li>Finale</li>
+            </ul>
+
+            <p>
+                <b>Test 2 - Eliminazione Quarti:</b><br>
+                Disattivare "Usa Quarti di Finale".<br>
+                Il sistema deve passare direttamente alle semifinali.
+            </p>
+
+            <p>
+                <b>Test 3 - Modifica regolamento:</b><br>
+                Cambiare:
+            </p>
+
+            <ul>
+                <li>Numero qualificate</li>
+                <li>Ripescaggi</li>
+                <li>Criteri classifica</li>
+            </ul>
+
+            <p>
+                e verificare che il tabellone venga aggiornato
+                automaticamente.
+            </p>
+
+            <p style="color:#60a5fa;">
+                💡 Suggerimento: prima di iniziare il torneo effettuare
+                sempre un torneo di prova per verificare la formula scelta.
+            </p>
+
+        </div>
+
+        <hr style="margin:15px 0;">
+
+        <h4>🏟️ Struttura Torneo</h4>
+
+        <label>
+            Scegli formula preimpostata:
+        </label>
+
+        <select
+            id="tipoTorneo"
+            onchange="
+                applicaModelloTorneo();
+                aggiornaDescrizioneTipoTorneo();
+            "
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="">
+                Seleziona formato torneo
+            </option>
+
+            <option value="italiana">
+                🇮🇹 Torneo all'italiana
+            </option>
+
+            <option value="gironiFinale">
+                🏆 Gironi + Fase Finale
+            </option>
+
+            <option value="eliminazione">
+                ⚔️ Eliminazione Diretta
+            </option>
+
+            <option value="svizzero">
+                🇨🇭 Torneo Svizzero
+            </option>
+
+            <option value="americano">
+                🎾 Americano Padel
+            </option>
+
+            <option value="mexicano">
+                🇲🇽 Mexicano Padel
+            </option>
+
+            <option value="king">
+                👑 King of the Court
+            </option>
+
+            <option value="short">
+                ⏱ Short Format
+            </option>
+
+            <option value="manuale">
+                ⚙️ Torneo Personalizzato
+            </option>
+
+        </select>
+
+        <div
+            id="descrizioneTipoTorneo"
+        >
+            Seleziona una formula per visualizzare la descrizione.
+        </div>
+
+        <label>
+            Formato torneo:
+        </label>
+
+        <select
+            id="formatoTorneo"
+            onchange="setFormat(this.value)"
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="8">
+                8 Squadre
+            </option>
+
+            <option value="12">
+                12 Squadre
+            </option>
+
+            <option value="16">
+                16 Squadre
+            </option>
+
+            <option value="20">
+                20 Squadre
+            </option>
+
+            <option value="24">
+                24 Squadre
+            </option>
+
+        </select>
+
+        <label style="display:block;margin-top:10px;">
+            Numero gironi:
+        </label>
+
+        <input
+            id="numeroGironi"
+            type="number"
+            min="1"
+            value="2"
+        >
+
+        <label style="display:block;margin-top:10px;">
+            Squadre per girone:
+        </label>
+
+        <input
+            id="squadrePerGirone"
+            type="number"
+            min="1"
+            value="4"
+        >
+
+        <hr style="margin:15px 0;">
+
+        <h4>📋 Formula Torneo</h4>
+
+        <label>
+            Formula gironi:
+        </label>
+
+        <select
+            id="formulaGironi"
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="tuttiControTutti">
+                Tutti contro tutti
+            </option>
+
+            <option value="andataRitorno">
+                Andata e ritorno
+            </option>
+
+        </select>
+
+        <label style="display:block;margin-top:10px;">
+            Formula fase finale:
+        </label>
+
+        <select
+            id="formulaFinale"
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="eliminazioneDiretta">
+                Eliminazione diretta
+            </option>
+
+            <option value="gironeFinale">
+                Girone finale
+            </option>
+
+        </select>
+
+        <label>
+            Criterio Classifica Principale:
+        </label>
+
+        <select
+            id="crit1"
+            style="
+                width:100%;
+                padding:8px;
+                margin-bottom:10px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="df">
+                Differenza Giochi
+            </option>
+
+            <option value="gf">
+                Maggiori Giochi Vinti
+            </option>
+
+            <option value="gs">
+                Minor Giochi Persi
+            </option>
+
+        </select>
+
+        <div style="margin-top:10px;">
+
+            <label>Punti Vittoria</label>
+
+            <input
+                id="wP"
+                type="number"
+                value="3"
+            >
+
+        </div>
+
+        <div style="margin-top:10px;">
+
+            <label>Punti Pareggio</label>
+
+            <input
+                id="dP"
+                type="number"
+                value="1"
+            >
+
+        </div>
+
+        <hr style="margin:15px 0;">
+
+        <h4>🏆 Qualificazioni</h4>
+
+        <label>
+            Squadre qualificate per ogni girone:
+        </label>
+
+        <input
+            id="qualificatePerGirone"
+            type="number"
+            min="1"
+            value="2"
+        >
+
+        <label style="display:block;margin-top:10px;">
+            Numero totale squadre fase finale:
+        </label>
+
+        <input
+            id="numeroQualificateFinali"
+            type="number"
+            min="2"
+            value="8"
+        >
+
+        <hr style="margin:15px 0;">
+
+        <h4>📊 Criteri Classifica</h4>
+
+        <label>
+            Criterio Classifica Secondario:
+        </label>
+
+        <select
+            id="crit2"
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="gf">
+                Maggiori Giochi Vinti
+            </option>
+
+            <option value="gs">
+                Minor Giochi Persi
+            </option>
+
+            <option value="df">
+                Differenza Giochi
+            </option>
+
+        </select>
+
+        <label style="display:block;margin-top:10px;">
+            Criterio Classifica Terziario:
+        </label>
+
+        <select
+            id="crit3"
+            style="
+                width:100%;
+                padding:8px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        >
+
+            <option value="gs">
+                Minor Giochi Persi
+            </option>
+
+            <option value="gf">
+                Maggiori Giochi Vinti
+            </option>
+
+            <option value="df">
+                Differenza Giochi
+            </option>
+
+        </select>
+
+        <hr style="margin:15px 0;">
+
+        <div id="faseEliminazioneBox">
+
+            <h4>⚔️ Fase Eliminazione Diretta</h4>
+
+            <label style="display:block;">
+
+                <input
+                    id="usaQuarti"
+                    type="checkbox"
+                    checked
+                >
+
+                Usa Quarti di Finale
+
+            </label>
+
+            <label style="display:block;margin-top:8px;">
+
+                <input
+                    id="usaSemifinali"
+                    type="checkbox"
+                    checked
+                >
+
+                Usa Semifinali
+
+            </label>
+
+            <label style="display:block;margin-top:8px;">
+
+                <input
+                    id="usaFinale"
+                    type="checkbox"
+                    checked
+                >
+
+                Usa Finale
+
+            </label>
+
+        </div>
+
+        <hr style="margin:15px 0;">
+
+        <div id="ripescaggiBox">
+
+            <h4>🔄 Ripescaggi</h4>
+
+            <label style="display:block;">
+
+                <input
+                    id="ripescaggio"
+                    type="checkbox"
+                >
+
+                Attiva ripescaggio
+
+            </label>
+
+            <label style="display:block;margin-top:8px;">
+                Numero squadre ripescate:
+            </label>
+
+            <input
+                id="numeroRipescate"
+                type="number"
+                min="0"
+                value="0"
+            >
+
+        </div>
+
+        <hr style="margin:15px 0;">
+
+        <div id="spareggiBox">
+
+            <h4>🏓 Spareggio</h4>
+
+            <select
+                id="killerPointSelect"
+                style="
+                    width:100%;
+                    padding:8px;
+                    background:#0b1220;
+                    color:#fff;
+                    border:1px solid #334155;
+                "
+            >
+
+                <option value="true">
+                    Attiva Killer Point
+                </option>
+
+                <option value="false">
+                    Disattiva Killer Point
+                </option>
+
+            </select>
+
+            <label style="display:block;margin-top:10px;">
+                Rigori:
+            </label>
+
+            <select
+                id="rigoriSelect"
+                style="
+                    width:100%;
+                    padding:8px;
+                    background:#0b1220;
+                    color:#fff;
+                    border:1px solid #334155;
+                "
+            >
+
+                <option value="true">
+                    Attivi
+                </option>
+
+                <option value="false">
+                    Disattivi
+                </option>
+
+            </select>
+
+            <label style="display:block;margin-top:10px;">
+                Supplementari:
+            </label>
+
+            <select
+                id="supplementariSelect"
+                style="
+                    width:100%;
+                    padding:8px;
+                    background:#0b1220;
+                    color:#fff;
+                    border:1px solid #334155;
+                "
+            >
+
+                <option value="true">
+                    Attivi
+                </option>
+
+                <option value="false">
+                    Disattivi
+                </option>
+
+            </select>
+
+            <label style="display:block;margin-top:10px;">
+
+                <input
+                    id="garaAndataRitorno"
+                    type="checkbox"
+                >
+
+                Gara Andata/Ritorno
+
+            </label>
+
+            <label style="display:block;margin-top:10px;">
+                Criterio extra parità:
+            </label>
+
+            <select
+                id="criterioParitaExtra"
+                style="
+                    width:100%;
+                    padding:8px;
+                    background:#0b1220;
+                    color:#fff;
+                    border:1px solid #334155;
+                "
+            >
+
+                <option value="scontroDiretto">
+                    Scontro diretto
+                </option>
+
+                <option value="differenzaGiochi">
+                    Differenza giochi
+                </option>
+
+                <option value="sorteggio">
+                    Sorteggio
+                </option>
+
+            </select>
+
+            <label style="display:block;margin-top:15px;">
+                Quarti visibili:
+            </label>
+
+            <select
+                id="mostraQuartiSelect"
+                style="
+                    width:100%;
+                    padding:8px;
+                    background:#0b1220;
+                    color:#fff;
+                    border:1px solid #334155;
+                "
+            >
+
+                <option value="true">
+                    Mostra Quarti
+                </option>
+
+                <option value="false">
+                    Nascondi Quarti
+                </option>
+
+            </select>
+
+        </div>
+
+        <hr style="margin:15px 0;">
+
+        <h4>⏱️ Programmazione</h4>
+
+        <label>
+            Ora inizio:
+        </label>
+
+        <input
+            id="startTime"
+            type="time"
+            value="20:00"
+        >
+
+        <label style="display:block;margin-top:10px;">
+            Durata partita:
+        </label>
+
+        <input
+            id="duration"
+            type="number"
+            min="1"
+            value="30"
+        >
+
+        <label style="display:block;margin-top:15px;">
+            Note Regolamento:
+        </label>
+
+        <textarea
+            id="noteRegole"
+            style="
+                width:100%;
+                height:80px;
+                background:#0b1220;
+                color:#fff;
+                border:1px solid #334155;
+            "
+        ></textarea>
+
+        <button
+            onclick="applyRules()"
+            style="
+                width:100%;
+                margin-top:15px;
+                background:#2563eb;
+            "
+        >
+            💾 Salva Regole
+        </button>
+
+        <button
+            class="back"
+            onclick="closeRules()"
+            style="
+                width:100%;
+                margin-top:5px;
+            "
+        >
+            Chiudi
+        </button>
+
+    </div>
+
 </div>
 
 <!-- =====================================================
      MODAL FORMATO
      ===================================================== -->
 
-<div id="formatModal" class="modal">
+<div
+    id="formatModal"
+    class="modal"
+>
 
-<div class="modal-content">
+    <div class="modal-content">
 
-<h3>Seleziona Formato</h3>
+        <h3>
+            Seleziona Formato
+        </h3>
 
-<button
-onclick="setFormat(8)"
-style="width:100%;margin:5px 0;">
-8 Squadre </button>
+        <button
+            onclick="setFormat(8)"
+            style="width:100%;margin:5px 0;"
+        >
+            8 Squadre
+        </button>
 
-<button
-onclick="setFormat(12)"
-style="width:100%;margin:5px 0;">
-12 Squadre </button>
+        <button
+            onclick="setFormat(12)"
+            style="width:100%;margin:5px 0;"
+        >
+            12 Squadre
+        </button>
 
-<button
-onclick="setFormat(16)"
-style="width:100%;margin:5px 0;">
-16 Squadre </button>
+        <button
+            onclick="setFormat(16)"
+            style="width:100%;margin:5px 0;"
+        >
+            16 Squadre
+        </button>
 
-<button
-onclick="setFormat(20)"
-style="width:100%;margin:5px 0;">
-20 Squadre </button>
+        <button
+            onclick="setFormat(20)"
+            style="width:100%;margin:5px 0;"
+        >
+            20 Squadre
+        </button>
 
-<button
-onclick="setFormat(24)"
-style="width:100%;margin:5px 0;">
-24 Squadre </button>
+        <button
+            onclick="setFormat(24)"
+            style="width:100%;margin:5px 0;"
+        >
+            24 Squadre
+        </button>
 
-<button
-class="back"
-onclick="document.getElementById('formatModal').style.display='none'"
-style="width:100%;margin:5px 0;">
-Chiudi </button>
+        <button
+            class="back"
+            onclick="
+                document.getElementById('formatModal').style.display='none'
+            "
+            style="width:100%;margin:5px 0;"
+        >
+            Chiudi
+        </button>
 
-</div>
+    </div>
+
 </div>
 
 <!-- =====================================================
