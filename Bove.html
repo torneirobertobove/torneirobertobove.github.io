@@ -702,7 +702,7 @@ function aggiornaDescrizioneTipoTorneo(){
             ad eliminazione diretta.
         </p>
     `,
-```
+
 
         svizzero: `
             <h4>🇨🇭 Torneo Svizzero</h4>
@@ -11649,439 +11649,580 @@ winner
 }
 function applicaModelloTorneo(){
 
-    ensureRules();
-
-
-
-    const select =
-        document.getElementById(
-            "tipoTorneo"
-        );
-
-
-
-    if(!select)
-
-        return;
-
-
-
-    const tipo =
-        select.value;
-
-
-
-    if(!tipo)
-
-        return;
-
-
-
-    /*
-    ============================
-    DESCRIZIONE
-    ============================
-    */
-
-
-    if(
-        typeof aggiornaDescrizioneTipoTorneo==="function"
-    ){
-
-        aggiornaDescrizioneTipoTorneo(tipo);
-
-    }
-
-
-
-
-    /*
-    ============================
-    TIPO TORNEO
-    ============================
-    */
-
-
-    state.rules.tipoTorneo =
-        tipo;
-
-
-
-
-    /*
-    ============================
-    RESET FASE FINALE
-    ============================
-    */
-
-
-    state.qRes =
-        Array(4).fill("-");
-
-
-    state.sTopRes =
-        Array(2).fill("-");
-
-
-    state.fTopRes="-";
-
-
-    state.finalTop=[];
-
-
-    state.campioneTop=null;
-
-
-
-
-    /*
-    ============================
-    PARAMETRI BASE
-    ============================
-    */
-
-
-    state.rules.usaQuarti=true;
-
-    state.rules.usaSemifinali=true;
-
-    state.rules.usaFinale=true;
-
-
-    state.rules.formulaGironi="";
-
-    state.rules.formulaFinale =
-        "eliminazioneDiretta";
-
-
-
-
-
-    switch(tipo){
-
-
-
-        case "italiana":
-
-
-            state.rules.formulaGironi =
-                "tuttiControTutti";
-
-
-            state.rules.qualificatePerGirone=2;
-
-
-            state.rules.numeroQualificateFinali =
-                Number(state.rules.numeroGironi || 0) *
-                2;
-
-
-        break;
-
-
-
-
-        case "gironiFinale":
-
-
-            state.rules.formulaGironi =
-                "tuttiControTutti";
-
-
-            state.rules.qualificatePerGirone=2;
-
-
-            state.rules.numeroQualificateFinali =
-                Number(state.rules.numeroGironi || 0) *
-                2;
-
-
-        break;
-
-
-
-
-        case "eliminazione":
-
-
-            state.rules.numeroQualificateFinali =
-                Number(state.rules.numeroSquadre || 0);
-
-
-        break;
-
-
-
-
-        case "svizzero":
-
-
-            state.rules.formulaGironi =
-                "svizzero";
-
-
-            state.rules.formulaFinale =
-                "classifica";
-
-
-            state.rules.numeroQualificateFinali=4;
-
-
-            state.rules.usaQuarti=false;
-
-
-            state.rules.usaSemifinali=true;
-
-
-            state.rules.usaFinale=true;
-
-
-            if(!state.svizzero){
-
-                state.svizzero={
-
-                    turno:1,
-
-                    totaleTurni:0,
-
-                    squadre:[],
-
-                    incontri:[]
-
-                };
-
-            }
-
-
-        break;
-
-
-
-
-        case "americano":
-
-
-            state.rules.formulaGironi =
-                "americano";
-
-
-            state.rules.formulaFinale =
-                "classifica";
-
-
-            state.rules.numeroQualificateFinali=1;
-
-
-            state.rules.usaQuarti=false;
-
-            state.rules.usaSemifinali=false;
-
-            state.rules.usaFinale=false;
-
-
-            if(!state.americano){
-
-                state.americano={
-
-                    turno:1,
-
-                    totaleTurni:0,
-
-                    giocatori:[],
-
-                    rotazioni:[]
-
-                };
-
-            }
-
-
-        break;
-
-
-
-
-        case "mexicano":
-
-
-            state.rules.formulaGironi =
-                "mexicano";
-
-
-            state.rules.formulaFinale =
-                "classifica";
-
-
-            state.rules.numeroQualificateFinali=1;
-
-
-            state.rules.usaQuarti=false;
-
-            state.rules.usaSemifinali=false;
-
-            state.rules.usaFinale=false;
-
-
-            if(!state.mexicano){
-
-                state.mexicano={
-
-                    turno:1,
-
-                    giocatori:[],
-
-                    abbinamenti:[]
-
-                };
-
-            }
-
-
-        break;
-
-
-
-
-        case "king":
-
-
-            state.rules.formulaGironi =
-                "kingOfTheCourt";
-
-
-            state.rules.formulaFinale =
-                "classifica";
-
-
-            state.rules.numeroQualificateFinali=1;
-
-
-            state.rules.usaQuarti=false;
-
-            state.rules.usaSemifinali=false;
-
-            state.rules.usaFinale=false;
-
-
-            if(!state.king){
-
-                state.king={
-
-                    turno:1,
-
-                    campi:[],
-
-                    rotazioni:[]
-
-                };
-
-            }
-
-
-        break;
-
-
-
-
-        case "short":
-
-
-            state.rules.formulaGironi =
-                "shortFormat";
-
-
-            state.rules.numeroQualificateFinali=4;
-
-
-            state.rules.usaQuarti=true;
-
-            state.rules.usaSemifinali=true;
-
-            state.rules.usaFinale=true;
-
-
-            if(!state.short){
-
-                state.short={
-
-                    turno:1,
-
-                    incontri:[]
-
-                };
-
-            }
-
-
-        break;
-
-
-
-
-        case "manuale":
-
-        case "personalizzato":
-
-
-            state.rules.formulaGironi="";
-
-            state.rules.formulaFinale="";
-
-            state.rules.numeroQualificateFinali=0;
-
-
-            state.rules.usaQuarti=false;
-
-            state.rules.usaSemifinali=false;
-
-            state.rules.usaFinale=false;
-
-
-        break;
-
-
-    }
-
-
-
-
-    /*
-    ============================
-    REGOLAMENTO BLOCCATO
-    ============================
-    */
-
-
-    state.rules.locked=true;
-
-
-
-
-    /*
-    ============================
-    SALVATAGGIO
-    ============================
-    */
-
-
-    localStorage.setItem(
-
-        "torneoState",
-
-        JSON.stringify(state)
-
+```
+ensureRules();
+
+const select =
+    document.getElementById(
+        "tipoTorneo"
     );
 
+if(!select){
+    return;
+}
+
+const tipo =
+    select.value;
+
+if(!tipo){
+    return;
+}
+
+
+/*
+========================================================
+DESCRIZIONE
+========================================================
+*/
+
+if(
+    typeof aggiornaDescrizioneTipoTorneo === "function"
+){
+
+    aggiornaDescrizioneTipoTorneo(tipo);
+
+}
+
+
+/*
+========================================================
+TIPO TORNEO
+========================================================
+*/
+
+state.rules.tipoTorneo =
+    tipo;
+
+
+/*
+========================================================
+RESET FASE FINALE
+========================================================
+*/
+
+state.qRes =
+    Array(4).fill("-");
+
+state.sTopRes =
+    Array(2).fill("-");
+
+state.fTopRes =
+    "-";
+
+state.finalTop =
+    [];
+
+state.campioneTop =
+    null;
+
+
+/*
+========================================================
+PARAMETRI BASE
+========================================================
+*/
+
+state.rules.usaQuarti =
+    true;
+
+state.rules.usaSemifinali =
+    true;
+
+state.rules.usaFinale =
+    true;
+
+state.rules.formulaGironi =
+    "";
+
+state.rules.formulaFinale =
+    "eliminazioneDiretta";
+
+
+/*
+========================================================
+FORMULA TORNEO
+========================================================
+*/
+
+switch(tipo){
 
 
     /*
-        NON FORZIAMO QUI render()
-        per evitare blocchi durante
-        apertura regole
+    ====================================================
+    TORNEO ALL'ITALIANA
+    ====================================================
     */
 
+    case "italiana":
+
+        state.rules.formulaGironi =
+            "tuttiControTutti";
+
+        state.rules.qualificatePerGirone =
+            2;
+
+        state.rules.numeroQualificateFinali =
+            Number(
+                state.rules.numeroGironi || 0
+            ) * 2;
+
+    break;
+
+
+    /*
+    ====================================================
+    GIRONI + FASE FINALE
+    ====================================================
+    */
+
+    case "gironiFinale":
+
+        state.rules.formulaGironi =
+            "tuttiControTutti";
+
+        state.rules.formulaFinale =
+            "eliminazioneDiretta";
+
+        state.rules.qualificatePerGirone =
+            2;
+
+        state.rules.numeroQualificateFinali =
+            Number(
+                state.rules.numeroGironi || 0
+            ) * 2;
+
+        state.rules.usaQuarti =
+            true;
+
+        state.rules.usaSemifinali =
+            true;
+
+        state.rules.usaFinale =
+            true;
+
+    break;
+
+
+    /*
+    ====================================================
+    ELIMINAZIONE DIRETTA
+    ====================================================
+    */
+
+    case "eliminazione":
+
+        state.rules.formulaGironi =
+            "";
+
+        state.rules.formulaFinale =
+            "eliminazioneDiretta";
+
+        state.rules.numeroQualificateFinali =
+            Number(
+                state.rules.numeroSquadre || 0
+            );
+
+    break;
+
+
+    /*
+    ====================================================
+    SVIZZERO
+    ====================================================
+    */
+
+    case "svizzero":
+
+        state.rules.formulaGironi =
+            "svizzero";
+
+        state.rules.formulaFinale =
+            "classifica";
+
+        state.rules.numeroQualificateFinali =
+            4;
+
+        state.rules.usaQuarti =
+            false;
+
+        state.rules.usaSemifinali =
+            true;
+
+        state.rules.usaFinale =
+            true;
+
+        if(!state.svizzero){
+
+            state.svizzero = {
+
+                turno:
+                    1,
+
+                totaleTurni:
+                    0,
+
+                squadre:
+                    [],
+
+                incontri:
+                    []
+
+            };
+
+        }
+
+    break;
+
+
+    /*
+    ====================================================
+    AMERICANO
+    ====================================================
+    */
+
+    case "americano":
+
+        state.rules.formulaGironi =
+            "americano";
+
+        state.rules.formulaFinale =
+            "classifica";
+
+        state.rules.numeroQualificateFinali =
+            1;
+
+        state.rules.usaQuarti =
+            false;
+
+        state.rules.usaSemifinali =
+            false;
+
+        state.rules.usaFinale =
+            false;
+
+        if(!state.americano){
+
+            state.americano = {
+
+                turno:
+                    1,
+
+                totaleTurni:
+                    0,
+
+                giocatori:
+                    [],
+
+                rotazioni:
+                    []
+
+            };
+
+        }
+
+    break;
+
+
+    /*
+    ====================================================
+    MEXICANO
+    ====================================================
+    */
+
+    case "mexicano":
+
+        state.rules.formulaGironi =
+            "mexicano";
+
+        state.rules.formulaFinale =
+            "classifica";
+
+        state.rules.numeroQualificateFinali =
+            1;
+
+        state.rules.usaQuarti =
+            false;
+
+        state.rules.usaSemifinali =
+            false;
+
+        state.rules.usaFinale =
+            false;
+
+        if(!state.mexicano){
+
+            state.mexicano = {
+
+                turno:
+                    1,
+
+                giocatori:
+                    [],
+
+                abbinamenti:
+                    []
+
+            };
+
+        }
+
+    break;
+
+
+    /*
+    ====================================================
+    KING OF THE COURT
+    ====================================================
+    */
+
+    case "king":
+
+        state.rules.formulaGironi =
+            "kingOfTheCourt";
+
+        state.rules.formulaFinale =
+            "classifica";
+
+        state.rules.numeroQualificateFinali =
+            1;
+
+        state.rules.usaQuarti =
+            false;
+
+        state.rules.usaSemifinali =
+            false;
+
+        state.rules.usaFinale =
+            false;
+
+        if(!state.king){
+
+            state.king = {
+
+                turno:
+                    1,
+
+                campi:
+                    [],
+
+                rotazioni:
+                    []
+
+            };
+
+        }
+
+    break;
+
+
+    /*
+    ====================================================
+    SHORT FORMAT
+    ====================================================
+    */
+
+    case "short":
+
+        state.rules.formulaGironi =
+            "shortFormat";
+
+        state.rules.formulaFinale =
+            "eliminazioneDiretta";
+
+        state.rules.numeroQualificateFinali =
+            4;
+
+        state.rules.usaQuarti =
+            true;
+
+        state.rules.usaSemifinali =
+            true;
+
+        state.rules.usaFinale =
+            true;
+
+        if(!state.short){
+
+            state.short = {
+
+                turno:
+                    1,
+
+                incontri:
+                    []
+
+            };
+
+        }
+
+    break;
+
+
+    /*
+    ====================================================
+    TORNEO MANUALE / PERSONALIZZATO
+    ====================================================
+    */
+
+    case "manuale":
+
+    case "personalizzato":
+
+        state.rules.formulaGironi =
+            "";
+
+        state.rules.formulaFinale =
+            "";
+
+        state.rules.numeroQualificateFinali =
+            0;
+
+        state.rules.usaQuarti =
+            false;
+
+        state.rules.usaSemifinali =
+            false;
+
+        state.rules.usaFinale =
+            false;
+
+    break;
 
 }
+
+
+/*
+========================================================
+NON BLOCCARE AUTOMATICAMENTE IL REGOLAMENTO
+========================================================
+*/
+
+state.rules.locked =
+    false;
+
+
+/*
+========================================================
+SINCRONIZZAZIONE CON I CAMPI DEL MODAL
+========================================================
+*/
+
+const qualificate =
+    document.getElementById(
+        "qualificatePerGirone"
+    );
+
+if(qualificate){
+
+    qualificate.value =
+        Number(
+            state.rules.qualificatePerGirone || 0
+        );
+
+}
+
+
+const numeroFinali =
+    document.getElementById(
+        "numeroQualificateFinali"
+    );
+
+if(numeroFinali){
+
+    numeroFinali.value =
+        Number(
+            state.rules.numeroQualificateFinali || 0
+        );
+
+}
+
+
+const formulaGironi =
+    document.getElementById(
+        "formulaGironi"
+    );
+
+if(formulaGironi){
+
+    formulaGironi.value =
+        state.rules.formulaGironi || "";
+
+}
+
+
+const formulaFinale =
+    document.getElementById(
+        "formulaFinale"
+    );
+
+if(formulaFinale){
+
+    formulaFinale.value =
+        state.rules.formulaFinale || "";
+
+}
+
+
+const usaQuarti =
+    document.getElementById(
+        "usaQuarti"
+    );
+
+if(usaQuarti){
+
+    usaQuarti.checked =
+        state.rules.usaQuarti === true;
+
+}
+
+
+const usaSemifinali =
+    document.getElementById(
+        "usaSemifinali"
+    );
+
+if(usaSemifinali){
+
+    usaSemifinali.checked =
+        state.rules.usaSemifinali === true;
+
+}
+
+
+const usaFinale =
+    document.getElementById(
+        "usaFinale"
+    );
+
+if(usaFinale){
+
+    usaFinale.checked =
+        state.rules.usaFinale === true;
+
+}
+
+
+/*
+========================================================
+SALVATAGGIO
+========================================================
+*/
+
+localStorage.setItem(
+    "torneoState",
+    JSON.stringify(state)
+);
+
+
+/*
+========================================================
+NON FORZIAMO render()
+========================================================
+*/
+```
+
+}
+
 function aggiornaDescrizioneTipoTorneo(){
 
 
