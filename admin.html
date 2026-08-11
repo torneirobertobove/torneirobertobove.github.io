@@ -1,604 +1,1559 @@
 <!DOCTYPE html>
+
 <html lang="it">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Padel Tournament Admin</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
+
 :root{
---blue:#004a99;
---gold:#ffeb3b;
---glass:rgba(255,255,255,.15);
---border:rgba(255,255,255,.25);
---text:#555;
---green:#16a34a;
---red:#dc2626;
---accent:#004a99;
+    --blue:#004a99;
+    --gold:#ffeb3b;
+
+    --glass:rgba(255,255,255,.14);
+    --glass-strong:rgba(255,255,255,.20);
+    --border:rgba(255,255,255,.28);
+
+    --text:#555;
+    --green:#16a34a;
+    --red:#dc2626;
+    --accent:#004a99;
 }
+
 *{
-box-sizing:border-box;
+    box-sizing:border-box;
 }
-html,body{
-width:100%;
-min-height:100%;
-overflow-x:hidden;
-}
+
+html,
 body{
-margin:0;
-padding:20px;
-min-height:100vh;
-background:
-radial-gradient(circle at 20% 20%,rgba(255,255,255,.25),transparent 25%),
-linear-gradient(135deg,#063d26 0%,#087a3f 45%,#16b85b 100%);
-font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
-font-size:13px;
-line-height:18.57px;
-color:#fff;
+    width:100%;
+    min-height:100%;
+    overflow-x:hidden;
 }
+
+body{
+
+    margin:0;
+    padding:20px;
+    min-height:100vh;
+
+    background:
+        radial-gradient(
+            circle at 15% 15%,
+            rgba(255,255,255,.20),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 85% 20%,
+            rgba(0,150,255,.18),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 50% 100%,
+            rgba(0,255,170,.12),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #061b2b 0%,
+            #063d26 38%,
+            #087a3f 70%,
+            #064b31 100%
+        );
+
+    background-attachment:fixed;
+
+    font-family:
+        "Open Sans",
+        "Helvetica Neue",
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    font-size:13px;
+    line-height:18.57px;
+    color:#fff;
+}
+
 .container{
-width:100%;
-max-width:1000px;
-margin:auto;
+    width:100%;
+    max-width:1000px;
+    margin:auto;
 }
+
 .card{
-background:rgba(255,255,255,.18);
-border:1px solid rgba(255,255,255,.35);
-border-radius:14px;
-padding:20px;
-margin-bottom:15px;
-box-shadow:0 8px 25px rgba(0,0,0,.22);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.20),
+            rgba(255,255,255,.08)
+        );
+
+    border:1px solid rgba(255,255,255,.30);
+
+    border-radius:18px;
+
+    padding:20px;
+    margin-bottom:15px;
+
+    box-shadow:
+        0 8px 32px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.20);
+
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
 }
-h1,h2,h3{
-color:#fff;
-font-family:"Open Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
-font-weight:600;
-}
-h1{
-font-size:22px;
-}
-h2{
-font-size:18px;
-}
+
+h1,
+h2,
 h3{
-font-size:16px;
+
+    color:#fff;
+
+    font-family:
+        "Open Sans",
+        "Helvetica Neue",
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    font-weight:600;
+
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.20);
 }
-label{
-color:#fff;
-font-size:13px;
-}
-input,select,textarea{
-width:100%;
-padding:10px;
-margin:8px 0 15px;
-border-radius:8px;
-border:1px solid rgba(255,255,255,.3);
-background:rgba(255,255,255,.9);
-color:#333;
-font-family:"Open Sans",Arial,sans-serif;
-font-size:13px;
-}
-textarea{
-min-height:90px;
-}
-button{
-background:var(--accent);
-color:white;
-border:0;
-padding:10px 18px;
-border-radius:8px;
-cursor:pointer;
-margin:5px;
-font-family:"Open Sans",Arial,sans-serif;
-font-size:13px;
-}
-button:hover{
-opacity:.85;
-}
-.btn-green{
-background:var(--green);
-}
-.btn-red{
-background:var(--red);
-}
-.hidden{
-display:none;
-}
-.lista-item{
-background:rgba(0,0,0,.25);
-padding:12px;
-border-radius:8px;
-margin:8px 0;
-}
-.badge{
-background:rgba(0,0,0,.35);
-padding:5px 10px;
-border-radius:20px;
-display:inline-block;
-color:white;
-}
-details{
-background:rgba(255,255,255,.22);
-border:1px solid rgba(255,255,255,.35);
-border-radius:12px;
-padding:15px 20px;
-margin-bottom:15px;
-box-shadow:0 6px 18px rgba(0,0,0,.25);
-}
-summary{
-cursor:pointer;
-font-size:15px;
-font-weight:600;
-color:white;
-outline:none;
-list-style:none;
-display:flex;
-align-items:center;
-justify-content:space-between;
-}
-summary::-webkit-details-marker{
-display:none;
-}
-summary::after{
-content:'▼';
-font-size:12px;
-transition:transform .2s;
-}
-details[open] summary::after{
-transform:rotate(180deg);
-}
-.nested-details{
-background:rgba(0,0,0,.2);
-border:1px solid var(--border);
-border-radius:8px;
-padding:12px;
-margin:10px 0;
-}
-.nested-summary{
-font-size:14px;
-font-weight:600;
-color:white;
-cursor:pointer;
-list-style:none;
-display:flex;
-align-items:center;
-justify-content:space-between;
-}
-.nested-summary::after{
-content:'▼';
-font-size:11px;
-}
-.nested-details[open] .nested-summary::after{
-transform:rotate(180deg);
-}
-.btn-indietro{
-position:fixed;
-top:12px;
-right:12px;
-z-index:9999;
-background:transparent;
-color:white;
-border:none;
-width:24px;
-height:24px;
-padding:0;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:22px;
-font-weight:bold;
-cursor:pointer;
-}
-.btn-indietro:hover{
-opacity:.7;
-}
-@media(max-width:600px){
-body{
-padding:10px;
-}
-.card,
-details{
-padding:15px;
-}
+
 h1{
-font-size:20px;
+    font-size:22px;
 }
+
 h2{
-font-size:17px;
+    font-size:18px;
 }
+
+h3{
+    font-size:16px;
+}
+
+label{
+    color:#fff;
+    font-size:13px;
+}
+
+input,
+select,
+textarea{
+
+    width:100%;
+
+    padding:10px;
+
+    margin:8px 0 15px;
+
+    border-radius:10px;
+
+    border:1px solid rgba(255,255,255,.35);
+
+    background:
+        rgba(255,255,255,.88);
+
+    color:#333;
+
+    font-family:
+        "Open Sans",
+        Arial,
+        sans-serif;
+
+    font-size:13px;
+
+    outline:none;
+
+    transition:
+        border-color .2s,
+        box-shadow .2s,
+        background .2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+
+    border-color:
+        rgba(255,255,255,.75);
+
+    box-shadow:
+        0 0 0 3px rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.96);
+}
+
+textarea{
+    min-height:90px;
+}
+
 button{
-width:100%;
-margin:5px 0;
+
+    background:var(--accent);
+
+    color:white;
+
+    border:1px solid rgba(255,255,255,.16);
+
+    padding:10px 18px;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    margin:5px;
+
+    font-family:
+        "Open Sans",
+        Arial,
+        sans-serif;
+
+    font-size:13px;
+
+    box-shadow:
+        0 4px 12px rgba(0,0,0,.20);
+
+    transition:
+        transform .15s,
+        opacity .15s,
+        box-shadow .15s;
 }
+
+button:hover{
+
+    opacity:.90;
+
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(0,0,0,.25);
 }
+
+.btn-green{
+    background:var(--green);
+}
+
+.btn-red{
+    background:var(--red);
+}
+
+.hidden{
+    display:none;
+}
+
+.lista-item{
+
+    background:
+        rgba(0,0,0,.20);
+
+    padding:12px;
+
+    border-radius:10px;
+
+    margin:8px 0;
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.badge{
+
+    background:
+        rgba(0,0,0,.30);
+
+    padding:5px 10px;
+
+    border-radius:20px;
+
+    display:inline-block;
+
+    color:white;
+
+    border:
+        1px solid rgba(255,255,255,.12);
+}
+
+details{
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.18),
+            rgba(255,255,255,.07)
+        );
+
+    border:
+        1px solid rgba(255,255,255,.28);
+
+    border-radius:15px;
+
+    padding:15px 20px;
+
+    margin-bottom:15px;
+
+    box-shadow:
+        0 6px 22px rgba(0,0,0,.24),
+        inset 0 1px 0 rgba(255,255,255,.16);
+
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+}
+
+summary{
+
+    cursor:pointer;
+
+    font-size:15px;
+
+    font-weight:600;
+
+    color:white;
+
+    outline:none;
+
+    list-style:none;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+}
+
+summary::-webkit-details-marker{
+    display:none;
+}
+
+summary::after{
+
+    content:'▼';
+
+    font-size:12px;
+
+    transition:
+        transform .2s;
+}
+
+details[open] summary::after{
+
+    transform:
+        rotate(180deg);
+}
+
+.nested-details{
+
+    background:
+        rgba(0,0,0,.18);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:10px;
+
+    padding:12px;
+
+    margin:10px 0;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.nested-summary{
+
+    font-size:14px;
+
+    font-weight:600;
+
+    color:white;
+
+    cursor:pointer;
+
+    list-style:none;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+}
+
+.nested-summary::after{
+
+    content:'▼';
+
+    font-size:11px;
+}
+
+.nested-details[open]
+.nested-summary::after{
+
+    transform:
+        rotate(180deg);
+}
+
+.btn-indietro{
+
+    position:fixed;
+
+    top:12px;
+    right:12px;
+
+    z-index:9999;
+
+    background:rgba(255,255,255,.10);
+
+    color:white;
+
+    border:
+        1px solid rgba(255,255,255,.25);
+
+    width:34px;
+    height:34px;
+
+    padding:0;
+
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    font-size:22px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    border-radius:50%;
+
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+
+    box-shadow:
+        0 4px 14px rgba(0,0,0,.25);
+}
+
+.btn-indietro:hover{
+    opacity:.80;
+}
+
+hr{
+    border-color:
+        rgba(255,255,255,.20);
+}
+
+.admin-card-dati{
+
+    background:
+        rgba(255,255,255,.10);
+
+    border:
+        1px solid rgba(255,255,255,.20);
+
+    border-radius:12px;
+
+    padding:15px;
+
+    margin-bottom:15px;
+
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+
+@media(max-width:600px){
+
+    body{
+        padding:10px;
+    }
+
+    .card,
+    details{
+        padding:15px;
+    }
+
+    h1{
+        font-size:20px;
+    }
+
+    h2{
+        font-size:17px;
+    }
+
+    button{
+        width:100%;
+        margin:5px 0;
+    }
+}
+
 </style>
+
 </head>
+
 <body>
-<button class="btn-indietro" onclick="history.back()" aria-label="Indietro">
+
+<button
+class="btn-indietro"
+onclick="history.back()"
+aria-label="Indietro"
+
+>
+
+```
 →
+```
+
 </button>
+
 <div class="container">
+
 <div id="boxLoginAdmin" class="card">
+
+```
 <h1>🎾 Admin Padel Manager</h1>
+
 <h2>🔐 Accesso Admin</h2>
+
 <label>Email amministratore</label>
-<input id="adminEmail" type="email" placeholder="email admin">
+
+<input
+    id="adminEmail"
+    type="email"
+    placeholder="email admin"
+>
+
 <label>Password</label>
-<input id="adminPassword" type="password" placeholder="password admin">
-<button type="button" id="btnLoginAdmin" class="btn-green">
-Accedi
+
+<input
+    id="adminPassword"
+    type="password"
+    placeholder="password admin"
+>
+
+<button
+    type="button"
+    id="btnLoginAdmin"
+    class="btn-green"
+>
+    Accedi
 </button>
+
 <div id="loginMessaggio"></div>
+```
+
 </div>
+
 <div id="areaAdmin" class="hidden">
+
+```
 <h1>🎾 Admin Padel Manager</h1>
+
+
 <details>
-<summary>
-➕ Crea nuovo torneo
-</summary>
-<div style="margin-top:15px;">
-<label>Nome torneo</label>
-<input id="adminNomeTorneo" placeholder="Nome torneo">
-<label>Data torneo</label>
-<input id="adminDataTorneo" type="date">
-<label>Squadre</label>
-<select id="adminPosti" onchange="aggiornaGiocatoriAdmin()">
-<option value="8">8</option>
-<option value="12">12</option>
-<option value="16">16</option>
-<option value="20">20</option>
-<option value="24">24</option>
-</select>
-<label>Giocatori ammessi</label>
-<input id="adminGiocatori" type="number" readonly>
-<button onclick="apriRegoleNuovoTorneo()" style="background:#475569;width:100%;margin-bottom:15px;">
-⚙️ Regole (Configura in Bove)
-</button>
-<label>Descrizione torneo</label>
-<textarea id="adminDescrizione" placeholder="Descrizione, regole, note..."></textarea>
-<button onclick="creaNuovoTorneo()" class="btn-green" style="width:100%;">
-➕ CREA TORNEO
-</button>
-</div>
+
+    <summary>
+        ➕ Crea nuovo torneo
+    </summary>
+
+    <div style="margin-top:15px;">
+
+        <label>Nome torneo</label>
+
+        <input
+            id="adminNomeTorneo"
+            placeholder="Nome torneo"
+        >
+
+        <label>Data torneo</label>
+
+        <input
+            id="adminDataTorneo"
+            type="date"
+        >
+
+        <label>Squadre</label>
+
+        <select
+            id="adminPosti"
+            onchange="aggiornaGiocatoriAdmin()"
+        >
+            <option value="8">8</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+            <option value="24">24</option>
+        </select>
+
+        <label>Giocatori ammessi</label>
+
+        <input
+            id="adminGiocatori"
+            type="number"
+            readonly
+        >
+
+        <button
+            onclick="apriRegoleNuovoTorneo()"
+            style="background:#475569;width:100%;margin-bottom:15px;"
+        >
+            ⚙️ Regole (Configura in Bove)
+        </button>
+
+        <label>Descrizione torneo</label>
+
+        <textarea
+            id="adminDescrizione"
+            placeholder="Descrizione, regole, note..."
+        ></textarea>
+
+        <button
+            onclick="creaNuovoTorneo()"
+            class="btn-green"
+            style="width:100%;"
+        >
+            ➕ CREA TORNEO
+        </button>
+
+    </div>
+
 </details>
+
+
 <details>
-<summary>
-📋 Tornei creati
-</summary>
-<div id="listaTorneiAdmin" style="margin-top:15px;"></div>
+
+    <summary>
+        📋 Tornei creati
+    </summary>
+
+    <div
+        id="listaTorneiAdmin"
+        style="margin-top:15px;"
+    ></div>
+
 </details>
-<div id="gestioneTorneoAdmin" class="hidden">
+
+
+<div
+    id="gestioneTorneoAdmin"
+    class="hidden"
+>
+
+    <details>
+
+        <summary>
+            ⚙️ Gestione torneo
+        </summary>
+
+        <div style="margin-top:15px;">
+
+            <div id="dettaglioTorneoAdmin"></div>
+
+            <button
+                onclick="pubblicaTorneo()"
+                class="btn-green"
+            >
+                📢 Pubblica torneo
+            </button>
+
+            <button
+                onclick="chiudiIscrizioniTorneo()"
+                class="btn-red"
+            >
+                🔒 Chiudi iscrizioni
+            </button>
+
+            <button
+                onclick="caricaRichiesteIscrizione()"
+            >
+                🔄 Aggiorna iscritti
+            </button>
+
+            <button
+                onclick="creaIscrittiTest()"
+                class="btn-green"
+            >
+                🧪 Crea iscritti test
+            </button>
+
+            <hr
+                style="border-color:var(--border);margin:20px 0;"
+            >
+
+            <h3>
+                👤 Richieste giocatori
+            </h3>
+
+            <div id="richiesteIscrizione"></div>
+
+            <h3 style="margin-top:20px;">
+                ✅ Partecipanti approvati
+            </h3>
+
+            <div id="partecipantiAdmin"></div>
+
+            <div
+                id="schedaGiocatoreAdmin"
+                class="hidden"
+                style="margin-top:15px;background:rgba(11,18,32,.55);padding:15px;border-radius:10px;border:1px solid rgba(255,255,255,.12);"
+            >
+
+                <h3>
+                    👤 Dati giocatore
+                </h3>
+
+                <label>Nome e Cognome</label>
+
+                <input
+                    id="adminNomeGiocatore"
+                    readonly
+                >
+
+                <label>Email</label>
+
+                <input
+                    id="adminEmailGiocatore"
+                    readonly
+                >
+
+                <label>Telefono</label>
+
+                <input
+                    id="adminTelefonoGiocatore"
+                    readonly
+                >
+
+                <label>Livello gioco</label>
+
+                <input
+                    id="adminLivelloGiocatore"
+                    readonly
+                >
+
+                <textarea
+                    id="adminNotaGiocatore"
+                    readonly
+                ></textarea>
+
+                <button
+                    onclick="approvaGiocatore()"
+                    class="btn-green"
+                >
+                    ✅ Approva
+                </button>
+
+                <button
+                    onclick="rifiutaGiocatore()"
+                    class="btn-red"
+                >
+                    ❌ Rifiuta
+                </button>
+
+            </div>
+
+
+            <h3 style="margin-top:20px;">
+                👥 Gestione coppie
+            </h3>
+
+            <div id="creaCoppieBox"></div>
+
+            <div
+                id="listaCoppieAdmin"
+                style="margin-top:10px;"
+            ></div>
+
+
+            <details class="nested-details">
+
+                <summary class="nested-summary">
+                    📲 Comunicazioni WhatsApp
+                </summary>
+
+                <div style="margin-top:10px;">
+
+                    <textarea
+                        id="messaggioWhatsApp"
+                        placeholder="Scrivi comunicazione..."
+                    ></textarea>
+
+                    <button
+                        onclick="inviaWhatsAppTutti()"
+                    >
+                        📲 Invia WhatsApp a tutti
+                    </button>
+
+                    <button
+                        onclick="inviaWhatsAppApprovati()"
+                    >
+                        📲 Solo partecipanti approvati
+                    </button>
+
+                </div>
+
+            </details>
+
+
+            <details class="nested-details">
+
+                <summary class="nested-summary">
+                    🚀 Avvio torneo
+                </summary>
+
+                <div style="margin-top:10px;">
+
+                    <p>
+                        Generazione collegamento al gestionale torneo.
+                    </p>
+
+                    <input
+                        id="linkBoveGenerato"
+                        readonly
+                        placeholder="Link torneo"
+                    >
+
+                    <button
+                        onclick="generaLinkBove()"
+                    >
+                        🔗 Genera link Bove
+                    </button>
+
+                    <button
+                        onclick="apriBoveConTorneo(adminState.torneoSelezionato)"
+                    >
+                        🚀 Apri torneo
+                    </button>
+
+                    <button
+                        onclick="copiaLinkBove()"
+                    >
+                        📋 Copia link
+                    </button>
+
+                </div>
+
+            </details>
+
+        </div>
+
+    </details>
+
+</div>
+
+
 <details>
-<summary>
-⚙️ Gestione torneo
-</summary>
-<div style="margin-top:15px;">
-<div id="dettaglioTorneoAdmin"></div>
-<button onclick="pubblicaTorneo()" class="btn-green">
-📢 Pubblica torneo
-</button>
-<button onclick="chiudiIscrizioniTorneo()" class="btn-red">
-🔒 Chiudi iscrizioni
-</button>
-<button onclick="caricaRichiesteIscrizione()">
-🔄 Aggiorna iscritti
-</button>
-<button onclick="creaIscrittiTest()" class="btn-green">
-🧪 Crea iscritti test
-</button>
-<hr style="border-color:var(--border);margin:20px 0;">
-<h3>
-👤 Richieste giocatori
-</h3>
-<div id="richiesteIscrizione"></div>
-<h3 style="margin-top:20px;">
-✅ Partecipanti approvati
-</h3>
-<div id="partecipantiAdmin"></div>
-<div id="schedaGiocatoreAdmin" class="hidden" style="margin-top:15px;background:#0b1220;padding:15px;border-radius:8px;">
-<h3>
-👤 Dati giocatore
-</h3>
-<label>Nome e Cognome</label>
-<input id="adminNomeGiocatore" readonly>
-<label>Email</label>
-<input id="adminEmailGiocatore" readonly>
-<label>Telefono</label>
-<input id="adminTelefonoGiocatore" readonly>
-<label>Livello gioco</label>
-<input id="adminLivelloGiocatore" readonly>
-<textarea id="adminNotaGiocatore" readonly></textarea>
-<button onclick="approvaGiocatore()" class="btn-green">
-✅ Approva
-</button>
-<button onclick="rifiutaGiocatore()" class="btn-red">
-❌ Rifiuta
-</button>
-</div>
-<h3 style="margin-top:20px;">
-👥 Gestione coppie
-</h3>
-<div id="creaCoppieBox"></div>
-<div id="listaCoppieAdmin" style="margin-top:10px;"></div>
-<details class="nested-details">
-<summary class="nested-summary">
-📲 Comunicazioni WhatsApp
-</summary>
-<div style="margin-top:10px;">
-<textarea id="messaggioWhatsApp" placeholder="Scrivi comunicazione..."></textarea>
-<button onclick="inviaWhatsAppTutti()">
-📲 Invia WhatsApp a tutti
-</button>
-<button onclick="inviaWhatsAppApprovati()">
-📲 Solo partecipanti approvati
-</button>
-</div>
+
+    <summary>
+        📰 Gestione News
+    </summary>
+
+    <div style="margin-top:15px;">
+
+        <label>
+            Titolo News
+        </label>
+
+        <input
+            id="newsTitolo"
+            placeholder="Titolo news"
+        >
+
+        <label>
+            Testo News
+        </label>
+
+        <textarea
+            id="newsTesto"
+            placeholder="Scrivi la news..."
+        ></textarea>
+
+        <label>
+            Immagine News (URL)
+        </label>
+
+        <input
+            id="newsImmagine"
+            placeholder="https://..."
+        >
+
+        <button
+            onclick="creaNews()"
+            class="btn-green"
+        >
+            ➕ Pubblica News
+        </button>
+
+        <hr
+            style="border-color:var(--border);margin:20px 0;"
+        >
+
+        <h3>
+            News pubblicate
+        </h3>
+
+        <div id="listaNewsAdmin"></div>
+
+    </div>
+
 </details>
-<details class="nested-details">
-<summary class="nested-summary">
-🚀 Avvio torneo
-</summary>
-<div style="margin-top:10px;">
-<p>
-Generazione collegamento al gestionale torneo.
-</p>
-<input id="linkBoveGenerato" readonly placeholder="Link torneo">
-<button onclick="generaLinkBove()">
-🔗 Genera link Bove
-</button>
-<button onclick="apriBoveConTorneo(adminState.torneoSelezionato)">
-🚀 Apri torneo
-</button>
-<button onclick="copiaLinkBove()">
-📋 Copia link
-</button>
-</div>
-</details>
-</div>
-</details>
-</div>
+
+
 <details>
-<summary>
-📰 Gestione News
-</summary>
-<div style="margin-top:15px;">
-<label>
-Titolo News
-</label>
-<input id="newsTitolo" placeholder="Titolo news">
-<label>
-Testo News
-</label>
-<textarea id="newsTesto" placeholder="Scrivi la news..."></textarea>
-<label>
-Immagine News (URL)
-</label>
-<input id="newsImmagine" placeholder="https://...">
-<button onclick="creaNews()" class="btn-green">
-➕ Pubblica News
-</button>
-<hr style="border-color:var(--border);margin:20px 0;">
-<h3>
-News pubblicate
-</h3>
-<div id="listaNewsAdmin"></div>
-</div>
+
+    <summary>
+        🏆 Gestione Sponsor
+    </summary>
+
+    <div style="margin-top:15px;">
+
+        <label>
+            Nome sponsor / azienda
+        </label>
+
+        <input
+            id="sponsorNome"
+            placeholder="Nome azienda"
+        >
+
+        <label>
+            Immagine / Logo (URL)
+        </label>
+
+        <input
+            id="sponsorImmagine"
+            placeholder="https://..."
+        >
+
+        <label>
+            Video in loop (URL)
+        </label>
+
+        <input
+            id="sponsorVideo"
+            placeholder="https://..."
+        >
+
+        <label>
+            Link sponsor
+        </label>
+
+        <input
+            id="sponsorLink"
+            placeholder="https://..."
+        >
+
+        <button
+            onclick="salvaSponsor()"
+            class="btn-green"
+        >
+            💾 Salva sponsor
+        </button>
+
+        <hr
+            style="border-color:var(--border);margin:20px 0;"
+        >
+
+        <h3>
+            Sponsor registrati
+        </h3>
+
+        <div id="listaSponsorAdmin"></div>
+
+    </div>
+
 </details>
-<details>
-<summary>
-🏆 Gestione Sponsor
-</summary>
-<div style="margin-top:15px;">
-<label>
-Nome sponsor / azienda
-</label>
-<input id="sponsorNome" placeholder="Nome azienda">
-<label>
-Immagine / Logo (URL)
-</label>
-<input id="sponsorImmagine" placeholder="https://...">
-<label>
-Video in loop (URL)
-</label>
-<input id="sponsorVideo" placeholder="https://...">
-<label>
-Link sponsor
-</label>
-<input id="sponsorLink" placeholder="https://...">
-<button onclick="salvaSponsor()" class="btn-green">
-💾 Salva sponsor
-</button>
-<hr style="border-color:var(--border);margin:20px 0;">
-<h3>
-Sponsor registrati
-</h3>
-<div id="listaSponsorAdmin"></div>
+```
+
 </div>
-</details>
+
 </div>
-</div>
+
 <script>
+
 const sb = window.supabase.createClient(
-"https://iybjvtmfaupgthqqsngd.supabase.co",
-"sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl",
-{
-auth:{
-persistSession:true,
-autoRefreshToken:true,
-detectSessionInUrl:true
-}
-}
+    "https://iybjvtmfaupgthqqsngd.supabase.co",
+    "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl",
+    {
+        auth:{
+            persistSession:true,
+            autoRefreshToken:true,
+            detectSessionInUrl:true
+        }
+    }
 );
 
+
 let adminState = {
-adminLoggato:false,
-adminEmail:"",
-torneoSelezionato:null,
-tornei:[],
-sponsor:[],
-news:[]
+
+    adminLoggato:false,
+
+    adminEmail:"",
+
+    torneoSelezionato:null,
+
+    tornei:[],
+
+    sponsor:[],
+
+    news:[]
+
 };
 
-const ADMIN_STORAGE = "padel_admin_state";
+
+const ADMIN_STORAGE =
+    "padel_admin_state";
+
 
 function caricaAdminState(){
-try{
-let salvato = localStorage.getItem(ADMIN_STORAGE);
-if(!salvato) return;
-let dati = JSON.parse(salvato);
-adminState = { ...adminState, ...dati };
-if(!Array.isArray(adminState.tornei)) adminState.tornei = [];
-if(!Array.isArray(adminState.sponsor)) adminState.sponsor = [];
-if(!Array.isArray(adminState.news)) adminState.news = [];
-console.log("STATO ADMIN CARICATO:", adminState);
+
+    try{
+
+        let salvato =
+            localStorage.getItem(
+                ADMIN_STORAGE
+            );
+
+        if(!salvato)
+            return;
+
+        let dati =
+            JSON.parse(salvato);
+
+        adminState =
+            {
+                ...adminState,
+                ...dati
+            };
+
+        if(!Array.isArray(adminState.tornei))
+            adminState.tornei=[];
+
+        if(!Array.isArray(adminState.sponsor))
+            adminState.sponsor=[];
+
+        if(!Array.isArray(adminState.news))
+            adminState.news=[];
+
+        console.log(
+            "STATO ADMIN CARICATO:",
+            adminState
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore caricamento stato admin:",
+            e
+        );
+
+        adminState = {
+
+            adminLoggato:false,
+
+            adminEmail:"",
+
+            torneoSelezionato:null,
+
+            tornei:[],
+
+            sponsor:[],
+
+            news:[]
+
+        };
+
+    }
+
 }
-catch(e){
-console.error("Errore caricamento stato admin:", e);
-adminState = { adminLoggato:false, adminEmail:"", torneoSelezionato:null, tornei:[], sponsor:[], news:[] };
-}
-}
+
 
 function salvaAdminState(){
-try{
-localStorage.setItem(ADMIN_STORAGE, JSON.stringify(adminState));
+
+    try{
+
+        localStorage.setItem(
+            ADMIN_STORAGE,
+            JSON.stringify(adminState)
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore salvataggio stato admin:",
+            e
+        );
+
+    }
+
 }
-catch(e){ console.error("Errore salvataggio stato admin:", e); }
-}
+
 
 async function caricaTorneiSupabase(){
-try{
-const {data,error}= await sb.from("tornei").select("*").order("id",{ascending:false});
-if(error){ console.error("Errore caricamento tornei Supabase:", error); return; }
-if(Array.isArray(data)){
-adminState.tornei=data;
-salvaAdminState();
-if(typeof renderAdmin === "function") renderAdmin();
+
+    try{
+
+        const {
+            data,
+            error
+        } =
+            await sb
+                .from("tornei")
+                .select("*")
+                .order(
+                    "id",
+                    {ascending:false}
+                );
+
+        if(error){
+
+            console.error(
+                "Errore caricamento tornei Supabase:",
+                error
+            );
+
+            return;
+
+        }
+
+        if(Array.isArray(data)){
+
+            adminState.tornei=data;
+
+            salvaAdminState();
+
+            if(
+                typeof renderAdmin ===
+                "function"
+            )
+                renderAdmin();
+
+        }
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore caricaTorneiSupabase:",
+            e
+        );
+
+    }
+
 }
-}
-catch(e){ console.error("Errore caricaTorneiSupabase:", e); }
-}
+
 
 function apriBoveConTorneo(idTorneo){
-try{
-if(!idTorneo){ console.error("ID torneo mancante"); alert("Seleziona prima un torneo"); return; }
-let url = "Bove.html?idTorneo=" + encodeURIComponent(idTorneo);
-window.open(url, "_blank");
-}
-catch(e){ console.error("Errore apertura Bove:", e); }
+
+    try{
+
+        if(!idTorneo){
+
+            console.error(
+                "ID torneo mancante"
+            );
+
+            alert(
+                "Seleziona prima un torneo"
+            );
+
+            return;
+
+        }
+
+        let url =
+            "Bove.html?idTorneo=" +
+            encodeURIComponent(idTorneo);
+
+        window.open(
+            url,
+            "_blank"
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore apertura Bove:",
+            e
+        );
+
+    }
+
 }
 
-window.loginAdmin = async function(){
-const email = document.getElementById("adminEmail")?.value.trim();
-const password = document.getElementById("adminPassword")?.value.trim();
-if(!email || !password){
-mostraLoginMessaggio("Inserire email e password", "#ef4444");
-return;
-}
-try{
-const {data,error} = await sb.auth.signInWithPassword({ email: email, password: password });
-if(error){
-console.error("LOGIN FALLITO:", error);
-mostraLoginMessaggio("Accesso negato", "#ef4444");
-return;
-}
-adminState.adminLoggato = true;
-adminState.adminEmail = email;
-salvaAdminState();
-mostraLoginMessaggio("Accesso effettuato", "#22c55e");
-const login = document.getElementById("boxLoginAdmin");
-const area = document.getElementById("areaAdmin");
-if(login) login.style.display="none";
-if(area) area.classList.remove("hidden");
-if(typeof caricaTorneiSupabase === "function") await caricaTorneiSupabase();
-if(typeof renderAdmin === "function") renderAdmin();
-}
-catch(e){
-console.error("ERRORE LOGIN ADMIN:", e);
-mostraLoginMessaggio("Errore accesso", "#ef4444");
-}
+
+window.loginAdmin =
+async function(){
+
+    const email =
+        document
+            .getElementById(
+                "adminEmail"
+            )
+            ?.value
+            .trim();
+
+    const password =
+        document
+            .getElementById(
+                "adminPassword"
+            )
+            ?.value
+            .trim();
+
+    if(!email || !password){
+
+        mostraLoginMessaggio(
+            "Inserire email e password",
+            "#ef4444"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {
+            data,
+            error
+        } =
+            await sb.auth.signInWithPassword(
+                {
+                    email:email,
+                    password:password
+                }
+            );
+
+        if(error){
+
+            console.error(
+                "LOGIN FALLITO:",
+                error
+            );
+
+            mostraLoginMessaggio(
+                "Accesso negato",
+                "#ef4444"
+            );
+
+            return;
+
+        }
+
+        adminState.adminLoggato=true;
+
+        adminState.adminEmail=email;
+
+        salvaAdminState();
+
+        mostraLoginMessaggio(
+            "Accesso effettuato",
+            "#22c55e"
+        );
+
+        const login =
+            document.getElementById(
+                "boxLoginAdmin"
+            );
+
+        const area =
+            document.getElementById(
+                "areaAdmin"
+            );
+
+        if(login)
+            login.style.display="none";
+
+        if(area)
+            area.classList.remove("hidden");
+
+        if(
+            typeof caricaTorneiSupabase ===
+            "function"
+        )
+            await caricaTorneiSupabase();
+
+        if(
+            typeof renderAdmin ===
+            "function"
+        )
+            renderAdmin();
+
+    }
+    catch(e){
+
+        console.error(
+            "ERRORE LOGIN ADMIN:",
+            e
+        );
+
+        mostraLoginMessaggio(
+            "Errore accesso",
+            "#ef4444"
+        );
+
+    }
+
 };
 
-function mostraLoginMessaggio(testo,colore){
-let box = document.getElementById("loginMessaggio");
-if(box) box.innerHTML = `<p style="color:${colore}">${testo}</p>`;
+
+function mostraLoginMessaggio(
+    testo,
+    colore
+){
+
+    let box =
+        document.getElementById(
+            "loginMessaggio"
+        );
+
+    if(box)
+        box.innerHTML =
+            `<p style="color:${colore}">${testo}</p>`;
+
 }
+
 
 function apriDashboardAdmin(){
-let login = document.getElementById("boxLoginAdmin");
-let area = document.getElementById("areaAdmin");
-if(login) login.style.display="none";
-if(area) area.classList.remove("hidden");
-setTimeout(async()=>{
-if(typeof caricaTorneiSupabase==="function") await caricaTorneiSupabase();
-if(typeof renderAdmin==="function") renderAdmin();
-},50);
+
+    let login =
+        document.getElementById(
+            "boxLoginAdmin"
+        );
+
+    let area =
+        document.getElementById(
+            "areaAdmin"
+        );
+
+    if(login)
+        login.style.display="none";
+
+    if(area)
+        area.classList.remove("hidden");
+
+    setTimeout(
+        async()=>{
+
+            if(
+                typeof caricaTorneiSupabase ===
+                "function"
+            )
+                await caricaTorneiSupabase();
+
+            if(
+                typeof renderAdmin ===
+                "function"
+            )
+                renderAdmin();
+
+        },
+        50
+    );
+
 }
+
 
 function aggiornaGiocatoriAdmin(){
-let squadre = Number(document.getElementById("adminPosti")?.value) || 8;
-let campo = document.getElementById("adminGiocatori");
-if(campo) campo.value = squadre * 2;
+
+    let squadre =
+        Number(
+            document.getElementById(
+                "adminPosti"
+            )
+            ?.value
+        ) || 8;
+
+    let campo =
+        document.getElementById(
+            "adminGiocatori"
+        );
+
+    if(campo)
+        campo.value =
+            squadre * 2;
+
 }
+
 
 function getTorneoAdminCorrente(){
-if(!adminState || !Array.isArray(adminState.tornei)) return null;
-return adminState.tornei.find(t => String(t.id) === String(adminState.torneoSelezionato)) || null;
+
+    if(
+        !adminState ||
+        !Array.isArray(
+            adminState.tornei
+        )
+    )
+        return null;
+
+    return adminState.tornei.find(
+        t =>
+            String(t.id) ===
+            String(
+                adminState.torneoSelezionato
+            )
+    ) || null;
+
 }
+
 
 function apriRegoleNuovoTorneo(){
-let nome = document.getElementById("adminNomeTorneo").value.trim() || "Nuovo Torneo";
-let data = document.getElementById("adminDataTorneo").value || "";
-let posti = Number(document.getElementById("adminPosti").value) || 8;
-let descrizione = document.getElementById("adminDescrizione").value.trim() || "";
 
-let tempId = "temp_" + Date.now();
-let torneoTemp = {
-id: tempId,
-nome: nome,
-data: data,
-posti: posti,
-descrizione: descrizione,
-formula: "gironiFinale",
-stato: "bozza",
-iscritti: [],
-coppie: [],
-partecipanti: [],
-configurazione: {
-rules: {
-numeroSquadre: posti,
-numeroGironi: Math.ceil(posti / 4),
-squadrePerGirone: 4
-}
-}
-};
+    let nome =
+        document
+            .getElementById(
+                "adminNomeTorneo"
+            )
+            .value
+            .trim()
+        || "Nuovo Torneo";
 
-adminState.tornei.push(torneoTemp);
-adminState.torneoSelezionato = tempId;
-salvaAdminState();
+    let data =
+        document
+            .getElementById(
+                "adminDataTorneo"
+            )
+            .value
+        || "";
 
-window.open("Bove.html?idTorneo=" + encodeURIComponent(tempId) + "+apriRegole=true", "_blank");
+    let posti =
+        Number(
+            document
+                .getElementById(
+                    "adminPosti"
+                )
+                .value
+        ) || 8;
+
+    let descrizione =
+        document
+            .getElementById(
+                "adminDescrizione"
+            )
+            .value
+            .trim()
+        || "";
+
+    let tempId =
+        "temp_" + Date.now();
+
+    let torneoTemp = {
+
+        id:tempId,
+
+        nome:nome,
+
+        data:data,
+
+        posti:posti,
+
+        descrizione:descrizione,
+
+        formula:"gironiFinale",
+
+        stato:"bozza",
+
+        iscritti:[],
+
+        coppie:[],
+
+        partecipanti:[],
+
+        configurazione:{
+
+            rules:{
+
+                numeroSquadre:posti,
+
+                numeroGironi:
+                    Math.ceil(
+                        posti / 4
+                    ),
+
+                squadrePerGirone:4
+
+            }
+
+        }
+
+    };
+
+    adminState.tornei.push(
+        torneoTemp
+    );
+
+    adminState.torneoSelezionato =
+        tempId;
+
+    salvaAdminState();
+
+    window.open(
+        "Bove.html?idTorneo=" +
+        encodeURIComponent(tempId) +
+        "+apriRegole=true",
+        "_blank"
+    );
+
 }
+
 
 async function creaNuovoTorneo(){
 
     let nome =
-        document.getElementById("adminNomeTorneo").value.trim()
+        document
+            .getElementById(
+                "adminNomeTorneo"
+            )
+            .value
+            .trim()
         || "Nuovo Torneo";
 
     let data =
-        document.getElementById("adminDataTorneo").value
+        document
+            .getElementById(
+                "adminDataTorneo"
+            )
+            .value
         || "";
 
     let posti =
-        Number(document.getElementById("adminPosti").value)
+        Number(
+            document
+                .getElementById(
+                    "adminPosti"
+                )
+                .value
+        )
         || 8;
 
     let descrizione =
-        document.getElementById("adminDescrizione").value.trim()
+        document
+            .getElementById(
+                "adminDescrizione"
+            )
+            .value
+            .trim()
         || "";
 
     let numeroGironi =
-        Math.ceil(posti / 4);
+        Math.ceil(
+            posti / 4
+        );
+
 
     /*
     ============================================================
@@ -607,26 +1562,34 @@ async function creaNuovoTorneo(){
     */
 
     let gironi = {
-        A: [],
-        B: [],
-        C: [],
-        D: [],
-        E: [],
-        F: [],
-        G: []
+
+        A:[],
+        B:[],
+        C:[],
+        D:[],
+        E:[],
+        F:[],
+        G:[]
+
     };
+
 
     let partiteGironi = {
-        A: [],
-        B: [],
-        C: [],
-        D: [],
-        E: [],
-        F: [],
-        G: []
+
+        A:[],
+        B:[],
+        C:[],
+        D:[],
+        E:[],
+        F:[],
+        G:[]
+
     };
 
-    let nuovoId = Date.now();
+
+    let nuovoId =
+        Date.now();
+
 
     /*
     ============================================================
@@ -636,8 +1599,11 @@ async function creaNuovoTorneo(){
 
     adminState.tornei =
         adminState.tornei.filter(
-            t => !String(t.id).startsWith("temp_")
+            t =>
+                !String(t.id)
+                    .startsWith("temp_")
         );
+
 
     /*
     ============================================================
@@ -647,25 +1613,26 @@ async function creaNuovoTorneo(){
 
     let nuovoTorneo = {
 
-        id: nuovoId,
+        id:novoId,
 
-        nome: nome,
+        nome:nome,
 
-        data: data,
+        data:data,
 
-        posti: posti,
+        posti:posti,
 
-        descrizione: descrizione,
+        descrizione:descrizione,
 
-        formula: "gironiFinale",
+        formula:"gironiFinale",
 
-        stato: "bozza",
+        stato:"bozza",
 
-        iscritti: [],
+        iscritti:[],
 
-        coppie: [],
+        coppie:[],
 
-        partecipanti: [],
+        partecipanti:[],
+
 
         /*
         ========================================================
@@ -674,47 +1641,48 @@ async function creaNuovoTorneo(){
         ========================================================
         */
 
-        A: [],
-        B: [],
-        C: [],
-        D: [],
-        E: [],
-        F: [],
-        G: [],
+        A:[],
+        B:[],
+        C:[],
+        D:[],
+        E:[],
+        F:[],
+        G:[],
 
-        Ares: [],
-        Bres: [],
-        Cres: [],
-        Dres: [],
-        Eres: [],
-        Fres: [],
-        Gres: [],
+        Ares:[],
+        Bres:[],
+        Cres:[],
+        Dres:[],
+        Eres:[],
+        Fres:[],
+        Gres:[],
 
-        Atime: [],
-        Btime: [],
-        Ctime: [],
-        Dtime: [],
-        Etime: [],
-        Ftime: [],
-        Gtime: [],
+        Atime:[],
+        Btime:[],
+        Ctime:[],
+        Dtime:[],
+        Etime:[],
+        Ftime:[],
+        Gtime:[],
 
-        Acamp: [],
-        Bcamp: [],
-        Ccamp: [],
-        Dcamp: [],
-        Ecamp: [],
-        Fcamp: [],
-        Gcamp: [],
+        Acamp:[],
+        Bcamp:[],
+        Ccamp:[],
+        Dcamp:[],
+        Ecamp:[],
+        Fcamp:[],
+        Gcamp:[],
 
-        rankA: [],
-        rankB: [],
-        rankC: [],
-        rankD: [],
-        rankE: [],
-        rankF: [],
-        rankG: [],
+        rankA:[],
+        rankB:[],
+        rankC:[],
+        rankD:[],
+        rankE:[],
+        rankF:[],
+        rankG:[],
 
-        configurazione: {
+
+        configurazione:{
 
             /*
             ====================================================
@@ -722,45 +1690,46 @@ async function creaNuovoTorneo(){
             ====================================================
             */
 
-            A: [],
-            B: [],
-            C: [],
-            D: [],
-            E: [],
-            F: [],
-            G: [],
+            A:[],
+            B:[],
+            C:[],
+            D:[],
+            E:[],
+            F:[],
+            G:[],
 
-            Ares: [],
-            Bres: [],
-            Cres: [],
-            Dres: [],
-            Eres: [],
-            Fres: [],
-            Gres: [],
+            Ares:[],
+            Bres:[],
+            Cres:[],
+            Dres:[],
+            Eres:[],
+            Fres:[],
+            Gres:[],
 
-            Atime: [],
-            Btime: [],
-            Ctime: [],
-            Dtime: [],
-            Etime: [],
-            Ftime: [],
-            Gtime: [],
+            Atime:[],
+            Btime:[],
+            Ctime:[],
+            Dtime:[],
+            Etime:[],
+            Ftime:[],
+            Gtime:[],
 
-            Acamp: [],
-            Bcamp: [],
-            Ccamp: [],
-            Dcamp: [],
-            Ecamp: [],
-            Fcamp: [],
-            Gcamp: [],
+            Acamp:[],
+            Bcamp:[],
+            Ccamp:[],
+            Dcamp:[],
+            Ecamp:[],
+            Fcamp:[],
+            Gcamp:[],
 
-            rankA: [],
-            rankB: [],
-            rankC: [],
-            rankD: [],
-            rankE: [],
-            rankF: [],
-            rankG: [],
+            rankA:[],
+            rankB:[],
+            rankC:[],
+            rankD:[],
+            rankE:[],
+            rankF:[],
+            rankG:[],
+
 
             /*
             ====================================================
@@ -768,13 +1737,15 @@ async function creaNuovoTorneo(){
             ====================================================
             */
 
-            gironi: gironi,
+            gironi:gironi,
 
-            partiteGironi: partiteGironi,
+            partiteGironi:
+                partiteGironi,
 
-            coppie: [],
+            coppie:[],
 
-            partecipanti: [],
+            partecipanti:[],
+
 
             /*
             ====================================================
@@ -782,60 +1753,68 @@ async function creaNuovoTorneo(){
             ====================================================
             */
 
-            rules: {
+            rules:{
 
-                locked: false,
+                locked:false,
 
-                tipoTorneo: "gironiFinale",
+                tipoTorneo:
+                    "gironiFinale",
 
-                formatoTorneo: "gironiFinale",
+                formatoTorneo:
+                    "gironiFinale",
 
-                numeroSquadre: posti,
+                numeroSquadre:
+                    posti,
 
-                numeroGironi: numeroGironi,
+                numeroGironi:
+                    numeroGironi,
 
-                squadrePerGirone: 4,
+                squadrePerGirone:
+                    4,
 
-                formulaGironi: "italiana",
+                formulaGironi:
+                    "italiana",
 
-                formulaFinale: "eliminazione_diretta",
+                formulaFinale:
+                    "eliminazione_diretta",
 
-                w: 3,
+                w:3,
 
-                d: 1,
+                d:1,
 
-                l: 0,
+                l:0,
 
-                qualificatePerGirone: 2,
+                qualificatePerGirone:
+                    2,
 
                 numeroQualificateFinali:
                     numeroGironi * 2,
 
-                usaQuarti: true,
+                usaQuarti:true,
 
-                usaSemifinali: true,
+                usaSemifinali:true,
 
-                usaFinale: true,
+                usaFinale:true,
 
-                killerPoint: false,
+                killerPoint:false,
 
-                rigori: true,
+                rigori:true,
 
-                tempoSupplementare: true,
+                tempoSupplementare:true,
 
-                garaAndataRitorno: false,
+                garaAndataRitorno:false,
 
-                start: "20:00",
+                start:"20:00",
 
-                duration: 30,
+                duration:30,
 
-                crit1: "df",
+                crit1:"df",
 
-                crit2: "gf",
+                crit2:"gf",
 
-                crit3: "gs",
+                crit3:"gs",
 
-                mostraQuarti: true
+                mostraQuarti:true
 
             }
 
@@ -843,18 +1822,22 @@ async function creaNuovoTorneo(){
 
     };
 
+
     /*
     ============================================================
     AGGIUNGI IL TORNEO ALLO STATO ADMIN
     ============================================================
     */
 
-    adminState.tornei.push(nuovoTorneo);
+    adminState.tornei.push(
+        nuovoTorneo
+    );
 
     adminState.torneoSelezionato =
         nuovoId;
 
     salvaAdminState();
+
 
     /*
     ============================================================
@@ -862,37 +1845,44 @@ async function creaNuovoTorneo(){
     ============================================================
     */
 
-    const { error } =
+    const {error} =
         await sb
-        .from("tornei")
-        .insert({
+            .from("tornei")
+            .insert({
 
-            id: nuovoId,
+                id:nuovoId,
 
-            nome: nuovoTorneo.nome,
+                nome:nuovoTorneo.nome,
 
-            data: nuovoTorneo.data,
+                data:nuovoTorneo.data,
 
-            data_torneo: nuovoTorneo.data,
+                data_torneo:
+                    nuovoTorneo.data,
 
-            ora_inizio: "20:00",
+                ora_inizio:
+                    "20:00",
 
-            posti: nuovoTorneo.posti,
+                posti:
+                    nuovoTorneo.posti,
 
-            descrizione: nuovoTorneo.descrizione,
+                descrizione:
+                    nuovoTorneo.descrizione,
 
-            formula: nuovoTorneo.formula,
+                formula:
+                    nuovoTorneo.formula,
 
-            stato: nuovoTorneo.stato,
+                stato:
+                    nuovoTorneo.stato,
 
-            pubblicato: false,
+                pubblicato:false,
 
-            iscrizioni_chiuse: false,
+                iscrizioni_chiuse:false,
 
-            configurazione:
-                nuovoTorneo.configurazione
+                configurazione:
+                    nuovoTorneo.configurazione
 
-        });
+            });
+
 
     /*
     ============================================================
@@ -915,6 +1905,7 @@ async function creaNuovoTorneo(){
 
     }
 
+
     /*
     ============================================================
     APERTURA BOVE
@@ -922,11 +1913,12 @@ async function creaNuovoTorneo(){
     */
 
     window.open(
-        "Bove.html?idTorneo="
-        + encodeURIComponent(nuovoId)
-        + "&apriRegole=true",
+        "Bove.html?idTorneo=" +
+        encodeURIComponent(nuovoId) +
+        "&apriRegole=true",
         "_blank"
     );
+
 
     /*
     ============================================================
@@ -934,359 +1926,1463 @@ async function creaNuovoTorneo(){
     ============================================================
     */
 
-    if(typeof renderAdmin === "function"){
+    if(
+        typeof renderAdmin ===
+        "function"
+    ){
 
         renderAdmin();
 
     }
 
 }
+
+
 function renderListaTornei(){
-let box = document.getElementById("listaTorneiAdmin");
-if(!box) return;
-if(!adminState.tornei.length){ box.innerHTML="<p>Nessun torneo creato</p>"; return; }
-box.innerHTML = adminState.tornei.map(t=>`
-<div class="lista-item" style="${String(t.id)===String(adminState.torneoSelezionato)?'border:2px solid var(--gold);':''}">
-<b>${t.nome || "Torneo senza nome"}</b><br>
-📅 ${t.data || "-"}<br>
-👥 ${t.posti || "-"} squadre<br>
-<span class="badge">${t.stato || "bozza"}</span><br><br>
-<button onclick="apriRegoleTorneoAdmin(${t.id})">⚙️ Regole</button>
-<button onclick="selezionaTorneoAdmin(${t.id})">🚀 Gestisci</button>
-<button class="btn-red" onclick="eliminaTorneoAdmin(${t.id})">🗑 Elimina</button>
+
+    let box =
+        document.getElementById(
+            "listaTorneiAdmin"
+        );
+
+    if(!box)
+        return;
+
+    if(!adminState.tornei.length){
+
+        box.innerHTML =
+            "<p>Nessun torneo creato</p>";
+
+        return;
+
+    }
+
+    box.innerHTML =
+        adminState.tornei.map(
+            t => `
+
+<div
+    class="lista-item"
+    style="${
+        String(t.id) ===
+        String(
+            adminState.torneoSelezionato
+        )
+        ?
+        'border:2px solid var(--gold);'
+        :
+        ''
+    }"
+>
+
+<b>
+    ${t.nome || "Torneo senza nome"}
+</b>
+
+<br>
+
+📅 ${t.data || "-"}
+
+<br>
+
+👥 ${t.posti || "-"} squadre
+
+<br>
+
+<span class="badge">
+    ${t.stato || "bozza"}
+</span>
+
+<br><br>
+
+<button
+    onclick="apriRegoleTorneoAdmin(${t.id})"
+>
+    ⚙️ Regole
+</button>
+
+<button
+    onclick="selezionaTorneoAdmin(${t.id})"
+>
+    🚀 Gestisci
+</button>
+
+<button
+    class="btn-red"
+    onclick="eliminaTorneoAdmin(${t.id})"
+>
+    🗑 Elimina
+</button>
+
 </div>
-`).join("");
+
+`
+        ).join("");
+
 }
+
 
 function selezionaTorneoAdmin(id){
-let torneo = adminState.tornei.find(t=>String(t.id)===String(id));
-if(!torneo) return;
-adminState.torneoSelezionato=id;
-salvaAdminState();
-renderAdmin();
+
+    let torneo =
+        adminState.tornei.find(
+            t =>
+                String(t.id) ===
+                String(id)
+        );
+
+    if(!torneo)
+        return;
+
+    adminState.torneoSelezionato =
+        id;
+
+    salvaAdminState();
+
+    renderAdmin();
+
 }
+
 
 function apriRegoleTorneoAdmin(id){
-let torneo = adminState.tornei.find(t => String(t.id) === String(id));
-if(!torneo){ alert("Torneo non trovato"); return; }
-adminState.torneoSelezionato = id;
-salvaAdminState();
-window.open("Bove.html?idTorneo=" + encodeURIComponent(id) + "+apriRegole=true", "_blank");
+
+    let torneo =
+        adminState.tornei.find(
+            t =>
+                String(t.id) ===
+                String(id)
+        );
+
+    if(!torneo){
+
+        alert(
+            "Torneo non trovato"
+        );
+
+        return;
+
+    }
+
+    adminState.torneoSelezionato =
+        id;
+
+    salvaAdminState();
+
+    window.open(
+        "Bove.html?idTorneo=" +
+        encodeURIComponent(id) +
+        "+apriRegole=true",
+        "_blank"
+    );
+
 }
+
 
 async function eliminaTorneoAdmin(id){
-if(!confirm("Vuoi davvero eliminare questo torneo?")) return;
-try{
-await sb.from("tornei").delete().eq("id", id);
-adminState.tornei = adminState.tornei.filter(t => String(t.id) !== String(id));
-if(String(adminState.torneoSelezionato) === String(id)) adminState.torneoSelezionato = null;
-salvaAdminState();
-renderAdmin();
-}catch(e){ console.error("Errore eliminazione torneo:", e); }
+
+    if(
+        !confirm(
+            "Vuoi davvero eliminare questo torneo?"
+        )
+    )
+        return;
+
+    try{
+
+        await sb
+            .from("tornei")
+            .delete()
+            .eq(
+                "id",
+                id
+            );
+
+        adminState.tornei =
+            adminState.tornei.filter(
+                t =>
+                    String(t.id) !==
+                    String(id)
+            );
+
+        if(
+            String(
+                adminState.torneoSelezionato
+            ) === String(id)
+        )
+            adminState.torneoSelezionato =
+                null;
+
+        salvaAdminState();
+
+        renderAdmin();
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore eliminazione torneo:",
+            e
+        );
+
+    }
+
 }
-  async function pubblicaTorneo(){
-let torneo = getTorneoAdminCorrente();
-if(!torneo){ alert("Seleziona prima un torneo"); return; }
-try{
-const {error} = await sb.from("tornei").update({ pubblicato:true, stato:"attivo" }).eq("id", torneo.id);
-if(error) throw error;
-torneo.pubblicato=true;
-torneo.stato="attivo";
-salvaAdminState();
-renderAdmin();
-alert("Torneo pubblicato con successo!");
+
+
+async function pubblicaTorneo(){
+
+    let torneo =
+        getTorneoAdminCorrente();
+
+    if(!torneo){
+
+        alert(
+            "Seleziona prima un torneo"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {error} =
+            await sb
+                .from("tornei")
+                .update({
+                    pubblicato:true,
+                    stato:"attivo"
+                })
+                .eq(
+                    "id",
+                    torneo.id
+                );
+
+        if(error)
+            throw error;
+
+        torneo.pubblicato=true;
+
+        torneo.stato="attivo";
+
+        salvaAdminState();
+
+        renderAdmin();
+
+        alert(
+            "Torneo pubblicato con successo!"
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore pubblicazione torneo:",
+            e
+        );
+
+        alert(
+            "Errore pubblicazione torneo"
+        );
+
+    }
+
 }
-catch(e){ console.error("Errore pubblicazione torneo:", e); alert("Errore pubblicazione torneo"); }
-}
+
 
 async function chiudiIscrizioniTorneo(){
-let torneo = getTorneoAdminCorrente();
-if(!torneo){ alert("Seleziona prima un torneo"); return; }
-try{
-const {error} = await sb.from("tornei").update({ iscrizioni_chiuse:true }).eq("id", torneo.id);
-if(error) throw error;
-torneo.iscrizioni_chiuse=true;
-salvaAdminState();
-renderAdmin();
-alert("Iscrizioni chiuse.");
+
+    let torneo =
+        getTorneoAdminCorrente();
+
+    if(!torneo){
+
+        alert(
+            "Seleziona prima un torneo"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {error} =
+            await sb
+                .from("tornei")
+                .update({
+                    iscrizioni_chiuse:true
+                })
+                .eq(
+                    "id",
+                    torneo.id
+                );
+
+        if(error)
+            throw error;
+
+        torneo.iscrizioni_chiuse=true;
+
+        salvaAdminState();
+
+        renderAdmin();
+
+        alert(
+            "Iscrizioni chiuse."
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore chiusura iscrizioni:",
+            e
+        );
+
+        alert(
+            "Errore chiusura iscrizioni"
+        );
+
+    }
+
 }
-catch(e){ console.error("Errore chiusura iscrizioni:", e); alert("Errore chiusura iscrizioni"); }
-}
+
 
 async function caricaRichiesteIscrizione(){
-if(!adminState.torneoSelezionato){ alert("Seleziona prima un torneo"); return; }
-try{
-const {data,error} = await sb.from("iscrizioni").select("*").eq("torneo_id", adminState.torneoSelezionato);
-if(error) throw error;
-window.iscrizioniTorneo = data || [];
-renderAdmin();
+
+    if(
+        !adminState.torneoSelezionato
+    ){
+
+        alert(
+            "Seleziona prima un torneo"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {
+            data,
+            error
+        } =
+            await sb
+                .from("iscrizioni")
+                .select("*")
+                .eq(
+                    "torneo_id",
+                    adminState.torneoSelezionato
+                );
+
+        if(error)
+            throw error;
+
+        window.iscrizioniTorneo =
+            data || [];
+
+        renderAdmin();
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore caricamento iscrizioni:",
+            e
+        );
+
+    }
+
 }
-catch(e){ console.error("Errore caricamento iscrizioni:", e); }
-}
+
 
 function renderGestioneTorneo(){
-let box = document.getElementById("dettaglioTorneoAdmin");
-let card = document.getElementById("gestioneTorneoAdmin");
-if(!box || !card) return;
-let torneo = getTorneoAdminCorrente();
-if(!torneo){ card.classList.add("hidden"); box.innerHTML=""; return; }
-card.classList.remove("hidden");
-let rules = torneo.configurazione?.rules || torneo.rules || {};
-box.innerHTML=`
+
+    let box =
+        document.getElementById(
+            "dettaglioTorneoAdmin"
+        );
+
+    let card =
+        document.getElementById(
+            "gestioneTorneoAdmin"
+        );
+
+    if(!box || !card)
+        return;
+
+    let torneo =
+        getTorneoAdminCorrente();
+
+    if(!torneo){
+
+        card.classList.add(
+            "hidden"
+        );
+
+        box.innerHTML="";
+
+        return;
+
+    }
+
+    card.classList.remove(
+        "hidden"
+    );
+
+    let rules =
+        torneo.configurazione?.rules ||
+        torneo.rules ||
+        {};
+
+    box.innerHTML = `
+
 <div class="admin-card-dati">
-<h3>${torneo.nome || "Torneo senza nome"}</h3>
-<p>📅 Data: ${torneo.data || "-"}</p>
-<p>👥 Squadre: ${torneo.posti || rules.numeroSquadre || 0}</p>
-<p>🏆 Formula: ${rules.tipoTorneo || torneo.formula || "-"}</p>
-<p>Stato: ${torneo.stato || "bozza"} | Pubblicato: ${torneo.pubblicato ? "Sì" : "No"} | Iscrizioni: ${torneo.iscrizioni_chiuse ? "Chiuse" : "aperte"}</p>
+
+<h3>
+    ${torneo.nome || "Torneo senza nome"}
+</h3>
+
+<p>
+    📅 Data: ${torneo.data || "-"}
+</p>
+
+<p>
+    👥 Squadre:
+    ${
+        torneo.posti ||
+        rules.numeroSquadre ||
+        0
+    }
+</p>
+
+<p>
+    🏆 Formula:
+    ${
+        rules.tipoTorneo ||
+        torneo.formula ||
+        "-"
+    }
+</p>
+
+<p>
+    Stato:
+    ${torneo.stato || "bozza"}
+    |
+    Pubblicato:
+    ${torneo.pubblicato ? "Sì" : "No"}
+    |
+    Iscrizioni:
+    ${
+        torneo.iscrizioni_chiuse
+        ? "Chiuse"
+        : "aperte"
+    }
+</p>
+
 </div>
+
 `;
-let reqBox = document.getElementById("richiesteIscrizione");
-if(reqBox){
-let listaReq = window.iscrizioniTorneo || [];
-if(!listaReq.length){
-reqBox.innerHTML = "<p>Nessuna richiesta di iscrizione.</p>";
-} else {
-reqBox.innerHTML = listaReq.map(r => `
+
+    let reqBox =
+        document.getElementById(
+            "richiesteIscrizione"
+        );
+
+    if(reqBox){
+
+        let listaReq =
+            window.iscrizioniTorneo ||
+            [];
+
+        if(!listaReq.length){
+
+            reqBox.innerHTML =
+                "<p>Nessuna richiesta di iscrizione.</p>";
+
+        }
+        else{
+
+            reqBox.innerHTML =
+                listaReq.map(
+                    r => `
+
 <div class="lista-item">
-<b>${r.nome || r.giocatore1 || "Giocatore"}</b> (${r.email || "-"})<br>
-Stato: ${r.stato || "in attesa"}<br>
-<button onclick="selezionaGiocatoreAdmin(${r.id})" class="btn-green">Gestisci</button>
+
+<b>
+    ${
+        r.nome ||
+        r.giocatore1 ||
+        "Giocatore"
+    }
+</b>
+
+(
+    ${r.email || "-"}
+)
+
+<br>
+
+Stato:
+${r.stato || "in attesa"}
+
+<br>
+
+<button
+    onclick="selezionaGiocatoreAdmin(${r.id})"
+    class="btn-green"
+>
+    Gestisci
+</button>
+
 </div>
-`).join("");
+
+`
+                ).join("");
+
+        }
+
+    }
+
 }
-}
-}
+
 
 function selezionaGiocatoreAdmin(id){
-let lista = window.iscrizioniTorneo || [];
-let g = lista.find(x => String(x.id) === String(id));
-if(!g) return;
-window.giocatoreSelezionatoCorrente = g;
-let box = document.getElementById("schedaGiocatoreAdmin");
-if(box) box.classList.remove("hidden");
-document.getElementById("adminNomeGiocatore").value = g.nome || g.giocatore1 || "";
-document.getElementById("adminEmailGiocatore").value = g.email || "";
-document.getElementById("adminTelefonoGiocatore").value = g.telefono || "";
-document.getElementById("adminLivelloGiocatore").value = g.livello || "-";
-document.getElementById("adminNotaGiocatore").value = g.note || "";
+
+    let lista =
+        window.iscrizioniTorneo ||
+        [];
+
+    let g =
+        lista.find(
+            x =>
+                String(x.id) ===
+                String(id)
+        );
+
+    if(!g)
+        return;
+
+    window.giocatoreSelezionatoCorrente =
+        g;
+
+    let box =
+        document.getElementById(
+            "schedaGiocatoreAdmin"
+        );
+
+    if(box)
+        box.classList.remove(
+            "hidden"
+        );
+
+    document.getElementById(
+        "adminNomeGiocatore"
+    ).value =
+        g.nome ||
+        g.giocatore1 ||
+        "";
+
+    document.getElementById(
+        "adminEmailGiocatore"
+    ).value =
+        g.email ||
+        "";
+
+    document.getElementById(
+        "adminTelefonoGiocatore"
+    ).value =
+        g.telefono ||
+        "";
+
+    document.getElementById(
+        "adminLivelloGiocatore"
+    ).value =
+        g.livello ||
+        "-";
+
+    document.getElementById(
+        "adminNotaGiocatore"
+    ).value =
+        g.note ||
+        "";
+
 }
+
 
 async function approvaGiocatore(){
-let g = window.giocatoreSelezionatoCorrente;
-if(!g){ alert("Nessun giocatore selezionato"); return; }
-try{
-const {error} = await sb.from("iscrizioni").update({ stato: "approvato" }).eq("id", g.id);
-if(error) throw error;
-g.stato = "approvato";
-alert("Giocatore approvato!");
-document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");
-caricaRichiesteIscrizione();
-}catch(e){ console.error("Errore approvazione:", e); }
+
+    let g =
+        window.giocatoreSelezionatoCorrente;
+
+    if(!g){
+
+        alert(
+            "Nessun giocatore selezionato"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {error} =
+            await sb
+                .from("iscrizioni")
+                .update({
+                    stato:"approvato"
+                })
+                .eq(
+                    "id",
+                    g.id
+                );
+
+        if(error)
+            throw error;
+
+        g.stato="approvato";
+
+        alert(
+            "Giocatore approvato!"
+        );
+
+        document
+            .getElementById(
+                "schedaGiocatoreAdmin"
+            )
+            ?.classList.add(
+                "hidden"
+            );
+
+        caricaRichiesteIscrizione();
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore approvazione:",
+            e
+        );
+
+    }
+
 }
+
 
 async function rifiutaGiocatore(){
-let g = window.giocatoreSelezionatoCorrente;
-if(!g){ alert("Nessun giocatore selezionato"); return; }
-try{
-const {error} = await sb.from("iscrizioni").update({ stato: "rifiutato" }).eq("id", g.id);
-if(error) throw error;
-g.stato = "rifiutato";
-alert("Giocatore rifiutato.");
-document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");
-caricaRichiesteIscrizione();
-}catch(e){ console.error("Errore rifiuto:", e); }
+
+    let g =
+        window.giocatoreSelezionatoCorrente;
+
+    if(!g){
+
+        alert(
+            "Nessun giocatore selezionato"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const {error} =
+            await sb
+                .from("iscrizioni")
+                .update({
+                    stato:"rifiutato"
+                })
+                .eq(
+                    "id",
+                    g.id
+                );
+
+        if(error)
+            throw error;
+
+        g.stato="rifiutato";
+
+        alert(
+            "Giocatore rifiutato."
+        );
+
+        document
+            .getElementById(
+                "schedaGiocatoreAdmin"
+            )
+            ?.classList.add(
+                "hidden"
+            );
+
+        caricaRichiesteIscrizione();
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore rifiuto:",
+            e
+        );
+
+    }
+
 }
+
 
 function renderPartecipanti(){
-let box = document.getElementById("partecipantiAdmin");
-if(!box) return;
-let lista = window.iscrizioniTorneo || [];
-let approvati = lista.filter(x => x.stato === "approvato");
-if(!approvati.length){ box.innerHTML = "<p>Nessun partecipante approvato.</p>"; return; }
-box.innerHTML = approvati.map(p => `
+
+    let box =
+        document.getElementById(
+            "partecipantiAdmin"
+        );
+
+    if(!box)
+        return;
+
+    let lista =
+        window.iscrizioniTorneo ||
+        [];
+
+    let approvati =
+        lista.filter(
+            x =>
+                x.stato ===
+                "approvato"
+        );
+
+    if(!approvati.length){
+
+        box.innerHTML =
+            "<p>Nessun partecipante approvato.</p>";
+
+        return;
+
+    }
+
+    box.innerHTML =
+        approvati.map(
+            p => `
+
 <div class="lista-item">
-✅ <b>${p.nome || p.giocatore1 || "Partecipante"}</b> - ${p.email || "-"}
+
+✅
+
+<b>
+    ${
+        p.nome ||
+        p.giocatore1 ||
+        "Partecipante"
+    }
+</b>
+
+-
+${p.email || "-"}
+
 </div>
-`).join("");
+
+`
+        ).join("");
+
 }
+
 
 function renderCoppie(){
-let box = document.getElementById("creaCoppieBox");
-if(!box) return;
-box.innerHTML = `<p>Gestione coppie attiva per il torneo corrente.</p>`;
+
+    let box =
+        document.getElementById(
+            "creaCoppieBox"
+        );
+
+    if(!box)
+        return;
+
+    box.innerHTML =
+        "<p>Gestione coppie attiva per il torneo corrente.</p>";
+
 }
+
 
 function inviaWhatsAppTutti(){
-let msg = document.getElementById("messaggioWhatsApp")?.value.trim();
-if(!msg){ alert("Scrivi un messaggio"); return; }
-window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(msg), "_blank");
+
+    let msg =
+        document
+            .getElementById(
+                "messaggioWhatsApp"
+            )
+            ?.value
+            .trim();
+
+    if(!msg){
+
+        alert(
+            "Scrivi un messaggio"
+        );
+
+        return;
+
+    }
+
+    window.open(
+        "https://api.whatsapp.com/send?text=" +
+        encodeURIComponent(msg),
+        "_blank"
+    );
+
 }
+
 
 function inviaWhatsAppApprovati(){
-inviaWhatsAppTutti();
+
+    inviaWhatsAppTutti();
+
 }
+
 
 function generaLinkBove(){
-let torneo = getTorneoAdminCorrente();
-if(!torneo){ alert("Seleziona prima un torneo"); return; }
-let link = window.location.origin + "/Bove.html?idTorneo=" + torneo.id;
-let input = document.getElementById("linkBoveGenerato");
-if(input) input.value = link;
+
+    let torneo =
+        getTorneoAdminCorrente();
+
+    if(!torneo){
+
+        alert(
+            "Seleziona prima un torneo"
+        );
+
+        return;
+
+    }
+
+    let link =
+        window.location.origin +
+        "/Bove.html?idTorneo=" +
+        torneo.id;
+
+    let input =
+        document.getElementById(
+            "linkBoveGenerato"
+        );
+
+    if(input)
+        input.value=link;
+
 }
+
 
 function copiaLinkBove(){
-let input = document.getElementById("linkBoveGenerato");
-if(!input || !input.value){ generaLinkBove(); }
-if(input && input.value){
-navigator.clipboard.writeText(input.value);
-alert("Link copiato negli appunti!");
+
+    let input =
+        document.getElementById(
+            "linkBoveGenerato"
+        );
+
+    if(
+        !input ||
+        !input.value
+    )
+        generaLinkBove();
+
+    if(
+        input &&
+        input.value
+    ){
+
+        navigator.clipboard.writeText(
+            input.value
+        );
+
+        alert(
+            "Link copiato negli appunti!"
+        );
+
+    }
+
 }
-}
+
 
 async function creaNews(){
-let titolo = document.getElementById("newsTitolo")?.value.trim();
-let testo = document.getElementById("newsTesto")?.value.trim();
-let immagine = document.getElementById("newsImmagine")?.value.trim();
-if(!titolo || !testo){ alert("Inserisci titolo e testo della news"); return; }
-let nuova = { id: Date.now(), titolo, testo, immagine, data: new Date().toLocaleDateString() };
-adminState.news.unshift(nuova);
-salvaAdminState();
-caricaNewsAdmin();
-document.getElementById("newsTitolo").value = "";
-document.getElementById("newsTesto").value = "";
-document.getElementById("newsImmagine").value = "";
+
+    let titolo =
+        document
+            .getElementById(
+                "newsTitolo"
+            )
+            ?.value
+            .trim();
+
+    let testo =
+        document
+            .getElementById(
+                "newsTesto"
+            )
+            ?.value
+            .trim();
+
+    let immagine =
+        document
+            .getElementById(
+                "newsImmagine"
+            )
+            ?.value
+            .trim();
+
+    if(!titolo || !testo){
+
+        alert(
+            "Inserisci titolo e testo della news"
+        );
+
+        return;
+
+    }
+
+    let nuova = {
+
+        id:Date.now(),
+
+        titolo,
+
+        testo,
+
+        immagine,
+
+        data:
+            new Date()
+                .toLocaleDateString()
+
+    };
+
+    adminState.news.unshift(
+        nuova
+    );
+
+    salvaAdminState();
+
+    caricaNewsAdmin();
+
+    document.getElementById(
+        "newsTitolo"
+    ).value="";
+
+    document.getElementById(
+        "newsTesto"
+    ).value="";
+
+    document.getElementById(
+        "newsImmagine"
+    ).value="";
+
 }
+
 
 function caricaNewsAdmin(){
-let box = document.getElementById("listaNewsAdmin");
-if(!box) return;
-let newsList = adminState.news || [];
-if(!newsList.length){ box.innerHTML = "<p>Nessuna news pubblicata.</p>"; return; }
-box.innerHTML = newsList.map(n => `
+
+    let box =
+        document.getElementById(
+            "listaNewsAdmin"
+        );
+
+    if(!box)
+        return;
+
+    let newsList =
+        adminState.news ||
+        [];
+
+    if(!newsList.length){
+
+        box.innerHTML =
+            "<p>Nessuna news pubblicata.</p>";
+
+        return;
+
+    }
+
+    box.innerHTML =
+        newsList.map(
+            n => `
+
 <div class="lista-item">
-<b>${n.titolo}</b> <small>(${n.data})</small><br>
-<p>${n.testo}</p>
-<button class="btn-red" onclick="eliminaNews(${n.id})">Elimina</button>
+
+<b>
+    ${n.titolo}
+</b>
+
+<small>
+    (${n.data})
+</small>
+
+<br>
+
+<p>
+    ${n.testo}
+</p>
+
+<button
+    class="btn-red"
+    onclick="eliminaNews(${n.id})"
+>
+    Elimina
+</button>
+
 </div>
-`).join("");
+
+`
+        ).join("");
+
 }
+
 
 function eliminaNews(id){
-adminState.news = (adminState.news || []).filter(n => Number(n.id) !== Number(id));
-salvaAdminState();
-caricaNewsAdmin();
+
+    adminState.news =
+        (
+            adminState.news ||
+            []
+        ).filter(
+            n =>
+                Number(n.id) !==
+                Number(id)
+        );
+
+    salvaAdminState();
+
+    caricaNewsAdmin();
+
 }
+
 
 async function salvaSponsor(){
-let nome = document.getElementById("sponsorNome")?.value.trim();
-let immagine = document.getElementById("sponsorImmagine")?.value.trim();
-let video = document.getElementById("sponsorVideo")?.value.trim();
-let link = document.getElementById("sponsorLink")?.value.trim();
-if(!nome){ alert("Inserisci il nome dello sponsor"); return; }
-let sp = { id: Date.now(), nome, immagine, video, link };
-adminState.sponsor.push(sp);
-salvaAdminState();
-caricaSponsorAdmin();
-document.getElementById("sponsorNome").value = "";
-document.getElementById("sponsorImmagine").value = "";
-document.getElementById("sponsorVideo").value = "";
-document.getElementById("sponsorLink").value = "";
+
+    let nome =
+        document
+            .getElementById(
+                "sponsorNome"
+            )
+            ?.value
+            .trim();
+
+    let immagine =
+        document
+            .getElementById(
+                "sponsorImmagine"
+            )
+            ?.value
+            .trim();
+
+    let video =
+        document
+            .getElementById(
+                "sponsorVideo"
+            )
+            ?.value
+            .trim();
+
+    let link =
+        document
+            .getElementById(
+                "sponsorLink"
+            )
+            ?.value
+            .trim();
+
+    if(!nome){
+
+        alert(
+            "Inserisci il nome dello sponsor"
+        );
+
+        return;
+
+    }
+
+    let sp = {
+
+        id:Date.now(),
+
+        nome,
+
+        immagine,
+
+        video,
+
+        link
+
+    };
+
+    adminState.sponsor.push(
+        sp
+    );
+
+    salvaAdminState();
+
+    caricaSponsorAdmin();
+
+    document.getElementById(
+        "sponsorNome"
+    ).value="";
+
+    document.getElementById(
+        "sponsorImmagine"
+    ).value="";
+
+    document.getElementById(
+        "sponsorVideo"
+    ).value="";
+
+    document.getElementById(
+        "sponsorLink"
+    ).value="";
+
 }
+
 
 function caricaSponsorAdmin(){
-let box = document.getElementById("listaSponsorAdmin");
-if(!box) return;
-let list = adminState.sponsor || [];
-if(!list.length){ box.innerHTML = "<p>Nessun sponsor registrato.</p>"; return; }
-box.innerHTML = list.map(s => `
+
+    let box =
+        document.getElementById(
+            "listaSponsorAdmin"
+        );
+
+    if(!box)
+        return;
+
+    let list =
+        adminState.sponsor ||
+        [];
+
+    if(!list.length){
+
+        box.innerHTML =
+            "<p>Nessun sponsor registrato.</p>";
+
+        return;
+
+    }
+
+    box.innerHTML =
+        list.map(
+            s => `
+
 <div class="lista-item">
-<b>${s.nome}</b><br>
-<button class="btn-red" onclick="eliminaSponsor(${s.id})">Elimina</button>
+
+<b>
+    ${s.nome}
+</b>
+
+<br>
+
+<button
+    class="btn-red"
+    onclick="eliminaSponsor(${s.id})"
+>
+    Elimina
+</button>
+
 </div>
-`).join("");
+
+`
+        ).join("");
+
 }
+
 
 function eliminaSponsor(id){
-adminState.sponsor = (adminState.sponsor || []).filter(s => Number(s.id) !== Number(id));
-salvaAdminState();
-caricaSponsorAdmin();
+
+    adminState.sponsor =
+        (
+            adminState.sponsor ||
+            []
+        ).filter(
+            s =>
+                Number(s.id) !==
+                Number(id)
+        );
+
+    salvaAdminState();
+
+    caricaSponsorAdmin();
+
 }
+
 
 async function creaIscrittiTest(){
-let torneo = getTorneoAdminCorrente();
-if(!torneo){ alert("Seleziona prima un torneo"); return; }
-try{
-const mockIscritti = [
-{ torneo_id: torneo.id, nome: "Test Giocatore 1", email: "test1@padel.it", telefono: "3331112233", livello: "Intermedio", stato: "approvato" },
-{ torneo_id: torneo.id, nome: "Test Giocatore 2", email: "test2@padel.it", telefono: "3332223344", livello: "Avanzato", stato: "in attesa" }
-];
-for(let isc of mockIscritti){
-await sb.from("iscrizioni").insert(isc);
+
+    let torneo =
+        getTorneoAdminCorrente();
+
+    if(!torneo){
+
+        alert(
+            "Seleziona prima un torneo"
+        );
+
+        return;
+
+    }
+
+    try{
+
+        const mockIscritti = [
+
+            {
+                torneo_id:torneo.id,
+                nome:"Test Giocatore 1",
+                email:"test1@padel.it",
+                telefono:"3331112233",
+                livello:"Intermedio",
+                stato:"approvato"
+            },
+
+            {
+                torneo_id:torneo.id,
+                nome:"Test Giocatore 2",
+                email:"test2@padel.it",
+                telefono:"3332223344",
+                livello:"Avanzato",
+                stato:"in attesa"
+            }
+
+        ];
+
+        for(
+            let isc of mockIscritti
+        ){
+
+            await sb
+                .from("iscrizioni")
+                .insert(isc);
+
+        }
+
+        alert(
+            "Iscritti di test creati con successo!"
+        );
+
+        caricaRichiesteIscrizione();
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore creazione iscritti test:",
+            e
+        );
+
+    }
+
 }
-alert("Iscritti di test creati con successo!");
-caricaRichiesteIscrizione();
-}catch(e){ console.error("Errore creazione iscritti test:", e); }
-}
+
 
 function renderAdmin(){
-if(typeof renderListaTornei==="function") renderListaTornei();
-if(typeof renderGestioneTorneo==="function") renderGestioneTorneo();
-if(typeof renderRichiesteIscrizione==="function" && adminState.torneoSelezionato) caricaRichiesteIscrizione();
-if(typeof renderPartecipanti==="function") renderPartecipanti();
-if(typeof renderCoppie==="function") renderCoppie();
-if(typeof caricaSponsorAdmin==="function") caricaSponsorAdmin();
-if(typeof caricaNewsAdmin==="function") caricaNewsAdmin();
+
+    if(
+        typeof renderListaTornei ===
+        "function"
+    )
+        renderListaTornei();
+
+    if(
+        typeof renderGestioneTorneo ===
+        "function"
+    )
+        renderGestioneTorneo();
+
+    if(
+        typeof renderRichiesteIscrizione ===
+        "function" &&
+        adminState.torneoSelezionato
+    )
+        caricaRichiesteIscrizione();
+
+    if(
+        typeof renderPartecipanti ===
+        "function"
+    )
+        renderPartecipanti();
+
+    if(
+        typeof renderCoppie ===
+        "function"
+    )
+        renderCoppie();
+
+    if(
+        typeof caricaSponsorAdmin ===
+        "function"
+    )
+        caricaSponsorAdmin();
+
+    if(
+        typeof caricaNewsAdmin ===
+        "function"
+    )
+        caricaNewsAdmin();
+
 }
 
-window.loginAdmin = loginAdmin;
-window.apriDashboardAdmin = apriDashboardAdmin;
-window.creaNuovoTorneo = creaNuovoTorneo;
-window.aggiornaGiocatoriAdmin = aggiornaGiocatoriAdmin;
-window.pubblicaTorneo = pubblicaTorneo;
-window.chiudiIscrizioniTorneo = chiudiIscrizioniTorneo;
-window.caricaRichiesteIscrizione = caricaRichiesteIscrizione;
-window.selezionaTorneoAdmin = selezionaTorneoAdmin;
-window.apriRegoleTorneoAdmin = apriRegoleTorneoAdmin;
-window.renderAdmin = renderAdmin;
-window.renderListaTornei = renderListaTornei;
-window.eliminaTorneoAdmin = eliminaTorneoAdmin;
-window.creaNews = creaNews;
-window.eliminaNews = eliminaNews;
-window.salvaSponsor = salvaSponsor;
-window.eliminaSponsor = eliminaSponsor;
-window.creaIscrittiTest = creaIscrittiTest;
-window.approvaGiocatore = approvaGiocatore;
-window.rifiutaGiocatore = rifiutaGiocatore;
-window.selezionaGiocatoreAdmin = selezionaGiocatoreAdmin;
-window.inviaWhatsAppTutti = inviaWhatsAppTutti;
-window.inviaWhatsAppApprovati = inviaWhatsAppApprovati;
-window.generaLinkBove = generaLinkBove;
-window.copiaLinkBove = copiaLinkBove;
-window.apriBoveConTorneo = apriBoveConTorneo;
-window.apriRegoleNuovoTorneo = apriRegoleNuovoTorneo;
-window.adminState = adminState;
-window.sb = sb;
 
-window.addEventListener("DOMContentLoaded", async function(){
-caricaAdminState();
-const login = document.getElementById("boxLoginAdmin");
-const area = document.getElementById("areaAdmin");
-const btnLogin = document.getElementById("btnLoginAdmin");
-if(btnLogin){
-btnLogin.addEventListener("click", window.loginAdmin);
-}
-if(adminState.adminLoggato){
-if(login) login.style.display = "none";
-if(area) area.classList.remove("hidden");
-if(typeof caricaTorneiSupabase === "function") await caricaTorneiSupabase();
-if(typeof renderAdmin === "function") renderAdmin();
-if(typeof aggiornaGiocatoriAdmin === "function") aggiornaGiocatoriAdmin();
-return;
-}
-if(login) login.style.display = "block";
-if(area) area.classList.add("hidden");
-});
+window.loginAdmin =
+    loginAdmin;
+
+window.apriDashboardAdmin =
+    apriDashboardAdmin;
+
+window.creaNuovoTorneo =
+    creaNuovoTorneo;
+
+window.aggiornaGiocatoriAdmin =
+    aggiornaGiocatoriAdmin;
+
+window.pubblicaTorneo =
+    pubblicaTorneo;
+
+window.chiudiIscrizioniTorneo =
+    chiudiIscrizioniTorneo;
+
+window.caricaRichiesteIscrizione =
+    caricaRichiesteIscrizione;
+
+window.selezionaTorneoAdmin =
+    selezionaTorneoAdmin;
+
+window.apriRegoleTorneoAdmin =
+    apriRegoleTorneoAdmin;
+
+window.renderAdmin =
+    renderAdmin;
+
+window.renderListaTornei =
+    renderListaTornei;
+
+window.eliminaTorneoAdmin =
+    eliminaTorneoAdmin;
+
+window.creaNews =
+    creaNews;
+
+window.eliminaNews =
+    eliminaNews;
+
+window.salvaSponsor =
+    salvaSponsor;
+
+window.eliminaSponsor =
+    eliminaSponsor;
+
+window.creaIscrittiTest =
+    creaIscrittiTest;
+
+window.approvaGiocatore =
+    approvaGiocatore;
+
+window.rifiutaGiocatore =
+    rifiutaGiocatore;
+
+window.selezionaGiocatoreAdmin =
+    selezionaGiocatoreAdmin;
+
+window.inviaWhatsAppTutti =
+    inviaWhatsAppTutti;
+
+window.inviaWhatsAppApprovati =
+    inviaWhatsAppApprovati;
+
+window.generaLinkBove =
+    generaLinkBove;
+
+window.copiaLinkBove =
+    copiaLinkBove;
+
+window.apriBoveConTorneo =
+    apriBoveConTorneo;
+
+window.apriRegoleNuovoTorneo =
+    apriRegoleNuovoTorneo;
+
+window.adminState =
+    adminState;
+
+window.sb =
+    sb;
+
+
+window.addEventListener(
+    "DOMContentLoaded",
+    async function(){
+
+        caricaAdminState();
+
+        const login =
+            document.getElementById(
+                "boxLoginAdmin"
+            );
+
+        const area =
+            document.getElementById(
+                "areaAdmin"
+            );
+
+        const btnLogin =
+            document.getElementById(
+                "btnLoginAdmin"
+            );
+
+        if(btnLogin){
+
+            btnLogin.addEventListener(
+                "click",
+                window.loginAdmin
+            );
+
+        }
+
+        if(adminState.adminLoggato){
+
+            if(login)
+                login.style.display="none";
+
+            if(area)
+                area.classList.remove(
+                    "hidden"
+                );
+
+            if(
+                typeof caricaTorneiSupabase ===
+                "function"
+            )
+                await caricaTorneiSupabase();
+
+            if(
+                typeof renderAdmin ===
+                "function"
+            )
+                renderAdmin();
+
+            if(
+                typeof aggiornaGiocatoriAdmin ===
+                "function"
+            )
+                aggiornaGiocatoriAdmin();
+
+            return;
+
+        }
+
+        if(login)
+            login.style.display="block";
+
+        if(area)
+            area.classList.add(
+                "hidden"
+            );
+
+    }
+);
+
 </script>
+
 </body>
 </html>
