@@ -3228,9 +3228,19 @@ short:{
 };
 function ensureRules(){
 
+    if(!state)
+        return;
+
+
     if(!state.rules)
         state.rules={};
 
+
+    /*
+    ========================================================
+    BLOCCO REGOLAMENTO
+    ========================================================
+    */
 
     if(state.rules.locked===undefined)
         state.rules.locked=false;
@@ -3246,38 +3256,14 @@ function ensureRules(){
 
 
     /*
-        ============================
-        FORMATO SQUADRE
-        ============================
+    ========================================================
+    NUMERO SQUADRE / GIRONI
+    ========================================================
     */
 
     state.rules.numeroSquadre =
         Number(state.rules.numeroSquadre) || 8;
 
-
-    /*
-        Sono ammessi esclusivamente
-        i formati previsti dal torneo.
-    */
-
-    if(
-        state.rules.numeroSquadre!==8 &&
-        state.rules.numeroSquadre!==12 &&
-        state.rules.numeroSquadre!==16 &&
-        state.rules.numeroSquadre!==20 &&
-        state.rules.numeroSquadre!==24
-    ){
-
-        state.rules.numeroSquadre=8;
-
-    }
-
-
-    /*
-        ============================
-        STRUTTURA GIRONI
-        ============================
-    */
 
     state.rules.numeroGironi =
         Number(state.rules.numeroGironi) || 2;
@@ -3288,83 +3274,60 @@ function ensureRules(){
 
 
     /*
-        Per i formati attuali il numero
-        di squadre per girone è sempre 4.
+    ========================================================
+    CONTROLLO COERENZA GIRONI
+    ========================================================
     */
 
-    state.rules.squadrePerGirone=4;
+    if(
+        state.rules.numeroGironi *
+        state.rules.squadrePerGirone !==
+        state.rules.numeroSquadre
+    ){
 
+        if(state.rules.numeroSquadre===24){
 
-    /*
-        ============================
-        CORRISPONDENZA FORMATO
-        ============================
-    */
+            state.rules.numeroGironi=6;
+            state.rules.squadrePerGirone=4;
 
-    const struttureGironi={
-
-        8:{
-            gironi:2,
-            squadre:4
-        },
-
-        12:{
-            gironi:3,
-            squadre:4
-        },
-
-        16:{
-            gironi:4,
-            squadre:4
-        },
-
-        20:{
-            gironi:5,
-            squadre:4
-        },
-
-        24:{
-            gironi:6,
-            squadre:4
         }
 
-    };
+        else if(state.rules.numeroSquadre===20){
 
+            state.rules.numeroGironi=5;
+            state.rules.squadrePerGirone=4;
 
-    const struttura =
-        struttureGironi[
-            state.rules.numeroSquadre
-        ];
+        }
 
+        else if(state.rules.numeroSquadre===16){
 
-    if(struttura){
+            state.rules.numeroGironi=4;
+            state.rules.squadrePerGirone=4;
 
-        state.rules.numeroGironi =
-            struttura.gironi;
+        }
 
-        state.rules.squadrePerGirone =
-            struttura.squadre;
+        else if(state.rules.numeroSquadre===12){
 
-    }
-    else{
+            state.rules.numeroGironi=3;
+            state.rules.squadrePerGirone=4;
 
-        /*
-            Sicurezza.
-        */
+        }
 
-        state.rules.numeroSquadre=8;
+        else{
 
-        state.rules.numeroGironi=2;
+            state.rules.numeroGironi=2;
+            state.rules.squadrePerGirone=4;
+            state.rules.numeroSquadre=8;
 
-        state.rules.squadrePerGirone=4;
+        }
 
     }
 
 
     /*
-        ============================
-        FORMULE
-        ============================
+    ========================================================
+    FORMULE
+    ========================================================
     */
 
     if(state.rules.formulaGironi===undefined)
@@ -3376,14 +3339,20 @@ function ensureRules(){
             "eliminazione_diretta";
 
 
+    /*
+    ========================================================
+    ANDATA / RITORNO
+    ========================================================
+    */
+
     if(state.rules.garaAndataRitorno===undefined)
         state.rules.garaAndataRitorno=false;
 
 
     /*
-        ============================
-        PUNTEGGI
-        ============================
+    ========================================================
+    PUNTEGGI
+    ========================================================
     */
 
     if(state.rules.w===undefined)
@@ -3399,23 +3368,19 @@ function ensureRules(){
 
 
     /*
-        ============================
-        CLASSIFICA
-        ============================
+    ========================================================
+    CRITERI CLASSIFICA
+    ========================================================
     */
 
-    if(!Array.isArray(state.rules.criteriClassifica)){
+    if(!Array.isArray(state.rules.criteriClassifica))
 
         state.rules.criteriClassifica=[
-
             "pt",
             "df",
             "gf",
             "gs"
-
         ];
-
-    }
 
 
     if(state.rules.crit1===undefined)
@@ -3431,50 +3396,26 @@ function ensureRules(){
 
 
     /*
-        ============================
-        QUALIFICAZIONI
-        ============================
+    ========================================================
+    QUALIFICAZIONI
+    ========================================================
     */
 
     if(state.rules.qualificatePerGirone===undefined)
         state.rules.qualificatePerGirone=2;
 
 
-    if(state.rules.numeroQualificateFinali===undefined){
+    if(state.rules.numeroQualificateFinali===undefined)
 
         state.rules.numeroQualificateFinali =
             state.rules.numeroGironi *
             state.rules.qualificatePerGirone;
 
-    }
-
 
     /*
-        Se il numero dei gironi cambia,
-        il numero delle qualificate finali
-        deve rimanere coerente quando non
-        è stato configurato manualmente.
-    */
-
-    if(
-        !Number.isFinite(
-            Number(state.rules.numeroQualificateFinali)
-        )
-        ||
-        Number(state.rules.numeroQualificateFinali)<=0
-    ){
-
-        state.rules.numeroQualificateFinali =
-            state.rules.numeroGironi *
-            state.rules.qualificatePerGirone;
-
-    }
-
-
-    /*
-        ============================
-        FASE FINALE
-        ============================
+    ========================================================
+    FASE FINALE
+    ========================================================
     */
 
     if(state.rules.usaQuarti===undefined)
@@ -3490,9 +3431,9 @@ function ensureRules(){
 
 
     /*
-        ============================
-        REGOLE KO
-        ============================
+    ========================================================
+    REGOLE SPECIALI
+    ========================================================
     */
 
     if(state.rules.killerPoint===undefined)
@@ -3507,12 +3448,6 @@ function ensureRules(){
         state.rules.tempoSupplementare=true;
 
 
-    /*
-        ============================
-        RIPESCAGGIO
-        ============================
-    */
-
     if(state.rules.ripescaggio===undefined)
         state.rules.ripescaggio=false;
 
@@ -3522,18 +3457,16 @@ function ensureRules(){
 
 
     /*
-        ============================
-        MODALITA' FUTURE
-        ============================
+    ========================================================
+    MODALITÀ AGGIUNTIVE
+    ========================================================
     */
 
     [
-
         "doppiaEliminazione",
         "playoff",
         "faseGold",
         "faseSilver"
-
     ].forEach(x=>{
 
         if(state.rules[x]===undefined)
@@ -3543,9 +3476,9 @@ function ensureRules(){
 
 
     /*
-        ============================
-        PARITA'
-        ============================
+    ========================================================
+    CRITERIO PARITÀ EXTRA
+    ========================================================
     */
 
     if(state.rules.criterioParitaExtra===undefined)
@@ -3553,9 +3486,9 @@ function ensureRules(){
 
 
     /*
-        ============================
-        TEMPI
-        ============================
+    ========================================================
+    PROGRAMMAZIONE
+    ========================================================
     */
 
     if(state.rules.start===undefined)
@@ -3567,9 +3500,9 @@ function ensureRules(){
 
 
     /*
-        ============================
-        NOTE
-        ============================
+    ========================================================
+    NOTE
+    ========================================================
     */
 
     if(state.rules.note===undefined)
@@ -3577,21 +3510,60 @@ function ensureRules(){
 
 
     /*
-        ============================
-        RISULTATI FASE FINALE
-        ============================
+    ========================================================
+    GIRONI
+    ========================================================
+    */
+
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+    ].forEach(g=>{
+
+        if(!Array.isArray(state[g]))
+            state[g]=[];
+
+
+        if(!Array.isArray(state[g+"res"]))
+            state[g+"res"]=[];
+
+
+        if(!Array.isArray(state[g+"time"]))
+            state[g+"time"]=[];
+
+
+        if(!Array.isArray(state[g+"camp"]))
+            state[g+"camp"]=[];
+
+    });
+
+
+    /*
+    ========================================================
+    FASE FINALE
+    ========================================================
     */
 
     if(!Array.isArray(state.qRes))
-        state.qRes=Array(4).fill("-");
+        state.qRes=
+            Array(4).fill("-");
 
 
     if(!Array.isArray(state.sTopRes))
-        state.sTopRes=Array(2).fill("-");
+        state.sTopRes=
+            Array(2).fill("-");
 
 
     if(state.fTopRes===undefined)
         state.fTopRes="-";
+
+
+    if(!Array.isArray(state.finalTop))
+        state.finalTop=[];
 
 
     if(state.campioneTop===undefined)
@@ -3599,13 +3571,206 @@ function ensureRules(){
 
 
     /*
-        ============================
-        VISUALIZZAZIONE
-        ============================
+    ========================================================
+    VISUALIZZAZIONE QUARTI
+    ========================================================
     */
 
     if(state.mostraQuarti===undefined)
         state.mostraQuarti=true;
+
+
+    /*
+    ========================================================
+    TORNEO SVIZZERO
+    ========================================================
+    */
+
+    if(
+        state.rules.tipoTorneo==="svizzero" &&
+        !state.svizzero
+    ){
+
+        state.svizzero={
+
+            turno:1,
+
+            totaleTurni:0,
+
+            squadre:[],
+
+            incontri:[]
+
+        };
+
+    }
+
+
+    if(
+        state.svizzero &&
+        typeof state.svizzero==="object"
+    ){
+
+        if(!Array.isArray(state.svizzero.squadre))
+            state.svizzero.squadre=[];
+
+
+        if(!Array.isArray(state.svizzero.incontri))
+            state.svizzero.incontri=[];
+
+    }
+
+
+    /*
+    ========================================================
+    TORNEO AMERICANO
+    ========================================================
+    */
+
+    if(
+        state.rules.tipoTorneo==="americano" &&
+        !state.americano
+    ){
+
+        state.americano={
+
+            turno:1,
+
+            totaleTurni:0,
+
+            giocatori:[],
+
+            rotazioni:[]
+
+        };
+
+    }
+
+
+    if(
+        state.americano &&
+        typeof state.americano==="object"
+    ){
+
+        if(!Array.isArray(state.americano.giocatori))
+            state.americano.giocatori=[];
+
+
+        if(!Array.isArray(state.americano.rotazioni))
+            state.americano.rotazioni=[];
+
+    }
+
+
+    /*
+    ========================================================
+    TORNEO MEXICANO
+    ========================================================
+    */
+
+    if(
+        state.rules.tipoTorneo==="mexicano" &&
+        !state.mexicano
+    ){
+
+        state.mexicano={
+
+            turno:1,
+
+            giocatori:[],
+
+            abbinamenti:[]
+
+        };
+
+    }
+
+
+    if(
+        state.mexicano &&
+        typeof state.mexicano==="object"
+    ){
+
+        if(!Array.isArray(state.mexicano.giocatori))
+            state.mexicano.giocatori=[];
+
+
+        if(!Array.isArray(state.mexicano.abbinamenti))
+            state.mexicano.abbinamenti=[];
+
+    }
+
+
+    /*
+    ========================================================
+    KING OF THE COURT
+    ========================================================
+    */
+
+    if(
+        state.rules.tipoTorneo==="king" &&
+        !state.king
+    ){
+
+        state.king={
+
+            turno:1,
+
+            campi:[],
+
+            rotazioni:[]
+
+        };
+
+    }
+
+
+    if(
+        state.king &&
+        typeof state.king==="object"
+    ){
+
+        if(!Array.isArray(state.king.campi))
+            state.king.campi=[];
+
+
+        if(!Array.isArray(state.king.rotazioni))
+            state.king.rotazioni=[];
+
+    }
+
+
+    /*
+    ========================================================
+    SHORT FORMAT
+    ========================================================
+    */
+
+    if(
+        state.rules.tipoTorneo==="short" &&
+        !state.short
+    ){
+
+        state.short={
+
+            turno:1,
+
+            incontri:[]
+
+        };
+
+    }
+
+
+    if(
+        state.short &&
+        typeof state.short==="object"
+    ){
+
+        if(!Array.isArray(state.short.incontri))
+            state.short.incontri=[];
+
+    }
 
 }
     function closeRules(){
@@ -7776,80 +7941,174 @@ async function loadState(){
 
 }
 function handleFile(e){
-    let r=new FileReader();
-    r.onload=function(evt){
-        let wb=XLSX.read(
-            new Uint8Array(evt.target.result),
-            {type:"array"}
-        );
-        let data=XLSX
-        .utils
-        .sheet_to_json(
-            wb.Sheets[wb.SheetNames[0]],
-            {header:1}
-        )
-        .flat()
-        .filter(Boolean);
-        state.A=data.slice(0,4);
-        state.B=data.slice(4,8);
-        state.C=data.slice(8,12);
-        state.D=data.slice(12,16);
-        updateAndSync();
-    };
-    r.readAsArrayBuffer(e.target.files[0]);
-}
-function aggiornaNomeFormulaTorneo(){
 
-    let box =
-        document.getElementById(
-            "nomeFormulaTorneo"
-        );
+    if(
+        !e ||
+        !e.target ||
+        !e.target.files ||
+        !e.target.files[0]
+    ){
 
-
-    if(!box)
         return;
 
+    }
 
 
-    let tipo =
-        state.rules?.tipoTorneo
-        ||
-        "";
+    let r =
+        new FileReader();
+
+
+    r.onload =
+        function(evt){
+
+            try{
+
+                let wb =
+                    XLSX.read(
+
+                        new Uint8Array(
+                            evt.target.result
+                        ),
+
+                        {
+                            type:"array"
+                        }
+
+                    );
+
+
+                if(
+                    !wb ||
+                    !Array.isArray(
+                        wb.SheetNames
+                    ) ||
+                    wb.SheetNames.length===0
+                ){
+
+                    return;
+
+                }
+
+
+                let foglio =
+                    wb.Sheets[
+                        wb.SheetNames[0]
+                    ];
+
+
+                if(!foglio){
+
+                    return;
+
+                }
+
+
+                let data =
+
+                    XLSX
+                    .utils
+                    .sheet_to_json(
+
+                        foglio,
+
+                        {
+                            header:1
+                        }
+
+                    )
+                    .flat()
+                    .filter(Boolean);
 
 
 
-    let nomi={
-
-        italiana:"Torneo all'italiana",
-
-        gironiFinale:"Gironi + Fase Finale",
-
-        eliminazione:"Eliminazione Diretta",
-
-        americano:"Americano Padel",
-
-        mexicano:"Mexicano Padel",
-
-        svizzero:"Torneo Svizzero",
-
-        king:"King of the Court",
-
-        short:"Short Format",
-
-        manuale:"Torneo Personalizzato"
-
-    };
+                /*
+                ========================================
+                CARICAMENTO SQUADRE NEI GIRONI
+                ========================================
+                */
 
 
+                state.A =
+                    data.slice(0,4);
 
-    if(nomi[tipo])
 
-        box.innerHTML =
-            "🏆 " + nomi[tipo];
+                state.B =
+                    data.slice(4,8);
 
-    else
 
-        box.innerHTML="";
+                state.C =
+                    data.slice(8,12);
+
+
+                state.D =
+                    data.slice(12,16);
+
+
+
+                /*
+                ========================================
+                GARANZIA ARRAY
+                ========================================
+                */
+
+                if(!Array.isArray(state.A))
+                    state.A=[];
+
+                if(!Array.isArray(state.B))
+                    state.B=[];
+
+                if(!Array.isArray(state.C))
+                    state.C=[];
+
+                if(!Array.isArray(state.D))
+                    state.D=[];
+
+
+
+                /*
+                ========================================
+                SINCRONIZZAZIONE
+                ========================================
+                */
+
+                if(
+                    typeof updateAndSync==="function"
+                ){
+
+                    updateAndSync();
+
+                }
+
+
+            }
+            catch(err){
+
+                console.error(
+                    "Errore caricamento file Excel:",
+                    err
+                );
+
+            }
+
+        };
+
+
+
+    r.onerror =
+        function(err){
+
+            console.error(
+                "Errore lettura file:",
+                err
+            );
+
+        };
+
+
+
+    r.readAsArrayBuffer(
+        e.target.files[0]
+    );
 
 }
 function reset(){
