@@ -10652,7 +10652,6 @@ function renderTables(){
 
         D:[8,9]
 
-
     };
 
 
@@ -10664,6 +10663,17 @@ function renderTables(){
         Number(
             state.rules.duration || 30
         );
+
+
+
+    if(
+        !Number.isFinite(durata) ||
+        durata<=0
+    ){
+
+        durata=30;
+
+    }
 
 
 
@@ -10686,9 +10696,7 @@ function renderTables(){
 
         Number(
             partiOra[0]
-        )
-        ||
-        20;
+        );
 
 
 
@@ -10696,13 +10704,43 @@ function renderTables(){
 
         Number(
             partiOra[1]
+        );
+
+
+
+    if(
+        !Number.isFinite(oraBase)
+    ){
+
+        oraBase=20;
+
+    }
+
+
+
+    if(
+        !Number.isFinite(minutiBase)
+    ){
+
+        minutiBase=0;
+
+    }
+
+
+
+    /*
+    ============================================
+    NORMALIZZAZIONE ORARIO DI PARTENZA
+    ============================================
+    */
+
+    let minutiAssolutiBase =
+
+        (
+            oraBase * 60
         )
-        ||
-        0;
-
-
-
-
+        +
+        minutiBase;
 
 
 
@@ -10761,7 +10799,6 @@ function renderTables(){
 
                     slot:null
 
-
                 });
 
 
@@ -10778,8 +10815,17 @@ function renderTables(){
 
 
 
+    /*
+    ============================================
+    ASSEGNAZIONE CAMPI E SLOT
+    ============================================
+    */
+
     let occupazioni=[];
-       calendario.forEach(partita=>{
+
+
+
+    calendario.forEach(partita=>{
 
 
         let assegnata=false;
@@ -10825,28 +10871,34 @@ function renderTables(){
 
 
                     if(
-
                         o.slot===slot &&
-
-                        o.campo===campo &&
-
-                        (
-
-                            o.squadre.includes(
-                                partita.casa
-                            )
-
-                            ||
-
-                            o.squadre.includes(
-                                partita.ospite
-                            )
-
-                        )
-
+                        o.campo===campo
                     ){
 
-                        conflitto=true;
+                        /*
+                        ====================================
+                        CONFLITTO SOLO SE APPARTIENE
+                        ALLO STESSO GIRONE
+                        ====================================
+                        */
+
+                        if(
+                            o.girone===partita.girone &&
+                            (
+                                o.squadre.includes(
+                                    partita.casa
+                                )
+                                ||
+                                o.squadre.includes(
+                                    partita.ospite
+                                )
+                            )
+                        ){
+
+                            conflitto=true;
+
+                        }
+
 
                     }
 
@@ -10871,12 +10923,16 @@ function renderTables(){
 
 
 
-
                     occupazioni.push({
 
-                        slot:slot,
+                        girone:
+                            partita.girone,
 
-                        campo:campo,
+                        slot:
+                            slot,
+
+                        campo:
+                            campo,
 
                         squadre:[
 
@@ -10887,7 +10943,6 @@ function renderTables(){
                         ]
 
                     });
-
 
 
 
@@ -10922,6 +10977,12 @@ function renderTables(){
 
 
 
+
+    /*
+    ============================================
+    RENDER DEI GIRONI
+    ============================================
+    */
 
     [
         "A",
@@ -10967,7 +11028,6 @@ function renderTables(){
         ===================================
         */
 
-
         if(
             !Array.isArray(
                 state[tag+"res"]
@@ -11007,6 +11067,12 @@ function renderTables(){
 
 
 
+        /*
+        ===================================
+        GARANZIA ARRAY ORARI
+        ===================================
+        */
+
         if(
             !Array.isArray(
                 state[tag+"time"]
@@ -11045,6 +11111,12 @@ function renderTables(){
 
 
 
+
+        /*
+        ===================================
+        GARANZIA ARRAY CAMPI
+        ===================================
+        */
 
         if(
             !Array.isArray(
@@ -11093,9 +11165,15 @@ function renderTables(){
         partite.forEach((m,i)=>{
 
 
-            let minuti =
+            /*
+            ====================================
+            ORARIO GENERATO
+            ====================================
+            */
 
-                minutiBase +
+            let minutiGenerati =
+
+                minutiAssolutiBase +
 
                 (
                     m.slot *
@@ -11104,26 +11182,25 @@ function renderTables(){
 
 
 
-            let ora =
-
-                oraBase +
+            let oraGenerata =
 
                 Math.floor(
-                    minuti / 60
+                    minutiGenerati / 60
                 );
 
 
 
-            let min =
+            let minutoGenerato =
 
-                minuti % 60;
-
-
+                minutiGenerati % 60;
 
 
-            let tempo =
 
-                String(ora)
+            let tempoGenerato =
+
+                String(
+                    oraGenerata
+                )
                 .padStart(2,"0")
 
                 +
@@ -11132,19 +11209,90 @@ function renderTables(){
 
                 +
 
-                String(min)
+                String(
+                    minutoGenerato
+                )
                 .padStart(2,"0");
 
 
 
-            state[tag+"time"][i]=tempo;
+            /*
+            ====================================
+            NON SOVRASCRIVERE UN ORARIO
+            GIÀ SALVATO MANUALMENTE
+            ====================================
+            */
+
+            let tempoSalvato =
+
+                String(
+                    state[tag+"time"][i] || ""
+                )
+                .trim();
 
 
 
-            state[tag+"camp"][i]=m.campo;
+            let tempo =
+
+                tempoSalvato &&
+                tempoSalvato!=="-"
+
+                ?
+
+                tempoSalvato
+
+                :
+
+                tempoGenerato;
 
 
 
+            state[tag+"time"][i]=
+                tempo;
+
+
+
+            /*
+            ====================================
+            CAMPO
+            ====================================
+            */
+
+            let campoSalvato =
+
+                String(
+                    state[tag+"camp"][i] || ""
+                )
+                .trim();
+
+
+
+            let campo =
+
+                campoSalvato
+
+                ?
+
+                campoSalvato
+
+                :
+
+                String(
+                    m.campo
+                );
+
+
+
+            state[tag+"camp"][i]=
+                campo;
+
+
+
+            /*
+            ====================================
+            RISULTATO
+            ====================================
+            */
 
             if(
                 !state[tag+"res"][i]
@@ -11169,7 +11317,7 @@ function renderTables(){
 
 <td>
 <input
-value="${m.campo}"
+value="${campo}"
 oninput="updateCamp('${tag}',${i},this.value)"
 style="width:45px">
 </td>
@@ -11185,7 +11333,7 @@ oninput="updateTime('${tag}',${i},0,this.value)">
 <td class="match-cell">
 
 <div class="team-line">
-${state[tag][m.casa]}
+${state[tag][m.casa] || ""}
 </div>
 
 <div class="vs-line">
@@ -11193,7 +11341,7 @@ ${state[tag][m.casa]}
 </div>
 
 <div class="team-line">
-${state[tag][m.ospite]}
+${state[tag][m.ospite] || ""}
 </div>
 
 </td>
@@ -11228,7 +11376,22 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
     });
-       updateAndSync();
+
+
+
+    /*
+    ============================================
+    IMPORTANTE
+    ============================================
+
+    renderTables() aggiorna solamente il rendering
+    e lo stato locale già presente.
+
+    NON esegue updateAndSync() qui, perché il rendering
+    non deve provocare automaticamente un nuovo
+    salvataggio Supabase.
+    ============================================
+    */
 
 
 }
