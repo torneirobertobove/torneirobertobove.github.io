@@ -3228,17 +3228,13 @@ short:{
 };
 function ensureRules(){
 
-    if(!state)
-        return;
-
-
     if(!state.rules)
         state.rules={};
 
 
     /*
     ========================================================
-    BLOCCO REGOLAMENTO
+    GARANZIA PARAMETRI BASE
     ========================================================
     */
 
@@ -3255,73 +3251,150 @@ function ensureRules(){
             state.rules.tipoTorneo;
 
 
+
     /*
     ========================================================
     NUMERO SQUADRE / GIRONI
+    NON DEVE DISTRUGGERE I VALORI CARICATI DA SUPABASE
     ========================================================
     */
 
-    state.rules.numeroSquadre =
-        Number(state.rules.numeroSquadre) || 8;
+    let numeroSquadre =
+        Number(state.rules.numeroSquadre);
 
 
-    state.rules.numeroGironi =
-        Number(state.rules.numeroGironi) || 2;
+    let numeroGironi =
+        Number(state.rules.numeroGironi);
 
 
-    state.rules.squadrePerGirone =
-        Number(state.rules.squadrePerGirone) || 4;
+    let squadrePerGirone =
+        Number(state.rules.squadrePerGirone);
+
+
+
+    if(!Number.isFinite(numeroSquadre) || numeroSquadre<1)
+        numeroSquadre=8;
+
+
+    if(!Number.isFinite(numeroGironi) || numeroGironi<1)
+        numeroGironi=2;
+
+
+    if(!Number.isFinite(squadrePerGirone) || squadrePerGirone<1)
+        squadrePerGirone=4;
+
 
 
     /*
     ========================================================
-    CONTROLLO COERENZA GIRONI
+    CORREZIONE COERENZA
     ========================================================
     */
 
     if(
-        state.rules.numeroGironi *
-        state.rules.squadrePerGirone !==
-        state.rules.numeroSquadre
+        numeroSquadre % numeroGironi !== 0
     ){
 
-        if(state.rules.numeroSquadre===24){
+        if(numeroSquadre===24){
 
-            state.rules.numeroGironi=6;
-            state.rules.squadrePerGirone=4;
-
-        }
-
-        else if(state.rules.numeroSquadre===20){
-
-            state.rules.numeroGironi=5;
-            state.rules.squadrePerGirone=4;
+            numeroGironi=6;
+            squadrePerGirone=4;
 
         }
+        else if(numeroSquadre===20){
 
-        else if(state.rules.numeroSquadre===16){
-
-            state.rules.numeroGironi=4;
-            state.rules.squadrePerGirone=4;
-
-        }
-
-        else if(state.rules.numeroSquadre===12){
-
-            state.rules.numeroGironi=3;
-            state.rules.squadrePerGirone=4;
+            numeroGironi=5;
+            squadrePerGirone=4;
 
         }
+        else if(numeroSquadre===16){
 
+            numeroGironi=4;
+            squadrePerGirone=4;
+
+        }
+        else if(numeroSquadre===12){
+
+            numeroGironi=3;
+            squadrePerGirone=4;
+
+        }
+        else if(numeroSquadre===8){
+
+            numeroGironi=2;
+            squadrePerGirone=4;
+
+        }
         else{
 
-            state.rules.numeroGironi=2;
-            state.rules.squadrePerGirone=4;
-            state.rules.numeroSquadre=8;
+            /*
+            Manteniamo i valori esistenti
+            senza riportare arbitrariamente
+            il torneo a 8 squadre.
+            */
+
+            if(
+                numeroGironi>numeroSquadre
+            ){
+
+                numeroGironi=1;
+
+            }
+
+
+            if(
+                numeroSquadre % numeroGironi === 0
+            ){
+
+                squadrePerGirone =
+                    numeroSquadre / numeroGironi;
+
+            }
+            else{
+
+                /*
+                Ultima garanzia:
+                usiamo il numero squadre reale
+                e un solo girone.
+                */
+
+                numeroGironi=1;
+
+                squadrePerGirone=
+                    numeroSquadre;
+
+            }
 
         }
 
     }
+    else{
+
+        /*
+        Se il rapporto è coerente,
+        il numero squadre per girone
+        viene calcolato dal rapporto reale.
+        */
+
+        squadrePerGirone =
+            numeroSquadre /
+            numeroGironi;
+
+    }
+
+
+
+    state.rules.numeroSquadre =
+        numeroSquadre;
+
+
+    state.rules.numeroGironi =
+        numeroGironi;
+
+
+    state.rules.squadrePerGirone =
+        squadrePerGirone;
+
 
 
     /*
@@ -3339,14 +3412,9 @@ function ensureRules(){
             "eliminazione_diretta";
 
 
-    /*
-    ========================================================
-    ANDATA / RITORNO
-    ========================================================
-    */
-
     if(state.rules.garaAndataRitorno===undefined)
         state.rules.garaAndataRitorno=false;
+
 
 
     /*
@@ -3367,13 +3435,18 @@ function ensureRules(){
         state.rules.l=0;
 
 
+
     /*
     ========================================================
     CRITERI CLASSIFICA
     ========================================================
     */
 
-    if(!Array.isArray(state.rules.criteriClassifica))
+    if(
+        !Array.isArray(
+            state.rules.criteriClassifica
+        )
+    ){
 
         state.rules.criteriClassifica=[
             "pt",
@@ -3381,6 +3454,8 @@ function ensureRules(){
             "gf",
             "gs"
         ];
+
+    }
 
 
     if(state.rules.crit1===undefined)
@@ -3395,21 +3470,32 @@ function ensureRules(){
         state.rules.crit3="gs";
 
 
+
     /*
     ========================================================
     QUALIFICAZIONI
     ========================================================
     */
 
-    if(state.rules.qualificatePerGirone===undefined)
+    if(
+        state.rules.qualificatePerGirone===undefined
+    ){
+
         state.rules.qualificatePerGirone=2;
 
+    }
 
-    if(state.rules.numeroQualificateFinali===undefined)
+
+    if(
+        state.rules.numeroQualificateFinali===undefined
+    ){
 
         state.rules.numeroQualificateFinali =
             state.rules.numeroGironi *
             state.rules.qualificatePerGirone;
+
+    }
+
 
 
     /*
@@ -3430,9 +3516,10 @@ function ensureRules(){
         state.rules.usaFinale=true;
 
 
+
     /*
     ========================================================
-    REGOLE SPECIALI
+    ALTRE REGOLE
     ========================================================
     */
 
@@ -3452,16 +3539,6 @@ function ensureRules(){
         state.rules.ripescaggio=false;
 
 
-    if(state.rules.numeroRipescate===undefined)
-        state.rules.numeroRipescate=0;
-
-
-    /*
-    ========================================================
-    MODALITÀ AGGIUNTIVE
-    ========================================================
-    */
-
     [
         "doppiaEliminazione",
         "playoff",
@@ -3475,19 +3552,20 @@ function ensureRules(){
     });
 
 
+    if(
+        state.rules.criterioParitaExtra===undefined
+    ){
+
+        state.rules.criterioParitaExtra=
+            "sorteggio";
+
+    }
+
+
+
     /*
     ========================================================
-    CRITERIO PARITÀ EXTRA
-    ========================================================
-    */
-
-    if(state.rules.criterioParitaExtra===undefined)
-        state.rules.criterioParitaExtra="sorteggio";
-
-
-    /*
-    ========================================================
-    PROGRAMMAZIONE
+    ORARIO / DURATA
     ========================================================
     */
 
@@ -3499,52 +3577,14 @@ function ensureRules(){
         state.rules.duration=30;
 
 
-    /*
-    ========================================================
-    NOTE
-    ========================================================
-    */
-
     if(state.rules.note===undefined)
         state.rules.note="";
 
 
-    /*
-    ========================================================
-    GIRONI
-    ========================================================
-    */
-
-    [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
-    ].forEach(g=>{
-
-        if(!Array.isArray(state[g]))
-            state[g]=[];
-
-
-        if(!Array.isArray(state[g+"res"]))
-            state[g+"res"]=[];
-
-
-        if(!Array.isArray(state[g+"time"]))
-            state[g+"time"]=[];
-
-
-        if(!Array.isArray(state[g+"camp"]))
-            state[g+"camp"]=[];
-
-    });
-
 
     /*
     ========================================================
-    FASE FINALE
+    RISULTATI FASE FINALE
     ========================================================
     */
 
@@ -3562,215 +3602,22 @@ function ensureRules(){
         state.fTopRes="-";
 
 
-    if(!Array.isArray(state.finalTop))
-        state.finalTop=[];
-
-
     if(state.campioneTop===undefined)
         state.campioneTop=null;
 
 
-    /*
-    ========================================================
-    VISUALIZZAZIONE QUARTI
-    ========================================================
-    */
-
-    if(state.mostraQuarti===undefined)
-        state.mostraQuarti=true;
-
 
     /*
     ========================================================
-    TORNEO SVIZZERO
+    NON SALVIAMO QUI
     ========================================================
+
+    ensureRules() deve solo garantire
+    l'integrità dello stato.
+
+    Il salvataggio viene gestito da
+    updateAndSync() / Supabase.
     */
-
-    if(
-        state.rules.tipoTorneo==="svizzero" &&
-        !state.svizzero
-    ){
-
-        state.svizzero={
-
-            turno:1,
-
-            totaleTurni:0,
-
-            squadre:[],
-
-            incontri:[]
-
-        };
-
-    }
-
-
-    if(
-        state.svizzero &&
-        typeof state.svizzero==="object"
-    ){
-
-        if(!Array.isArray(state.svizzero.squadre))
-            state.svizzero.squadre=[];
-
-
-        if(!Array.isArray(state.svizzero.incontri))
-            state.svizzero.incontri=[];
-
-    }
-
-
-    /*
-    ========================================================
-    TORNEO AMERICANO
-    ========================================================
-    */
-
-    if(
-        state.rules.tipoTorneo==="americano" &&
-        !state.americano
-    ){
-
-        state.americano={
-
-            turno:1,
-
-            totaleTurni:0,
-
-            giocatori:[],
-
-            rotazioni:[]
-
-        };
-
-    }
-
-
-    if(
-        state.americano &&
-        typeof state.americano==="object"
-    ){
-
-        if(!Array.isArray(state.americano.giocatori))
-            state.americano.giocatori=[];
-
-
-        if(!Array.isArray(state.americano.rotazioni))
-            state.americano.rotazioni=[];
-
-    }
-
-
-    /*
-    ========================================================
-    TORNEO MEXICANO
-    ========================================================
-    */
-
-    if(
-        state.rules.tipoTorneo==="mexicano" &&
-        !state.mexicano
-    ){
-
-        state.mexicano={
-
-            turno:1,
-
-            giocatori:[],
-
-            abbinamenti:[]
-
-        };
-
-    }
-
-
-    if(
-        state.mexicano &&
-        typeof state.mexicano==="object"
-    ){
-
-        if(!Array.isArray(state.mexicano.giocatori))
-            state.mexicano.giocatori=[];
-
-
-        if(!Array.isArray(state.mexicano.abbinamenti))
-            state.mexicano.abbinamenti=[];
-
-    }
-
-
-    /*
-    ========================================================
-    KING OF THE COURT
-    ========================================================
-    */
-
-    if(
-        state.rules.tipoTorneo==="king" &&
-        !state.king
-    ){
-
-        state.king={
-
-            turno:1,
-
-            campi:[],
-
-            rotazioni:[]
-
-        };
-
-    }
-
-
-    if(
-        state.king &&
-        typeof state.king==="object"
-    ){
-
-        if(!Array.isArray(state.king.campi))
-            state.king.campi=[];
-
-
-        if(!Array.isArray(state.king.rotazioni))
-            state.king.rotazioni=[];
-
-    }
-
-
-    /*
-    ========================================================
-    SHORT FORMAT
-    ========================================================
-    */
-
-    if(
-        state.rules.tipoTorneo==="short" &&
-        !state.short
-    ){
-
-        state.short={
-
-            turno:1,
-
-            incontri:[]
-
-        };
-
-    }
-
-
-    if(
-        state.short &&
-        typeof state.short==="object"
-    ){
-
-        if(!Array.isArray(state.short.incontri))
-            state.short.incontri=[];
-
-    }
 
 }
     function closeRules(){
