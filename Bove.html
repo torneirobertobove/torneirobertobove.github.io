@@ -526,9 +526,508 @@ const sb =
         }
     );
 
-</script>
+/*
+========================================================
+VARIABILE GLOBALE STATE
+========================================================
+*/
 
-<script>
+let state = {
+
+    /* FORMATO TORNEO */
+    formato:8,
+    nomeTorneo:"",
+
+    rules:{
+        locked:false,
+        tipoTorneo:"gironi",
+        formatoTorneo:"gironi",
+        numeroSquadre:8,
+        numeroGironi:2,
+        squadrePerGirone:4,
+        w:3,
+        d:1,
+        l:0,
+        qualificatePerGirone:2,
+        numeroQualificateFinali:4,
+        crit1:"df",
+        crit2:"gf",
+        crit3:"gs",
+        criteriClassifica:["pt","df","gf","gs"],
+        formulaGironi:"italiana",
+        formulaFinale:"eliminazione_diretta",
+        usaQuarti:true,
+        usaSemifinali:true,
+        usaFinale:true,
+        killerPoint:false,
+        rigori:true,
+        tempoSupplementare:true,
+        garaAndataRitorno:false,
+        ripescaggio:false,
+        numeroRipescate:0,
+        doppiaEliminazione:false,
+        playoff:false,
+        faseGold:false,
+        faseSilver:false,
+        criterioParitaExtra:"sorteggio",
+        start:"20:00",
+        duration:30,
+        note:""
+    },
+
+    /* GIRONI */
+    A:[],
+    B:[],
+    C:[],
+    D:[],
+
+    /* TORNEO SVIZZERO */
+    svizzero:{
+        turno:1,
+        totaleTurni:5,
+        squadre:[],
+        turni:[],
+        risultati:[],
+        classifica:[],
+        qualificati:[]
+    },
+
+    /* TORNEO AMERICANO */
+    americano:{
+        turno:1,
+        totaleTurni:0,
+        giocatori:[],
+        coppie:[],
+        rotazioni:[],
+        risultati:[],
+        classifica:[]
+    },
+
+    /* TORNEO MEXICANO */
+    mexicano:{
+        turno:1,
+        totaleTurni:0,
+        giocatori:[],
+        coppie:[],
+        abbinamenti:[],
+        risultati:[],
+        classifica:[]
+    },
+
+    /* KING OF THE COURT */
+    king:{
+        turno:1,
+        campi:[],
+        giocatori:[],
+        rotazioni:[],
+        risultati:[],
+        classifica:[]
+    },
+
+    /* SHORT FORMAT */
+    short:{
+        turno:1,
+        squadre:[],
+        incontri:[],
+        risultati:[],
+        classifica:[]
+    },
+
+    /* RISULTATI */
+    Ares:[],
+    Bres:[],
+    Cres:[],
+    Dres:[],
+
+    /* ORARI */
+    Atime:[],
+    Btime:[],
+    Ctime:[],
+    Dtime:[],
+
+    /* CAMPI */
+    Acamp:[],
+    Bcamp:[],
+    Ccamp:[],
+    Dcamp:[],
+
+    /* CLASSIFICHE */
+    rankA:[],
+    rankB:[],
+    rankC:[],
+    rankD:[],
+
+    /* FASE FINALE */
+    quarti:[],
+    qRes:Array(4).fill("-"),
+    semiTop:[],
+    sTopRes:Array(2).fill("-"),
+    finalTop:[],
+    fTopRes:"-",
+    campioneTop:null,
+
+    /* VISUALIZZAZIONE */
+    mostraQuarti:true
+};
+
+/*
+========================================================
+FUNZIONI DI GARANZIA REGOLE (PRIMA DI TUTTO)
+========================================================
+*/
+
+window.ensureRules = function ensureRules(){
+
+    if(!state.rules)
+        state.rules = {};
+
+    /* GARANZIA PARAMETRI BASE */
+    if(state.rules.locked === undefined)
+        state.rules.locked = false;
+
+    if(state.rules.tipoTorneo === undefined)
+        state.rules.tipoTorneo = "gironi";
+
+    if(state.rules.formatoTorneo === undefined)
+        state.rules.formatoTorneo = state.rules.tipoTorneo;
+
+    /* NUMERO SQUADRE / GIRONI */
+    let numeroSquadre = Number(state.rules.numeroSquadre);
+    let numeroGironi = Number(state.rules.numeroGironi);
+    let squadrePerGirone = Number(state.rules.squadrePerGirone);
+
+    if(!Number.isFinite(numeroSquadre) || numeroSquadre < 1)
+        numeroSquadre = 8;
+
+    if(!Number.isFinite(numeroGironi) || numeroGironi < 1)
+        numeroGironi = 2;
+
+    if(!Number.isFinite(squadrePerGirone) || squadrePerGirone < 1)
+        squadrePerGirone = 4;
+
+    /* CORREZIONE COERENZA */
+    if(numeroSquadre % numeroGironi !== 0){
+
+        if(numeroSquadre === 24){
+            numeroGironi = 6;
+            squadrePerGirone = 4;
+        }
+        else if(numeroSquadre === 20){
+            numeroGironi = 5;
+            squadrePerGirone = 4;
+        }
+        else if(numeroSquadre === 16){
+            numeroGironi = 4;
+            squadrePerGirone = 4;
+        }
+        else if(numeroSquadre === 12){
+            numeroGironi = 3;
+            squadrePerGirone = 4;
+        }
+        else if(numeroSquadre === 8){
+            numeroGironi = 2;
+            squadrePerGirone = 4;
+        }
+        else{
+
+            if(numeroGironi > numeroSquadre)
+                numeroGironi = 1;
+
+            if(numeroSquadre % numeroGironi === 0){
+                squadrePerGirone = numeroSquadre / numeroGironi;
+            }
+            else{
+                numeroGironi = 1;
+                squadrePerGirone = numeroSquadre;
+            }
+
+        }
+
+    }
+    else{
+        squadrePerGirone = numeroSquadre / numeroGironi;
+    }
+
+    state.rules.numeroSquadre = numeroSquadre;
+    state.rules.numeroGironi = numeroGironi;
+    state.rules.squadrePerGirone = squadrePerGirone;
+
+    /* FORMULE */
+    if(state.rules.formulaGironi === undefined)
+        state.rules.formulaGironi = "italiana";
+
+    if(state.rules.formulaFinale === undefined)
+        state.rules.formulaFinale = "eliminazione_diretta";
+
+    if(state.rules.garaAndataRitorno === undefined)
+        state.rules.garaAndataRitorno = false;
+
+    /* PUNTEGGI */
+    if(state.rules.w === undefined)
+        state.rules.w = 3;
+
+    if(state.rules.d === undefined)
+        state.rules.d = 1;
+
+    if(state.rules.l === undefined)
+        state.rules.l = 0;
+
+    /* CRITERI CLASSIFICA */
+    if(!Array.isArray(state.rules.criteriClassifica)){
+        state.rules.criteriClassifica = ["pt","df","gf","gs"];
+    }
+
+    if(state.rules.crit1 === undefined)
+        state.rules.crit1 = "df";
+
+    if(state.rules.crit2 === undefined)
+        state.rules.crit2 = "gf";
+
+    if(state.rules.crit3 === undefined)
+        state.rules.crit3 = "gs";
+
+    /* QUALIFICAZIONI */
+    if(state.rules.qualificatePerGirone === undefined)
+        state.rules.qualificatePerGirone = 2;
+
+    if(state.rules.numeroQualificateFinali === undefined){
+        state.rules.numeroQualificateFinali =
+            state.rules.numeroGironi *
+            state.rules.qualificatePerGirone;
+    }
+
+    /* FASE FINALE */
+    if(state.rules.usaQuarti === undefined)
+        state.rules.usaQuarti = true;
+
+    if(state.rules.usaSemifinali === undefined)
+        state.rules.usaSemifinali = true;
+
+    if(state.rules.usaFinale === undefined)
+        state.rules.usaFinale = true;
+
+    /* ALTRE REGOLE */
+    if(state.rules.killerPoint === undefined)
+        state.rules.killerPoint = false;
+
+    if(state.rules.rigori === undefined)
+        state.rules.rigori = true;
+
+    if(state.rules.tempoSupplementare === undefined)
+        state.rules.tempoSupplementare = true;
+
+    if(state.rules.ripescaggio === undefined)
+        state.rules.ripescaggio = false;
+
+    if(state.rules.numeroRipescate === undefined)
+        state.rules.numeroRipescate = 0;
+
+    ["doppiaEliminazione","playoff","faseGold","faseSilver"].forEach(x => {
+        if(state.rules[x] === undefined)
+            state.rules[x] = false;
+    });
+
+    if(state.rules.criterioParitaExtra === undefined)
+        state.rules.criterioParitaExtra = "sorteggio";
+
+    /* ORARIO / DURATA */
+    if(state.rules.start === undefined)
+        state.rules.start = "20:00";
+
+    if(state.rules.duration === undefined)
+        state.rules.duration = 30;
+
+    if(state.rules.note === undefined)
+        state.rules.note = "";
+
+    /* RISULTATI FASE FINALE */
+    if(!Array.isArray(state.qRes))
+        state.qRes = Array(4).fill("-");
+
+    if(!Array.isArray(state.sTopRes))
+        state.sTopRes = Array(2).fill("-");
+
+    if(state.fTopRes === undefined)
+        state.fTopRes = "-";
+
+    if(state.campioneTop === undefined)
+        state.campioneTop = null;
+
+    /* GARANZIA STRUTTURA GIRONI */
+    const lettereGironi = ["A","B","C","D","E","F"];
+
+    lettereGironi.forEach((g, index) => {
+        if(!Array.isArray(state[g]))
+            state[g] = [];
+    });
+
+};
+
+function closeRules(){
+
+    const modal = document.getElementById("rulesModal");
+    if(modal){
+        modal.style.display = "none";
+    }
+
+}
+
+function openRules(){
+
+    /* GARANZIA FUNZIONE REGOLE */
+    if(typeof window.ensureRules === "function"){
+        window.ensureRules();
+    }
+    else{
+        console.error("ERRORE: window.ensureRules non disponibile");
+        return;
+    }
+
+    /* GARANZIA STATO REGOLE */
+    if(!state.rules)
+        state.rules = {};
+
+    /* FUNZIONE BOOLEANI */
+    function valoreBooleano(valore){
+        if(
+            valore === true ||
+            valore === 1 ||
+            valore === "true" ||
+            valore === "1"
+        )
+            return true;
+        return false;
+    }
+
+    /* APERTURA MODALE */
+    const modal = document.getElementById("rulesModal");
+    if(modal)
+        modal.style.display = "block";
+
+    /* FORMATO */
+    const formato = document.getElementById("formatoTorneo");
+    if(formato)
+        formato.value = state.rules.formatoTorneo || "";
+
+    /* TIPO TORNEO */
+    const tipo = document.getElementById("tipoTorneo");
+    if(tipo)
+        tipo.value = state.rules.tipoTorneo || "";
+
+    /* STRUTTURA */
+    ["numeroSquadre","numeroGironi","squadrePerGirone"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el)
+            el.value = state.rules[id] ?? "";
+    });
+
+    /* FORMULE */
+    ["formulaGironi","formulaFinale"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el)
+            el.value = state.rules[id] ?? "";
+    });
+
+    /* PUNTEGGI */
+    [["wP","w"],["dP","d"],["lP","l"]].forEach(x => {
+        const el = document.getElementById(x[0]);
+        if(el)
+            el.value = state.rules[x[1]] ?? 0;
+    });
+
+    /* CLASSIFICA */
+    ["crit1","crit2","crit3"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el)
+            el.value = state.rules[id] ?? "";
+    });
+
+    /* QUALIFICAZIONI */
+    ["qualificatePerGirone","numeroQualificateFinali"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el)
+            el.value = state.rules[id] ?? 0;
+    });
+
+    /* FASE FINALE */
+    ["usaQuarti","usaSemifinali","usaFinale","ripescaggio"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el)
+            el.checked = valoreBooleano(state.rules[id]);
+    });
+
+    /* RIPESCAGGIO */
+    const rip = document.getElementById("numeroRipescate");
+    if(rip)
+        rip.value = state.rules.numeroRipescate ?? 0;
+
+    /* KO */
+    [["killerPointSelect","killerPoint"],["rigoriSelect","rigori"],["supplementariSelect","tempoSupplementare"]].forEach(x => {
+        const el = document.getElementById(x[0]);
+        if(el)
+            el.value = valoreBooleano(state.rules[x[1]]) ? "true" : "false";
+    });
+
+    /* ANDATA / RITORNO */
+    const ar = document.getElementById("garaAndataRitorno");
+    if(ar)
+        ar.checked = valoreBooleano(state.rules.garaAndataRitorno);
+
+    /* TEMPI */
+    const start = document.getElementById("startTime");
+    if(start)
+        start.value = state.rules.start || "20:00";
+
+    const durata = document.getElementById("duration");
+    if(durata)
+        durata.value = state.rules.duration ?? 30;
+
+    /* PARITÀ */
+    const pari = document.getElementById("criterioParitaExtra");
+    if(pari)
+        pari.value = state.rules.criterioParitaExtra || "sorteggio";
+
+    /* NOTE */
+    const note = document.getElementById("noteRegole");
+    if(note)
+        note.value = state.rules.note || "";
+
+    /* VISUALIZZAZIONE */
+    const mostra = document.getElementById("mostraQuartiSelect");
+    let valoreMostraQuarti;
+
+    if(state.mostraQuarti !== undefined){
+        valoreMostraQuarti = valoreBooleano(state.mostraQuarti);
+    }
+    else{
+        valoreMostraQuarti = valoreBooleano(state.rules.mostraQuarti);
+    }
+
+    if(mostra)
+        mostra.value = String(valoreMostraQuarti);
+
+    /* DESCRIZIONE FORMULA */
+    if(typeof aggiornaDescrizioneTipoTorneo === "function")
+        aggiornaDescrizioneTipoTorneo();
+
+    /* AGGIORNA PANNELLO */
+    if(typeof aggiornaPannelloRegole === "function")
+        aggiornaPannelloRegole();
+
+    /* ARCHIVIO TORNEI */
+    if(!document.getElementById("btnArchivioTornei")){
+        const titolo = document.querySelector("#rulesModal .modal-content h3");
+        if(titolo){
+            const btn = document.createElement("button");
+            btn.id = "btnArchivioTornei";
+            btn.innerHTML = "📂 Archivio Tornei";
+            btn.style.cssText = "margin-left:15px;padding:6px 10px;border-radius:8px;cursor:pointer;background:#2563eb;color:white;border:none;font-size:14px;";
+            btn.onclick = apriArchivioTornei;
+            titolo.appendChild(btn);
+        }
+    }
+
+}
 
 /*
 ========================================================
@@ -538,36 +1037,26 @@ MENU HAMBURGER
 
 function toggleAdminMenu(){
 
-    const menu =
-        document.getElementById("adminMenu");
+    const menu = document.getElementById("adminMenu");
+    if(!menu) return;
 
-    if(!menu){
-        return;
-    }
+    const aperto = menu.style.display === "block";
+    menu.style.display = aperto ? "none" : "block";
 
-    const aperto =
-        menu.style.display === "block";
-
-    menu.style.display =
-        aperto
-            ? "none"
-            : "block";
 }
 
 function chiudiAdminMenu(){
 
-    const menu =
-        document.getElementById("adminMenu");
-
+    const menu = document.getElementById("adminMenu");
     if(menu){
         menu.style.display = "none";
     }
+
 }
 
 /*
 ========================================================
 ESCI
-Sostituisce completamente "Torna ad Admin"
 ========================================================
 */
 
@@ -581,8 +1070,8 @@ function esciDaTorneo(){
             window.location.pathname.lastIndexOf('/') + 1
         );
 
-    window.location.href =
-        pathBase + "admin.html";
+    window.location.href = pathBase + "admin.html";
+
 }
 
 /*
@@ -593,574 +1082,185 @@ PANNELLO INFORMATIVO GIRONE + FASE FINALE
 
 function toggleInfoGironi(){
 
-    const contenuto =
-        document.getElementById("infoGironiContent");
+    const contenuto = document.getElementById("infoGironiContent");
+    const freccia = document.getElementById("infoGironiArrow");
+    if(!contenuto) return;
 
-    const freccia =
-        document.getElementById("infoGironiArrow");
-
-    if(!contenuto){
-        return;
-    }
-
-    const aperto =
-        contenuto.style.display === "block";
+    const aperto = contenuto.style.display === "block";
 
     if(aperto){
-
         contenuto.style.display = "none";
-
         if(freccia){
             freccia.textContent = "▼";
             freccia.style.transform = "rotate(0deg)";
         }
-
-    }else{
-
+    }
+    else{
         contenuto.style.display = "block";
-
         if(freccia){
             freccia.textContent = "▲";
             freccia.style.transform = "rotate(0deg)";
         }
-
     }
+
 }
+
+/*
+========================================================
+AGGIORNA FORMULA TORNEO TABELLONE
+========================================================
+*/
 
 function aggiornaFormulaTorneoTabellone(){
 
-    const select =
-        document.getElementById("tipoTorneo");
+    const select = document.getElementById("tipoTorneo");
+    const box = document.getElementById("descrizioneTipoTorneo");
+    if(!select || !box) return;
 
-    const box =
-        document.getElementById("descrizioneTipoTorneo");
-
-    if(!select || !box){
-        return;
-    }
-
-    const tipo =
-        select.value;
-
+    const tipo = select.value;
     if(!tipo){
-
-        box.innerHTML =
-            "Seleziona una formula per visualizzare la descrizione.";
-
+        box.innerHTML = "Seleziona una formula per visualizzare la descrizione.";
         return;
     }
 
     const formule = {
 
         italiana: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Tutte le squadre partecipano alla stessa classifica.
-                </p>
-
-                <p>
-                    Ogni squadra affronta le altre secondo la formula scelta.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Tutte le squadre partecipano alla stessa classifica.</p>
+                <p>Ogni squadra affronta le altre secondo la formula scelta.</p>
             </div>
         `,
 
         gironiFinale: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-
-                <p>
-                    Le squadre vengono divise in gironi.
-                </p>
-
-                <p>
-                    Ogni squadra affronta le altre squadre
-                    del proprio girone.
-                </p>
-
-                <p>
-                    Le migliori classificate accedono alla fase finale
-                    ad eliminazione diretta.
-                </p>
-
-                <div class="descrizione-formula">
-
-                    <strong>
-                        Qualificazione
-                    </strong>
-
-                    <p>
-                        2 squadre qualificate per girone.
-                    </p>
-
-                </div>
-
-                <div class="descrizione-formula">
-
-                    <strong>
-                        Fase finale
-                    </strong>
-
-                    <p>
-                        Quarti → Semifinali → Finale
-                    </p>
-
-                </div>
-
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Le squadre vengono divise in gironi.</p>
+                <p>Ogni squadra affronta le altre squadre del proprio girone.</p>
+                <p>Le migliori classificate accedono alla fase finale ad eliminazione diretta.</p>
+                <div class="descrizione-formula"><strong>Qualificazione</strong><p>2 squadre qualificate per girone.</p></div>
+                <div class="descrizione-formula"><strong>Fase finale</strong><p>Quarti → Semifinali → Finale</p></div>
             </div>
         `,
 
         eliminazione: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Le squadre vengono inserite direttamente nel tabellone
-                    ad eliminazione diretta.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Le squadre vengono inserite direttamente nel tabellone ad eliminazione diretta.</p>
             </div>
         `,
 
         svizzero: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Le squadre vengono abbinate progressivamente
-                    in base ai risultati ottenuti.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Le squadre vengono abbinate progressivamente in base ai risultati ottenuti.</p>
             </div>
         `,
 
         americano: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Formula con rotazione dei compagni e degli avversari
-                    secondo il formato Americano.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Formula con rotazione dei compagni e degli avversari secondo il formato Americano.</p>
             </div>
         `,
 
         mexicano: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Gli abbinamenti vengono aggiornati in base ai risultati
-                    per creare incontri progressivamente equilibrati.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Gli abbinamenti vengono aggiornati in base ai risultati per creare incontri progressivamente equilibrati.</p>
             </div>
         `,
 
         king: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Le coppie avanzano o retrocedono sui campi in base
-                    ai risultati degli incontri.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Le coppie avanzano o retrocedono sui campi in base ai risultati degli incontri.</p>
             </div>
         `,
 
         short: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    Formula rapida con partite di durata ridotta.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>Formula rapida con partite di durata ridotta.</p>
             </div>
         `,
 
         manuale: `
-            <div
-                id="formulaTorneoToggle"
-                onclick="toggleFormulaTorneoTabellone()"
-                style="
-                    cursor:pointer;
-                    user-select:none;
-                "
-            >
-                <h4 style="margin:0;">
-                    Formula del torneo
-                    <span
-                        id="formulaTorneoArrow"
-                        style="
-                            float:right;
-                            font-size:16px;
-                        "
-                    >
-                        ▾
-                    </span>
-                </h4>
+            <div id="formulaTorneoToggle" onclick="toggleFormulaTorneoTabellone()" style="cursor:pointer;user-select:none;">
+                <h4 style="margin:0;">Formula del torneo <span id="formulaTorneoArrow" style="float:right;font-size:16px;">▾</span></h4>
             </div>
-
-            <div
-                id="formulaTorneoContent"
-                style="
-                    display:none;
-                    margin-top:10px;
-                    padding:12px;
-                    background:rgba(11,18,32,0.75);
-                    border:1px solid rgba(96,165,250,0.35);
-                    border-radius:8px;
-                    font-size:13px;
-                    line-height:1.5;
-                "
-            >
-                <p>
-                    L'organizzatore può configurare manualmente formula,
-                    qualificazioni, fase finale e criteri di classifica.
-                </p>
+            <div id="formulaTorneoContent" style="display:none;margin-top:10px;padding:12px;background:rgba(11,18,32,0.75);border:1px solid rgba(96,165,250,0.35);border-radius:8px;font-size:13px;line-height:1.5;">
+                <p>L'organizzatore può configurare manualmente formula, qualificazioni, fase finale e criteri di classifica.</p>
             </div>
         `
+
     };
 
-    box.innerHTML =
-        formule[tipo] ||
-        "Seleziona una formula per visualizzare la descrizione.";
+    box.innerHTML = formule[tipo] || "Seleziona una formula per visualizzare la descrizione.";
+
 }
+
+/*
+========================================================
+VERIFY ACCESS
+========================================================
+*/
+
 async function verifyAccess(){
 
-    const {
-        data:{session}
-    } =
-        await sb.auth.getSession();
+    const { data:{session} } = await sb.auth.getSession();
 
     if(!session){
-
-        console.warn(
-            "Nessun utente autenticato"
-        );
-
-        document.body.classList.add(
-            "visitatore"
-        );
-
+        console.warn("Nessun utente autenticato");
+        document.body.classList.add("visitatore");
         bloccaGestionale();
-
         return;
     }
 
-    const userId =
-        session.user.id;
+    const userId = session.user.id;
 
-    const {
-        data:profilo,
-        error
-    } =
-        await sb
-            .from("profili")
-            .select("nome, ruolo")
-            .eq("user_id", userId)
-            .single();
+    const { data:profilo, error } = await sb
+        .from("profili")
+        .select("nome, ruolo")
+        .eq("user_id", userId)
+        .single();
 
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
-    );
+    console.log("RISULTATO PROFILO:", profilo, error);
 
     if(error || !profilo){
-
-        console.warn(
-            "Profilo amministratore non trovato"
-        );
-
-        document.body.classList.add(
-            "visitatore"
-        );
-
+        console.warn("Profilo amministratore non trovato");
+        document.body.classList.add("visitatore");
         bloccaGestionale();
-
         return;
     }
 
     if(profilo.ruolo !== "admin"){
-
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-
-        document.body.classList.add(
-            "visitatore"
-        );
-
+        console.warn("Utente senza permessi admin:", profilo);
+        document.body.classList.add("visitatore");
         bloccaGestionale();
-
         return;
     }
 
-    document.body.classList.remove(
-        "visitatore"
-    );
+    document.body.classList.remove("visitatore");
+    console.log("ACCESSO ADMIN:", profilo.nome);
 
-    console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
-    );
 }
 
 /*
@@ -1171,26 +1271,15 @@ BLOCCO GESTIONALE
 
 function bloccaGestionale(){
 
-    const menu =
-        document.getElementById(
-            "adminHamburger"
-        );
+    const menu = document.getElementById("adminHamburger");
+    if(menu) menu.style.display = "none";
 
-    if(menu){
-        menu.style.display = "none";
-    }
+    document.querySelectorAll(".admin-only").forEach(el => {
+        el.style.display = "none";
+    });
 
-    document
-        .querySelectorAll(".admin-only")
-        .forEach(el => {
+    console.warn("Gestionale amministrativo nascosto: serve un amministratore");
 
-            el.style.display = "none";
-
-        });
-
-    console.warn(
-        "Gestionale amministrativo nascosto: serve un amministratore"
-    );
 }
 
 /*
@@ -1199,42 +1288,25 @@ APERTURA AUTOMATICA
 ========================================================
 */
 
-window.addEventListener(
-    "DOMContentLoaded",
-    () => {
+window.addEventListener("DOMContentLoaded", () => {
 
-        verifyAccess();
+    verifyAccess();
 
+    if(typeof aggiornaDescrizioneTipoTorneo === "function")
         aggiornaDescrizioneTipoTorneo();
 
-        document.addEventListener(
-            "click",
-            function(event){
+    document.addEventListener("click", function(event){
 
-                const menuContainer =
-                    document.getElementById(
-                        "adminHamburger"
-                    );
+        const menuContainer = document.getElementById("adminHamburger");
+        if(!menuContainer) return;
 
-                if(!menuContainer){
-                    return;
-                }
+        if(!menuContainer.contains(event.target)){
+            chiudiAdminMenu();
+        }
 
-                if(
-                    !menuContainer.contains(
-                        event.target
-                    )
-                ){
+    });
 
-                    chiudiAdminMenu();
-
-                }
-
-            }
-        );
-
-    }
-);
+});
 
 </script>
 
