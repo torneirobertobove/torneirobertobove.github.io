@@ -3202,13 +3202,8 @@ short:{
 };
 window.ensureRules = function ensureRules(){
 
-    /*
-    ========================================================
-    ASSICURA L'ESISTENZA DI state.rules
-    ========================================================
-    */
-
     if(
+        typeof state === "undefined" ||
         !state ||
         typeof state !== "object"
     ){
@@ -3216,7 +3211,6 @@ window.ensureRules = function ensureRules(){
         return;
 
     }
-
 
 
     if(
@@ -3230,20 +3224,13 @@ window.ensureRules = function ensureRules(){
     }
 
 
-
-    /*
-    ========================================================
-    VALORI DEFAULT DEL REGOLAMENTO
-    ========================================================
-    */
-
     const defaults = {
-
-        w: 3,
 
         d: 1,
 
         l: 0,
+
+        w: 3,
 
         crit1: "df",
 
@@ -3253,11 +3240,11 @@ window.ensureRules = function ensureRules(){
 
         start: "20:00",
 
-        duration: 30,
-
         locked: false,
 
         rigori: true,
+
+        duration: 30,
 
         usaFinale: true,
 
@@ -3294,15 +3281,6 @@ window.ensureRules = function ensureRules(){
     };
 
 
-
-    /*
-    ========================================================
-    INSERISCE SOLO I VALORI MANCANTI
-    NON SOVRASCRIVE IL REGOLAMENTO CARICATO
-    DA SUPABASE
-    ========================================================
-    */
-
     Object.keys(defaults).forEach(
         key => {
 
@@ -3321,13 +3299,6 @@ window.ensureRules = function ensureRules(){
     );
 
 
-
-    /*
-    ========================================================
-    SINCRONIZZAZIONE CON IL FORMATO DELLO STATE
-    ========================================================
-    */
-
     if(
         state.formato !== undefined &&
         state.formato !== null &&
@@ -3342,63 +3313,36 @@ window.ensureRules = function ensureRules(){
             formato > 0
         ){
 
-            /*
-            Il formato già presente nello state
-            ha priorità.
-            */
-
-            if(
-                state.rules.numeroSquadre === undefined ||
-                state.rules.numeroSquadre === null
-            ){
-
-                state.rules.numeroSquadre =
-                    formato;
-
-            }
+            state.rules.numeroSquadre =
+                formato;
 
         }
 
     }
 
-
-
-    /*
-    ========================================================
-    SE IL REGOLAMENTO INDICA IL NUMERO SQUADRE,
-    MANTENIAMO state.formato COERENTE
-    ========================================================
-    */
 
     if(
         state.rules.numeroSquadre !== undefined &&
         state.rules.numeroSquadre !== null
     ){
 
-        const numero =
+        const numeroSquadre =
             Number(
                 state.rules.numeroSquadre
             );
 
         if(
-            Number.isFinite(numero) &&
-            numero > 0
+            Number.isFinite(numeroSquadre) &&
+            numeroSquadre > 0
         ){
 
             state.formato =
-                numero;
+                numeroSquadre;
 
         }
 
     }
 
-
-
-    /*
-    ========================================================
-    NORMALIZZAZIONE NUMERICA
-    ========================================================
-    */
 
     state.rules.w =
         Number(state.rules.w);
@@ -3410,7 +3354,6 @@ window.ensureRules = function ensureRules(){
         state.rules.w = 3;
 
     }
-
 
 
     state.rules.d =
@@ -3425,7 +3368,6 @@ window.ensureRules = function ensureRules(){
     }
 
 
-
     state.rules.l =
         Number(state.rules.l);
 
@@ -3436,7 +3378,6 @@ window.ensureRules = function ensureRules(){
         state.rules.l = 0;
 
     }
-
 
 
     state.rules.duration =
@@ -3450,7 +3391,6 @@ window.ensureRules = function ensureRules(){
         state.rules.duration = 30;
 
     }
-
 
 
     state.rules.numeroSquadre =
@@ -3470,7 +3410,6 @@ window.ensureRules = function ensureRules(){
     }
 
 
-
     state.rules.numeroGironi =
         Number(
             state.rules.numeroGironi
@@ -3486,7 +3425,6 @@ window.ensureRules = function ensureRules(){
         state.rules.numeroGironi = 2;
 
     }
-
 
 
     state.rules.squadrePerGirone =
@@ -3506,7 +3444,6 @@ window.ensureRules = function ensureRules(){
     }
 
 
-
     state.rules.qualificatePerGirone =
         Number(
             state.rules.qualificatePerGirone
@@ -3522,7 +3459,6 @@ window.ensureRules = function ensureRules(){
         state.rules.qualificatePerGirone = 2;
 
     }
-
 
 
     state.rules.numeroQualificateFinali =
@@ -3541,13 +3477,6 @@ window.ensureRules = function ensureRules(){
 
     }
 
-
-
-    /*
-    ========================================================
-    NORMALIZZAZIONE BOOLEANI
-    ========================================================
-    */
 
     const booleani = [
 
@@ -3572,7 +3501,6 @@ window.ensureRules = function ensureRules(){
     ];
 
 
-
     booleani.forEach(
         key => {
 
@@ -3591,13 +3519,6 @@ window.ensureRules = function ensureRules(){
     );
 
 
-
-    /*
-    ========================================================
-    COERENZA QUALIFICAZIONI
-    ========================================================
-    */
-
     if(
         state.rules.qualificatePerGirone >
         state.rules.squadrePerGirone
@@ -3609,17 +3530,9 @@ window.ensureRules = function ensureRules(){
     }
 
 
-
-    /*
-    ========================================================
-    COERENZA NUMERO QUALIFICATE FINALI
-    ========================================================
-    */
-
     const massimoFinali =
         state.rules.numeroGironi *
         state.rules.qualificatePerGirone;
-
 
 
     if(
@@ -3633,29 +3546,7 @@ window.ensureRules = function ensureRules(){
 
     }
 
-
-
-    /*
-    ========================================================
-    NON TOCCARE MAI:
-    
-    state.A
-    state.B
-    state.C
-    state.D
-    state.E
-    state.F
-    state.coppie
-    state.partecipanti
-    state.quarti
-    state.semiTop
-    state.finalTop
-    
-    ensureRules DEVE SOLO ASSICURARE IL REGOLAMENTO.
-    ========================================================
-    */
-
-}
+};
     function closeRules(){
 
     let modal =
