@@ -11397,218 +11397,256 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 }
 function getFinalQualified(){
 
-    ensureRules();
+   ensureRules();
 
 
-    let qualificate=[];
+let qualificate=[];
 
 
 
-    [
-        "A",
-        "B",
-        "C",
-        "D"
+[
+    "A",
+    "B",
+    "C",
+    "D"
 
-    ].forEach(tag=>{
+].forEach(tag=>{
 
 
-        let squadre =
-            state[tag];
+    let squadre =
+        state[tag];
 
 
-        if(
-            !Array.isArray(squadre) ||
-            squadre.length===0
-        )
+    if(
+        !Array.isArray(squadre) ||
+        squadre.length===0
+    )
 
-            return;
+        return;
 
 
 
 
-        let classifica =
+    let risultati =
+        Array.isArray(state[tag+"res"])
+            ? state[tag+"res"]
+            : [];
 
-            calc(
 
-                squadre,
 
-                state[tag+"res"]
 
-            );
+    let classifica =
 
+        calc(
 
+            squadre,
 
-        if(
-            !Array.isArray(classifica) ||
-            classifica.length===0
-        )
+            risultati
 
-            return;
-
-
-
-
-        let q =
-
-            Number(
-                state.rules.qualificatePerGirone
-            );
-
-
-
-        if(
-            isNaN(q) ||
-            q<1
-        )
-
-            q=1;
-
-
-
-
-        /*
-        ============================
-        GESTIONE QUARTI
-        ============================
-
-        Se ci sono quarti e il girone
-        contiene 4 squadre, passano
-        tutte alla fase finale.
-
-        Esempio:
-        2 gironi x 4 squadre = 8
-        ============================
-        */
-
-
-        if(
-            state.rules.usaQuarti===true &&
-            squadre.length===4
-        ){
-
-            q=4;
-
-        }
-
-
-
-
-        classifica.forEach((x,i)=>{
-
-
-            if(
-                i<q
-            ){
-
-
-                qualificate.push({
-
-                    nome:x.n,
-
-                    pt:x.pt,
-
-                    gf:x.gf,
-
-                    gs:x.gs,
-
-                    df:x.df,
-
-                    girone:tag,
-
-                    posizione:i+1
-
-                });
-
-
-            }
-
-
-        });
-
-
-
-    });
-
-
-
-
-
-
-
-    /*
-    ============================
-    NUMERO QUALIFICATE FINALI
-    ============================
-    */
-
-
-    let limite =
-
-        Number(
-            state.rules.numeroQualificateFinali
         );
 
 
 
+    if(
+        !Array.isArray(classifica) ||
+        classifica.length===0
+    )
+
+        return;
+
+
+
+
+    let q =
+
+        Number(
+            state.rules.qualificatePerGirone
+        );
+
+
+
+    if(
+        !Number.isFinite(q) ||
+        q<1
+    )
+
+        q=1;
+
 
 
 
     /*
     ============================
-    QUARTI DI FINALE
+    GESTIONE QUARTI
     ============================
 
-    Servono 8 squadre solo se
-    realmente disponibili.
+    Se ci sono quarti e il girone
+    contiene 4 squadre, tutte le
+    squadre del girone sono
+    disponibili per la fase finale.
+
+    Esempio:
+
+    2 gironi x 4 squadre = 8
     ============================
     */
 
 
     if(
         state.rules.usaQuarti===true &&
-        qualificate.length>=8
+        squadre.length===4
     ){
 
-        limite=8;
+        q=4;
 
     }
 
 
 
 
+    /*
+    ============================
+    PROTEZIONE LIMITE CLASSIFICA
+    ============================
+    */
 
 
-    if(
-        !limite ||
-        limite<1
-    )
-
-        limite =
-            qualificate.length;
-
-
-
-
-
-    return qualificate
-
-        .slice(
-
-            0,
-
-            limite
-
-        )
-
-        .map(
-
-            x=>
-
-            x.nome
-
+    q =
+        Math.min(
+            q,
+            classifica.length
         );
 
+
+
+
+    classifica.forEach((x,i)=>{
+
+
+        if(
+            i<q
+        ){
+
+
+            qualificate.push({
+
+                nome:x.n,
+
+                pt:x.pt,
+
+                gf:x.gf,
+
+                gs:x.gs,
+
+                df:x.df,
+
+                girone:tag,
+
+                posizione:i+1
+
+            });
+
+
+        }
+
+
+    });
+
+
+
+});
+
+
+
+
+
+
+
+/*
+============================
+NUMERO QUALIFICATE FINALI
+============================
+*/
+
+
+let limite =
+
+    Number(
+        state.rules.numeroQualificateFinali
+    );
+
+
+
+
+
+
+/*
+============================
+QUARTI DI FINALE
+============================
+
+Con i quarti servono 8 squadre,
+ma solo se sono realmente
+disponibili.
+============================
+*/
+
+
+if(
+    state.rules.usaQuarti===true &&
+    qualificate.length>=8
+){
+
+    limite=8;
+
+}
+
+
+
+
+
+
+if(
+    !Number.isFinite(limite) ||
+    limite<1
+)
+
+    limite =
+        qualificate.length;
+
+
+
+
+
+
+limite =
+    Math.min(
+        limite,
+        qualificate.length
+    );
+
+
+
+
+
+
+return qualificate
+
+    .slice(
+
+        0,
+
+        limite
+
+    )
+
+    .map(
+
+        x=>
+
+        x.nome
+
+    );
 
 }
 function renderKO(){
