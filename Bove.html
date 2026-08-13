@@ -5886,23 +5886,43 @@ async function loadState(){
         const idParam =
             new URLSearchParams(
                 window.location.search
-            )
-            .get("idTorneo");
+            ).get("idTorneo");
 
 
         /*
-        ============================
-        TORNEO DA ADMIN SUPABASE
-        ============================
+        ============================================================
+        TORNEO APERTO DA ADMIN
+        ============================================================
         */
 
         if(idParam){
 
+            const idTorneo =
+                Number(idParam);
+
+
+            if(
+                !Number.isFinite(idTorneo)
+            ){
+
+                console.error(
+                    "ID torneo non valido:",
+                    idParam
+                );
+
+                return;
+
+            }
+
+
             /*
-            ============================
-            PULIZIA AUTOMATICA NUOVO TORNEO
-            NON PRENDE RESIDUI LOCALI
-            ============================
+            ========================================================
+            IMPORTANTE
+
+            Se stiamo aprendo un torneo da Supabase NON dobbiamo
+            utilizzare residui di localStorage appartenenti ad
+            altri tornei.
+            ========================================================
             */
 
             localStorage.removeItem(
@@ -5914,16 +5934,25 @@ async function loadState(){
             );
 
 
+            /*
+            ========================================================
+            CARICAMENTO TORNEO
+            ========================================================
+            */
+
             try{
 
-                const {data:torneo,error} =
+                const {
+                    data:torneo,
+                    error
+                } =
 
                     await sb
                     .from("tornei")
                     .select("*")
                     .eq(
                         "id",
-                        Number(idParam)
+                        idTorneo
                     )
                     .single();
 
@@ -5931,404 +5960,436 @@ async function loadState(){
                 if(error){
 
                     console.error(
-                        "Errore caricamento torneo:",
+                        "Errore caricamento torneo Supabase:",
                         error
+                    );
+
+                    return;
+
+                }
+
+
+                if(!torneo){
+
+                    console.error(
+                        "Torneo non trovato:",
+                        idTorneo
+                    );
+
+                    return;
+
+                }
+
+
+                console.log(
+                    "TORNEO SUPABASE CARICATO:",
+                    torneo
+                );
+
+
+                const configurazione =
+                    torneo.configurazione
+                    &&
+                    typeof torneo.configurazione==="object"
+
+                    ?
+
+                    torneo.configurazione
+
+                    :
+
+                    {};
+
+
+                console.log(
+                    "CONFIGURAZIONE TORNEO:",
+                    configurazione
+                );
+
+
+                /*
+                ====================================================
+                CARICAMENTO STATO PRINCIPALE
+                ====================================================
+                */
+
+                state = {
+
+                    ...state,
+
+                    ...configurazione,
+
+                    idTorneo:
+                        torneo.id,
+
+                    nomeTorneo:
+                        torneo.nome || "",
+
+                    dataTorneo:
+                        torneo.data || "",
+
+                    formato:
+                        torneo.posti || 8,
+
+                    rules:
+
+                        configurazione.rules
+                        ||
+                        torneo.rules
+                        ||
+                        {},
+
+                    partecipanti:
+                        Array.isArray(
+                            configurazione.partecipanti
+                        )
+
+                        ?
+
+                        configurazione.partecipanti
+
+                        :
+
+                        [],
+
+                    coppie:
+                        Array.isArray(
+                            configurazione.coppie
+                        )
+
+                        ?
+
+                        configurazione.coppie
+
+                        :
+
+                        []
+
+                };
+
+
+                /*
+                ====================================================
+                GARANZIA ARRAY GIRONI
+                ====================================================
+                */
+
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+
+                ].forEach(g=>{
+
+                    if(
+                        !Array.isArray(
+                            state[g]
+                        )
+                    ){
+
+                        state[g]=[];
+
+                    }
+
+                });
+
+
+                /*
+                ====================================================
+                CARICAMENTO GIRONI SALVATI
+                ====================================================
+                */
+
+                if(
+                    configurazione.gironi
+                    &&
+                    typeof configurazione.gironi==="object"
+                ){
+
+                    const gironi =
+                        configurazione.gironi;
+
+
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F"
+
+                    ].forEach(g=>{
+
+                        if(
+                            Array.isArray(
+                                gironi[g]
+                            )
+                        ){
+
+                            state[g] =
+                                gironi[g];
+
+                        }
+
+                    });
+
+
+                    console.log(
+                        "GIRONI CARICATI DA SUPABASE:",
+                        {
+                            A:state.A,
+                            B:state.B,
+                            C:state.C,
+                            D:state.D,
+                            E:state.E,
+                            F:state.F
+                        }
                     );
 
                 }
 
 
-                if(torneo){
+                /*
+                ====================================================
+                CARICAMENTO ISCRITTI REALI
 
-                    console.log(
-                        "TORNEO SUPABASE CARICATO:",
-                        torneo
+                GLI ISCRITTI NON SONO DENTRO
+                tornei.configurazione.partecipanti.
+
+                Sono nella tabella:
+
+                    iscrizioni
+
+                collegata tramite:
+
+                    iscrizioni.torneo_id
+                ====================================================
+                */
+
+                const {
+                    data:iscrizioni,
+                    error:errorIscrizioni
+                } =
+
+                    await sb
+                    .from("iscrizioni")
+                    .select("*")
+                    .eq(
+                        "torneo_id",
+                        idTorneo
                     );
 
 
-                    const configurazione =
-                        torneo.configurazione
-                        ||
-                        {};
+                if(errorIscrizioni){
 
-
-                    console.log(
-                        "CONFIGURAZIONE TORNEO:",
-                        configurazione
+                    console.error(
+                        "Errore caricamento iscrizioni:",
+                        errorIscrizioni
                     );
+
+                }
+                else{
 
 
                     /*
-                    ============================
-                    STATO PRINCIPALE
-                    ============================
+                    =================================================
+                    SE SUPABASE HA RESTITUITO GLI ISCRITTI,
+                    USIAMO QUELLI REALI.
+                    =================================================
                     */
 
-                    state = {
+                    if(
+                        Array.isArray(iscrizioni)
+                    ){
 
-                        ...state,
+                        state.partecipanti =
+                            iscrizioni;
 
-                        idTorneo:
-                            torneo.id,
-
-                        nomeTorneo:
-                            torneo.nome || "",
-
-                        dataTorneo:
-                            torneo.data || "",
-
-                        formato:
-                            torneo.posti || 8,
-
-                        rules:
-                            configurazione.rules
-                            ||
-                            torneo.rules
-                            ||
-                            {},
-
-                        partecipanti:
-                            Array.isArray(
-                                configurazione.partecipanti
-                            )
-                            ?
-                            configurazione.partecipanti
-                            :
-                            [],
-
-                        coppie:
-                            Array.isArray(
-                                configurazione.coppie
-                            )
-                            ?
-                            configurazione.coppie
-                            :
-                            []
-
-                    };
+                    }
 
 
                     console.log(
-                        "PARTECIPANTI CARICATI:",
+                        "ISCRITTI REALI CARICATI:",
                         state.partecipanti
                     );
 
                     console.log(
-                        "COPPIE CARICATE:",
-                        state.coppie
+                        "NUMERO ISCRITTI:",
+                        state.partecipanti.length
                     );
 
-
-                    /*
-                    ============================
-                    CARICAMENTO GIRONI SALVATI
-                    ============================
-                    */
-
-                    if(
-                        configurazione.gironi
-                        &&
-                        typeof configurazione.gironi ===
-                        "object"
-                    ){
-
-                        const gironi =
-                            configurazione.gironi;
+                }
 
 
-                        [
-                            "A",
-                            "B",
-                            "C",
-                            "D",
-                            "E",
-                            "F"
+                /*
+                ====================================================
+                COPPIE
 
-                        ].forEach(g=>{
+                NON CREIAMO COPPIE AUTOMATICAMENTE.
 
-                            if(
-                                Array.isArray(
-                                    gironi[g]
-                                )
-                            ){
+                Se l'admin le ha già salvate dentro
+                configurazione.coppie le manteniamo.
 
-                                state[g] =
-                                    gironi[g];
+                Se non esistono, rimangono [].
+                ====================================================
+                */
 
-                            }
+                if(
+                    !Array.isArray(
+                        state.coppie
+                    )
+                ){
 
-                        });
+                    state.coppie=[];
 
-
-                        console.log(
-                            "GIRONI CARICATI DA SUPABASE:",
-                            {
-                                A:state.A,
-                                B:state.B,
-                                C:state.C,
-                                D:state.D,
-                                E:state.E,
-                                F:state.F
-                            }
-                        );
-
-                    }
+                }
 
 
-                    /*
-                    ============================
-                    CARICAMENTO COPPIE
-                    SE I GIRONI NON ESISTONO
-                    ============================
-                    */
-
-                    if(
-                        state.A.length===0
-                        &&
-                        state.B.length===0
-                        &&
-                        Array.isArray(state.coppie)
-                        &&
-                        state.coppie.length>0
-                    ){
-
-                        const squadre = [];
+                console.log(
+                    "COPPIE CARICATE:",
+                    state.coppie
+                );
 
 
-                        state.coppie.forEach(c=>{
+                /*
+                ====================================================
+                SE ESISTONO COPPIE SALVATE MA NON ESISTONO GIRONI,
+                RICOSTRUZIONE GIRONI
 
-                            if(!c){
-                                return;
-                            }
+                Manteniamo la logica precedente.
+                ====================================================
+                */
 
+                if(
 
-                            let g1 =
-                                c.g1
-                                ??
-                                c.giocatore1
-                                ??
-                                c.player1
-                                ??
-                                c.cognome1
-                                ??
-                                "";
+                    state.A.length===0
 
-                            let g2 =
-                                c.g2
-                                ??
-                                c.giocatore2
-                                ??
-                                c.player2
-                                ??
-                                c.cognome2
-                                ??
-                                "";
+                    &&
+
+                    state.B.length===0
+
+                    &&
+
+                    state.coppie.length>0
+
+                ){
+
+                    const squadre=[];
 
 
-                            g1 =
-                                String(g1).trim();
+                    state.coppie.forEach(c=>{
 
-                            g2 =
-                                String(g2).trim();
+                        if(!c)
+                            return;
 
 
-                            if(
-                                g1
-                                &&
-                                g2
-                            ){
+                        /*
+                        Supportiamo entrambe le forme:
+                            g1 / g2
+                        oppure
+                            giocatore1 / giocatore2
+                        */
 
-                                squadre.push(
-                                    g1 +
-                                    "/" +
-                                    g2
-                                );
+                        const g1 =
+                            c.g1
+                            ??
+                            c.giocatore1
+                            ??
+                            c.player1
+                            ??
+                            "";
 
-                            }
-
-                        });
+                        const g2 =
+                            c.g2
+                            ??
+                            c.giocatore2
+                            ??
+                            c.player2
+                            ??
+                            "";
 
 
                         if(
-                            squadre.length>0
+                            String(g1).trim()!==""
+                            &&
+                            String(g2).trim()!==""
                         ){
 
-                            const meta =
-                                Math.ceil(
-                                    squadre.length / 2
-                                );
-
-
-                            state.A =
-                                squadre.slice(
-                                    0,
-                                    meta
-                                );
-
-
-                            state.B =
-                                squadre.slice(
-                                    meta
-                                );
-
-
-                            console.log(
-                                "GIRONI GENERATI DALLE COPPIE:",
-                                {
-                                    A:state.A,
-                                    B:state.B
-                                }
+                            squadre.push(
+                                String(g1).trim()
+                                +
+                                "/"
+                                +
+                                String(g2).trim()
                             );
 
                         }
 
-                    }
+                    });
 
-
-                    /*
-                    ============================
-                    RECUPERO DA PARTECIPANTI
-                    SE NON ESISTONO COPPIE/GIRONI
-                    ============================
-                    */
 
                     if(
-                        state.A.length===0
-                        &&
-                        state.B.length===0
-                        &&
-                        Array.isArray(
-                            state.partecipanti
-                        )
-                        &&
-                        state.partecipanti.length>0
+                        squadre.length>0
                     ){
 
-                        console.log(
-                            "COPPIE/GIRONI ASSENTI."
-                            +
-                            " PARTECIPANTI PRESENTI:",
-                            state.partecipanti
-                        );
-
-
-                        const squadre = [];
-
-
-                        state.partecipanti.forEach(p=>{
-
-                            if(!p){
-                                return;
-                            }
-
-
-                            /*
-                            ============================
-                            SUPPORTO VARI NOMI CAMPO
-                            ============================
-                            */
-
-                            let g1 =
-                                p.g1
-                                ??
-                                p.giocatore1
-                                ??
-                                p.player1
-                                ??
-                                p.cognome1
-                                ??
-                                p.cognomeGiocatore1
-                                ??
-                                "";
-
-                            let g2 =
-                                p.g2
-                                ??
-                                p.giocatore2
-                                ??
-                                p.player2
-                                ??
-                                p.cognome2
-                                ??
-                                p.cognomeGiocatore2
-                                ??
-                                "";
-
-
-                            g1 =
-                                String(g1).trim();
-
-                            g2 =
-                                String(g2).trim();
-
-
-                            if(
-                                g1
-                                &&
-                                g2
-                            ){
-
-                                squadre.push(
-                                    g1 +
-                                    "/" +
-                                    g2
-                                );
-
-                            }
-
-                        });
-
-
-                        if(
-                            squadre.length>0
-                        ){
-
-                            const meta =
-                                Math.ceil(
-                                    squadre.length / 2
-                                );
-
-
-                            state.A =
-                                squadre.slice(
-                                    0,
-                                    meta
-                                );
-
-
-                            state.B =
-                                squadre.slice(
-                                    meta
-                                );
-
-
-                            console.log(
-                                "GIRONI GENERATI DAI PARTECIPANTI:",
-                                {
-                                    A:state.A,
-                                    B:state.B
-                                }
+                        const meta =
+                            Math.ceil(
+                                squadre.length / 2
                             );
 
-                        }
-                        else{
 
-                            console.warn(
-                                "I partecipanti sono presenti,"
-                                +
-                                " ma non è stato possibile"
-                                +
-                                " ricavare le coppie.",
-                                state.partecipanti
+                        state.A =
+                            squadre.slice(
+                                0,
+                                meta
                             );
 
-                        }
+
+                        state.B =
+                            squadre.slice(
+                                meta
+                            );
 
                     }
 
                 }
 
+
+                /*
+                ====================================================
+                LOG FINALE CARICAMENTO
+                ====================================================
+                */
+
+                console.log(
+                    "STATO TORNEO COMPLETO CARICATO:",
+                    {
+                        idTorneo:
+                            state.idTorneo,
+
+                        nomeTorneo:
+                            state.nomeTorneo,
+
+                        partecipanti:
+                            state.partecipanti,
+
+                        coppie:
+                            state.coppie,
+
+                        A:
+                            state.A,
+
+                        B:
+                            state.B
+                    }
+                );
+
             }
+
+
             catch(e){
 
                 console.error(
@@ -6339,13 +6400,15 @@ async function loadState(){
             }
 
         }
-        else{
 
-            /*
-            ============================
-            CARICAMENTO LOCALE
-            ============================
-            */
+
+        /*
+        ============================================================
+        TORNEO LOCALE
+        ============================================================
+        */
+
+        else{
 
             let locale =
                 localStorage.getItem(
@@ -6357,28 +6420,19 @@ async function loadState(){
 
                 try{
 
-                    let salvato =
+                    const salvato =
                         JSON.parse(
                             locale
                         );
 
 
                     if(
-                        Array.isArray(
-                            salvato.A
-                        )
+                        salvato
                         &&
-                        salvato.A.length>0
-                        &&
-                        Array.isArray(
-                            salvato.B
-                        )
-                        &&
-                        salvato.B.length>0
+                        typeof salvato==="object"
                     ){
 
-                        state =
-                        {
+                        state = {
 
                             ...state,
 
@@ -6388,14 +6442,14 @@ async function loadState(){
 
 
                         console.log(
-                            "Stato locale caricato",
-                            state.A,
-                            state.B
+                            "Stato locale caricato:",
+                            state
                         );
 
                     }
 
                 }
+
                 catch(e){
 
                     console.warn(
@@ -6407,75 +6461,77 @@ async function loadState(){
 
             }
 
-        }
+
+            /*
+            ========================================================
+            RECUPERO SQUADRE LOCALI
+            ========================================================
+            */
+
+            if(
+
+                state.A.length===0
+
+                &&
+
+                state.B.length===0
+
+            ){
+
+                const savedTeams =
+                    localStorage.getItem(
+                        "savedTeams"
+                    );
 
 
-        /*
-        ============================
-        RECUPERO SQUADRE
-        SOLO TORNEO LOCALE
-        ============================
-        */
+                if(savedTeams){
 
-        if(
-            !idParam
-            &&
-            state.A.length===0
-            &&
-            state.B.length===0
-        ){
+                    try{
 
-            let savedTeams =
-                localStorage.getItem(
-                    "savedTeams"
-                );
-
-
-            if(savedTeams){
-
-                try{
-
-                    let teams =
-                        JSON.parse(
-                            savedTeams
-                        );
-
-
-                    if(
-                        Array.isArray(teams)
-                        &&
-                        teams.length>=8
-                    ){
-
-                        state.A =
-                            teams.slice(
-                                0,
-                                4
+                        const teams =
+                            JSON.parse(
+                                savedTeams
                             );
 
 
-                        state.B =
-                            teams.slice(
-                                4,
-                                8
+                        if(
+                            Array.isArray(teams)
+                            &&
+                            teams.length>=8
+                        ){
+
+                            state.A =
+                                teams.slice(
+                                    0,
+                                    4
+                                );
+
+
+                            state.B =
+                                teams.slice(
+                                    4,
+                                    8
+                                );
+
+
+                            console.log(
+                                "Squadre recuperate da savedTeams:",
+                                state.A,
+                                state.B
                             );
 
-
-                        console.log(
-                            "Squadre recuperate da savedTeams",
-                            state.A,
-                            state.B
-                        );
+                        }
 
                     }
 
-                }
-                catch(e){
+                    catch(e){
 
-                    console.warn(
-                        "Errore recupero squadre",
-                        e
-                    );
+                        console.warn(
+                            "Errore recupero squadre:",
+                            e
+                        );
+
+                    }
 
                 }
 
@@ -6484,6 +6540,8 @@ async function loadState(){
         }
 
     }
+
+
     catch(e){
 
         console.error(
@@ -6495,9 +6553,9 @@ async function loadState(){
 
 
     /*
-    ============================
-    GARANZIA ARRAY
-    ============================
+    ================================================================
+    GARANZIA ARRAY PRINCIPALI
+    ================================================================
     */
 
     [
@@ -6523,9 +6581,15 @@ async function loadState(){
     });
 
 
+    /*
+    ================================================================
+    NUMERO PARTITE DI UN GIRONE
+    ================================================================
+    */
+
     function numeroPartite(girone){
 
-        let n =
+        const n =
             Array.isArray(girone)
             ?
             girone.length
@@ -6560,6 +6624,12 @@ async function loadState(){
     }
 
 
+    /*
+    ================================================================
+    SISTEMA ARRAY PARTITE
+    ================================================================
+    */
+
     function sistema(nome,len,val){
 
         if(
@@ -6588,7 +6658,7 @@ async function loadState(){
             state[nome].length>len
         ){
 
-            state[nome] =
+            state[nome]=
                 state[nome].slice(
                     0,
                     len
@@ -6598,6 +6668,12 @@ async function loadState(){
 
     }
 
+
+    /*
+    ================================================================
+    INIZIALIZZAZIONE PARTITE GIRONI
+    ================================================================
+    */
 
     [
         "A",
@@ -6609,7 +6685,7 @@ async function loadState(){
 
     ].forEach(g=>{
 
-        let totale =
+        const totale =
             numeroPartite(
                 state[g]
             );
@@ -6639,9 +6715,9 @@ async function loadState(){
 
 
     /*
-    ============================
+    ================================================================
     FASI FINALI
-    ============================
+    ================================================================
     */
 
     if(
@@ -6702,55 +6778,52 @@ async function loadState(){
 
 
     /*
-    ============================
-    SALVATAGGIO SICURO
-    MAI SALVARE UNO STATO VUOTO
-    ============================
+    ================================================================
+    IMPORTANTISSIMO
+
+    SE IL TORNEO ARRIVA DA SUPABASE CON idTorneo,
+    NON SALVIAMO IMMEDIATAMENTE LO STATO LOCALE.
+
+    Altrimenti un caricamento incompleto potrebbe trasformarsi
+    in un nuovo stato locale vuoto.
+    ================================================================
     */
 
-    if(
-        state.A.length>0
-        &&
-        state.B.length>0
-    ){
+    if(!idParam){
 
-        localStorage.setItem(
-            "torneoState",
-            JSON.stringify(
-                state
-            )
-        );
+        if(
 
+            state.A.length>0
 
-        console.log(
-            "Stato torneo salvato:",
-            {
-                A:state.A,
-                B:state.B
-            }
-        );
+            &&
 
-    }
-    else{
+            state.B.length>0
 
-        console.warn(
-            "Salvataggio bloccato: gironi vuoti",
-            {
-                idTorneo:state.idTorneo,
-                partecipanti:state.partecipanti,
-                coppie:state.coppie,
-                A:state.A,
-                B:state.B
-            }
-        );
+        ){
+
+            localStorage.setItem(
+                "torneoState",
+                JSON.stringify(
+                    state
+                )
+            );
+
+        }
+        else{
+
+            console.warn(
+                "Salvataggio locale bloccato: gironi vuoti"
+            );
+
+        }
 
     }
 
 
     /*
-    ============================
+    ================================================================
     RENDER
-    ============================
+    ================================================================
     */
 
     if(
@@ -6762,6 +6835,7 @@ async function loadState(){
             render();
 
         }
+
         catch(err){
 
             console.error(
