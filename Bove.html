@@ -6826,6 +6826,13 @@ async function updateAndSync(){
 
 
 
+        /*
+            ========================================
+            PROTEZIONE LOCALSTORAGE
+            ========================================
+        */
+
+
         if(precedente){
 
 
@@ -6888,6 +6895,165 @@ async function updateAndSync(){
 
 
 
+        /*
+            ========================================
+            PROTEZIONE SUPABASE
+            ========================================
+            Se il torneo esiste già e contiene
+            squadre, NON permettere che uno state
+            vuoto le sovrascriva.
+        */
+
+
+        if(
+
+            typeof sb!=="undefined" &&
+
+            state.idTorneo
+
+        ){
+
+
+            try{
+
+
+                const {
+                    data:torneoEsistente,
+                    error:erroreEsistente
+                } =
+
+                    await sb
+                    .from("tornei")
+                    .select(
+                        "id, configurazione"
+                    )
+                    .eq(
+                        "id",
+                        Number(state.idTorneo)
+                    )
+                    .maybeSingle();
+
+
+
+                if(
+                    !erroreEsistente &&
+                    torneoEsistente
+                ){
+
+
+                    const configurazioneEsistente =
+
+                        torneoEsistente.configurazione
+                        ||
+                        {};
+
+
+
+                    const vecchioA =
+
+                        Array.isArray(
+                            configurazioneEsistente.A
+                        )
+                        ?
+                        configurazioneEsistente.A
+                        :
+                        [];
+
+
+
+                    const vecchioB =
+
+                        Array.isArray(
+                            configurazioneEsistente.B
+                        )
+                        ?
+                        configurazioneEsistente.B
+                        :
+                        [];
+
+
+
+                    const nuovoA =
+
+                        Array.isArray(state.A)
+                        ?
+                        state.A
+                        :
+                        [];
+
+
+
+                    const nuovoB =
+
+                        Array.isArray(state.B)
+                        ?
+                        state.B
+                        :
+                        [];
+
+
+
+                    const vecchioCompletoSupabase =
+
+                        vecchioA.length>0 &&
+                        vecchioB.length>0;
+
+
+
+                    const nuovoVuotoSupabase =
+
+                        nuovoA.length===0 ||
+                        nuovoB.length===0;
+
+
+
+                    if(
+
+                        vecchioCompletoSupabase &&
+                        nuovoVuotoSupabase
+
+                    ){
+
+                        statoDaSalvare=false;
+
+
+
+                        console.warn(
+
+                            "Salvataggio Supabase bloccato: " +
+                            "evitata perdita delle squadre " +
+                            "già presenti nel torneo.",
+
+                            {
+                                vecchioA: vecchioA,
+                                vecchioB: vecchioB,
+                                nuovoA: nuovoA,
+                                nuovoB: nuovoB
+                            }
+
+                        );
+
+                    }
+
+
+                }
+
+
+            }
+
+            catch(e){
+
+                console.warn(
+
+                    "Errore controllo stato Supabase precedente",
+                    e
+
+                );
+
+            }
+
+
+        }
 
 
 
@@ -6909,9 +7075,6 @@ async function updateAndSync(){
 
 
         }
-
-
-
 
 
 
@@ -6951,10 +7114,6 @@ async function updateAndSync(){
 
 
         }
-
-
-
-
 
 
 
@@ -7045,496 +7204,6 @@ async function updateAndSync(){
     }
 
 }
-async function loadState(){
-
-    try{
-
-        const idParam =
-            new URLSearchParams(
-                window.location.search
-            )
-            .get("idTorneo");
-
-
-        /*
-        ============================
-        TORNEO DA ADMIN SUPABASE
-        ============================
-        */
-
-        if(idParam){
-
-
-            /*
-            ============================
-            PULIZIA AUTOMATICA NUOVO TORNEO
-            NON PRENDE MAI RESIDUI
-            ============================
-            */
-
-            localStorage.removeItem(
-                "torneoState"
-            );
-
-            localStorage.removeItem(
-                "savedTeams"
-            );
-
-
-            try{
-
-
-                const {data:torneo,error}=
-
-                    await sb
-                    .from("tornei")
-                    .select("*")
-                    .eq(
-                        "id",
-                        Number(idParam)
-                    )
-                    .single();
-
-
-
-                if(error){
-
-                    console.error(
-                        "Errore caricamento torneo:",
-                        error
-                    );
-
-                }
-
-
-
-                if(torneo){
-
-
-                    state = {
-
-                        ...state,
-
-                        idTorneo:
-                            torneo.id,
-
-                        nomeTorneo:
-                            torneo.nome || "",
-
-                        dataTorneo:
-                            torneo.data || "",
-
-                        formato:
-                            torneo.posti || 8,
-
-
-                        rules:
-                            torneo.configurazione?.rules
-                            ||
-                            {},
-
-
-                        partecipanti:
-                            torneo.configurazione?.partecipanti
-                            ||
-                            [],
-
-
-                        coppie:
-                            torneo.configurazione?.coppie
-                            ||
-                            []
-
-                    };
-
-
-                    /*
-                    ============================
-                    CARICAMENTO COPPIE
-                    ============================
-                    */
-
-
-                    if(
-                        Array.isArray(
-                            state.coppie
-                        )
-                        &&
-                        state.coppie.length>0
-                    ){
-
-
-                        const squadre =
-
-                            state.coppie.map(
-
-                                c =>
-
-                                c.g1
-                                +
-                                "/"
-                                +
-                                c.g2
-
-                            );
-
-
-
-                        const meta =
-
-                            Math.ceil(
-                                squadre.length / 2
-                            );
-
-
-
-                        state.A =
-
-                            squadre.slice(
-                                0,
-                                meta
-                            );
-
-
-
-                        state.B =
-
-                            squadre.slice(
-                                meta
-                            );
-
-
-                    }
-
-
-
-                    /*
-                    ============================
-                    SE ESISTONO GIRONI SALVATI
-                    ============================
-                    */
-
-
-                    if(
-                        torneo.configurazione?.gironi
-                    ){
-
-
-                        const gironi =
-
-                            torneo.configurazione.gironi;
-
-
-
-                        [
-                            "A",
-                            "B",
-                            "C",
-                            "D",
-                            "E",
-                            "F"
-
-                        ].forEach(g=>{
-
-
-                            if(
-                                Array.isArray(
-                                    gironi[g]
-                                )
-                            ){
-
-                                state[g]=
-                                    gironi[g];
-
-                            }
-
-
-                        });
-
-
-                    }
-
-
-
-                }
-
-
-            }
-
-
-            catch(e){
-
-
-                console.error(
-                    "Errore caricamento torneo Supabase:",
-                    e
-                );
-
-
-            }
-
-
-        }
-        else{
-
-
-            /*
-            ============================
-            CARICAMENTO LOCALE
-            ============================
-            */
-
-
-            let locale =
-
-                localStorage.getItem(
-                    "torneoState"
-                );
-
-
-
-            if(locale){
-
-
-                try{
-
-
-                    let salvato =
-
-                        JSON.parse(
-                            locale
-                        );
-
-
-
-                    if(
-
-                        Array.isArray(
-                            salvato.A
-                        )
-                        &&
-                        salvato.A.length>0
-
-                        &&
-
-                        Array.isArray(
-                            salvato.B
-                        )
-                        &&
-                        salvato.B.length>0
-
-                    ){
-
-
-                        state =
-
-                        {
-
-                            ...state,
-
-                            ...salvato
-
-                        };
-
-
-
-                        console.log(
-
-                            "Stato locale caricato",
-
-                            state.A,
-
-                            state.B
-
-                        );
-
-
-                    }
-
-
-                }
-
-
-                catch(e){
-
-
-                    console.warn(
-
-                        "Errore localStorage:",
-
-                        e
-
-                    );
-
-
-                }
-
-
-            }
-
-
-        }
-
-
-        /*
-        ============================
-        RECUPERO SQUADRE
-        SOLO TORNEO LOCALE
-        ============================
-        */
-
-
-        if(
-
-            !idParam
-
-            &&
-
-            state.A.length===0
-
-            &&
-
-            state.B.length===0
-
-        ){
-
-
-            let savedTeams =
-
-                localStorage.getItem(
-                    "savedTeams"
-                );
-
-
-
-            if(savedTeams){
-
-                try{
-                                       let teams =
-
-                        JSON.parse(
-                            savedTeams
-                        );
-
-
-
-                    if(
-
-                        Array.isArray(teams)
-
-                        &&
-
-                        teams.length>=8
-
-                    ){
-
-
-                        state.A =
-
-                            teams.slice(
-                                0,
-                                4
-                            );
-
-
-
-                        state.B =
-
-                            teams.slice(
-                                4,
-                                8
-                            );
-
-
-
-                        console.log(
-
-                            "Squadre recuperate da savedTeams",
-
-                            state.A,
-
-                            state.B
-
-                        );
-
-
-                    }
-
-
-                }
-
-
-                catch(e){
-
-
-                    console.warn(
-
-                        "Errore recupero squadre",
-
-                        e
-
-                    );
-
-
-                }
-
-
-            }
-
-
-        }
-
-
-
-    }
-
-
-    catch(e){
-
-
-        console.error(
-
-            "Errore loadState:",
-
-            e
-
-        );
-
-
-    }
-
-
-
-    /*
-    ============================
-    GARANZIA ARRAY
-    ============================
-    */
-
-
-    [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F"
-
-    ].forEach(g=>{
-
-
-        if(
-            !Array.isArray(
-                state[g]
-            )
-        ){
-
-            state[g]=[];
-
-        }
-
-
-    });
 
 
 
