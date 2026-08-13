@@ -538,9 +538,9 @@ VARIABILE GLOBALE STATE
 function ensureRules(){
 
     /*
-    =====================================================
-    GARANZIA STATO REGOLE
-    =====================================================
+    ============================================================
+    GARANTISCE L'ESISTENZA COMPLETA DI state.rules
+    ============================================================
     */
 
     if(
@@ -549,7 +549,7 @@ function ensureRules(){
     ){
 
         console.error(
-            "❌ ensureRules: state non disponibile"
+            "ensureRules: state non disponibile"
         );
 
         return;
@@ -559,8 +559,7 @@ function ensureRules(){
 
     if(
         typeof state.rules !== "object" ||
-        state.rules === null ||
-        Array.isArray(state.rules)
+        state.rules === null
     ){
 
         state.rules = {};
@@ -568,18 +567,27 @@ function ensureRules(){
     }
 
 
-
     /*
-    =====================================================
-    VALORI DEFAULT
-    =====================================================
+    ============================================================
+    VALORI DEFAULT DEL REGOLAMENTO
+    NON SOVRASCRIVE I VALORI GIÀ SALVATI
+    ============================================================
     */
 
     const defaults = {
 
-        /*
-        PUNTEGGI
-        */
+        locked: false,
+
+        tipoTorneo: "gironi",
+
+        numeroSquadre:
+            state.formato ||
+            state.numeroSquadre ||
+            8,
+
+        numeroGironi: 2,
+
+        squadrePerGirone: 4,
 
         w: 3,
 
@@ -587,39 +595,21 @@ function ensureRules(){
 
         l: 0,
 
+        qualificatePerGirone: 2,
 
-        /*
-        CRITERI CLASSIFICA
-        */
+        numeroQualificateFinali: 4,
 
-        crit1: "df",
+        crit1: "pt",
 
-        crit2: "gf",
+        crit2: "dr",
 
-        crit3: "gs",
+        crit3: "gf",
 
+        formulaGironi:
+            "gironi",
 
-        /*
-        FORMULA
-        */
-
-        formulaGironi: "italiana",
-
-        formulaFinale: "eliminazione_diretta",
-
-
-        /*
-        QUALIFICAZIONI
-        */
-
-        qualificatePerGirone: 4,
-
-        numeroQualificateFinali: 8,
-
-
-        /*
-        FASI FINALI
-        */
+        formulaFinale:
+            "eliminazione",
 
         usaQuarti: true,
 
@@ -627,269 +617,160 @@ function ensureRules(){
 
         usaFinale: true,
 
-
-        /*
-        RIPESCAGGIO
-        */
-
         ripescaggio: false,
 
         numeroRipescate: 0,
-
-
-        /*
-        REGOLE KO
-        */
 
         killerPoint: false,
 
         rigori: true,
 
-        tempoSupplementare: false,
-
-
-        /*
-        ANDATA / RITORNO
-        */
+        tempoSupplementare: true,
 
         garaAndataRitorno: false,
-
-
-        /*
-        TEMPI
-        */
 
         start: "20:00",
 
         duration: 30,
 
+        criterioParitaExtra: "",
 
-        /*
-        PARITÀ
-        */
-
-        criterioParitaExtra: "sorteggio",
-
-
-        /*
-        NOTE
-        */
-
-        note: "",
-
-
-        /*
-        BLOCCO REGOLE
-        */
-
-        locked: false
+        note: ""
 
     };
 
 
-
     /*
-    =====================================================
+    ============================================================
     APPLICA SOLO I VALORI MANCANTI
-    NON SOVRASCRIVE LE REGOLE GIÀ SALVATE
-    =====================================================
+    ============================================================
     */
 
-    Object.keys(defaults).forEach(
-        key => {
+    Object.keys(defaults).forEach(function(key){
 
-            if(
-                state.rules[key] === undefined ||
-                state.rules[key] === null ||
-                state.rules[key] === ""
-            ){
+        if(
+            state.rules[key] === undefined ||
+            state.rules[key] === null
+        ){
 
-                state.rules[key] =
-                    defaults[key];
+            state.rules[key] =
+                defaults[key];
+
+        }
+
+    });
+
+
+    /*
+    ============================================================
+    ALLINEAMENTO NUMERO SQUADRE
+    ============================================================
+    */
+
+    if(
+        state.formato &&
+        (
+            state.rules.numeroSquadre === undefined ||
+            state.rules.numeroSquadre === null
+        )
+    ){
+
+        state.rules.numeroSquadre =
+            Number(state.formato);
+
+    }
+
+
+    /*
+    ============================================================
+    GARANZIA BOOLEANI
+    ============================================================
+    */
+
+    [
+        "usaQuarti",
+        "usaSemifinali",
+        "usaFinale",
+        "ripescaggio",
+        "killerPoint",
+        "rigori",
+        "tempoSupplementare",
+        "garaAndataRitorno"
+    ].forEach(function(key){
+
+        state.rules[key] =
+            Boolean(state.rules[key]);
+
+    });
+
+
+    /*
+    ============================================================
+    GARANZIA NUMERI
+    ============================================================
+    */
+
+    [
+        "numeroSquadre",
+        "numeroGironi",
+        "squadrePerGirone",
+        "w",
+        "d",
+        "l",
+        "qualificatePerGirone",
+        "numeroQualificateFinali",
+        "numeroRipescate",
+        "duration"
+    ].forEach(function(key){
+
+        if(
+            state.rules[key] !== "" &&
+            state.rules[key] !== null &&
+            state.rules[key] !== undefined
+        ){
+
+            const valore =
+                Number(state.rules[key]);
+
+            if(!Number.isNaN(valore)){
+
+                state.rules[key] = valore;
 
             }
 
         }
-    );
 
-
-
-    /*
-    =====================================================
-    NORMALIZZAZIONE NUMERICA
-    =====================================================
-    */
-
-    state.rules.w =
-        Number(state.rules.w);
-
-    state.rules.d =
-        Number(state.rules.d);
-
-    state.rules.l =
-        Number(state.rules.l);
-
-    state.rules.qualificatePerGirone =
-        Number(
-            state.rules.qualificatePerGirone
-        );
-
-    state.rules.numeroQualificateFinali =
-        Number(
-            state.rules.numeroQualificateFinali
-        );
-
-    state.rules.numeroRipescate =
-        Number(
-            state.rules.numeroRipescate
-        );
-
-    state.rules.duration =
-        Number(
-            state.rules.duration
-        );
-
+    });
 
 
     /*
-    =====================================================
-    GARANZIA BOOLEANI
-    =====================================================
-    */
-
-    state.rules.usaQuarti =
-        Boolean(
-            state.rules.usaQuarti
-        );
-
-    state.rules.usaSemifinali =
-        Boolean(
-            state.rules.usaSemifinali
-        );
-
-    state.rules.usaFinale =
-        Boolean(
-            state.rules.usaFinale
-        );
-
-    state.rules.ripescaggio =
-        Boolean(
-            state.rules.ripescaggio
-        );
-
-    state.rules.garaAndataRitorno =
-        Boolean(
-            state.rules.garaAndataRitorno
-        );
-
-
-
-    /*
-    =====================================================
+    ============================================================
     GARANZIA FORMATO
-    =====================================================
+    ============================================================
     */
 
     if(
-        !state.formato
+        !state.rules.numeroSquadre ||
+        state.rules.numeroSquadre < 1
     ){
 
-        state.formato = 8;
+        state.rules.numeroSquadre =
+            Number(state.formato) || 8;
 
     }
 
 
-
     /*
-    =====================================================
-    GARANZIA NUMERO SQUADRE
-    =====================================================
+    ============================================================
+    ESPOSIZIONE GLOBALE
+    ============================================================
     */
 
-    if(
-        !state.numeroSquadre
-    ){
-
-        state.numeroSquadre =
-            Number(
-                state.formato
-            ) || 8;
-
-    }
+    window.ensureRules =
+        ensureRules;
 
 
-
-    /*
-    =====================================================
-    GARANZIA NUMERO GIRONI
-    =====================================================
-    */
-
-    if(
-        !state.numeroGironi
-    ){
-
-        if(
-            state.numeroSquadre >= 20
-        ){
-
-            state.numeroGironi = 5;
-
-        }
-        else if(
-            state.numeroSquadre >= 16
-        ){
-
-            state.numeroGironi = 4;
-
-        }
-        else if(
-            state.numeroSquadre >= 12
-        ){
-
-            state.numeroGironi = 3;
-
-        }
-        else{
-
-            state.numeroGironi = 2;
-
-        }
-
-    }
-
-
-
-    /*
-    =====================================================
-    GARANZIA SQUADRE PER GIRONE
-    =====================================================
-    */
-
-    if(
-        !state.squadrePerGirone
-    ){
-
-        state.squadrePerGirone =
-            Math.ceil(
-                state.numeroSquadre /
-                state.numeroGironi
-            );
-
-    }
-
-
-
-    /*
-    =====================================================
-    LOG DI CONTROLLO
-    =====================================================
-    */
-
-    console.log(
-        "ensureRules OK",
-        state.rules
-    );
+    return state.rules;
 
 }
 function closeRules(){
