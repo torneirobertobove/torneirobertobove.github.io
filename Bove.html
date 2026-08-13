@@ -7519,6 +7519,9 @@ async function updateAndSync(){
 }
 
 ```javascript
+# Funzione `loadState()` corretta
+
+```javascript
 async function loadState(){
 
     try{
@@ -7577,6 +7580,30 @@ async function loadState(){
 
                     /*
                     =================================================
+                    REGOLE SALVATE
+                    =================================================
+                    */
+
+                    const rulesSalvate =
+                        (
+                            config.rules &&
+                            typeof config.rules === "object"
+                        )
+                        ?
+                        config.rules
+                        :
+                        (
+                            torneo.rules &&
+                            typeof torneo.rules === "object"
+                        )
+                        ?
+                        torneo.rules
+                        :
+                        {};
+
+
+                    /*
+                    =================================================
                     AGGIORNAMENTO STATO PRINCIPALE
                     =================================================
                     */
@@ -7597,10 +7624,10 @@ async function loadState(){
                         formato:
                             Number(torneo.posti) || 8,
 
-                        rules:
-                            config.rules
-                            ||
-                            {},
+                        rules:{
+                            ...(state.rules || {}),
+                            ...rulesSalvate
+                        },
 
                         partecipanti:
                             Array.isArray(
@@ -7609,7 +7636,15 @@ async function loadState(){
                             ?
                             config.partecipanti
                             :
-                            [],
+                            (
+                                Array.isArray(
+                                    torneo.partecipanti
+                                )
+                                ?
+                                torneo.partecipanti
+                                :
+                                []
+                            ),
 
                         coppie:
                             Array.isArray(
@@ -7618,9 +7653,90 @@ async function loadState(){
                             ?
                             config.coppie
                             :
-                            []
+                            (
+                                Array.isArray(
+                                    torneo.coppie
+                                )
+                                ?
+                                torneo.coppie
+                                :
+                                []
+                            )
 
                     };
+
+
+                    /*
+                    =================================================
+                    GARANZIA REGOLE MINIME
+                    =================================================
+                    */
+
+                    if(
+                        !state.rules ||
+                        typeof state.rules !== "object"
+                    ){
+
+                        state.rules = {};
+
+                    }
+
+
+                    if(
+                        !Number(
+                            state.rules.numeroSquadre
+                        )
+                    ){
+
+                        state.rules.numeroSquadre =
+                            Number(
+                                state.formato
+                            )
+                            ||
+                            8;
+
+                    }
+
+
+                    if(
+                        !Number(
+                            state.rules.numeroGironi
+                        )
+                    ){
+
+                        const numeroSquadre =
+                            Number(
+                                state.rules.numeroSquadre
+                            )
+                            ||
+                            8;
+
+
+                        state.rules.numeroGironi =
+
+                            numeroSquadre >= 16
+                            ?
+                            4
+                            :
+                            numeroSquadre >= 12
+                            ?
+                            3
+                            :
+                            2;
+
+                    }
+
+
+                    if(
+                        !Number(
+                            state.rules.squadrePerGirone
+                        )
+                    ){
+
+                        state.rules.squadrePerGirone =
+                            4;
+
+                    }
 
 
                     /*
@@ -7628,7 +7744,7 @@ async function loadState(){
                     RECUPERO DIRETTO DEI GIRONI SALVATI
                     =================================================
 
-                    La configurazione reale del tuo torneo contiene
+                    La configurazione reale del torneo può contenere
                     gli array A/B/C/D/E/F direttamente.
                     */
 
@@ -7639,6 +7755,7 @@ async function loadState(){
                         "D",
                         "E",
                         "F"
+
                     ].forEach(g=>{
 
                         if(
@@ -7657,11 +7774,40 @@ async function loadState(){
 
                     /*
                     =================================================
+                    GARANZIA ARRAY GIRONI
+                    =================================================
+                    */
+
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F"
+
+                    ].forEach(g=>{
+
+                        if(
+                            !Array.isArray(
+                                state[g]
+                            )
+                        ){
+
+                            state[g]=[];
+
+                        }
+
+                    });
+
+
+                    /*
+                    =================================================
                     COMPATIBILITÀ CON VECCHIO FORMATO
                     =================================================
 
                     Se non esistono A/B ma esistono coppie,
-                    ricostruisce le squadre.
+                    ricostruisce automaticamente le squadre.
                     */
 
                     if(
@@ -7690,12 +7836,35 @@ async function loadState(){
                                     return (
                                         String(c.g1)
                                         +
-                                        "/"
+                                        " / "
                                         +
                                         String(c.g2)
                                     );
 
                                 }
+
+
+                                /*
+                                Compatibilità con eventuali
+                                nomi alternativi dei giocatori.
+                                */
+
+                                if(
+                                    c &&
+                                    c.giocatore1 !== undefined &&
+                                    c.giocatore2 !== undefined
+                                ){
+
+                                    return (
+                                        String(c.giocatore1)
+                                        +
+                                        " / "
+                                        +
+                                        String(c.giocatore2)
+                                    );
+
+                                }
+
 
                                 return "";
 
@@ -7705,7 +7874,7 @@ async function loadState(){
 
                         const numeroGironi =
                             Number(
-                                state.rules?.numeroGironi
+                                state.rules.numeroGironi
                             )
                             ||
                             2;
@@ -7713,16 +7882,11 @@ async function loadState(){
 
                         const squadrePerGirone =
                             Number(
-                                state.rules?.squadrePerGirone
+                                state.rules.squadrePerGirone
                             )
                             ||
                             4;
 
-
-                        /*
-                        Distribuzione compatibile
-                        con il formato reale.
-                        */
 
                         const gruppi = [
                             "A",
@@ -7735,9 +7899,14 @@ async function loadState(){
 
 
                         for(
+
                             let i = 0;
-                            i < numeroGironi;
+
+                            i < numeroGironi &&
+                            i < gruppi.length;
+
                             i++
+
                         ){
 
                             state[gruppi[i]] =
@@ -7770,6 +7939,7 @@ async function loadState(){
                             "D",
                             "E",
                             "F"
+
                         ].forEach(g=>{
 
                             if(
@@ -7789,6 +7959,128 @@ async function loadState(){
 
                     }
 
+
+                    /*
+                    =================================================
+                    GARANZIA FINALE:
+                    SE ESISTONO COPPIE MA I GIRONI SONO ANCORA VUOTI,
+                    RICOSTRUZIONE FORZATA DEI GIRONI
+                    =================================================
+                    */
+
+                    if(
+
+                        state.A.length === 0
+                        &&
+                        state.B.length === 0
+                        &&
+                        Array.isArray(state.coppie)
+                        &&
+                        state.coppie.length > 0
+
+                    ){
+
+                        const squadre =
+                            state.coppie
+                                .map(c=>{
+
+                                    if(
+                                        !c
+                                    )
+                                        return "";
+
+                                    if(
+                                        c.g1 !== undefined &&
+                                        c.g2 !== undefined
+                                    ){
+
+                                        return (
+                                            String(c.g1)
+                                            +
+                                            " / "
+                                            +
+                                            String(c.g2)
+                                        );
+
+                                    }
+
+                                    if(
+                                        c.giocatore1 !== undefined &&
+                                        c.giocatore2 !== undefined
+                                    ){
+
+                                        return (
+                                            String(c.giocatore1)
+                                            +
+                                            " / "
+                                            +
+                                            String(c.giocatore2)
+                                        );
+
+                                    }
+
+                                    return "";
+
+                                })
+                                .filter(Boolean);
+
+
+                        const numeroGironi =
+                            Math.min(
+                                Number(
+                                    state.rules.numeroGironi
+                                )
+                                ||
+                                2,
+                                6
+                            );
+
+
+                        const squadrePerGirone =
+                            Number(
+                                state.rules.squadrePerGirone
+                            )
+                            ||
+                            4;
+
+
+                        const gruppi = [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E",
+                            "F"
+                        ];
+
+
+                        for(
+
+                            let i = 0;
+
+                            i < numeroGironi;
+
+                            i++
+
+                        ){
+
+                            state[gruppi[i]] =
+                                squadre.slice(
+                                    i * squadrePerGirone,
+                                    (i + 1) *
+                                    squadrePerGirone
+                                );
+
+                        }
+
+                    }
+
+
+                    /*
+                    =================================================
+                    LOG CARICAMENTO SUPABASE
+                    =================================================
+                    */
 
                     console.log(
                         "TORNEO SUPABASE CARICATO:",
@@ -7878,7 +8170,12 @@ async function loadState(){
 
                             ...state,
 
-                            ...salvato
+                            ...salvato,
+
+                            rules:{
+                                ...(state.rules || {}),
+                                ...(salvato.rules || {})
+                            }
 
                         };
 
@@ -7916,15 +8213,11 @@ async function loadState(){
         if(
 
             !idParam
-
             &&
-
             Array.isArray(state.A)
             &&
             Array.isArray(state.B)
-
             &&
-
             state.A.length === 0
             &&
             state.B.length === 0
@@ -8013,6 +8306,7 @@ async function loadState(){
         "D",
         "E",
         "F"
+
     ].forEach(g=>{
 
         if(
@@ -8026,6 +8320,419 @@ async function loadState(){
         }
 
     });
+
+
+    /*
+    =====================================================
+    GARANZIA REGOLE
+    =====================================================
+    */
+
+    if(
+        !state.rules ||
+        typeof state.rules !== "object"
+    ){
+
+        state.rules = {};
+
+    }
+
+
+    if(
+        !Number(
+            state.rules.numeroSquadre
+        )
+    ){
+
+        state.rules.numeroSquadre =
+            Number(
+                state.formato
+            )
+            ||
+            8;
+
+    }
+
+
+    if(
+        !Number(
+            state.rules.numeroGironi
+        )
+    ){
+
+        const numeroSquadre =
+            Number(
+                state.rules.numeroSquadre
+            )
+            ||
+            8;
+
+
+        state.rules.numeroGironi =
+
+            numeroSquadre >= 16
+            ?
+            4
+            :
+            numeroSquadre >= 12
+            ?
+            3
+            :
+            2;
+
+    }
+
+
+    if(
+        !Number(
+            state.rules.squadrePerGirone
+        )
+    ){
+
+        state.rules.squadrePerGirone =
+            4;
+
+    }
+
+
+    /*
+    =====================================================
+    INSTALLAZIONE DI SICUREZZA DI ensureRules
+    =====================================================
+
+    Nel file attuale render() chiama direttamente
+    ensureRules(), ma la funzione non è esposta.
+    Creiamo quindi una versione globale solo se manca.
+
+    NON sostituisce una ensureRules esistente.
+    */
+
+    if(
+        typeof window.ensureRules !== "function"
+    ){
+
+        window.ensureRules =
+            function(){
+
+                if(
+                    !window.state ||
+                    !window.state.rules
+                ){
+
+                    return;
+
+                }
+
+
+                const r =
+                    window.state.rules;
+
+
+                if(
+                    !Number(r.numeroSquadre)
+                ){
+
+                    r.numeroSquadre =
+                        Number(
+                            window.state.formato
+                        )
+                        ||
+                        8;
+
+                }
+
+
+                if(
+                    !Number(r.numeroGironi)
+                ){
+
+                    const n =
+                        Number(
+                            r.numeroSquadre
+                        )
+                        ||
+                        8;
+
+
+                    r.numeroGironi =
+
+                        n >= 16
+                        ?
+                        4
+                        :
+                        n >= 12
+                        ?
+                        3
+                        :
+                        2;
+
+                }
+
+
+                if(
+                    !Number(
+                        r.squadrePerGirone
+                    )
+                ){
+
+                    r.squadrePerGirone =
+                        4;
+
+                }
+
+
+                if(
+                    r.w === undefined
+                ){
+
+                    r.w = 3;
+
+                }
+
+
+                if(
+                    r.d === undefined
+                ){
+
+                    r.d = 1;
+
+                }
+
+
+                if(
+                    r.l === undefined
+                ){
+
+                    r.l = 0;
+
+                }
+
+
+                if(
+                    r.qualificatePerGirone === undefined
+                ){
+
+                    r.qualificatePerGirone =
+                        2;
+
+                }
+
+
+                if(
+                    r.numeroQualificateFinali === undefined
+                ){
+
+                    r.numeroQualificateFinali =
+                        Number(
+                            r.numeroGironi
+                        )
+                        *
+                        Number(
+                            r.qualificatePerGirone
+                        );
+
+                }
+
+
+                if(
+                    r.usaQuarti === undefined
+                ){
+
+                    r.usaQuarti =
+                        false;
+
+                }
+
+
+                if(
+                    r.usaSemifinali === undefined
+                ){
+
+                    r.usaSemifinali =
+                        true;
+
+                }
+
+
+                if(
+                    r.usaFinale === undefined
+                ){
+
+                    r.usaFinale =
+                        true;
+
+                }
+
+
+                if(
+                    r.start === undefined
+                ){
+
+                    r.start =
+                        "20:00";
+
+                }
+
+
+                if(
+                    r.duration === undefined
+                ){
+
+                    r.duration =
+                        30;
+
+                }
+
+            };
+
+    }
+
+
+    /*
+    =====================================================
+    ESEGUI ENSURE RULES
+    =====================================================
+    */
+
+    if(
+        typeof window.ensureRules === "function"
+    ){
+
+        try{
+
+            window.ensureRules();
+
+        }
+        catch(err){
+
+            console.error(
+                "Errore ensureRules:",
+                err
+            );
+
+        }
+
+    }
+
+
+    /*
+    =====================================================
+    FASE FINALE
+    =====================================================
+    */
+
+    if(
+        !Array.isArray(
+            state.qRes
+        )
+    ){
+
+        state.qRes =
+            Array(4).fill("-");
+
+    }
+
+
+    if(
+        !Array.isArray(
+            state.sTopRes
+        )
+    ){
+
+        state.sTopRes =
+            Array(2).fill("-");
+
+    }
+
+
+    if(
+        state.fTopRes === undefined
+    ){
+
+        state.fTopRes =
+            "-";
+
+    }
+
+
+    if(
+        !Array.isArray(
+            state.finalTop
+        )
+    ){
+
+        state.finalTop = [];
+
+    }
+
+
+    if(
+        state.campioneTop === undefined
+    ){
+
+        state.campioneTop =
+            null;
+
+    }
+
+
+    /*
+    =====================================================
+    GARANZIA FORMATO TORNEO
+    =====================================================
+    */
+
+    if(
+        !state.formato
+    ){
+
+        state.formato =
+            Number(
+                state.rules.numeroSquadre
+            )
+            ||
+            8;
+
+    }
+
+
+    if(
+        !state.rules.numeroSquadre
+    ){
+
+        state.rules.numeroSquadre =
+            state.formato;
+
+    }
+
+
+    if(
+        !state.rules.numeroGironi
+    ){
+
+        state.rules.numeroGironi =
+
+            state.formato >= 16
+            ?
+            4
+            :
+            state.formato >= 12
+            ?
+            3
+            :
+            2;
+
+    }
+
+
+    if(
+        !state.rules.squadrePerGirone
+    ){
+
+        state.rules.squadrePerGirone =
+            4;
+
+    }
 
 
     /*
@@ -8133,6 +8840,7 @@ async function loadState(){
         "D",
         "E",
         "F"
+
     ].forEach(g=>{
 
         const totale =
@@ -8225,47 +8933,6 @@ async function loadState(){
 
     /*
     =====================================================
-    ENSURE RULES
-    =====================================================
-
-    La nuova Bove non esponeva ensureRules.
-    Se la funzione è già stata installata globalmente,
-    la eseguiamo prima del render.
-
-    NON usiamo una chiamata diretta a ensureRules(),
-    così loadState non genera ReferenceError.
-    */
-
-    if(
-        typeof window.ensureRules === "function"
-    ){
-
-        try{
-
-            window.ensureRules();
-
-        }
-        catch(err){
-
-            console.error(
-                "Errore ensureRules:",
-                err
-            );
-
-        }
-
-    }
-    else{
-
-        console.warn(
-            "ensureRules non disponibile: render continua senza chiamata diretta"
-        );
-
-    }
-
-
-    /*
-    =====================================================
     SALVATAGGIO LOCALE SICURO
     =====================================================
     */
@@ -8326,6 +8993,7 @@ async function loadState(){
     }
 
 }
+
 
 
 function handleFile(e){
@@ -10793,15 +11461,77 @@ function renderGironiFinale(){
     `;
 
 }
+# Funzione render corretta
+
+```javascript
 function render(){
 
-    ensureRules();
+    /*
+    ========================================================
+    SICUREZZA STATO
+    ========================================================
+    */
+
+    if(!window.state)
+        return;
+
+
+    if(!state.rules)
+        state.rules={};
 
 
     /*
-        AGGIORNA INTESTAZIONE TORNEO
+    ========================================================
+    GARANZIA MINIMA DELLE REGOLE
+    NON CHIAMA ensureRules()
+    perché nel file attuale non è definita.
+    ========================================================
     */
 
+    if(
+        state.rules.numeroSquadre === undefined ||
+        state.rules.numeroSquadre === null
+    ){
+
+        state.rules.numeroSquadre =
+            Number(state.formato) || 8;
+
+    }
+
+
+    if(
+        state.rules.numeroGironi === undefined ||
+        state.rules.numeroGironi === null
+    ){
+
+        const n =
+            Number(state.rules.numeroSquadre) || 8;
+
+        state.rules.numeroGironi =
+            n >= 16
+            ? 4
+            : n >= 12
+            ? 3
+            : 2;
+
+    }
+
+
+    if(
+        state.rules.squadrePerGirone === undefined ||
+        state.rules.squadrePerGirone === null
+    ){
+
+        state.rules.squadrePerGirone=4;
+
+    }
+
+
+    /*
+    ========================================================
+    AGGIORNA INTESTAZIONE TORNEO
+    ========================================================
+    */
 
     const titolo =
         document.getElementById(
@@ -10821,7 +11551,6 @@ function render(){
     }
 
 
-
     const inputNome =
         document.getElementById(
             "nomeTorneoInput"
@@ -10836,36 +11565,47 @@ function render(){
     }
 
 
-
     const dataTorneo =
-    document.querySelector(
-        'input[type="date"].date-input-field'
-    );
+        document.querySelector(
+            'input[type="date"].date-input-field'
+        );
 
 
-if(dataTorneo){
+    if(dataTorneo){
 
-    dataTorneo.value =
-        state.dataTorneo || "";
+        dataTorneo.value =
+            state.dataTorneo || "";
 
-}
-
-
-    if(typeof aggiornaNomeFormulaTorneo==="function")
-        aggiornaNomeFormulaTorneo();
+    }
 
 
     /*
-        RENDER BASE
-        parte solo se esiste una configurazione reale
+    ========================================================
+    NOME FORMULA
+    ========================================================
     */
 
+    if(
+        typeof aggiornaNomeFormulaTorneo ===
+        "function"
+    ){
+
+        aggiornaNomeFormulaTorneo();
+
+    }
+
+
+    /*
+    ========================================================
+    RENDER GIRONI
+    ========================================================
+    */
 
     if(
-        typeof renderTables==="function" &&
-        state &&
+        typeof renderTables ===
+        "function" &&
         state.rules &&
-        state.rules.numeroSquadre>0
+        Number(state.rules.numeroSquadre)>0
     ){
 
         renderTables();
@@ -10873,68 +11613,152 @@ if(dataTorneo){
     }
 
 
+    /*
+    ========================================================
+    CLASSIFICA
+    ========================================================
+    */
 
-    if(typeof renderClass==="function")
+    if(
+        typeof renderClass ===
+        "function"
+    ){
+
         renderClass();
 
+    }
 
 
     /*
-        TORNEI SPECIALI
+    ========================================================
+    TORNEI SPECIALI
+    ========================================================
     */
 
+    if(
+        typeof renderSvizzero ===
+        "function"
+    ){
 
-    if(typeof renderSvizzero==="function")
         renderSvizzero();
 
-    if(typeof renderAmericano==="function")
+    }
+
+
+    if(
+        typeof renderAmericano ===
+        "function"
+    ){
+
         renderAmericano();
 
-    if(typeof renderMexicano==="function")
+    }
+
+
+    if(
+        typeof renderMexicano ===
+        "function"
+    ){
+
         renderMexicano();
 
-    if(typeof renderKing==="function")
+    }
+
+
+    if(
+        typeof renderKing ===
+        "function"
+    ){
+
         renderKing();
 
-    if(typeof renderShort==="function")
+    }
+
+
+    if(
+        typeof renderShort ===
+        "function"
+    ){
+
         renderShort();
 
+    }
 
 
     /*
-        TORNEI CLASSICI
+    ========================================================
+    TORNEI CLASSICI
+    ========================================================
     */
 
+    if(
+        typeof renderItaliana ===
+        "function"
+    ){
 
-    if(typeof renderItaliana==="function")
         renderItaliana();
 
-    if(typeof renderGironiFinale==="function")
+    }
+
+
+    if(
+        typeof renderGironiFinale ===
+        "function"
+    ){
+
         renderGironiFinale();
 
-    if(typeof renderEliminazione==="function")
+    }
+
+
+    if(
+        typeof renderEliminazione ===
+        "function"
+    ){
+
         renderEliminazione();
 
-    if(typeof renderPersonalizzato==="function")
+    }
+
+
+    if(
+        typeof renderPersonalizzato ===
+        "function"
+    ){
+
         renderPersonalizzato();
 
+    }
 
 
     /*
-        FASE FINALE
+    ========================================================
+    FASE FINALE
+    ========================================================
     */
 
+    if(
+        typeof renderKO ===
+        "function"
+    ){
 
-    if(typeof renderKO==="function")
         renderKO();
 
+    }
 
 
-    if(typeof renderManuale==="function")
+    if(
+        typeof renderManuale ===
+        "function"
+    ){
+
         renderManuale();
 
+    }
 
 }
+```
+
 function updateCamp(g,i,val){
 
     let s;
