@@ -6826,13 +6826,6 @@ async function updateAndSync(){
 
 
 
-        /*
-            ========================================
-            PROTEZIONE LOCALSTORAGE
-            ========================================
-        */
-
-
         if(precedente){
 
 
@@ -6896,12 +6889,11 @@ async function updateAndSync(){
 
 
         /*
-            ========================================
+            ============================
             PROTEZIONE SUPABASE
-            ========================================
-            Se il torneo esiste già e contiene
-            squadre, NON permettere che uno state
-            vuoto le sovrascriva.
+            CONTRO SOVRASCRITTURA
+            DI UN TORNEO GIA' ESISTENTE
+            ============================
         */
 
 
@@ -6909,13 +6901,17 @@ async function updateAndSync(){
 
             typeof sb!=="undefined" &&
 
-            state.idTorneo
+            state.idTorneo &&
+
+            (!Array.isArray(state.A) ||
+             state.A.length===0 ||
+
+             !Array.isArray(state.B) ||
+             state.B.length===0)
 
         ){
 
-
             try{
-
 
                 const {
                     data:torneoEsistente,
@@ -6929,136 +6925,83 @@ async function updateAndSync(){
                     )
                     .eq(
                         "id",
-                        Number(state.idTorneo)
+                        state.idTorneo
                     )
                     .maybeSingle();
 
 
 
-                if(
-                    !erroreEsistente &&
-                    torneoEsistente
-                ){
+                if(erroreEsistente){
 
+                    console.warn(
+                        "Errore controllo torneo esistente:",
+                        erroreEsistente
+                    );
+
+                }
+
+
+
+                if(torneoEsistente){
 
                     const configurazioneEsistente =
-
-                        torneoEsistente.configurazione
-                        ||
-                        {};
+                        torneoEsistente.configurazione;
 
 
 
                     const vecchioA =
-
-                        Array.isArray(
-                            configurazioneEsistente.A
-                        )
-                        ?
-                        configurazioneEsistente.A
-                        :
-                        [];
+                        configurazioneEsistente?.A;
 
 
 
                     const vecchioB =
-
-                        Array.isArray(
-                            configurazioneEsistente.B
-                        )
-                        ?
-                        configurazioneEsistente.B
-                        :
-                        [];
+                        configurazioneEsistente?.B;
 
 
 
-                    const nuovoA =
+                    const torneoEsistenteCompleto =
 
-                        Array.isArray(state.A)
-                        ?
-                        state.A
-                        :
-                        [];
-
-
-
-                    const nuovoB =
-
-                        Array.isArray(state.B)
-                        ?
-                        state.B
-                        :
-                        [];
-
-
-
-                    const vecchioCompletoSupabase =
-
+                        Array.isArray(vecchioA) &&
                         vecchioA.length>0 &&
+
+                        Array.isArray(vecchioB) &&
                         vecchioB.length>0;
 
 
 
-                    const nuovoVuotoSupabase =
-
-                        nuovoA.length===0 ||
-                        nuovoB.length===0;
-
-
-
                     if(
-
-                        vecchioCompletoSupabase &&
-                        nuovoVuotoSupabase
-
+                        torneoEsistenteCompleto
                     ){
 
                         statoDaSalvare=false;
 
-
-
                         console.warn(
-
-                            "Salvataggio Supabase bloccato: " +
-                            "evitata perdita delle squadre " +
-                            "già presenti nel torneo.",
-
-                            {
-                                vecchioA: vecchioA,
-                                vecchioB: vecchioB,
-                                nuovoA: nuovoA,
-                                nuovoB: nuovoB
-                            }
-
+                            "Salvataggio Supabase bloccato: evitata sovrascrittura di un torneo con squadre esistenti"
                         );
 
                     }
 
-
                 }
-
 
             }
 
             catch(e){
 
                 console.warn(
-
-                    "Errore controllo stato Supabase precedente",
+                    "Errore controllo sicurezza Supabase:",
                     e
-
                 );
 
             }
-
 
         }
 
 
 
         /*
+            ============================
             SALVATAGGIO STATO LOCALE
+            ============================
         */
 
 
@@ -7079,7 +7022,9 @@ async function updateAndSync(){
 
 
         /*
+            ============================
             SALVATAGGIO SQUADRE
+            ============================
         */
 
 
@@ -7118,7 +7063,9 @@ async function updateAndSync(){
 
 
         /*
+            ============================
             SUPABASE
+            ============================
         */
 
 
