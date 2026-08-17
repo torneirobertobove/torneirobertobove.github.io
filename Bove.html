@@ -7285,8 +7285,7 @@ function reset(){
 function calc(squadre, risultati){
 
     if(
-        !Array.isArray(squadre)
-        ||
+        !Array.isArray(squadre) ||
         !Array.isArray(risultati)
     ){
 
@@ -7296,51 +7295,49 @@ function calc(squadre, risultati){
 
 
 
-    let classifica=[];
+    let classifica = [];
 
 
 
-    squadre.forEach(nome=>{
-
+    squadre.forEach(nome => {
 
         classifica.push({
 
-            n:nome,
+            n: nome,
 
-            pt:0,
+            pt: 0,
 
-            gf:0,
+            gf: 0,
 
-            gs:0,
+            gs: 0,
 
-            df:0
+            df: 0
 
         });
-
 
     });
 
 
 
-    let indice=0;
+    let indice = 0;
 
 
 
     for(
-        let i=0;
-        i<squadre.length;
+        let i = 0;
+        i < squadre.length;
         i++
     ){
 
         for(
-            let j=i+1;
-            j<squadre.length;
+            let j = i + 1;
+            j < squadre.length;
             j++
         ){
 
-
             let risultato =
                 risultati[indice];
+
 
 
             indice++;
@@ -7348,9 +7345,10 @@ function calc(squadre, risultati){
 
 
             if(
-                !risultato
-                ||
-                risultato==="-"
+                risultato === undefined ||
+                risultato === null ||
+                risultato === "" ||
+                risultato === "-"
             ){
 
                 continue;
@@ -7359,13 +7357,28 @@ function calc(squadre, risultati){
 
 
 
+            risultato =
+                String(risultato).trim();
+
+
+
+            /*
+            ==========================================
+            SUPPORTO RISULTATO
+            ==========================================
+            */
+
+            let base =
+                risultato.split("|")[0].trim();
+
+
+
             let parti =
-                risultato
-                .split("-");
+                base.split("-");
 
 
 
-            if(parti.length!==2){
+            if(parti.length !== 2){
 
                 continue;
 
@@ -7375,21 +7388,21 @@ function calc(squadre, risultati){
 
             let a =
                 Number(
-                    parti[0]
+                    parti[0].trim()
                 );
+
 
 
             let b =
                 Number(
-                    parti[1]
+                    parti[1].trim()
                 );
 
 
 
             if(
-                Number.isNaN(a)
-                ||
-                Number.isNaN(b)
+                !Number.isFinite(a) ||
+                !Number.isFinite(b)
             ){
 
                 continue;
@@ -7397,6 +7410,12 @@ function calc(squadre, risultati){
             }
 
 
+
+            /*
+            ==========================================
+            GIOCHI FATTI / SUBITI
+            ==========================================
+            */
 
             classifica[i].gf += a;
 
@@ -7410,44 +7429,48 @@ function calc(squadre, risultati){
 
 
 
-            if(a>b){
+            /*
+            ==========================================
+            PUNTI
+            ==========================================
+            */
 
+            const puntiVittoria =
+                Number(
+                    state.rules?.w ?? 3
+                );
+
+
+
+            const puntiPareggio =
+                Number(
+                    state.rules?.d ?? 1
+                );
+
+
+
+            if(a > b){
 
                 classifica[i].pt +=
-                    Number(
-                        state.rules?.w || 3
-                    );
-
+                    puntiVittoria;
 
             }
             else
-            if(b>a){
-
+            if(b > a){
 
                 classifica[j].pt +=
-                    Number(
-                        state.rules?.w || 3
-                    );
-
+                    puntiVittoria;
 
             }
             else{
 
-
                 classifica[i].pt +=
-                    Number(
-                        state.rules?.d || 1
-                    );
-
+                    puntiPareggio;
 
                 classifica[j].pt +=
-                    Number(
-                        state.rules?.d || 1
-                    );
-
+                    puntiPareggio;
 
             }
-
 
         }
 
@@ -7455,230 +7478,111 @@ function calc(squadre, risultati){
 
 
 
-    classifica.forEach(x=>{
+    /*
+    ==========================================
+    DIFFERENZA GIOCHI
+    ==========================================
+    */
 
+    classifica.forEach(x => {
 
         x.df =
-            x.gf -
-            x.gs;
-
+            x.gf - x.gs;
 
     });
 
 
 
-    classifica.sort((a,b)=>{
+    /*
+    ==========================================
+    ORDINAMENTO CLASSIFICA
+    ==========================================
+    */
 
+    classifica.sort((a, b) => {
 
-        if(
-            b.pt!==a.pt
-        )
+        /*
+        1. PUNTI
+        */
 
-            return b.pt-a.pt;
+        if(a.pt !== b.pt)
 
-
-
-        if(
-            b.df!==a.df
-        )
-
-            return b.df-a.df;
-
-
-
-        if(
-            b.gf!==a.gf
-        )
-
-            return b.gf-a.gf;
+            return b.pt - a.pt;
 
 
 
-        return a.gs-b.gs;
+        /*
+        2. DIFFERENZA GIOCHI
+        */
 
+        if(a.df !== b.df)
+
+            return b.df - a.df;
+
+
+
+        /*
+        3. GIOCHI FATTI
+        */
+
+        if(a.gf !== b.gf)
+
+            return b.gf - a.gf;
+
+
+
+        /*
+        4. GIOCHI SUBITI
+        */
+
+        if(a.gs !== b.gs)
+
+            return a.gs - b.gs;
+
+
+
+        /*
+        5. NOME
+        Solo come spareggio finale
+        per mantenere un ordinamento stabile.
+        */
+
+        return String(a.n || "")
+            .localeCompare(
+                String(b.n || ""),
+                "it"
+            );
 
     });
 
 
+
+    /*
+    ==========================================
+    QUALIFICAZIONI
+    ==========================================
+    */
 
     const qualificate =
-
-        Number(
-            state.rules?.qualificatePerGirone || 2
+        Math.max(
+            0,
+            Number(
+                state.rules?.qualificatePerGirone ?? 2
+            )
         );
 
 
 
-    classifica.forEach((x,i)=>{
-
+    classifica.forEach((x, i) => {
 
         x.qual =
             i < qualificate;
-
 
     });
 
 
 
     return classifica;
-
-
-}
-function renderClass(){
-
-    ensureRules();
-
-
-
-    [
-
-        "A",
-
-        "B",
-
-        "C",
-
-        "D"
-
-    ].forEach(tag=>{
-
-
-
-        if(
-            tag==="C" &&
-            (!Array.isArray(state.C) ||
-            state.C.length===0)
-        )
-
-            return;
-
-
-
-
-        if(
-            tag==="D" &&
-            (!Array.isArray(state.D) ||
-            state.D.length===0)
-        )
-
-            return;
-
-
-
-
-
-
-
-        let box =
-            document.getElementById(
-                tag+"class"
-            );
-
-
-
-        if(!box)
-
-            return;
-
-
-
-
-
-
-
-
-
-        let classifica =
-
-    calc(
-
-        state[tag],
-
-        state[tag+"res"]
-
-    );
-
-
-if(
-    !Array.isArray(classifica)
-)
-
-    classifica=[];
-       state["rank"+tag] = classifica;
-
-
-state["rank"+tag] = classifica;
-
-
-
-        box.innerHTML =
-
-        classifica.map(x=>`
-
-
-
-<tr>
-
-
-<td>
-
-
-<span class="${
-x.qual
-?
-"qual-arrow-up"
-:
-"qual-arrow-down"
-}">
-
-
-${
-x.qual
-?
-"▲"
-:
-"▼"
-}
-
-
-</span>
-
-
-${
-
-String(x.n || "")
-
-}
-
-
-
-</td>
-
-
-
-
-<td>${x.pt}</td>
-
-<td>${x.gf}</td>
-
-<td>${x.gs}</td>
-
-<td>${x.df}</td>
-
-
-
-</tr>
-
-
-
-`).join("");
-
-
-
-
-
-    });
-
 
 }
 function updateRes(g,i,pos,val){
