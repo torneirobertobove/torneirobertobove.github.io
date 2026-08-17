@@ -3254,24 +3254,58 @@ async function apriArchivioTornei(){
 }
 async function caricaTorneoArchivio(id){
 
-
-    let {data,error}=
-
+    let {
+        data,
+        error
+    } =
         await sb
         .from("tornei")
         .select("*")
-        .eq("id",id)
+        .eq("id", id)
         .single();
-
 
 
     if(error){
 
-        console.error(error);
+        console.error(
+            "Errore caricamento torneo archivio:",
+            error
+        );
+
         return;
 
     }
 
+
+    if(!data){
+
+        console.error(
+            "Nessun torneo trovato per ID:",
+            id
+        );
+
+        return;
+
+    }
+
+
+    /*
+    ============================
+    RECUPERO CONFIGURAZIONE
+    ============================
+    */
+
+    const configurazione =
+        data.configurazione &&
+        typeof data.configurazione === "object"
+
+        ?
+
+        data.configurazione
+
+        :
+
+        {};
 
 
     /*
@@ -3280,10 +3314,12 @@ async function caricaTorneoArchivio(id){
     ============================
     */
 
-
     state = {
 
-        ...data.configurazione,
+        ...configurazione,
+
+        configurazione:
+            configurazione,
 
         idTorneo:
             data.id,
@@ -3300,6 +3336,118 @@ async function caricaTorneoArchivio(id){
     };
 
 
+    /*
+    ============================
+    GARANZIA REGOLE
+    ============================
+    */
+
+    if(
+        !state.rules ||
+        typeof state.rules !== "object"
+    ){
+
+        state.rules = {};
+
+    }
+
+
+    /*
+    ============================
+    GARANZIA GIRONI
+    ============================
+    */
+
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ].forEach(g => {
+
+        if(
+            !Array.isArray(state[g])
+        ){
+
+            state[g] = [];
+
+        }
+
+    });
+
+
+    /*
+    ============================
+    GARANZIA COPPIE
+    ============================
+    */
+
+    if(
+        !Array.isArray(state.coppie)
+    ){
+
+        state.coppie = [];
+
+    }
+
+
+    /*
+    ============================
+    GARANZIA PARTECIPANTI
+    ============================
+    */
+
+    if(
+        !Array.isArray(state.partecipanti)
+    ){
+
+        state.partecipanti = [];
+
+    }
+
+
+    /*
+    ============================
+    RECUPERO COPPIE DALLA
+    CONFIGURAZIONE SE NECESSARIO
+    ============================
+    */
+
+    if(
+        state.coppie.length === 0 &&
+        Array.isArray(
+            configurazione.coppie
+        )
+    ){
+
+        state.coppie =
+            configurazione.coppie;
+
+    }
+
+
+    /*
+    ============================
+    RECUPERO PARTECIPANTI DALLA
+    CONFIGURAZIONE SE NECESSARIO
+    ============================
+    */
+
+    if(
+        state.partecipanti.length === 0 &&
+        Array.isArray(
+            configurazione.partecipanti
+        )
+    ){
+
+        state.partecipanti =
+            configurazione.partecipanti;
+
+    }
+
 
     /*
     ============================
@@ -3307,19 +3455,25 @@ async function caricaTorneoArchivio(id){
     ============================
     */
 
-
     let nomeInput =
-        document.getElementById("nomeTorneoInput");
+        document.getElementById(
+            "nomeTorneoInput"
+        );
 
 
     if(nomeInput){
 
         nomeInput.value =
-            data.nome;
+            data.nome || "";
 
     }
 
 
+    /*
+    ============================
+    AGGIORNA DATA
+    ============================
+    */
 
     let campiDate =
         document.querySelectorAll(
@@ -3327,7 +3481,10 @@ async function caricaTorneoArchivio(id){
         );
 
 
-    if(campiDate.length > 0){
+    if(
+        campiDate.length > 0 &&
+        data.data
+    ){
 
         campiDate[0].value =
             data.data;
@@ -3335,9 +3492,16 @@ async function caricaTorneoArchivio(id){
     }
 
 
+    /*
+    ============================
+    AGGIORNA ORA INIZIO
+    ============================
+    */
 
     let oraInput =
-        document.getElementById("startTime");
+        document.getElementById(
+            "startTime"
+        );
 
 
     if(oraInput){
@@ -3360,13 +3524,47 @@ async function caricaTorneoArchivio(id){
     }
 
 
-
     /*
     ============================
-    SALVATAGGIO LOCALE
+    GARANZIA FORMATO
     ============================
     */
 
+    if(
+        !state.formato &&
+        state.rules.numeroSquadre
+    ){
+
+        state.formato =
+            Number(
+                state.rules.numeroSquadre
+            );
+
+    }
+
+
+    /*
+    ============================
+    GARANZIA NUMERO SQUADRE
+    ============================
+    */
+
+    if(
+        !state.rules.numeroSquadre &&
+        state.formato
+    ){
+
+        state.rules.numeroSquadre =
+            Number(state.formato);
+
+    }
+
+
+    /*
+    ============================
+    SALVATAGGIO STATO LOCALE
+    ============================
+    */
 
     localStorage.setItem(
         "torneoState",
@@ -3374,24 +3572,73 @@ async function caricaTorneoArchivio(id){
     );
 
 
+    /*
+    ============================
+    DEBUG COMPLETO
+    ============================
+    */
+
+    console.log(
+        "TORNEO ARCHIVIO CARICATO:",
+        {
+            id: state.idTorneo,
+            nome: state.nomeTorneo,
+            formato: state.formato,
+            numeroSquadre:
+                state.rules.numeroSquadre,
+            numeroGironi:
+                state.rules.numeroGironi,
+            A: state.A,
+            B: state.B,
+            C: state.C,
+            D: state.D,
+            coppie: state.coppie,
+            partecipanti: state.partecipanti,
+            configurazione:
+                state.configurazione
+        }
+    );
+
+
+    /*
+    ============================
+    CHIUDI MODALE
+    ============================
+    */
 
     document
-    .getElementById("archivioTorneiModal")
-    ?.remove();
+        .getElementById(
+            "archivioTorneiModal"
+        )
+        ?.remove();
 
 
+    /*
+    ============================
+    RENDER
+    ============================
+    */
 
-    if(typeof render==="function")
+    if(
+        typeof render ===
+        "function"
+    ){
 
         render();
 
+    }
 
+
+    /*
+    ============================
+    CONFERMA
+    ============================
+    */
 
     alert(
-        "Torneo caricato: "
-        + data.nome
+        "Torneo caricato: " +
+        data.nome
     );
-
 
 }
 function setFormat(n){
