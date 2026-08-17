@@ -10031,7 +10031,6 @@ function getFinalQualified(){
 
 
 
-
         let classifica =
 
             calc(
@@ -10053,7 +10052,6 @@ function getFinalQualified(){
 
 
 
-
         let q =
 
             Number(
@@ -10063,7 +10061,7 @@ function getFinalQualified(){
 
 
         if(
-            isNaN(q) ||
+            !Number.isFinite(q) ||
             q<1
         )
 
@@ -10071,40 +10069,10 @@ function getFinalQualified(){
 
 
 
-
-        /*
-        ============================
-        GESTIONE QUARTI
-        ============================
-
-        Se ci sono quarti e il girone
-        contiene 4 squadre, passano
-        tutte alla fase finale.
-
-        Esempio:
-        2 gironi x 4 squadre = 8
-        ============================
-        */
-
-
-        if(
-            state.rules.usaQuarti===true &&
-            squadre.length===4
-        ){
-
-            q=4;
-
-        }
-
-
-
-
         classifica.forEach((x,i)=>{
 
 
-            if(
-                i<q
-            ){
+            if(i<q){
 
 
                 qualificate.push({
@@ -10132,19 +10100,15 @@ function getFinalQualified(){
         });
 
 
-
     });
 
 
 
 
-
-
-
     /*
-    ============================
+    ===================================
     NUMERO QUALIFICATE FINALI
-    ============================
+    ===================================
     */
 
 
@@ -10156,17 +10120,26 @@ function getFinalQualified(){
 
 
 
+    if(
+        !Number.isFinite(limite) ||
+        limite<1
+    ){
+
+        limite =
+            qualificate.length;
+
+    }
 
 
 
     /*
-    ============================
+    ===================================
     QUARTI DI FINALE
-    ============================
+    ===================================
 
-    Servono 8 squadre solo se
-    realmente disponibili.
-    ============================
+    Se i quarti sono attivi il tabellone
+    richiede 8 qualificate, ma solo se
+    sono realmente disponibili.
     */
 
 
@@ -10181,38 +10154,143 @@ function getFinalQualified(){
 
 
 
-
+    /*
+    ===================================
+    SE LE QUALIFICATE PER GIRONE
+    PRODUCONO MENO SQUADRE DEL LIMITE
+    ===================================
+    */
 
 
     if(
-        !limite ||
-        limite<1
-    )
+        limite>qualificate.length
+    ){
 
         limite =
             qualificate.length;
 
+    }
 
 
 
+    /*
+    ===================================
+    DISTRIBUZIONE EQUILIBRATA
+    ===================================
 
-    return qualificate
+    Evita che con più gironi vengano
+    prese semplicemente le prime 8
+    provenienti da A/B.
+    */
 
-        .slice(
 
-            0,
+    if(
+        state.rules.usaQuarti===true &&
+        limite===8 &&
+        qualificate.length>8
+    ){
 
-            limite
 
-        )
+        let perGirone={};
 
-        .map(
 
-            x=>
+        qualificate.forEach(x=>{
 
+
+            if(!perGirone[x.girone])
+                perGirone[x.girone]=[];
+
+
+            perGirone[x.girone].push(x);
+
+
+        });
+
+
+
+        let gironiAttivi =
+            Object.keys(perGirone);
+
+
+
+        let ordinate=[];
+
+
+
+        /*
+        Prima prendiamo le prime
+        classificate di ogni girone.
+        */
+
+
+        for(let posizione=1; ; posizione++){
+
+
+            let aggiunte=0;
+
+
+            gironiAttivi.forEach(tag=>{
+
+
+                let squadra =
+
+                    perGirone[tag]
+                    .find(
+                        x =>
+                        x.posizione===posizione
+                    );
+
+
+                if(squadra){
+
+                    ordinate.push(squadra);
+
+                    aggiunte++;
+
+                }
+
+
+            });
+
+
+
+            if(
+                ordinate.length>=8 ||
+                aggiunte===0
+            )
+
+                break;
+
+
+        }
+
+
+
+        qualificate =
+            ordinate.slice(0,8);
+
+
+    }
+    else{
+
+
+        qualificate =
+            qualificate.slice(
+                0,
+                limite
+            );
+
+
+    }
+
+
+
+    return qualificate.map(
+
+        x =>
             x.nome
 
-        );
+    );
 
 
 }
