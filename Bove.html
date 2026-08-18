@@ -5961,7 +5961,7 @@ async function loadState(){
 
         /*
         ============================================================
-        FUNZIONI LOCALI DI NORMALIZZAZIONE
+        FUNZIONI LOCALI DI SUPPORTO
         ============================================================
         */
 
@@ -5999,15 +5999,13 @@ async function loadState(){
                 typeof g !== "object"
             ){
 
-                return String(g).trim();
+                return String(g);
 
             }
 
 
             /*
-            --------------------------------------------------------
-            NOME + COGNOME
-            --------------------------------------------------------
+            Prima il nome completo reale
             */
 
             const nome =
@@ -6029,79 +6027,69 @@ async function loadState(){
 
 
             if(
-                nome ||
+                nome &&
                 cognome
             ){
 
                 return (
                     nome +
-                    (
-                        nome && cognome
-                            ?
-                            " "
-                            :
-                            ""
-                    ) +
+                    " " +
                     cognome
                 ).trim();
 
             }
 
 
+            if(nome){
+
+                return nome;
+
+            }
+
+
+            if(cognome){
+
+                return cognome;
+
+            }
+
+
             /*
-            --------------------------------------------------------
-            ALTRI NOMI POSSIBILI
-            --------------------------------------------------------
+            Fallback
             */
 
-            const chiavi = [
-
-                "nome_giocatore",
-                "nomeGiocatore",
-                "nomegiocatore",
-                "giocatore",
-                "player",
-                "nomeCompleto",
-                "nome_completo",
-                "display_name",
-                "displayName",
-                "username",
-                "email"
-
-            ];
-
-
-            for(
-                let i = 0;
-                i < chiavi.length;
-                i++
+            if(
+                g.nome_giocatore !== undefined &&
+                g.nome_giocatore !== null
             ){
 
-                const valore =
-                    g[
-                        chiavi[i]
-                    ];
+                return String(
+                    g.nome_giocatore
+                ).trim();
+
+            }
 
 
-                if(
-                    valore !== undefined &&
-                    valore !== null &&
-                    typeof valore !== "object"
-                ){
+            if(
+                g.nome_giocato !== undefined &&
+                g.nome_giocato !== null
+            ){
 
-                    const testo =
-                        String(
-                            valore
-                        ).trim();
+                return String(
+                    g.nome_giocato
+                ).trim();
+
+            }
 
 
-                    if(testo){
+            if(
+                g.email !== undefined &&
+                g.email !== null
+            ){
 
-                        return testo;
-
-                    }
-
-                }
+                return String(
+                    g.email
+                ).trim();
 
             }
 
@@ -6112,11 +6100,11 @@ async function loadState(){
 
 
 
-        function nomeSquadra(squadra){
+        function nomeCoppia(c){
 
             if(
-                squadra === null ||
-                squadra === undefined
+                c === null ||
+                c === undefined
             ){
 
                 return "";
@@ -6124,219 +6112,130 @@ async function loadState(){
             }
 
 
-            if(
-                typeof squadra === "string"
-            ){
-
-                return squadra.trim();
-
-            }
-
-
-            if(
-                typeof squadra === "number"
-            ){
-
-                return String(squadra);
-
-            }
-
-
-            if(
-                typeof squadra !== "object"
-            ){
-
-                return String(
-                    squadra
-                ).trim();
-
-            }
-
-
             /*
-            --------------------------------------------------------
-            CASO COPPIA
-            --------------------------------------------------------
+            Se è già una stringa la manteniamo.
             */
 
+            if(
+                typeof c === "string"
+            ){
+
+                const testo =
+                    c.trim();
+
+
+                /*
+                Non accettiamo stringhe corrotte.
+                */
+
+                if(
+                    testo.includes(
+                        "[object Object]"
+                    )
+                ){
+
+                    return "";
+
+                }
+
+
+                return testo;
+
+            }
+
+
+            if(
+                typeof c !== "object"
+            ){
+
+                return String(c).trim();
+
+            }
+
+
             const g1 =
-                squadra.g1
+                c.giocatore1
                 ??
-                squadra.giocatore1
+                c.g1
                 ??
-                squadra.player1
-                ??
-                squadra.giocatore_1
-                ??
-                squadra.player_1
+                c.player1
                 ??
                 null;
 
 
             const g2 =
-                squadra.g2
+                c.giocatore2
                 ??
-                squadra.giocatore2
+                c.g2
                 ??
-                squadra.player2
-                ??
-                squadra.giocatore_2
-                ??
-                squadra.player_2
+                c.player2
                 ??
                 null;
 
 
+            const nome1 =
+                nomeGiocatore(g1);
+
+
+            const nome2 =
+                nomeGiocatore(g2);
+
+
             if(
-                g1 !== null ||
-                g2 !== null
+                nome1 &&
+                nome2
             ){
 
-                const nome1 =
-                    nomeGiocatore(g1);
-
-
-                const nome2 =
-                    nomeGiocatore(g2);
-
-
-                if(
-                    nome1 &&
+                return (
+                    nome1 +
+                    " / " +
                     nome2
-                ){
-
-                    return (
-                        nome1 +
-                        "/" +
-                        nome2
-                    );
-
-                }
-
-
-                if(nome1){
-
-                    return nome1;
-
-                }
-
-
-                if(nome2){
-
-                    return nome2;
-
-                }
-
-            }
-
-
-
-            /*
-            --------------------------------------------------------
-            NOME SQUADRA GIÀ PRESENTE
-            --------------------------------------------------------
-            */
-
-            const chiaviSquadra = [
-
-                "nomeSquadra",
-                "nome_squadra",
-                "squadra",
-                "team",
-                "teamName",
-                "nome"
-
-            ];
-
-
-            for(
-                let i = 0;
-                i < chiaviSquadra.length;
-                i++
-            ){
-
-                const valore =
-                    squadra[
-                        chiaviSquadra[i]
-                    ];
-
-
-                if(
-                    valore !== undefined &&
-                    valore !== null &&
-                    typeof valore !== "object"
-                ){
-
-                    const testo =
-                        String(
-                            valore
-                        ).trim();
-
-
-                    if(testo){
-
-                        return testo;
-
-                    }
-
-                }
-
-            }
-
-
-
-            /*
-            --------------------------------------------------------
-            ARRAY DI GIOCATORI
-            --------------------------------------------------------
-            */
-
-            if(
-                Array.isArray(squadra)
-            ){
-
-                const elementi =
-                    squadra
-                    .map(
-                        elemento =>
-                            nomeGiocatore(
-                                elemento
-                            )
-                    )
-                    .filter(
-                        nome =>
-                            nome !== ""
-                    );
-
-
-                if(
-                    elementi.length
-                ){
-
-                    return elementi.join("/");
-
-                }
-
-            }
-
-
-
-            /*
-            --------------------------------------------------------
-            ULTIMO TENTATIVO:
-            SE L'OGGETTO RAPPRESENTA UN SOLO GIOCATORE
-            --------------------------------------------------------
-            */
-
-            const singolo =
-                nomeGiocatore(
-                    squadra
                 );
 
+            }
 
-            if(singolo){
 
-                return singolo;
+            if(nome1){
+
+                return nome1;
+
+            }
+
+
+            if(nome2){
+
+                return nome2;
+
+            }
+
+
+            /*
+            Eventuale coppia già rappresentata
+            da un nome squadra.
+            */
+
+            if(
+                c.nomeSquadra !== undefined &&
+                c.nomeSquadra !== null &&
+                typeof c.nomeSquadra !== "object"
+            ){
+
+                return String(
+                    c.nomeSquadra
+                ).trim();
+
+            }
+
+
+            if(
+                c.nome !== undefined &&
+                c.nome !== null &&
+                typeof c.nome !== "object"
+            ){
+
+                return String(
+                    c.nome
+                ).trim();
 
             }
 
@@ -6347,92 +6246,55 @@ async function loadState(){
 
 
 
-        /*
-        ============================================================
-        NORMALIZZA UN GIRONE SENZA DISTRUGGERE I DATI ORIGINALI
-        ============================================================
-        */
-
-        function normalizzaGirone(girone){
+        function gironeValido(girone){
 
             if(
                 !Array.isArray(girone)
             ){
 
-                return [];
+                return false;
 
             }
 
 
-            return girone.map(
+            /*
+            Un girone vuoto non è un girone valido
+            se dobbiamo ricostruire le squadre.
+            */
+
+            if(
+                girone.length === 0
+            ){
+
+                return false;
+
+            }
+
+
+            return !girone.some(
                 squadra => {
 
-                    /*
-                    ----------------------------------------------
-                    STRINGA GIÀ CORRETTA
-                    ----------------------------------------------
-                    */
-
                     if(
-                        typeof squadra === "string"
+                        squadra === null ||
+                        squadra === undefined
                     ){
 
-                        const testo =
-                            squadra.trim();
-
-
-                        /*
-                        Evita di trasformare stringhe già corrette
-                        o vuote.
-                        */
-
-                        if(
-                            testo &&
-                            testo !==
-                                "[object Object]/[object Object]" &&
-                            testo !==
-                                "[object Object]"
-                        ){
-
-                            return testo;
-
-                        }
+                        return true;
 
                     }
 
 
-                    const nome =
-                        nomeSquadra(
+                    const testo =
+                        String(
                             squadra
                         );
 
 
-                    /*
-                    ----------------------------------------------
-                    SE NON RIUSCIAMO A DETERMINARE IL NOME,
-                    NON INVENTIAMO DATI.
-                    ----------------------------------------------
-                    */
-
-                    if(
-                        nome &&
-                        nome !==
-                            "[object Object]" &&
-                        nome !==
-                            "[object Object]/[object Object]"
-                    ){
-
-                        return nome;
-
-                    }
-
-
-                    /*
-                    Mantiene una stringa vuota invece di introdurre
-                    "[object Object]".
-                    */
-
-                    return "";
+                    return (
+                        testo.includes(
+                            "[object Object]"
+                        )
+                    );
 
                 }
             );
@@ -6443,7 +6305,7 @@ async function loadState(){
 
         /*
         ============================================================
-        TORNEO APERTO DA ADMIN
+        TORNEO APERTO DA ADMIN / SUPABASE
         ============================================================
         */
 
@@ -6471,9 +6333,8 @@ async function loadState(){
             ========================================================
             IMPORTANTE
 
-            Se stiamo aprendo un torneo da Supabase NON dobbiamo
-            utilizzare residui di localStorage appartenenti ad
-            altri tornei.
+            Un torneo aperto da Supabase non deve utilizzare
+            residui di localStorage di altri tornei.
             ========================================================
             */
 
@@ -6542,8 +6403,7 @@ async function loadState(){
                 const configurazione =
                     torneo.configurazione
                     &&
-                    typeof torneo.configurazione ===
-                        "object"
+                    typeof torneo.configurazione === "object"
 
                     ?
 
@@ -6633,23 +6493,21 @@ async function loadState(){
                     "C",
                     "D",
                     "E",
-                    "F"
+                    "F",
+                    "G"
+                ].forEach(g=>{
 
-                ].forEach(
-                    g => {
+                    if(
+                        !Array.isArray(
+                            state[g]
+                        )
+                    ){
 
-                        if(
-                            !Array.isArray(
-                                state[g]
-                            )
-                        ){
-
-                            state[g] = [];
-
-                        }
+                        state[g]=[];
 
                     }
-                );
+
+                });
 
 
                 /*
@@ -6661,8 +6519,7 @@ async function loadState(){
                 if(
                     configurazione.gironi
                     &&
-                    typeof configurazione.gironi ===
-                        "object"
+                    typeof configurazione.gironi === "object"
                 ){
 
                     const gironi =
@@ -6675,55 +6532,22 @@ async function loadState(){
                         "C",
                         "D",
                         "E",
-                        "F"
+                        "F",
+                        "G"
+                    ].forEach(g=>{
 
-                    ].forEach(
-                        g => {
-
-                            if(
-                                Array.isArray(
-                                    gironi[g]
-                                )
-                            ){
-
-                                state[g] =
-                                    gironi[g];
-
-                            }
-
-                        }
-                    );
-
-
-                    /*
-                    =================================================
-                    CORREZIONE CRITICA
-
-                    I gironi possono contenere oggetti coppia.
-                    Non dobbiamo lasciarli arrivare a renderTables()
-                    come oggetti, altrimenti JavaScript li converte
-                    in "[object Object]".
-                    =================================================
-                    */
-
-                    [
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "E",
-                        "F"
-
-                    ].forEach(
-                        g => {
+                        if(
+                            Array.isArray(
+                                gironi[g]
+                            )
+                        ){
 
                             state[g] =
-                                normalizzaGirone(
-                                    state[g]
-                                );
+                                gironi[g];
 
                         }
-                    );
+
+                    });
 
 
                     console.log(
@@ -6734,7 +6558,8 @@ async function loadState(){
                             C:state.C,
                             D:state.D,
                             E:state.E,
-                            F:state.F
+                            F:state.F,
+                            G:state.G
                         }
                     );
 
@@ -6744,17 +6569,6 @@ async function loadState(){
                 /*
                 ====================================================
                 CARICAMENTO ISCRITTI REALI
-
-                GLI ISCRITTI NON SONO DENTRO
-                tornei.configurazione.partecipanti.
-
-                Sono nella tabella:
-
-                    iscrizioni
-
-                collegata tramite:
-
-                    iscrizioni.torneo_id
                 ====================================================
                 */
 
@@ -6782,13 +6596,6 @@ async function loadState(){
                 }
                 else{
 
-                    /*
-                    =================================================
-                    SE SUPABASE HA RESTITUITO GLI ISCRITTI,
-                    USIAMO QUELLI REALI.
-                    =================================================
-                    */
-
                     if(
                         Array.isArray(iscrizioni)
                     ){
@@ -6815,13 +6622,6 @@ async function loadState(){
                 /*
                 ====================================================
                 COPPIE
-
-                NON CREIAMO COPPIE AUTOMATICAMENTE.
-
-                Se l'admin le ha già salvate dentro
-                configurazione.coppie le manteniamo.
-
-                Se non esistono, rimangono [].
                 ====================================================
                 */
 
@@ -6831,7 +6631,7 @@ async function loadState(){
                     )
                 ){
 
-                    state.coppie = [];
+                    state.coppie=[];
 
                 }
 
@@ -6844,158 +6644,258 @@ async function loadState(){
 
                 /*
                 ====================================================
-                SE ESISTONO COPPIE SALVATE MA NON ESISTONO GIRONI,
-                RICOSTRUZIONE GIRONI
+                RICOSTRUZIONE SICURA DEI GIRONI
+                ====================================================
+
+                Se i gironi salvati sono corretti li manteniamo.
+
+                Se invece contengono:
+
+                    [object Object]
+
+                oppure sono vuoti mentre esistono coppie reali,
+
+                li ricostruiamo direttamente da state.coppie.
+
+                Questo è il punto che corregge il problema attuale.
                 ====================================================
                 */
 
-                if(
-
-                    state.A.length === 0
-
-                    &&
-
-                    state.B.length === 0
-
-                    &&
-
-                    state.coppie.length > 0
-
-                ){
-
-                    const squadre = [];
+                const gironiDaControllare =
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G"
+                    ];
 
 
-                    state.coppie.forEach(
-                        c => {
-
-                            if(!c){
-
-                                return;
-
-                            }
-
-
-                            const g1 =
-                                c.g1
-                                ??
-                                c.giocatore1
-                                ??
-                                c.player1
-                                ??
-                                "";
+                let gironiPresentiValidi =
+                    gironiDaControllare.some(
+                        g =>
+                            gironeValido(
+                                state[g]
+                            )
+                    );
 
 
-                            const g2 =
-                                c.g2
-                                ??
-                                c.giocatore2
-                                ??
-                                c.player2
-                                ??
-                                "";
-
-
-                            const nome1 =
-                                nomeGiocatore(
-                                    g1
-                                );
-
-
-                            const nome2 =
-                                nomeGiocatore(
-                                    g2
-                                );
-
+                let gironiCorrotti =
+                    gironiDaControllare.some(
+                        g => {
 
                             if(
-                                nome1 &&
-                                nome2
+                                !Array.isArray(
+                                    state[g]
+                                )
                             ){
 
-                                squadre.push(
-                                    nome1 +
-                                    "/" +
-                                    nome2
-                                );
+                                return false;
 
                             }
-                            else
-                            if(nome1){
 
-                                squadre.push(
-                                    nome1
-                                );
 
-                            }
-                            else
-                            if(nome2){
-
-                                squadre.push(
-                                    nome2
-                                );
-
-                            }
+                            return state[g].some(
+                                squadra =>
+                                    String(
+                                        squadra
+                                    ).includes(
+                                        "[object Object]"
+                                    )
+                            );
 
                         }
                     );
 
 
-                    if(
-                        squadre.length > 0
-                    ){
+                /*
+                ====================================================
+                CREAZIONE NOMI CORRETTI DALLE COPPIE
+                ====================================================
+                */
 
-                        const meta =
-                            Math.ceil(
-                                squadre.length / 2
+                const squadreDaCoppie=[];
+
+
+                state.coppie.forEach(
+                    coppia => {
+
+                        const nome =
+                            nomeCoppia(
+                                coppia
                             );
 
 
-                        state.A =
-                            squadre.slice(
-                                0,
-                                meta
+                        if(
+                            nome
+                            &&
+                            !nome.includes(
+                                "[object Object]"
+                            )
+                        ){
+
+                            squadreDaCoppie.push(
+                                nome
                             );
 
-
-                        state.B =
-                            squadre.slice(
-                                meta
-                            );
+                        }
 
                     }
+                );
 
-                }
+
+                console.log(
+                    "SQUADRE RICAVATE DALLE COPPIE:",
+                    squadreDaCoppie
+                );
 
 
                 /*
                 ====================================================
-                NORMALIZZAZIONE FINALE
-
-                Anche se i gironi non erano dentro
-                configurazione.gironi ma erano già presenti nella
-                configurazione principale, li normalizziamo comunque.
+                DECISIONE RICOSTRUZIONE
                 ====================================================
                 */
 
-                [
-                    "A",
-                    "B",
-                    "C",
-                    "D",
-                    "E",
-                    "F"
+                if(
+                    squadreDaCoppie.length > 0
+                    &&
+                    (
+                        gironiCorrotti
+                        ||
+                        !gironiPresentiValidi
+                    )
+                ){
 
-                ].forEach(
-                    g => {
+                    console.warn(
+                        "GIRONI SALVATI NON UTILIZZABILI: RICOSTRUZIONE DALLE COPPIE"
+                    );
 
-                        state[g] =
-                            normalizzaGirone(
-                                state[g]
-                            );
+
+                    /*
+                    Prima puliamo soltanto i gironi.
+                    NON tocchiamo risultati, tempi o campi.
+                    */
+
+                    gironiDaControllare.forEach(
+                        g => {
+
+                            state[g]=[];
+
+                        }
+                    );
+
+
+                    /*
+                    =================================================
+                    DETERMINAZIONE NUMERO GIRONI
+                    =================================================
+                    */
+
+                    let numeroGironi =
+                        Number(
+                            state.rules &&
+                            state.rules.numeroGironi
+                        );
+
+
+                    if(
+                        !Number.isFinite(
+                            numeroGironi
+                        )
+                        ||
+                        numeroGironi < 1
+                    ){
+
+                        /*
+                        Per 8 squadre manteniamo A/B.
+                        */
+
+                        numeroGironi=2;
 
                     }
-                );
+
+
+                    numeroGironi =
+                        Math.min(
+                            Math.floor(
+                                numeroGironi
+                            ),
+                            squadreDaCoppie.length
+                        );
+
+
+                    /*
+                    =================================================
+                    DISTRIBUZIONE EQUILIBRATA
+                    =================================================
+                    */
+
+                    const base =
+                        Math.floor(
+                            squadreDaCoppie.length /
+                            numeroGironi
+                        );
+
+
+                    const resto =
+                        squadreDaCoppie.length %
+                        numeroGironi;
+
+
+                    let indiceSquadra=0;
+
+
+                    for(
+                        let i=0;
+                        i<numeroGironi;
+                        i++
+                    ){
+
+                        const tag =
+                            gironiDaControllare[i];
+
+
+                        const quantita =
+                            base +
+                            (
+                                i < resto
+                                    ?
+                                    1
+                                    :
+                                    0
+                            );
+
+
+                        state[tag] =
+                            squadreDaCoppie.slice(
+                                indiceSquadra,
+                                indiceSquadra +
+                                quantita
+                            );
+
+
+                        indiceSquadra +=
+                            quantita;
+
+                    }
+
+
+                    console.log(
+                        "GIRONI RICOSTRUITI:",
+                        {
+                            A:state.A,
+                            B:state.B,
+                            C:state.C,
+                            D:state.D,
+                            E:state.E,
+                            F:state.F,
+                            G:state.G
+                        }
+                    );
+
+                }
 
 
                 /*
@@ -7023,7 +6923,22 @@ async function loadState(){
                             state.A,
 
                         B:
-                            state.B
+                            state.B,
+
+                        C:
+                            state.C,
+
+                        D:
+                            state.D,
+
+                        E:
+                            state.E,
+
+                        F:
+                            state.F,
+
+                        G:
+                            state.G
                     }
                 );
 
@@ -7069,8 +6984,7 @@ async function loadState(){
                     if(
                         salvato
                         &&
-                        typeof salvato ===
-                            "object"
+                        typeof salvato === "object"
                     ){
 
                         state = {
@@ -7111,11 +7025,11 @@ async function loadState(){
 
             if(
 
-                state.A.length === 0
+                state.A.length===0
 
                 &&
 
-                state.B.length === 0
+                state.B.length===0
 
             ){
 
@@ -7138,7 +7052,7 @@ async function loadState(){
                         if(
                             Array.isArray(teams)
                             &&
-                            teams.length >= 8
+                            teams.length>=8
                         ){
 
                             state.A =
@@ -7152,24 +7066,6 @@ async function loadState(){
                                 teams.slice(
                                     4,
                                     8
-                                );
-
-
-                            /*
-                            ----------------------------------------
-                            NORMALIZZA EVENTUALI OGGETTI LOCALI
-                            ----------------------------------------
-                            */
-
-                            state.A =
-                                normalizzaGirone(
-                                    state.A
-                                );
-
-
-                            state.B =
-                                normalizzaGirone(
-                                    state.B
                                 );
 
 
@@ -7223,23 +7119,22 @@ async function loadState(){
         "C",
         "D",
         "E",
-        "F"
+        "F",
+        "G"
 
-    ].forEach(
-        g => {
+    ].forEach(g=>{
 
-            if(
-                !Array.isArray(
-                    state[g]
-                )
-            ){
+        if(
+            !Array.isArray(
+                state[g]
+            )
+        ){
 
-                state[g] = [];
-
-            }
+            state[g]=[];
 
         }
-    );
+
+    });
 
 
     /*
@@ -7252,30 +7147,44 @@ async function loadState(){
 
         const n =
             Array.isArray(girone)
-                ?
-                girone.length
-                :
-                0;
+            ?
+            girone.length
+            :
+            0;
 
 
-        let totale = 0;
+        let totale=0;
 
 
         for(
-            let i = 0;
-            i < n;
+            let i=0;
+            i<n;
             i++
         ){
 
             for(
-                let j = i + 1;
-                j < n;
+                let j=i+1;
+                j<n;
                 j++
             ){
 
                 totale++;
 
             }
+
+        }
+
+
+        /*
+        Andata e ritorno
+        */
+
+        if(
+            state.rules &&
+            state.rules.garaAndataRitorno === true
+        ){
+
+            totale *= 2;
 
         }
 
@@ -7291,11 +7200,7 @@ async function loadState(){
     ================================================================
     */
 
-    function sistema(
-        nome,
-        len,
-        val
-    ){
+    function sistema(nome,len,val){
 
         if(
             !Array.isArray(
@@ -7303,13 +7208,13 @@ async function loadState(){
             )
         ){
 
-            state[nome] = [];
+            state[nome]=[];
 
         }
 
 
         while(
-            state[nome].length < len
+            state[nome].length<len
         ){
 
             state[nome].push(
@@ -7320,10 +7225,10 @@ async function loadState(){
 
 
         if(
-            state[nome].length > len
+            state[nome].length>len
         ){
 
-            state[nome] =
+            state[nome]=
                 state[nome].slice(
                     0,
                     len
@@ -7346,39 +7251,38 @@ async function loadState(){
         "C",
         "D",
         "E",
-        "F"
+        "F",
+        "G"
 
-    ].forEach(
-        g => {
+    ].forEach(g=>{
 
-            const totale =
-                numeroPartite(
-                    state[g]
-                );
-
-
-            sistema(
-                g + "res",
-                totale,
-                "-"
+        const totale =
+            numeroPartite(
+                state[g]
             );
 
 
-            sistema(
-                g + "time",
-                totale,
-                ""
-            );
+        sistema(
+            g+"res",
+            totale,
+            "-"
+        );
 
 
-            sistema(
-                g + "camp",
-                totale,
-                ""
-            );
+        sistema(
+            g+"time",
+            totale,
+            ""
+        );
 
-        }
-    );
+
+        sistema(
+            g+"camp",
+            totale,
+            ""
+        );
+
+    });
 
 
     /*
@@ -7419,7 +7323,7 @@ async function loadState(){
         state.fTopRes === undefined
     ){
 
-        state.fTopRes = "-";
+        state.fTopRes="-";
 
     }
 
@@ -7430,7 +7334,7 @@ async function loadState(){
         )
     ){
 
-        state.finalTop = [];
+        state.finalTop=[];
 
     }
 
@@ -7439,7 +7343,7 @@ async function loadState(){
         state.campioneTop === undefined
     ){
 
-        state.campioneTop = null;
+        state.campioneTop=null;
 
     }
 
@@ -7448,8 +7352,12 @@ async function loadState(){
     ================================================================
     IMPORTANTISSIMO
 
-    SE IL TORNEO ARRIVA DA SUPABASE CON idTorneo,
-    NON SALVIAMO IMMEDIATAMENTE LO STATO LOCALE.
+    TORNEO SUPABASE:
+    NON SALVIAMO IMMEDIATAMENTE IN LOCALSTORAGE.
+
+    TORNEO LOCALE:
+    salviamo soltanto se i gironi principali sono realmente
+    presenti.
     ================================================================
     */
 
@@ -7461,11 +7369,11 @@ async function loadState(){
 
         if(
 
-            state.A.length > 0
+            state.A.length>0
 
             &&
 
-            state.B.length > 0
+            state.B.length>0
 
         ){
 
@@ -7495,8 +7403,7 @@ async function loadState(){
     */
 
     if(
-        typeof render ===
-            "function"
+        typeof render === "function"
     ){
 
         try{
