@@ -10698,16 +10698,323 @@ function renderKO(){
 
 
 }
-function renderMatchCard(titolo,match,type,index,risultato){
+function renderMatchCard(titolo, match, type, index, risultato){
 
     let res =
         risultato || "-";
 
 
+    /*
+    ============================================================
+    CONVERSIONE SICURA DEL NOME DEL GIOCATORE / DELLA COPPIA
+    ============================================================
+    */
+
+    function nomeGiocatore(g){
+
+        if(g === null || g === undefined)
+            return "";
+
+
+        if(typeof g === "string")
+            return g;
+
+
+        if(typeof g === "number")
+            return String(g);
+
+
+        if(typeof g !== "object")
+            return String(g);
+
+
+        /*
+        --------------------------------------------------------
+        OGGETTO GIOCATORE
+        --------------------------------------------------------
+        */
+
+        const nomeCompleto =
+            [
+                g.nome,
+                g.cognome
+            ]
+            .filter(
+                valore =>
+                    valore !== null &&
+                    valore !== undefined &&
+                    String(valore).trim() !== ""
+            )
+            .join(" ")
+            .trim();
+
+
+        if(nomeCompleto)
+            return nomeCompleto;
+
+
+        if(
+            g.nome_giocatore !== null &&
+            g.nome_giocatore !== undefined &&
+            String(g.nome_giocatore).trim() !== ""
+        ){
+
+            return String(
+                g.nome_giocatore
+            ).trim();
+
+        }
+
+
+        if(
+            g.nome_giocato !== null &&
+            g.nome_giocato !== undefined &&
+            String(g.nome_giocato).trim() !== ""
+        ){
+
+            return String(
+                g.nome_giocato
+            ).trim();
+
+        }
+
+
+        if(
+            g.email !== null &&
+            g.email !== undefined &&
+            String(g.email).trim() !== ""
+        ){
+
+            return String(
+                g.email
+            ).trim();
+
+        }
+
+
+        return "";
+
+    }
+
+
+    /*
+    ============================================================
+    CONVERSIONE SICURA DELLA SQUADRA / COPPIA
+    ============================================================
+    */
+
+    function nomeSquadra(squadra){
+
+        if(
+            squadra === null ||
+            squadra === undefined
+        ){
+
+            return "";
+
+        }
+
+
+        if(typeof squadra === "string")
+            return squadra;
+
+
+        if(typeof squadra === "number")
+            return String(squadra);
+
+
+        if(typeof squadra !== "object")
+            return String(squadra);
+
+
+        /*
+        --------------------------------------------------------
+        SE È UNA COPPIA
+        --------------------------------------------------------
+        */
+
+        const g1 =
+            squadra.giocatore1
+            ||
+            squadra.g1
+            ||
+            squadra.player1
+            ||
+            squadra.giocatoreA
+            ||
+            null;
+
+
+        const g2 =
+            squadra.giocatore2
+            ||
+            squadra.g2
+            ||
+            squadra.player2
+            ||
+            squadra.giocatoreB
+            ||
+            null;
+
+
+        if(g1 || g2){
+
+            const nome1 =
+                nomeGiocatore(g1);
+
+
+            const nome2 =
+                nomeGiocatore(g2);
+
+
+            if(nome1 && nome2){
+
+                return (
+                    nome1 +
+                    " / " +
+                    nome2
+                );
+
+            }
+
+
+            if(nome1)
+                return nome1;
+
+
+            if(nome2)
+                return nome2;
+
+        }
+
+
+        /*
+        --------------------------------------------------------
+        SE L'OGGETTO CONTIENE GIÀ UN NOME SQUADRA
+        --------------------------------------------------------
+        */
+
+        if(
+            squadra.nome !== null &&
+            squadra.nome !== undefined &&
+            typeof squadra.nome !== "object" &&
+            String(squadra.nome).trim() !== ""
+        ){
+
+            return String(
+                squadra.nome
+            ).trim();
+
+        }
+
+
+        if(
+            squadra.nomeSquadra !== null &&
+            squadra.nomeSquadra !== undefined &&
+            typeof squadra.nomeSquadra !== "object" &&
+            String(squadra.nomeSquadra).trim() !== ""
+        ){
+
+            return String(
+                squadra.nomeSquadra
+            ).trim();
+
+        }
+
+
+        if(
+            squadra.squadra !== null &&
+            squadra.squadra !== undefined &&
+            typeof squadra.squadra !== "object"
+        ){
+
+            return String(
+                squadra.squadra
+            ).trim();
+
+        }
+
+
+        /*
+        --------------------------------------------------------
+        ULTIMO TENTATIVO: OGGETTO GIOCATORE SINGOLO
+        --------------------------------------------------------
+        */
+
+        const singolo =
+            nomeGiocatore(
+                squadra
+            );
+
+
+        if(singolo)
+            return singolo;
+
+
+        return "";
+
+    }
+
+
+    /*
+    ============================================================
+    CONVERSIONE DELLE DUE SQUADRE DEL MATCH
+    ============================================================
+    */
+
+    const squadra1 =
+        Array.isArray(match)
+        ?
+        nomeSquadra(match[0])
+        :
+        nomeSquadra(
+            match?.squadra1
+            ||
+            match?.team1
+            ||
+            match?.giocatore1
+            ||
+            ""
+        );
+
+
+    const squadra2 =
+        Array.isArray(match)
+        ?
+        nomeSquadra(match[1])
+        :
+        nomeSquadra(
+            match?.squadra2
+            ||
+            match?.team2
+            ||
+            match?.giocatore2
+            ||
+            ""
+        );
+
+
+    /*
+    ============================================================
+    WINNER
+    ============================================================
+    */
+
     let winner =
         getWinner(
             match,
             risultato
+        );
+
+
+    /*
+    Anche il vincitore potrebbe essere un oggetto.
+    Lo convertiamo prima della visualizzazione.
+    */
+
+    winner =
+        nomeSquadra(
+            winner
         );
 
 
@@ -10719,6 +11026,11 @@ function renderMatchCard(titolo,match,type,index,risultato){
         "Da giocare";
 
 
+    /*
+    ============================================================
+    RENDER CARD
+    ============================================================
+    */
 
     return `
 
@@ -10730,7 +11042,7 @@ function renderMatchCard(titolo,match,type,index,risultato){
 
 <div class="team">
 
-${match[0]}
+${squadra1}
 
 </div>
 
@@ -10754,7 +11066,7 @@ style="width:70px;text-align:center"
 
 <div class="team">
 
-${match[1]}
+${squadra2}
 
 </div>
 
