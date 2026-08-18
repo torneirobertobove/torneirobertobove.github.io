@@ -11077,7 +11077,14 @@ function renderTables(){
                     state[tag]
                 )
                 ?
-                state[tag]
+                state[tag].filter(
+                    squadra =>
+                        squadra !== null &&
+                        squadra !== undefined &&
+                        String(
+                            squadra
+                        ).trim() !== ""
+                )
                 :
                 [];
 
@@ -11090,6 +11097,12 @@ function renderTables(){
 
             }
 
+
+            /*
+            --------------------------------------------------------
+            ROUND ROBIN
+            --------------------------------------------------------
+            */
 
             const rounds =
                 generaRoundRobin(
@@ -11121,7 +11134,13 @@ function renderTables(){
 
             /*
             --------------------------------------------------------
-            COSTRUZIONE PER TURNI
+            COSTRUZIONE CALENDARIO
+
+            Tutte le partite dello stesso turno utilizzano
+            lo stesso slot.
+
+            Se le partite superano i campi disponibili,
+            vengono spostate nello slot successivo.
             --------------------------------------------------------
             */
 
@@ -11245,43 +11264,60 @@ function renderTables(){
 
             /*
             ========================================================
-            GARANZIA RISULTATI
+            SALVATAGGIO DEI RISULTATI ESISTENTI
             ========================================================
             */
 
-            if(
-                !Array.isArray(
+            const risultatiPrecedenti =
+                Array.isArray(
                     state[chiaveRes]
                 )
+                ?
+                state[chiaveRes].slice()
+                :
+                [];
+
+
+            /*
+            ========================================================
+            GARANZIA ARRAY RISULTATI
+            ========================================================
+            */
+
+            state[chiaveRes] =
+                [];
+
+
+            for(
+                let i = 0;
+                i < partite.length;
+                i++
             ){
 
-                state[chiaveRes] = [];
-
-            }
-
-
-            while(
-                state[chiaveRes].length <
-                partite.length
-            ){
-
-                state[chiaveRes].push(
-                    "-"
-                );
-
-            }
+                const precedente =
+                    risultatiPrecedenti[i];
 
 
-            if(
-                state[chiaveRes].length >
-                partite.length
-            ){
+                if(
+                    precedente === undefined ||
+                    precedente === null ||
+                    String(
+                        precedente
+                    ).trim() === ""
+                ){
 
-                state[chiaveRes] =
-                    state[chiaveRes].slice(
-                        0,
-                        partite.length
-                    );
+                    state[chiaveRes][i] =
+                        "-";
+
+                }
+                else{
+
+                    state[chiaveRes][i] =
+                        String(
+                            precedente
+                        ).trim();
+
+                }
 
             }
 
@@ -11289,89 +11325,42 @@ function renderTables(){
 
             /*
             ========================================================
-            GARANZIA ORARI
+            ORARI
+            ========================================================
+
+            GLI ORARI NON VENGONO RECUPERATI DAL VECCHIO STATE.
+
+            Vengono sempre calcolati dal calendario.
+
+            Questo impedisce che vecchi orari corrotti o riferiti
+            a una precedente disposizione delle partite rimangano
+            associati alla partita sbagliata.
             ========================================================
             */
 
-            if(
-                !Array.isArray(
-                    state[chiaveTime]
-                )
-            ){
-
-                state[chiaveTime] = [];
-
-            }
-
-
-            while(
-                state[chiaveTime].length <
-                partite.length
-            ){
-
-                state[chiaveTime].push(
-                    ""
-                );
-
-            }
-
-
-            if(
-                state[chiaveTime].length >
-                partite.length
-            ){
-
-                state[chiaveTime] =
-                    state[chiaveTime].slice(
-                        0,
-                        partite.length
-                    );
-
-            }
-
+            state[chiaveTime] =
+                [];
 
 
             /*
             ========================================================
-            GARANZIA CAMPI
+            CAMPI
+            ========================================================
+
+            ANCHE I CAMPI VENGONO SEMPRE RIGENERATI DAL CALENDARIO.
+
+            Questo impedisce che vecchi valori come:
+
+            A = 2,2,2,2,2,2
+            B = 4,4,4,4,4,4
+
+            oppure qualsiasi altra disposizione precedente
+            possano alterare il calendario corrente.
             ========================================================
             */
 
-            if(
-                !Array.isArray(
-                    state[chiaveCamp]
-                )
-            ){
-
-                state[chiaveCamp] = [];
-
-            }
-
-
-            while(
-                state[chiaveCamp].length <
-                partite.length
-            ){
-
-                state[chiaveCamp].push(
-                    ""
-                );
-
-            }
-
-
-            if(
-                state[chiaveCamp].length >
-                partite.length
-            ){
-
-                state[chiaveCamp] =
-                    state[chiaveCamp].slice(
-                        0,
-                        partite.length
-                    );
-
-            }
+            state[chiaveCamp] =
+                [];
 
 
 
@@ -11389,119 +11378,71 @@ function renderTables(){
 
                     /*
                     ------------------------------------------------
-                    ORARIO
-
-                    IMPORTANTE:
-                    SE L'ORARIO È GIÀ PRESENTE NELLO STATE,
-                    VIENE MANTENUTO.
-
-                    Nel tuo caso:
-                    Atime = 20:00,20:00,20:30...
-                    Btime = 20:00,20:00,20:30...
+                    ORARIO DALLO SLOT
                     ------------------------------------------------
                     */
 
-                    let tempo =
-                        state[chiaveTime][i];
+                    const minutiTotali =
+                        (
+                            oraBase * 60
+                        )
+                        +
+                        minutiBase
+                        +
+                        (
+                            m.slot *
+                            durata
+                        );
 
 
-                    if(
-                        tempo === undefined ||
-                        tempo === null ||
+                    const ora =
+                        Math.floor(
+                            minutiTotali / 60
+                        )
+                        % 24;
+
+
+                    const min =
+                        minutiTotali % 60;
+
+
+                    const tempo =
                         String(
-                            tempo
-                        ).trim() === "" ||
+                            ora
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        )
+                        +
+                        ":"
+                        +
                         String(
-                            tempo
-                        ).trim() === "-"
-                    ){
-
-                        const minutiTotali =
-                            (
-                                oraBase * 60
-                            )
-                            +
-                            minutiBase
-                            +
-                            (
-                                m.slot *
-                                durata
-                            );
+                            min
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        );
 
 
-                        const ora =
-                            Math.floor(
-                                minutiTotali / 60
-                            )
-                            % 24;
-
-
-                        const min =
-                            minutiTotali % 60;
-
-
-                        tempo =
-                            String(
-                                ora
-                            )
-                            .padStart(
-                                2,
-                                "0"
-                            )
-                            +
-                            ":"
-                            +
-                            String(
-                                min
-                            )
-                            .padStart(
-                                2,
-                                "0"
-                            );
-
-
-                        state[chiaveTime][i] =
-                            tempo;
-
-                    }
+                    state[chiaveTime][i] =
+                        tempo;
 
 
 
                     /*
                     ------------------------------------------------
-                    CAMPO
-
-                    IMPORTANTE:
-                    SE IL CAMPO È GIÀ PRESENTE NELLO STATE,
-                    VIENE MANTENUTO.
-
-                    Nel tuo caso:
-
-                    A = 2,3,2,3,2,3
-                    B = 4,5,4,5,4,5
+                    CAMPO DAL CALENDARIO
                     ------------------------------------------------
                     */
 
-                    let campo =
-                        state[chiaveCamp][i];
+                    const campo =
+                        m.campo;
 
 
-                    if(
-                        campo === undefined ||
-                        campo === null ||
-                        String(
-                            campo
-                        ).trim() === ""
-                    ){
-
-                        campo =
-                            m.campo;
-
-
-                        state[chiaveCamp][i] =
-                            campo;
-
-                    }
+                    state[chiaveCamp][i] =
+                        campo;
 
 
 
@@ -11511,30 +11452,11 @@ function renderTables(){
                     =================================================
                     */
 
-                    if(
-                        state[chiaveRes][i] ===
-                            undefined
-                        ||
-                        state[chiaveRes][i] ===
-                            null
-                        ||
-                        String(
-                            state[chiaveRes][i]
-                        ).trim() === ""
-                    ){
-
-                        state[chiaveRes][i] =
-                            "-";
-
-                    }
-
-
                     const risultato =
                         String(
                             state[chiaveRes][i]
                         )
                         .trim();
-
 
 
                     /*
@@ -11544,7 +11466,6 @@ function renderTables(){
                     */
 
                     let valoreA = "";
-
 
                     let valoreB = "";
 
@@ -11592,13 +11513,13 @@ function renderTables(){
 
                     const nomeCasa =
                         escapeHtml(
-                            state[tag][m.casa]
+                            squadre[m.casa]
                         );
 
 
                     const nomeOspite =
                         escapeHtml(
-                            state[tag][m.ospite]
+                            squadre[m.ospite]
                         );
 
 
@@ -11613,18 +11534,22 @@ function renderTables(){
 <tr>
 
 <td>
+
 <input
 value="${escapeHtml(campo)}"
 oninput="updateCamp('${tag}',${i},this.value)"
 style="width:45px">
+
 </td>
 
 
 <td>
+
 <input
 value="${escapeHtml(tempo)}"
 readonly
 style="width:70px">
+
 </td>
 
 
@@ -11682,16 +11607,63 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
     /*
     ============================================================
-    SINCRONIZZAZIONE
+    SALVATAGGIO STATO LOCALE
     ============================================================
+    */
+
+    try{
+
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore salvataggio renderTables:",
+            e
+        );
+
+    }
+
+
+
+    /*
+    ============================================================
+    SINCRONIZZAZIONE SUPABASE
+    ============================================================
+    */
+
+    /*
+    IMPORTANTE:
+
+    renderTables() viene chiamata anche durante il caricamento.
+    Non deve generare ricorsioni o bloccare il rendering.
+
+    updateAndSync viene quindi chiamata solo se realmente
+    disponibile.
     */
 
     if(
         typeof updateAndSync ===
-            "function"
+        "function"
     ){
 
-        updateAndSync();
+        try{
+
+            updateAndSync();
+
+        }
+        catch(e){
+
+            console.error(
+                "Errore updateAndSync da renderTables:",
+                e
+            );
+
+        }
 
     }
 
