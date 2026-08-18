@@ -11456,6 +11456,7 @@ function aggiornaDescrizioneTipoTorneo(){
 
 
 }
+
 async function initDefaults(){
 
     try{
@@ -11598,17 +11599,11 @@ async function initDefaults(){
 
 
                 console.log(
-
                     "DATI TORNEO ADMIN CARICATI",
-
                     state.nomeTorneo,
-
                     state.formato,
-
                     state.rules.numeroSquadre,
-
                     state.rules.numeroGironi
-
                 );
 
 
@@ -11625,7 +11620,6 @@ async function initDefaults(){
                     "D",
                     "E",
                     "F"
-
                 ].forEach(g=>{
 
                     state[g]=[];
@@ -11635,115 +11629,38 @@ async function initDefaults(){
 
                 /*
                 ============================
-                CONVERSIONE COPPIE → NOMI
+                CONVERSIONE SICURA COPPIE
                 ============================
                 */
 
-                function nomeGiocatoreCoppia(giocatore){
+                function nomeGiocatore(g){
 
-                    if(
-                        giocatore === null ||
-                        giocatore === undefined
-                    ){
-
+                    if(!g)
                         return "";
 
-                    }
+                    if(typeof g === "string")
+                        return g;
 
+                    const nomeCompleto =
+                        [
+                            g.nome,
+                            g.cognome
+                        ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim();
 
-                    /*
-                        Se il valore è già una stringa,
-                        lo utilizziamo direttamente.
-                    */
-
-                    if(
-                        typeof giocatore ===
-                        "string"
-                    ){
-
-                        return giocatore.trim();
-
-                    }
-
-
-                    /*
-                        Se il valore è un numero,
-                        lo convertiamo semplicemente in stringa.
-                    */
-
-                    if(
-                        typeof giocatore ===
-                        "number"
-                    ){
-
-                        return String(
-                            giocatore
-                        );
-
-                    }
-
-
-                    /*
-                        Se è un oggetto giocatore,
-                        ricaviamo il nome corretto.
-                    */
-
-                    if(
-                        typeof giocatore ===
-                        "object"
-                    ){
-
-                        const nomeCompleto =
-                            [
-                                giocatore.nome,
-                                giocatore.cognome
-                            ]
-                            .filter(
-                                valore =>
-                                    valore !==
-                                    undefined &&
-                                    valore !==
-                                    null &&
-                                    String(
-                                        valore
-                                    ).trim() !== ""
-                            )
-                            .join(" ")
-                            .trim();
-
-
-                        if(nomeCompleto){
-
-                            return nomeCompleto;
-
-                        }
-
-
-                        if(
-                            giocatore.nome_giocatore
-                        ){
-
-                            return String(
-                                giocatore.nome_giocatore
-                            ).trim();
-
-                        }
-
-
-                        if(
-                            giocatore.email
-                        ){
-
-                            return String(
-                                giocatore.email
-                            ).trim();
-
-                        }
-
-                    }
-
-
-                    return "";
+                    return (
+                        nomeCompleto
+                        ||
+                        g.nome_giocatore
+                        ||
+                        g.nome_giocato
+                        ||
+                        g.email
+                        ||
+                        ""
+                    );
 
                 }
 
@@ -11762,90 +11679,63 @@ async function initDefaults(){
                             if(!c)
                                 return "";
 
-
                             /*
-                                STRUTTURA ATTUALE
-                                CREATA DA ADMIN:
-                                giocatore1 / giocatore2
-                            */
+                             * STRUTTURA ATTUALE DELLE COPPIE
+                             * CREATA DA ADMIN:
+                             *
+                             * c.giocatore1
+                             * c.giocatore2
+                             */
 
-                            const giocatore1 =
+                            const g1 =
                                 c.giocatore1
-                                ??
+                                ||
                                 c.g1
-                                ??
-                                c.giocatoreA
-                                ??
-                                c.player1
-                                ??
+                                ||
                                 "";
 
-
-                            const giocatore2 =
+                            const g2 =
                                 c.giocatore2
-                                ??
+                                ||
                                 c.g2
-                                ??
-                                c.giocatoreB
-                                ??
-                                c.player2
-                                ??
+                                ||
                                 "";
-
 
                             const nome1 =
-                                nomeGiocatoreCoppia(
-                                    giocatore1
-                                );
-
+                                nomeGiocatore(g1);
 
                             const nome2 =
-                                nomeGiocatoreCoppia(
-                                    giocatore2
-                                );
-
-
-                            /*
-                                Evitiamo di creare
-                                " / " se manca uno
-                                dei due giocatori.
-                            */
+                                nomeGiocatore(g2);
 
                             if(
-                                nome1 &&
-                                nome2
+                                !nome1 &&
+                                !nome2
                             ){
 
-                                return (
-                                    nome1 +
-                                    " / " +
-                                    nome2
-                                );
+                                return "";
 
                             }
 
-
-                            if(nome1){
+                            if(!nome2){
 
                                 return nome1;
 
                             }
 
-
-                            if(nome2){
+                            if(!nome1){
 
                                 return nome2;
 
                             }
 
-
-                            return "";
+                            return (
+                                nome1 +
+                                " / " +
+                                nome2
+                            );
 
                         })
-                        .filter(
-                            squadra =>
-                                squadra !== ""
-                        )
+                        .filter(Boolean)
 
                     :
 
@@ -11865,6 +11755,7 @@ async function initDefaults(){
                     )
 
                     ||
+
                     4;
 
 
@@ -11878,7 +11769,6 @@ async function initDefaults(){
                         "E",
                         "F"
                     ];
-
 
 
                 for(
@@ -11904,14 +11794,24 @@ async function initDefaults(){
                     state[lettere[i]] =
 
                         squadre.slice(
-
                             inizio,
-
                             fine
-
                         );
 
                 }
+
+
+                console.log(
+                    "GIRONI CREATI DA ADMIN:",
+                    {
+                        A: state.A,
+                        B: state.B,
+                        C: state.C,
+                        D: state.D,
+                        E: state.E,
+                        F: state.F
+                    }
+                );
 
 
                 /*
@@ -11946,21 +11846,16 @@ async function initDefaults(){
                 */
 
                 state.qRes =
-
                     Array(4)
-
                     .fill("-");
 
 
                 state.sTopRes =
-
                     Array(2)
-
                     .fill("-");
 
 
                 state.fTopRes =
-
                     "-";
 
 
@@ -11977,7 +11872,8 @@ async function initDefaults(){
                 */
 
                 if(
-                    typeof ensureRules==="function"
+                    typeof ensureRules ===
+                    "function"
                 ){
 
                     ensureRules();
@@ -11992,41 +11888,33 @@ async function initDefaults(){
                 */
 
                 localStorage.setItem(
-
                     "torneoState",
-
-                    JSON.stringify(
-                        state
-                    )
-
+                    JSON.stringify(state)
                 );
 
 
                 console.log(
-
                     "TORNEO ADMIN CARICATO",
-
                     state.nomeTorneo,
-
                     state.formato,
-
                     state.rules.numeroSquadre,
-
                     state.rules.numeroGironi,
-
                     state.A,
-
                     state.B,
-
                     state.C,
-
                     state.D
-
                 );
 
 
+                /*
+                ============================
+                RENDER
+                ============================
+                */
+
                 if(
-                    typeof render==="function"
+                    typeof render ===
+                    "function"
                 ){
 
                     try{
@@ -12034,15 +11922,11 @@ async function initDefaults(){
                         render();
 
                     }
-
                     catch(err){
 
                         console.error(
-
                             "Errore render torneo Admin:",
-
                             err
-
                         );
 
                     }
@@ -12054,20 +11938,14 @@ async function initDefaults(){
 
 
             }
-
-
             catch(e){
 
                 console.error(
-
                     "Errore caricamento torneo Admin:",
-
                     e
-
                 );
 
             }
-
 
         }
 
@@ -12079,7 +11957,6 @@ async function initDefaults(){
         */
 
         let salvato =
-
             localStorage.getItem(
                 "torneoState"
             );
@@ -12090,7 +11967,6 @@ async function initDefaults(){
             try{
 
                 let vecchio =
-
                     JSON.parse(
                         salvato
                     );
@@ -12106,30 +11982,19 @@ async function initDefaults(){
 
 
                 console.log(
-
                     "STATO LOCALE RECUPERATO",
-
                     state.nomeTorneo,
-
                     state.formato,
-
                     state.rules.numeroSquadre,
-
                     state.rules.numeroGironi
-
                 );
 
             }
-
-
             catch(e){
 
                 console.error(
-
                     "Errore lettura localStorage:",
-
                     e
-
                 );
 
             }
@@ -12150,7 +12015,8 @@ async function initDefaults(){
 
             &&
 
-            typeof loadSavedTeams==="function"
+            typeof loadSavedTeams ===
+            "function"
 
         ){
 
@@ -12166,7 +12032,6 @@ async function initDefaults(){
         */
 
         [
-
             "A",
             "B",
             "C",
@@ -12177,11 +12042,9 @@ async function initDefaults(){
         ].forEach(g=>{
 
             if(
-
                 !Array.isArray(
                     state[g]
                 )
-
             ){
 
                 state[g]=[];
@@ -12198,9 +12061,8 @@ async function initDefaults(){
         */
 
         if(
-
-            typeof ensureRules==="function"
-
+            typeof ensureRules ===
+            "function"
         ){
 
             ensureRules();
@@ -12221,9 +12083,7 @@ async function initDefaults(){
         ){
 
             state.qRes =
-
                 Array(4)
-
                 .fill("-");
 
         }
@@ -12236,20 +12096,18 @@ async function initDefaults(){
         ){
 
             state.sTopRes =
-
                 Array(2)
-
                 .fill("-");
 
         }
 
 
         if(
-            state.fTopRes===undefined
+            state.fTopRes ===
+            undefined
         ){
 
             state.fTopRes =
-
                 "-";
 
         }
@@ -12267,11 +12125,11 @@ async function initDefaults(){
 
 
         if(
-            state.campioneTop===undefined
+            state.campioneTop ===
+            undefined
         ){
 
             state.campioneTop =
-
                 null;
 
         }
@@ -12288,7 +12146,6 @@ async function initDefaults(){
         ){
 
             state.formato =
-
                 Number(
                     state.rules.numeroSquadre
                 )
@@ -12303,7 +12160,6 @@ async function initDefaults(){
         ){
 
             state.rules.numeroSquadre =
-
                 state.formato;
 
         }
@@ -12314,26 +12170,16 @@ async function initDefaults(){
         ){
 
             state.rules.numeroGironi =
-
                 (
                     state.formato >= 16
-
                     ?
-
                     4
-
                     :
-
                     state.formato >= 12
-
                     ?
-
                     3
-
                     :
-
                     2
-
                 );
 
         }
@@ -12344,7 +12190,6 @@ async function initDefaults(){
         ){
 
             state.rules.squadrePerGirone =
-
                 4;
 
         }
@@ -12357,51 +12202,35 @@ async function initDefaults(){
         */
 
         localStorage.setItem(
-
             "torneoState",
-
-            JSON.stringify(
-                state
-            )
-
+            JSON.stringify(state)
         );
 
 
         console.log(
-
             "INIT DEFAULTS COMPLETATO",
-
             {
-
                 nome:
                     state.nomeTorneo,
-
 
                 squadre:
                     state.rules.numeroSquadre,
 
-
                 gironi:
                     state.rules.numeroGironi,
-
 
                 A:
                     state.A,
 
-
                 B:
                     state.B,
-
 
                 C:
                     state.C,
 
-
                 D:
                     state.D
-
             }
-
         );
 
 
@@ -12412,9 +12241,8 @@ async function initDefaults(){
         */
 
         if(
-
-            typeof render==="function"
-
+            typeof render ===
+            "function"
         ){
 
             try{
@@ -12422,39 +12250,30 @@ async function initDefaults(){
                 render();
 
             }
-
             catch(err){
 
                 console.error(
-
                     "Errore render initDefaults:",
-
                     err
-
                 );
 
             }
 
         }
 
-
     }
-
-
     catch(e){
 
         console.error(
-
             "Errore initDefaults:",
-
             e
-
         );
 
     }
 
-
 }
+
+
 window.addEventListener("load", async () => {
 
     const parametroTorneo =
