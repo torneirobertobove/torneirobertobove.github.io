@@ -7284,307 +7284,732 @@ function reset(){
 }
 function calc(squadre, risultati){
 
+```
+/*
+==========================================
+VALIDAZIONE
+==========================================
+*/
+
+if(
+    !Array.isArray(squadre)
+){
+
+    return [];
+
+}
+
+
+if(
+    !Array.isArray(risultati)
+){
+
+    risultati = [];
+
+}
+
+
+
+/*
+==========================================
+CONVERSIONE SICURA NOME SQUADRA
+==========================================
+*/
+
+function nomeGiocatore(g){
+
     if(
-        !Array.isArray(squadre) ||
-        !Array.isArray(risultati)
+        g === null ||
+        g === undefined
     ){
 
-        return [];
+        return "";
 
     }
 
 
-
-    let classifica = [];
-
-
-
-    squadre.forEach(nome => {
-
-        classifica.push({
-
-            n: nome,
-
-            pt: 0,
-
-            gf: 0,
-
-            gs: 0,
-
-            df: 0
-
-        });
-
-    });
-
-
-
-    let indice = 0;
-
-
-
-    for(
-        let i = 0;
-        i < squadre.length;
-        i++
+    if(
+        typeof g === "string"
     ){
 
-        for(
-            let j = i + 1;
-            j < squadre.length;
-            j++
+        return g.trim();
+
+    }
+
+
+    if(
+        typeof g === "number"
+    ){
+
+        return String(g);
+
+    }
+
+
+    if(
+        typeof g !== "object"
+    ){
+
+        return String(g);
+
+    }
+
+
+    const nomeCompleto =
+        [
+            g.nome,
+            g.cognome
+        ]
+        .filter(
+            valore =>
+                valore !== undefined &&
+                valore !== null &&
+                String(valore).trim() !== ""
+        )
+        .map(
+            valore =>
+                String(valore).trim()
+        )
+        .join(" ")
+        .trim();
+
+
+    if(nomeCompleto){
+
+        return nomeCompleto;
+
+    }
+
+
+    if(
+        g.nome_giocatore !== undefined &&
+        g.nome_giocatore !== null
+    ){
+
+        return String(
+            g.nome_giocatore
+        ).trim();
+
+    }
+
+
+    if(
+        g.nome_giocato !== undefined &&
+        g.nome_giocato !== null
+    ){
+
+        return String(
+            g.nome_giocato
+        ).trim();
+
+    }
+
+
+    if(
+        g.email !== undefined &&
+        g.email !== null
+    ){
+
+        return String(
+            g.email
+        ).trim();
+
+    }
+
+
+    return "";
+
+}
+
+
+
+function nomeSquadra(squadra){
+
+    if(
+        squadra === null ||
+        squadra === undefined
+    ){
+
+        return "";
+
+    }
+
+
+    if(
+        typeof squadra === "string"
+    ){
+
+        return squadra.trim();
+
+    }
+
+
+    if(
+        typeof squadra === "number"
+    ){
+
+        return String(squadra);
+
+    }
+
+
+    if(
+        typeof squadra !== "object"
+    ){
+
+        return String(squadra);
+
+    }
+
+
+    /*
+    ------------------------------------------
+    COPPIA
+    ------------------------------------------
+    */
+
+    const g1 =
+        squadra.giocatore1
+        ||
+        squadra.g1
+        ||
+        squadra.player1
+        ||
+        null;
+
+
+    const g2 =
+        squadra.giocatore2
+        ||
+        squadra.g2
+        ||
+        squadra.player2
+        ||
+        null;
+
+
+    if(g1 || g2){
+
+        const nome1 =
+            nomeGiocatore(g1);
+
+        const nome2 =
+            nomeGiocatore(g2);
+
+
+        if(
+            nome1 &&
+            nome2
         ){
 
-            let risultato =
-                risultati[indice];
+            return (
+                nome1 +
+                " / " +
+                nome2
+            );
+
+        }
 
 
+        if(nome1){
 
-            indice++;
+            return nome1;
 
-
-
-            if(
-                risultato === undefined ||
-                risultato === null ||
-                risultato === "" ||
-                risultato === "-"
-            ){
-
-                continue;
-
-            }
+        }
 
 
+        if(nome2){
 
-            risultato =
-                String(risultato).trim();
-
-
-
-            /*
-            ==========================================
-            SUPPORTO RISULTATO
-            ==========================================
-            */
-
-            let base =
-                risultato.split("|")[0].trim();
-
-
-
-            let parti =
-                base.split("-");
-
-
-
-            if(parti.length !== 2){
-
-                continue;
-
-            }
-
-
-
-            let a =
-                Number(
-                    parti[0].trim()
-                );
-
-
-
-            let b =
-                Number(
-                    parti[1].trim()
-                );
-
-
-
-            if(
-                !Number.isFinite(a) ||
-                !Number.isFinite(b)
-            ){
-
-                continue;
-
-            }
-
-
-
-            /*
-            ==========================================
-            GIOCHI FATTI / SUBITI
-            ==========================================
-            */
-
-            classifica[i].gf += a;
-
-            classifica[i].gs += b;
-
-
-
-            classifica[j].gf += b;
-
-            classifica[j].gs += a;
-
-
-
-            /*
-            ==========================================
-            PUNTI
-            ==========================================
-            */
-
-            const puntiVittoria =
-                Number(
-                    state.rules?.w ?? 3
-                );
-
-
-
-            const puntiPareggio =
-                Number(
-                    state.rules?.d ?? 1
-                );
-
-
-
-            if(a > b){
-
-                classifica[i].pt +=
-                    puntiVittoria;
-
-            }
-            else
-            if(b > a){
-
-                classifica[j].pt +=
-                    puntiVittoria;
-
-            }
-            else{
-
-                classifica[i].pt +=
-                    puntiPareggio;
-
-                classifica[j].pt +=
-                    puntiPareggio;
-
-            }
+            return nome2;
 
         }
 
     }
 
 
-
     /*
-    ==========================================
-    DIFFERENZA GIOCHI
-    ==========================================
+    ------------------------------------------
+    OGGETTO CON NOME SQUADRA
+    ------------------------------------------
     */
 
-    classifica.forEach(x => {
+    if(
+        squadra.nomeSquadra !== undefined &&
+        squadra.nomeSquadra !== null &&
+        typeof squadra.nomeSquadra !== "object"
+    ){
 
-        x.df =
-            x.gf - x.gs;
+        return String(
+            squadra.nomeSquadra
+        ).trim();
 
-    });
+    }
+
+
+    if(
+        squadra.nome !== undefined &&
+        squadra.nome !== null &&
+        typeof squadra.nome !== "object"
+    ){
+
+        return String(
+            squadra.nome
+        ).trim();
+
+    }
+
+
+    return nomeGiocatore(squadra);
+
+}
 
 
 
-    /*
-    ==========================================
-    ORDINAMENTO CLASSIFICA
-    ==========================================
-    */
+/*
+==========================================
+NORMALIZZIAMO LE SQUADRE
+==========================================
+*/
 
-    classifica.sort((a, b) => {
+const nomiSquadre =
+    squadre.map(
+        squadra =>
+            nomeSquadra(squadra)
+    );
+
+
+
+/*
+==========================================
+CREAZIONE CLASSIFICA
+==========================================
+*/
+
+let classifica = [];
+
+
+nomiSquadre.forEach(
+    nome => {
+
+        classifica.push({
+
+            n:
+                nome || "Squadra",
+
+            pt:
+                0,
+
+            gf:
+                0,
+
+            gs:
+                0,
+
+            df:
+                0,
+
+            qual:
+                false
+
+        });
+
+    }
+);
+
+
+
+/*
+==========================================
+RISULTATI GIRONE
+==========================================
+
+L'indice deve seguire ESATTAMENTE
+l'ordine delle partite:
+
+A-B
+A-C
+A-D
+B-C
+B-D
+C-D
+ecc.
+*/
+
+let indice = 0;
+
+
+
+for(
+    let i = 0;
+    i < nomiSquadre.length;
+    i++
+){
+
+    for(
+        let j = i + 1;
+        j < nomiSquadre.length;
+        j++
+    ){
+
+        let risultato =
+            risultati[indice];
+
+
+        indice++;
+
+
 
         /*
-        1. PUNTI
+        ------------------------------------------
+        PARTITA NON ANCORA GIOCATA
+        ------------------------------------------
         */
 
-        if(a.pt !== b.pt)
+        if(
+            risultato === undefined ||
+            risultato === null ||
+            risultato === "" ||
+            risultato === "-"
+        ){
+
+            continue;
+
+        }
+
+
+
+        /*
+        ------------------------------------------
+        RISULTATO EVENTUALMENTE OGGETTO
+        ------------------------------------------
+        */
+
+        if(
+            typeof resultado === "object"
+        ){
+
+            risultato =
+                resultado.risultato
+                ||
+                resultado.result
+                ||
+                resultado.score
+                ||
+                "";
+
+        }
+
+
+
+        risultato =
+            String(
+                risultato
+            )
+            .trim();
+
+
+
+        /*
+        ------------------------------------------
+        SUPPORTO FORMATI:
+
+        6-3
+        6 - 3
+        6-3|...
+        ------------------------------------------
+        */
+
+        let base =
+            risultato
+                .split("|")[0]
+                .trim();
+
+
+
+        let parti =
+            base.split("-");
+
+
+
+        if(
+            parti.length !== 2
+        ){
+
+            continue;
+
+        }
+
+
+
+        let a =
+            Number(
+                parti[0].trim()
+            );
+
+
+        let b =
+            Number(
+                parti[1].trim()
+            );
+
+
+
+        if(
+            !Number.isFinite(a) ||
+            !Number.isFinite(b) ||
+            a < 0 ||
+            b < 0
+        ){
+
+            continue;
+
+        }
+
+
+
+        /*
+        ==========================================
+        GIOCHI FATTI / SUBITI
+        ==========================================
+        */
+
+        classifica[i].gf += a;
+
+        classifica[i].gs += b;
+
+
+        classifica[j].gf += b;
+
+        classifica[j].gs += a;
+
+
+
+        /*
+        ==========================================
+        PUNTI
+        ==========================================
+        */
+
+        const puntiVittoria =
+            Number(
+                state?.rules?.w
+            );
+
+
+        const puntiPareggio =
+            Number(
+                state?.rules?.d
+            );
+
+
+
+        const w =
+            Number.isFinite(
+                puntiVittoria
+            )
+            ?
+            puntiVittoria
+            :
+            3;
+
+
+        const d =
+            Number.isFinite(
+                puntiPareggio
+            )
+            ?
+            puntiPareggio
+            :
+            1;
+
+
+
+        if(a > b){
+
+            classifica[i].pt += w;
+
+        }
+        else
+        if(b > a){
+
+            classifica[j].pt += w;
+
+        }
+        else{
+
+            classifica[i].pt += d;
+
+            classifica[j].pt += d;
+
+        }
+
+    }
+
+}
+
+
+
+/*
+==========================================
+DIFFERENZA GIOCHI
+==========================================
+*/
+
+classifica.forEach(
+    squadra => {
+
+        squadra.df =
+            squadra.gf -
+            squadra.gs;
+
+    }
+);
+
+
+
+/*
+==========================================
+ORDINAMENTO CLASSIFICA
+==========================================
+*/
+
+classifica.sort(
+    (a,b) => {
+
+        /*
+        1 — PUNTI
+        */
+
+        if(
+            a.pt !== b.pt
+        ){
 
             return b.pt - a.pt;
 
+        }
+
 
 
         /*
-        2. DIFFERENZA GIOCHI
+        2 — DIFFERENZA GIOCHI
         */
 
-        if(a.df !== b.df)
+        if(
+            a.df !== b.df
+        ){
 
             return b.df - a.df;
 
+        }
+
 
 
         /*
-        3. GIOCHI FATTI
+        3 — GIOCHI FATTI
         */
 
-        if(a.gf !== b.gf)
+        if(
+            a.gf !== b.gf
+        ){
 
             return b.gf - a.gf;
 
+        }
+
 
 
         /*
-        4. GIOCHI SUBITI
+        4 — GIOCHI SUBITI
         */
 
-        if(a.gs !== b.gs)
+        if(
+            a.gs !== b.gs
+        ){
 
             return a.gs - b.gs;
 
+        }
+
 
 
         /*
-        5. NOME
-        Solo come spareggio finale
-        per mantenere un ordinamento stabile.
+        5 — NOME
         */
 
-        return String(a.n || "")
-            .localeCompare(
-                String(b.n || ""),
-                "it"
-            );
-
-    });
-
-
-
-    /*
-    ==========================================
-    QUALIFICAZIONI
-    ==========================================
-    */
-
-    const qualificate =
-        Math.max(
-            0,
-            Number(
-                state.rules?.qualificatePerGirone ?? 2
-            )
+        return String(
+            a.n || ""
+        ).localeCompare(
+            String(
+                b.n || ""
+            ),
+            "it",
+            {
+                sensitivity:"base"
+            }
         );
 
-
-
-    classifica.forEach((x, i) => {
-
-        x.qual =
-            i < qualificate;
-
-    });
+    }
+);
 
 
 
-    return classifica;
+/*
+==========================================
+QUALIFICAZIONI
+==========================================
+*/
+
+let qualificate =
+    Number(
+        state?.rules?.qualificatePerGirone
+    );
+
+
+if(
+    !Number.isFinite(
+        qualificate
+    ) ||
+    qualificate < 1
+){
+
+    qualificate = 2;
 
 }
+
+
+
+classifica.forEach(
+    (squadra,index) => {
+
+        squadra.qual =
+            index < qualificate;
+
+        squadra.posizione =
+            index + 1;
+
+    }
+);
+
+
+
+/*
+==========================================
+DEBUG
+==========================================
+*/
+
+console.log(
+    "CLASSIFICA CALCOLATA:",
+    classifica
+);
+
+
+
+return classifica;
+```
+
+}
+
 function updateRes(g,i,pos,val){
 
     let s;
