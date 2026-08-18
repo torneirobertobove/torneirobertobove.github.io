@@ -7340,7 +7340,9 @@ function nomeGiocatore(g){
         typeof g === "number"
     ){
 
-        return String(g);
+        return Number.isFinite(g)
+            ? String(g)
+            : "";
 
     }
 
@@ -7349,7 +7351,7 @@ function nomeGiocatore(g){
         typeof g !== "object"
     ){
 
-        return String(g);
+        return String(g).trim();
 
     }
 
@@ -7453,7 +7455,9 @@ function nomeSquadra(squadra){
         typeof squadra === "number"
     ){
 
-        return String(squadra);
+        return Number.isFinite(squadra)
+            ? String(squadra)
+            : "";
 
     }
 
@@ -7462,9 +7466,10 @@ function nomeSquadra(squadra){
         typeof squadra !== "object"
     ){
 
-        return String(squadra);
+        return String(squadra).trim();
 
     }
+
 
 
     /*
@@ -7474,26 +7479,23 @@ function nomeSquadra(squadra){
     */
 
     const g1 =
-        squadra.giocatore1
-        ||
-        squadra.g1
-        ||
-        squadra.player1
-        ||
+        squadra.giocatore1 ??
+        squadra.g1 ??
+        squadra.player1 ??
         null;
 
 
     const g2 =
-        squadra.giocatore2
-        ||
-        squadra.g2
-        ||
-        squadra.player2
-        ||
+        squadra.giocatore2 ??
+        squadra.g2 ??
+        squadra.player2 ??
         null;
 
 
-    if(g1 || g2){
+    if(
+        g1 !== null ||
+        g2 !== null
+    ){
 
         const nome1 =
             nomeGiocatore(g1);
@@ -7592,13 +7594,9 @@ CREAZIONE CLASSIFICA
 ==========================================
 */
 
-let classifica = [];
-
-
-nomiSquadre.forEach(
-    nome => {
-
-        classifica.push({
+const classifica =
+    nomiSquadre.map(
+        nome => ({
 
             n:
                 nome || "Squadra",
@@ -7621,10 +7619,8 @@ nomiSquadre.forEach(
             posizione:
                 0
 
-        });
-
-    }
-);
+        })
+    );
 
 
 
@@ -7647,6 +7643,13 @@ const regole =
         {};
 
 
+
+/*
+==========================================
+PUNTI
+==========================================
+*/
+
 const valoreW =
     Number(
         regole.w
@@ -7660,9 +7663,8 @@ const valoreD =
 
 
 const puntiVittoria =
-    Number.isFinite(
-        valoreW
-    )
+    Number.isFinite(valoreW) &&
+    valoreW >= 0
     ?
         valoreW
     :
@@ -7670,9 +7672,8 @@ const puntiVittoria =
 
 
 const puntiPareggio =
-    Number.isFinite(
-        valoreD
-    )
+    Number.isFinite(valoreD) &&
+    valoreD >= 0
     ?
         valoreD
     :
@@ -7682,8 +7683,159 @@ const puntiPareggio =
 
 /*
 ==========================================
-LETTURA RISULTATI
+ESTRAZIONE RISULTATO
 ==========================================
+*/
+
+function estraiRisultato(valore){
+
+    if(
+        valore === undefined ||
+        valore === null ||
+        valore === ""
+    ){
+
+        return null;
+
+    }
+
+
+    if(
+        typeof valore === "object"
+    ){
+
+        if(
+            Array.isArray(valore)
+        ){
+
+            return null;
+
+        }
+
+
+        valore =
+            valore.risultato ??
+            valore.result ??
+            valore.score ??
+            "";
+
+    }
+
+
+    if(
+        typeof valore !== "string" &&
+        typeof valore !== "number"
+    ){
+
+        return null;
+
+    }
+
+
+    const testo =
+        String(
+            valore
+        )
+        .trim();
+
+
+    if(
+        !testo ||
+        testo === "-"
+    ){
+
+        return null;
+
+    }
+
+
+    /*
+    ------------------------------------------
+    EVENTUALE PARTE SUCCESSIVA AL RISULTATO
+    ------------------------------------------
+    */
+
+    const base =
+        testo
+        .split("|")[0]
+        .trim();
+
+
+    /*
+    ------------------------------------------
+    FORMATO AMMESSO
+    ------------------------------------------
+
+    6-3
+    6 - 3
+    06-03
+    ------------------------------------------
+    */
+
+    const match =
+        /^(\d+)\s*-\s*(\d+)$/
+        .exec(
+            base
+        );
+
+
+    if(!match){
+
+        return null;
+
+    }
+
+
+    const a =
+        Number(
+            match[1]
+        );
+
+
+    const b =
+        Number(
+            match[2]
+        );
+
+
+    if(
+        !Number.isSafeInteger(a) ||
+        !Number.isSafeInteger(b) ||
+        a < 0 ||
+        b < 0
+    ){
+
+        return null;
+
+    }
+
+
+    return {
+        a: a,
+        b: b
+    };
+
+}
+
+
+
+/*
+==========================================
+ELABORAZIONE PARTITE
+==========================================
+*/
+
+/*
+L'ordine utilizzato è quello storico della
+calc() di Bove.html:
+
+0-1
+0-2
+0-3
+...
+1-2
+1-3
+...
 */
 
 let indice = 0;
@@ -7701,25 +7853,23 @@ for(
         j++
     ){
 
-        let risultato =
-            risultati[indice];
+        const risultato =
+            estraiRisultato(
+                risultati[indice]
+            );
 
 
         indice++;
 
 
-
         /*
         ------------------------------------------
-        PARTITA NON ANCORA GIOCATA
+        PARTITA NON GIOCATA O INVALIDA
         ------------------------------------------
         */
 
         if(
-            risultato === undefined ||
-            risultato === null ||
-            risultato === "" ||
-            risultato === "-"
+            risultato === null
         ){
 
             continue;
@@ -7727,89 +7877,12 @@ for(
         }
 
 
-
-        /*
-        ------------------------------------------
-        RISULTATO OGGETTO
-        ------------------------------------------
-        */
-
-        if(
-            typeof risultato === "object"
-        ){
-
-            risultato =
-                risultato.risultato
-                ||
-                risultato.result
-                ||
-                risultato.score
-                ||
-                "";
-
-        }
+        const a =
+            risultato.a;
 
 
-        risultato =
-            String(
-                risultato
-            )
-            .trim();
-
-
-
-        /*
-        ------------------------------------------
-        FORMATI SUPPORTATI
-
-        6-3
-        6 - 3
-        6-3|...
-        ------------------------------------------
-        */
-
-        let base =
-            risultato
-                .split("|")[0]
-                .trim();
-
-
-        let parti =
-            base.split("-");
-
-
-        if(
-            parti.length !== 2
-        ){
-
-            continue;
-
-        }
-
-
-
-        let a =
-            Number(
-                parti[0].trim()
-            );
-
-
-        let b =
-            Number(
-                parti[1].trim()
-            );
-
-
-        if(
-            !Number.isFinite(a) ||
-            !Number.isFinite(b) ||
-            a < 0 ||
-            b < 0
-        ){
-
-            continue;
-
-        }
+        const b =
+            risultato.b;
 
 
 
@@ -7836,14 +7909,18 @@ for(
         ==========================================
         */
 
-        if(a > b){
+        if(
+            a > b
+        ){
 
             classifica[i].pt +=
                 puntiVittoria;
 
         }
         else
-        if(b > a){
+        if(
+            b > a
+        ){
 
             classifica[j].pt +=
                 puntiVittoria;
@@ -7867,25 +7944,27 @@ for(
 
 /*
 ==========================================
-DIFFERENZA GIOCHI
+DIFFERENZA
 ==========================================
 */
 
-classifica.forEach(
-    squadra => {
+for(
+    let i = 0;
+    i < classifica.length;
+    i++
+){
 
-        squadra.df =
-            squadra.gf -
-            squadra.gs;
+    classifica[i].df =
+        classifica[i].gf -
+        classifica[i].gs;
 
-    }
-);
+}
 
 
 
 /*
 ==========================================
-CRITERI DI CLASSIFICA
+NORMALIZZAZIONE CRITERI
 ==========================================
 */
 
@@ -7909,58 +7988,55 @@ function normalizzaCriterio(criterio){
         .toLowerCase();
 
 
-    if(
-        valore === "punti" ||
-        valore === "punteggio" ||
-        valore === "points" ||
-        valore === "point" ||
-        valore === "pt"
-    ){
+    switch(valore){
 
-        return "pt";
+        case "punti":
+        case "punteggio":
+        case "points":
+        case "point":
+        case "pt":
 
-    }
+            return "pt";
 
 
-    if(
-        valore === "differenza" ||
-        valore === "differenza reti" ||
-        valore === "differenza giochi" ||
-        valore === "diff" ||
-        valore === "df"
-    ){
+        case "differenza":
+        case "differenza reti":
+        case "differenza giochi":
+        case "diff":
+        case "df":
 
-        return "df";
-
-    }
+            return "df";
 
 
-    if(
-        valore === "gf" ||
-        valore === "gol fatti" ||
-        valore === "giochi fatti"
-    ){
+        case "gf":
+        case "gol fatti":
+        case "giochi fatti":
 
-        return "gf";
-
-    }
+            return "gf";
 
 
-    if(
-        valore === "gs" ||
-        valore === "gol subiti" ||
-        valore === "giochi subiti"
-    ){
+        case "gs":
+        case "gol subiti":
+        case "giochi subiti":
 
-        return "gs";
+            return "gs";
+
+
+        default:
+
+            return "";
 
     }
-
-
-    return "";
 
 }
 
+
+
+/*
+==========================================
+CRITERI CONFIGURATI
+==========================================
+*/
 
 const criterio1 =
     normalizzaCriterio(
@@ -7980,18 +8056,67 @@ const criterio3 =
     );
 
 
-const criteri =
-    [
-        criterio1 || "pt",
-        criterio2 || "df",
-        criterio3 || "gf"
-    ];
+
+/*
+==========================================
+COSTRUZIONE CRITERI
+==========================================
+*/
+
+const criteri = [];
+
+
+if(criterio1){
+
+    criteri.push(
+        criterio1
+    );
+
+}
+
+
+if(criterio2){
+
+    criteri.push(
+        criterio2
+    );
+
+}
+
+
+if(criterio3){
+
+    criteri.push(
+        criterio3
+    );
+
+}
 
 
 
 /*
 ==========================================
-ORDINAMENTO CLASSIFICA
+FALLBACK
+==========================================
+*/
+
+if(
+    criteri.length === 0
+){
+
+    criteri.push(
+        "pt",
+        "df",
+        "gf"
+    );
+
+}
+
+
+
+/*
+==========================================
+ORDINAMENTO
 ==========================================
 */
 
@@ -8009,9 +8134,14 @@ classifica.sort(
 
 
             if(
-                !criterio ||
-                a[criterio] === undefined ||
-                b[criterio] === undefined
+                !Object.prototype.hasOwnProperty.call(
+                    a,
+                    criterio
+                ) ||
+                !Object.prototype.hasOwnProperty.call(
+                    b,
+                    criterio
+                )
             ){
 
                 continue;
@@ -8019,45 +8149,55 @@ classifica.sort(
             }
 
 
+            const valoreA =
+                a[criterio];
+
+
+            const valoreB =
+                b[criterio];
+
+
             if(
-                a[criterio] !==
-                b[criterio]
+                valoreA === valoreB
             ){
 
-                /*
-                PUNTI / DIFFERENZA / FATTI:
-                VALORE MAGGIORE = POSIZIONE MIGLIORE
-                */
+                continue;
 
-                if(
-                    criterio === "pt" ||
-                    criterio === "df" ||
-                    criterio === "gf"
-                ){
-
-                    return (
-                        b[criterio] -
-                        a[criterio]
-                    );
-
-                }
+            }
 
 
-                /*
-                SUBITI:
-                VALORE MINORE = POSIZIONE MIGLIORE
-                */
+            /*
+            --------------------------------------
+            MAGGIORE = MIGLIORE
+            --------------------------------------
+            */
 
-                if(
-                    criterio === "gs"
-                ){
+            if(
+                criterio === "pt" ||
+                criterio === "df" ||
+                criterio === "gf"
+            ){
 
-                    return (
-                        a[criterio] -
-                        b[criterio]
-                    );
+                return
+                    valoreB -
+                    valoreA;
 
-                }
+            }
+
+
+            /*
+            --------------------------------------
+            MINORE = MIGLIORE
+            --------------------------------------
+            */
+
+            if(
+                criterio === "gs"
+            ){
+
+                return
+                    valoreA -
+                    valoreB;
 
             }
 
@@ -8067,7 +8207,10 @@ classifica.sort(
 
         /*
         ------------------------------------------
-        QUARTO CRITERIO DI SICUREZZA
+        FALLBACK TECNICO
+
+        Solo se i criteri configurati non
+        distinguono le due squadre.
         ------------------------------------------
         */
 
@@ -8075,7 +8218,9 @@ classifica.sort(
             a.pt !== b.pt
         ){
 
-            return b.pt - a.pt;
+            return
+                b.pt -
+                a.pt;
 
         }
 
@@ -8084,7 +8229,9 @@ classifica.sort(
             a.df !== b.df
         ){
 
-            return b.df - a.df;
+            return
+                b.df -
+                a.df;
 
         }
 
@@ -8093,7 +8240,9 @@ classifica.sort(
             a.gf !== b.gf
         ){
 
-            return b.gf - a.gf;
+            return
+                b.gf -
+                a.gf;
 
         }
 
@@ -8102,21 +8251,25 @@ classifica.sort(
             a.gs !== b.gs
         ){
 
-            return a.gs - b.gs;
+            return
+                a.gs -
+                b.gs;
 
         }
 
 
-
         /*
         ------------------------------------------
-        ULTIMO CRITERIO: NOME
+        PARITÀ ASSOLUTA
+
+        Manteniamo un ordinamento deterministico.
         ------------------------------------------
         */
 
         return String(
             a.n || ""
-        ).localeCompare(
+        )
+        .localeCompare(
             String(
                 b.n || ""
             ),
@@ -8134,7 +8287,7 @@ classifica.sort(
 
 /*
 ==========================================
-POSIZIONE E QUALIFICAZIONE
+NUMERO QUALIFICATE
 ==========================================
 */
 
@@ -8156,7 +8309,6 @@ if(
 }
 
 
-
 numeroQualificate =
     Math.min(
         Math.floor(
@@ -8167,18 +8319,26 @@ numeroQualificate =
 
 
 
-classifica.forEach(
-    (squadra,index) => {
+/*
+==========================================
+POSIZIONE / QUALIFICAZIONE
+==========================================
+*/
 
-        squadra.posizione =
-            index + 1;
+for(
+    let i = 0;
+    i < classifica.length;
+    i++
+){
 
-        squadra.qual =
-            index <
-            numeroQualificate;
+    classifica[i].posizione =
+        i + 1;
 
-    }
-);
+
+    classifica[i].qual =
+        i < numeroQualificate;
+
+}
 
 
 
@@ -8194,8 +8354,14 @@ console.log(
 );
 
 
-return classifica;
 
+/*
+==========================================
+RISULTATO
+==========================================
+*/
+
+return classifica;
 
 }
 
@@ -9844,7 +10010,23 @@ function renderTables(){
     ensureRules();
 
 
+    /*
+    ==========================================
+    FUNZIONE ROUND ROBIN
+    ==========================================
+    */
+
     function generaRoundRobin(n){
+
+        if(
+            !Number.isInteger(n) ||
+            n < 2
+        ){
+
+            return [];
+
+        }
+
 
         let squadre =
             Array.from(
@@ -9852,6 +10034,13 @@ function renderTables(){
                 (_,i)=>i
             );
 
+
+        /*
+        ------------------------------------------
+        NUMERO DISPARI:
+        INSERISCE RIPOSO
+        ------------------------------------------
+        */
 
         if(
             squadre.length % 2 !== 0
@@ -9862,52 +10051,47 @@ function renderTables(){
         }
 
 
-
-        let rounds=[];
-
-        let totale =
+        const totale =
             squadre.length;
 
 
-        let turni =
-            totale-1;
+        const turni =
+            totale - 1;
 
 
-        let meta =
-            totale/2;
+        const meta =
+            totale / 2;
 
+
+        const rounds = [];
 
 
         for(
-            let r=0;
-            r<turni;
+            let r = 0;
+            r < turni;
             r++
         ){
 
-
-            let round=[];
-
+            const round = [];
 
 
             for(
-                let i=0;
-                i<meta;
+                let i = 0;
+                i < meta;
                 i++
             ){
 
-
-                let a =
+                const a =
                     squadre[i];
 
 
-                let b =
-                    squadre[totale-1-i];
-
+                const b =
+                    squadre[totale - 1 - i];
 
 
                 if(
-                    a!==null &&
-                    b!==null
+                    a !== null &&
+                    b !== null
                 ){
 
                     round.push([
@@ -9917,22 +10101,26 @@ function renderTables(){
 
                 }
 
-
             }
 
 
+            rounds.push(
+                round
+            );
 
-            rounds.push(round);
 
+            /*
+            --------------------------------------
+            ROTAZIONE
+            --------------------------------------
+            */
 
-
-            let fisso =
+            const fisso =
                 squadre[0];
 
 
-            let resto =
+            const resto =
                 squadre.slice(1);
-
 
 
             resto.unshift(
@@ -9940,64 +10128,104 @@ function renderTables(){
             );
 
 
-
-            squadre =
-            [
+            squadre = [
                 fisso,
                 ...resto
             ];
 
-
-
         }
 
 
 
+        /*
+        ------------------------------------------
+        ANDATA / RITORNO
+        ------------------------------------------
+        */
 
         if(
-            state.rules.garaAndataRitorno===true
+            state.rules &&
+            state.rules.garaAndataRitorno === true
         ){
 
-
-            let ritorno =
-
-                rounds.map(round=>
-
-                    round.map(match=>
-
-                        [
-                            match[1],
-                            match[0]
-                        ]
-
-                    )
-
+            const ritorno =
+                rounds.map(
+                    round =>
+                        round.map(
+                            match => [
+                                match[1],
+                                match[0]
+                            ]
+                        )
                 );
 
 
-
-            rounds =
-                rounds.concat(
-                    ritorno
-                );
-
+            rounds.push(
+                ...ritorno
+            );
 
         }
-
 
 
         return rounds;
-
 
     }
 
 
 
+    /*
+    ==========================================
+    ESCAPE HTML
+    ==========================================
+    */
+
+    function escapeHtml(valore){
+
+        if(
+            valore === null ||
+            valore === undefined
+        ){
+
+            return "";
+
+        }
+
+
+        return String(
+            valore
+        )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#39;"
+        );
+
+    }
 
 
 
-    let campiPerGirone = {
+    /*
+    ==========================================
+    CAMPI PER GIRONE
+    ==========================================
+    */
 
+    const campiPerGirone = {
 
         A:[2,3],
 
@@ -10013,61 +10241,99 @@ function renderTables(){
 
         G:[14,15]
 
-
     };
 
 
 
-
+    /*
+    ==========================================
+    DURATA
+    ==========================================
+    */
 
     let durata =
-
         Number(
-            state.rules.duration || 30
+            state.rules.duration
+        );
+
+
+    if(
+        !Number.isFinite(durata) ||
+        durata <= 0
+    ){
+
+        durata = 30;
+
+    }
+
+
+    durata =
+        Math.max(
+            1,
+            Math.floor(durata)
         );
 
 
 
+    /*
+    ==========================================
+    ORARIO DI PARTENZA
+    ==========================================
+    */
 
     let start =
-
         String(
             state.rules.start || "20:00"
-        );
-
+        )
+        .trim();
 
 
     let partiOra =
-
         start.split(":");
 
 
-
     let oraBase =
-
         Number(
             partiOra[0]
-        )
-        ||
-        20;
-
+        );
 
 
     let minutiBase =
-
         Number(
             partiOra[1]
-        )
-        ||
-        0;
+        );
+
+
+    if(
+        !Number.isInteger(oraBase) ||
+        oraBase < 0 ||
+        oraBase > 23
+    ){
+
+        oraBase = 20;
+
+    }
+
+
+    if(
+        !Number.isInteger(minutiBase) ||
+        minutiBase < 0 ||
+        minutiBase > 59
+    ){
+
+        minutiBase = 0;
+
+    }
 
 
 
+    /*
+    ==========================================
+    CALENDARIO
+    ==========================================
+    */
 
-
-
-
-    let calendario=[];
+    const calendario = [];
 
 
 
@@ -10081,216 +10347,300 @@ function renderTables(){
         "G"
 
     ]
-    .forEach(tag=>{
+    .forEach(
+        tag => {
+
+            const squadre =
+                state[tag];
 
 
-
-        let squadre =
-            state[tag];
-
-
-
-        if(
-            !Array.isArray(squadre) ||
-            squadre.length<2
-        )
-
-            return;
-
-
-
-        let rounds =
-
-            generaRoundRobin(
-                squadre.length
-            );
-
-
-
-        rounds.forEach(round=>{
-
-
-            round.forEach(match=>{
-
-
-                calendario.push({
-
-                    girone:tag,
-
-                    casa:match[0],
-
-                    ospite:match[1],
-
-                    campo:null,
-
-                    slot:null
-
-
-                });
-
-
-            });
-
-
-
-        });
-
-
-
-    });
-
-
-
-
-
-    let occupazioni=[];
-
-
-    calendario.forEach(partita=>{
-
-
-        let assegnata=false;
-
-
-        let slot=0;
-
-
-
-        let campiDisponibili =
-
-            campiPerGirone[partita.girone]
-
-            ||
-
-            [2,3];
-
-
-
-        while(!assegnata){
-
-
-
-            for(
-                let i=0;
-                i<campiDisponibili.length;
-                i++
+            if(
+                !Array.isArray(squadre) ||
+                squadre.length < 2
             ){
 
+                return;
+
+            }
 
 
-                let campo =
-
-                    campiDisponibili[i];
-
-
-
-                let conflitto=false;
+            const rounds =
+                generaRoundRobin(
+                    squadre.length
+                );
 
 
+            rounds.forEach(
+                round => {
 
-                occupazioni.forEach(o=>{
+                    round.forEach(
+                        match => {
 
+                            calendario.push({
 
-                    if(
+                                girone:
+                                    tag,
 
-                        o.slot===slot &&
+                                casa:
+                                    match[0],
 
-                        o.girone===partita.girone &&
+                                ospite:
+                                    match[1],
 
-                        (
+                                campo:
+                                    null,
 
-                            o.squadre.includes(
-                                partita.casa
-                            )
+                                slot:
+                                    null
 
-                            ||
+                            });
 
-                            o.squadre.includes(
-                                partita.ospite
-                            )
+                        }
+                    );
 
-                        )
+                }
+            );
 
-                    ){
-
-                        conflitto=true;
-
-                    }
-
-
-                });
+        }
+    );
 
 
 
+    /*
+    ==========================================
+    OCCUPAZIONI
+    ==========================================
+    */
+
+    const occupazioni = [];
 
 
-                if(!conflitto){
+
+    /*
+    ==========================================
+    ASSEGNAZIONE CAMPI / SLOT
+    ==========================================
+    */
+
+    calendario.forEach(
+        partita => {
+
+            let assegnata = false;
 
 
+            let slot = 0;
+
+
+            let tentativi = 0;
+
+
+            const campiDisponibili =
+                Array.isArray(
+                    campiPerGirone[
+                        partita.girone
+                    ]
+                )
+                &&
+                campiPerGirone[
+                    partita.girone
+                ].length > 0
+                ?
+                    campiPerGirone[
+                        partita.girone
+                    ]
+                :
+                    [2,3];
+
+
+
+            while(
+                !assegnata
+            ){
+
+                /*
+                ----------------------------------
+                PROTEZIONE DA LOOP INFINITO
+                ----------------------------------
+                */
+
+                tentativi++;
+
+
+                if(
+                    tentativi > 10000
+                ){
+
+                    /*
+                    Fallback sicuro:
+                    assegna il primo campo
+                    disponibile senza bloccare
+                    il rendering.
+                    */
 
                     partita.campo =
-                        campo;
-
+                        campiDisponibili[0];
 
 
                     partita.slot =
                         slot;
 
 
-
-
                     occupazioni.push({
 
-                        slot:slot,
+                        slot:
+                            slot,
 
-                        campo:campo,
+                        campo:
+                            campiDisponibili[0],
 
-                        girone:partita.girone,
+                        girone:
+                            partita.girone,
 
                         squadre:[
-
                             partita.casa,
-
                             partita.ospite
-
                         ]
 
                     });
 
 
-
-
-                    assegnata=true;
-
+                    assegnata = true;
 
                     break;
-
 
                 }
 
 
 
+                for(
+                    let i = 0;
+                    i < campiDisponibili.length;
+                    i++
+                ){
+
+                    const campo =
+                        campiDisponibili[i];
+
+
+                    let conflitto =
+                        false;
+
+
+
+                    occupazioni.forEach(
+                        occupazione => {
+
+                            /*
+                            --------------------------------
+                            STESSO CAMPO + STESSO SLOT
+                            = CONFLITTO REALE
+                            --------------------------------
+                            */
+
+                            if(
+                                occupazione.slot === slot &&
+                                occupazione.campo === campo
+                            ){
+
+                                conflitto = true;
+
+                            }
+
+
+                            /*
+                            --------------------------------
+                            UNA SQUADRA NON PUÒ GIOCARE
+                            DUE PARTITE NELLO STESSO SLOT
+                            NELLO STESSO GIRONE
+                            --------------------------------
+                            */
+
+                            if(
+                                occupazione.slot === slot &&
+                                occupazione.girone ===
+                                    partita.girone &&
+                                (
+                                    occupazione.squadre.includes(
+                                        partita.casa
+                                    )
+                                    ||
+                                    occupazione.squadre.includes(
+                                        partita.ospite
+                                    )
+                                )
+                            ){
+
+                                conflitto = true;
+
+                            }
+
+                        }
+                    );
+
+
+
+                    if(
+                        !conflitto
+                    ){
+
+                        partita.campo =
+                            campo;
+
+
+                        partita.slot =
+                            slot;
+
+
+                        occupazioni.push({
+
+                            slot:
+                                slot,
+
+                            campo:
+                                campo,
+
+                            girone:
+                                partita.girone,
+
+                            squadre:[
+                                partita.casa,
+                                partita.ospite
+                            ]
+
+                        });
+
+
+                        assegnata = true;
+
+
+                        break;
+
+                    }
+
+                }
+
+
+
+                if(
+                    !assegnata
+                ){
+
+                    slot++;
+
+                }
+
             }
 
-
-
-            if(!assegnata)
-
-                slot++;
-
-
-
         }
+    );
 
 
 
-    });
-
-
-
-
-
-
+    /*
+    ==========================================
+    RENDER GIRONE PER GIRONE
+    ==========================================
+    */
 
     [
         "A",
@@ -10302,246 +10652,373 @@ function renderTables(){
         "G"
 
     ]
-    .forEach(tag=>{
+    .forEach(
+        tag => {
+
+            const box =
+                document.getElementById(
+                    tag + "rows"
+                );
+
+
+            if(!box){
+
+                return;
+
+            }
 
 
 
-        let box =
-
-            document.getElementById(
-                tag+"rows"
-            );
-
-
-
-        if(!box)
-
-            return;
-
-
-
-
-        let partite =
-
-            calendario.filter(
-
-                p=>
-
-                p.girone===tag
-
-            );
-
-
-
-        /*
-        ===================================
-        NON RESETTARE I RISULTATI ESISTENTI
-        ===================================
-        */
-
-
-        if(
-            !Array.isArray(
-                state[tag+"res"]
-            )
-        )
-
-            state[tag+"res"]=[];
-
-
-
-
-        while(
-            state[tag+"res"].length <
-            partite.length
-        )
-
-            state[tag+"res"].push("-");
-
-
-
-
-        if(
-            state[tag+"res"].length >
-            partite.length
-        )
-
-            state[tag+"res"] =
-
-                state[tag+"res"]
-                .slice(
-                    0,
-                    partite.length
+            const partite =
+                calendario.filter(
+                    partita =>
+                        partita.girone === tag
                 );
 
 
 
-
-
-
-        if(
-            !Array.isArray(
-                state[tag+"time"]
-            )
-        )
-
-            state[tag+"time"]=[];
-
-
-
-
-        while(
-            state[tag+"time"].length <
-            partite.length
-        )
-
-            state[tag+"time"].push("-");
-
-
-
-
-        if(
-            state[tag+"time"].length >
-            partite.length
-        )
-
-            state[tag+"time"]=
-
-                state[tag+"time"]
-                .slice(
-                    0,
-                    partite.length
-                );
-
-
-
-
-
-
-        if(
-            !Array.isArray(
-                state[tag+"camp"]
-            )
-        )
-
-            state[tag+"camp"]=[];
-
-
-
-
-        while(
-            state[tag+"camp"].length <
-            partite.length
-        )
-
-            state[tag+"camp"].push("");
-
-
-
-
-        if(
-            state[tag+"camp"].length >
-            partite.length
-        )
-
-            state[tag+"camp"]=
-
-                state[tag+"camp"]
-                .slice(
-                    0,
-                    partite.length
-                );
-
-
-
-
-
-
-        let rows="";
-
-
-
-
-        partite.forEach((m,i)=>{
-
-
-            let minuti =
-
-                minutiBase +
-
-                (
-                    m.slot *
-                    durata
-                );
-
-
-
-            let ora =
-
-                oraBase +
-
-                Math.floor(
-                    minuti / 60
-                );
-
-
-
-            let min =
-
-                minuti % 60;
-
-
-
-
-            let tempo =
-
-                String(ora)
-                .padStart(2,"0")
-
-                +
-
-                ":"
-
-                +
-
-                String(min)
-                .padStart(2,"0");
-
-
-
-            state[tag+"time"][i]=tempo;
-
-
-
-            state[tag+"camp"][i]=m.campo;
-
-
+            /*
+            ======================================
+            RISULTATI
+            ======================================
+            */
+
+            const chiaveRes =
+                tag + "res";
 
 
             if(
-                !state[tag+"res"][i]
-            )
-
-                state[tag+"res"][i]="-";
-
-
-
-            let risultato =
-
-                String(
-                    state[tag+"res"][i]
+                !Array.isArray(
+                    state[chiaveRes]
                 )
-                .split("-");
+            ){
+
+                state[chiaveRes] = [];
+
+            }
+
+
+            while(
+                state[chiaveRes].length <
+                partite.length
+            ){
+
+                state[chiaveRes].push(
+                    "-"
+                );
+
+            }
+
+
+            if(
+                state[chiaveRes].length >
+                partite.length
+            ){
+
+                state[chiaveRes] =
+                    state[chiaveRes].slice(
+                        0,
+                        partite.length
+                    );
+
+            }
 
 
 
+            /*
+            ======================================
+            ORARI
+            ======================================
+            */
 
-            rows += `
+            const chiaveTime =
+                tag + "time";
+
+
+            if(
+                !Array.isArray(
+                    state[chiaveTime]
+                )
+            ){
+
+                state[chiaveTime] = [];
+
+            }
+
+
+            while(
+                state[chiaveTime].length <
+                partite.length
+            ){
+
+                state[chiaveTime].push(
+                    "-"
+                );
+
+            }
+
+
+            if(
+                state[chiaveTime].length >
+                partite.length
+            ){
+
+                state[chiaveTime] =
+                    state[chiaveTime].slice(
+                        0,
+                        partite.length
+                    );
+
+            }
+
+
+
+            /*
+            ======================================
+            CAMPI
+            ======================================
+            */
+
+            const chiaveCamp =
+                tag + "camp";
+
+
+            if(
+                !Array.isArray(
+                    state[chiaveCamp]
+                )
+            ){
+
+                state[chiaveCamp] = [];
+
+            }
+
+
+            while(
+                state[chiaveCamp].length <
+                partite.length
+            ){
+
+                state[chiaveCamp].push(
+                    ""
+                );
+
+            }
+
+
+            if(
+                state[chiaveCamp].length >
+                partite.length
+            ){
+
+                state[chiaveCamp] =
+                    state[chiaveCamp].slice(
+                        0,
+                        partite.length
+                    );
+
+            }
+
+
+
+            /*
+            ======================================
+            GENERAZIONE RIGHE
+            ======================================
+            */
+
+            let rows = "";
+
+
+
+            partite.forEach(
+                (m,i) => {
+
+                    /*
+                    ----------------------------------
+                    ORARIO CALCOLATO DALLO SLOT
+                    ----------------------------------
+                    */
+
+                    const minutiTotali =
+                        (
+                            oraBase * 60
+                        )
+                        +
+                        minutiBase
+                        +
+                        (
+                            m.slot *
+                            durata
+                        );
+
+
+                    const ora =
+                        Math.floor(
+                            minutiTotali / 60
+                        )
+                        % 24;
+
+
+                    const min =
+                        minutiTotali % 60;
+
+
+                    const tempo =
+                        String(
+                            ora
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        )
+                        +
+                        ":"
+                        +
+                        String(
+                            min
+                        )
+                        .padStart(
+                            2,
+                            "0"
+                        );
+
+
+
+                    /*
+                    ----------------------------------
+                    L'ORARIO È GENERATO DAL CALENDARIO.
+                    ----------------------------------
+                    */
+
+                    state[chiaveTime][i] =
+                        tempo;
+
+
+
+                    /*
+                    ----------------------------------
+                    PRESERVA IL CAMPO ESISTENTE.
+
+                    Se non esiste, usa quello generato.
+                    ----------------------------------
+                    */
+
+                    let campo =
+                        state[chiaveCamp][i];
+
+
+                    if(
+                        campo === undefined ||
+                        campo === null ||
+                        String(campo).trim() === ""
+                    ){
+
+                        campo =
+                            m.campo;
+
+
+                        state[chiaveCamp][i] =
+                            campo;
+
+                    }
+
+
+
+                    /*
+                    ----------------------------------
+                    RISULTATO
+                    ----------------------------------
+                    */
+
+                    if(
+                        state[chiaveRes][i] ===
+                            undefined ||
+                        state[chiaveRes][i] ===
+                            null ||
+                        String(
+                            state[chiaveRes][i]
+                        ).trim() === ""
+                    ){
+
+                        state[chiaveRes][i] =
+                            "-";
+
+                    }
+
+
+
+                    const risultato =
+                        String(
+                            state[chiaveRes][i]
+                        );
+
+
+
+                    /*
+                    ----------------------------------
+                    PARSING VISUALIZZAZIONE
+                    ----------------------------------
+                    */
+
+                    const partiRisultato =
+                        risultato
+                        .split("-");
+
+
+                    const valoreA =
+                        (
+                            partiRisultato[0] === "-" ||
+                            partiRisultato[0] === undefined
+                        )
+                        ?
+                            ""
+                        :
+                            partiRisultato[0].trim();
+
+
+                    const valoreB =
+                        (
+                            partiRisultato[1] === undefined
+                        )
+                        ?
+                            ""
+                        :
+                            partiRisultato[1].trim();
+
+
+
+                    /*
+                    ----------------------------------
+                    NOMI SQUADRE
+                    ----------------------------------
+                    */
+
+                    const nomeCasa =
+                        escapeHtml(
+                            state[tag][m.casa]
+                        );
+
+
+                    const nomeOspite =
+                        escapeHtml(
+                            state[tag][m.ospite]
+                        );
+
+
+
+                    /*
+                    ----------------------------------
+                    RIGA
+                    ----------------------------------
+                    */
+
+                    rows += `
 <tr>
 
 <td>
 <input
-value="${m.campo}"
+value="${escapeHtml(campo)}"
 oninput="updateCamp('${tag}',${i},this.value)"
 style="width:45px">
 </td>
@@ -10549,7 +11026,7 @@ style="width:45px">
 
 <td>
 <input
-value="${tempo}"
+value="${escapeHtml(tempo)}"
 readonly
 style="width:70px">
 </td>
@@ -10558,7 +11035,7 @@ style="width:70px">
 <td class="match-cell">
 
 <div class="team-line">
-${state[tag][m.casa]}
+${nomeCasa}
 </div>
 
 <div class="vs-line">
@@ -10566,7 +11043,7 @@ ${state[tag][m.casa]}
 </div>
 
 <div class="team-line">
-${state[tag][m.ospite]}
+${nomeOspite}
 </div>
 
 </td>
@@ -10575,13 +11052,12 @@ ${state[tag][m.ospite]}
 <td class="db-cell">
 
 <input
-value="${risultato[0]==='-'?'':risultato[0]}"
+value="${escapeHtml(valoreA)}"
 oninput="updateRes('${tag}',${i},0,this.value)"
 >
 
-
 <input
-value="${risultato[1] || ''}"
+value="${escapeHtml(valoreB)}"
 oninput="updateRes('${tag}',${i},1,this.value)"
 >
 
@@ -10590,24 +11066,42 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 </tr>
 `;
 
-
-
-        });
-
-
-
-        box.innerHTML=rows;
+                }
+            );
 
 
 
-    });
+            /*
+            ======================================
+            AGGIORNAMENTO DOM
+            ======================================
+            */
+
+            box.innerHTML =
+                rows;
+
+        }
+    );
 
 
-    updateAndSync();
 
+    /*
+    ==========================================
+    SINCRONIZZAZIONE
+    ==========================================
+    */
+
+    if(
+        typeof updateAndSync ===
+            "function"
+    ){
+
+        updateAndSync();
+
+    }
 
 }
-function getFinalQualified(){
+    function getFinalQualified(){
 
     ensureRules();
 
