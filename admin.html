@@ -1899,7 +1899,6 @@ async function caricaRichiesteIscrizione(){
 
 }
 
-
 function renderGestioneTorneo(){
 
     let box =
@@ -2090,36 +2089,71 @@ function selezionaGiocatoreAdmin(id){
             "hidden"
         );
 
-    document.getElementById(
-        "adminNomeGiocatore"
-    ).value =
-        g.nome ||
-        g.giocatore1 ||
-        "";
+    let nome =
+        document.getElementById(
+            "adminNomeGiocatore"
+        );
 
-    document.getElementById(
-        "adminEmailGiocatore"
-    ).value =
-        g.email ||
-        "";
+    if(nome){
 
-    document.getElementById(
-        "adminTelefonoGiocatore"
-    ).value =
-        g.telefono ||
-        "";
+        nome.value =
+            g.nome ||
+            g.giocatore1 ||
+            "";
 
-    document.getElementById(
-        "adminLivelloGiocatore"
-    ).value =
-        g.livello ||
-        "-";
+    }
 
-    document.getElementById(
-        "adminNotaGiocatore"
-    ).value =
-        g.note ||
-        "";
+    let email =
+        document.getElementById(
+            "adminEmailGiocatore"
+        );
+
+    if(email){
+
+        email.value =
+            g.email ||
+            "";
+
+    }
+
+    let telefono =
+        document.getElementById(
+            "adminTelefonoGiocatore"
+        );
+
+    if(telefono){
+
+        telefono.value =
+            g.telefono ||
+            "";
+
+    }
+
+    let livello =
+        document.getElementById(
+            "adminLivelloGiocatore"
+        );
+
+    if(livello){
+
+        livello.value =
+            g.livello ||
+            "-";
+
+    }
+
+    let nota =
+        document.getElementById(
+            "adminNotaGiocatore"
+        );
+
+    if(nota){
+
+        nota.value =
+            g.note ||
+            "";
+
+    }
 
 }
 
@@ -2155,7 +2189,8 @@ async function approvaGiocatore(){
         if(error)
             throw error;
 
-        g.stato="approvato";
+        g.stato =
+            "approvato";
 
         alert(
             "Giocatore approvato!"
@@ -2169,7 +2204,7 @@ async function approvaGiocatore(){
                 "hidden"
             );
 
-        caricaRichiesteIscrizione();
+        await caricaRichiesteIscrizione();
 
     }
     catch(e){
@@ -2215,7 +2250,8 @@ async function rifiutaGiocatore(){
         if(error)
             throw error;
 
-        g.stato="rifiutato";
+        g.stato =
+            "rifiutato";
 
         alert(
             "Giocatore rifiutato."
@@ -2229,7 +2265,7 @@ async function rifiutaGiocatore(){
                 "hidden"
             );
 
-        caricaRichiesteIscrizione();
+        await caricaRichiesteIscrizione();
 
     }
     catch(e){
@@ -2261,6 +2297,7 @@ function renderPartecipanti(){
     let approvati =
         lista.filter(
             x =>
+                x &&
                 x.stato ===
                 "approvato"
         );
@@ -2276,30 +2313,44 @@ function renderPartecipanti(){
 
     box.innerHTML =
         approvati.map(
-            p =>
-                `
-                <div class="lista-item">
+            p => {
 
-                    ✅
-                    <b>
-                        ${
-                            p.nome ||
-                            p.giocatore1 ||
-                            "Partecipante"
-                        }
-                    </b>
+                let nome =
+                    [
+                        p.nome,
+                        p.cognome
+                    ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim();
 
-                    -
-                    ${p.email || "-"}
+                nome =
+                    nome ||
+                    p.nome_giocatore ||
+                    p.giocatore1 ||
+                    p.email ||
+                    "Partecipante";
 
-                </div>
-                `
+                return `
+                    <div class="lista-item">
+
+                        ✅
+                        <b>
+                            ${nome}
+                        </b>
+
+                        -
+                        ${p.email || "-"}
+
+                    </div>
+                `;
+
+            }
         ).join("");
 
 }
 
 
-```javascript
 function renderCoppie(){
 
     const box =
@@ -2315,10 +2366,8 @@ function renderCoppie(){
     if(!box)
         return;
 
-
     const torneo =
         getTorneoAdminCorrente();
-
 
     if(!torneo){
 
@@ -2336,11 +2385,8 @@ function renderCoppie(){
     /*
         RECUPERO PARTECIPANTI
 
-        Prima utilizziamo le iscrizioni appena caricate.
-
-        Se window.iscrizioniTorneo è vuoto,
-        recuperiamo direttamente i partecipanti
-        già salvati nella configurazione del torneo.
+        Utilizziamo esclusivamente i dati
+        già caricati in window.iscrizioniTorneo.
 
         NON viene eseguita alcuna autenticazione.
         NON viene eseguito alcun login.
@@ -2350,77 +2396,21 @@ function renderCoppie(){
 
     let iscritti = [];
 
-
     if(
         Array.isArray(
             window.iscrizioniTorneo
-        ) &&
-        window.iscrizioniTorneo.length
+        )
     ){
 
         iscritti =
             window.iscrizioniTorneo.filter(
                 g =>
                     g &&
-                    g.stato === "approvato"
+                    g.stato ===
+                    "approvato"
             );
 
     }
-
-
-    /*
-        FALLBACK:
-
-        se il contenitore temporaneo è vuoto,
-        utilizziamo i partecipanti salvati
-        nel torneo.
-    */
-
-    if(!iscritti.length){
-
-        const partecipantiSalvati =
-            Array.isArray(
-                torneo.configurazione?.partecipanti
-            )
-            ?
-            torneo.configurazione.partecipanti
-            :
-            Array.isArray(
-                torneo.partecipanti
-            )
-            ?
-            torneo.partecipanti
-            :
-            [];
-
-
-        iscritti =
-            partecipantiSalvati.filter(
-                g =>
-                    g &&
-                    (
-                        g.stato === "approvato" ||
-                        g.approvato === true
-                    )
-            );
-
-
-        /*
-            Ripristiniamo anche il contenitore
-            centrale per evitare che una successiva
-            funzione di rendering perda i dati.
-        */
-
-        window.iscrizioniTorneo =
-            iscritti.slice();
-
-    }
-
-
-    console.log(
-        "PARTECIPANTI DISPONIBILI PER COPPIE:",
-        iscritti
-    );
 
 
     /*
@@ -2438,67 +2428,107 @@ function renderCoppie(){
 
 
     /*
-        RECUPERO COPPIE ESISTENTI
+        RECUPERO COPPIE
 
-        Le coppie possono essere presenti:
+        Prima utilizziamo torneo.coppie.
 
-        1. direttamente in torneo.coppie
-        2. nella configurazione del torneo,
-           in torneo.configurazione.coppie
-
-        Se torneo.coppie non esiste ma la configurazione
-        contiene le coppie salvate da Supabase,
-        utilizziamo quelle senza crearne una nuova lista vuota.
+        Se è vuoto, recuperiamo le coppie
+        eventualmente già salvate dentro
+        torneo.configurazione.coppie.
     */
 
+    let coppie = [];
+
     if(
-        !Array.isArray(
+        Array.isArray(
             torneo.coppie
         )
     ){
 
-        if(
-            Array.isArray(
-                torneo.configurazione.coppie
-            )
-        ){
+        coppie =
+            torneo.coppie;
 
-            torneo.coppie =
-                torneo.configurazione.coppie.slice();
+    }
 
-        }
-        else{
+    if(
+        !coppie.length &&
+        Array.isArray(
+            torneo.configurazione.coppie
+        )
+    ){
 
-            torneo.coppie = [];
+        coppie =
+            torneo.configurazione.coppie;
 
-        }
+        torneo.coppie =
+            coppie;
 
     }
 
 
     /*
-        Manteniamo sincronizzata la configurazione
-        con l'array delle coppie.
+        Manteniamo sincronizzata la configurazione.
     */
 
-    if(
-        !Array.isArray(
-            torneo.configurazione.coppie
-        )
-    ){
+    torneo.configurazione.coppie =
+        coppie;
 
-        torneo.configurazione.coppie =
-            torneo.coppie;
+
+    function nomeGiocatore(g){
+
+        if(!g)
+            return "Giocatore";
+
+
+        if(
+            typeof g ===
+            "string"
+        ){
+
+            return g;
+
+        }
+
+
+        if(
+            typeof g !==
+            "object"
+        ){
+
+            return String(g);
+
+        }
+
+
+        const nomeCompleto =
+            [
+                g.nome,
+                g.cognome
+            ]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+
+
+        return (
+            nomeCompleto ||
+            g.nome_giocatore ||
+            g.nomeGiocatore ||
+            g.email ||
+            "Giocatore"
+        );
 
     }
 
 
-    const coppie =
-        torneo.coppie;
+    console.log(
+        "PARTECIPANTI DISPONIBILI PER COPPIE:",
+        iscritti
+    );
 
 
     console.log(
-        "COPPIE DISPONIBILI PER ADMIN:",
+        "COPPIE CARICATE ADMIN:",
         coppie
     );
 
@@ -2515,8 +2545,11 @@ function renderCoppie(){
     coppie.forEach(
         coppia => {
 
+            if(!coppia)
+                return;
+
+
             if(
-                coppia &&
                 coppia.giocatore1 &&
                 coppia.giocatore1.id != null
             ){
@@ -2531,7 +2564,6 @@ function renderCoppie(){
 
 
             if(
-                coppia &&
                 coppia.giocatore2 &&
                 coppia.giocatore2.id != null
             ){
@@ -2561,32 +2593,6 @@ function renderCoppie(){
                     )
                 )
         );
-
-
-    function nomeGiocatore(g){
-
-        if(!g)
-            return "Giocatore";
-
-
-        const nome =
-            [
-                g.nome,
-                g.cognome
-            ]
-            .filter(Boolean)
-            .join(" ")
-            .trim();
-
-
-        return (
-            nome ||
-            g.nome_giocatore ||
-            g.email ||
-            "Giocatore"
-        );
-
-    }
 
 
     /*
@@ -2752,45 +2758,93 @@ function renderCoppie(){
 
                 coppie
                     .map(
-                        (coppia,index) =>
+                        (coppia,index) => {
 
-                            `
-                            <div
-                                class="lista-item"
-                                style="
-                                    margin-bottom:8px;
-                                    padding:10px;
-                                "
-                            >
+                            if(!coppia)
+                                return "";
 
-                                <b>
-                                    Coppia ${index + 1}
-                                </b>
+                            return `
+                                <div
+                                    class="lista-item"
+                                    style="
+                                        margin-bottom:8px;
+                                        padding:10px;
+                                    "
+                                >
 
-                                <br>
+                                    <b>
+                                        Coppia ${index + 1}
+                                    </b>
 
-                                👤
-                                ${
-                                    nomeGiocatore(
+                                    <br>
+
+                                    👤
+                                    ${nomeGiocatore(
                                         coppia.giocatore1
-                                    )
-                                }
+                                    )}
 
-                                <br>
+                                    <br>
 
-                                👤
-                                ${
-                                    nomeGiocatore(
+                                    👤
+                                    ${nomeGiocatore(
                                         coppia.giocatore2
-                                    )
-                                }
+                                    )}
 
-                            </div>
-                            `
+                                </div>
+                            `;
+
+                        }
                     )
                     .join("");
 
         }
+
+    }
+
+
+    /*
+        SALVIAMO NELLO STATO ADMIN
+        LA VERSIONE CORRETTA DELLE COPPIE
+        SENZA EFFETTUARE AUTENTICAZIONI.
+    */
+
+    const indiceAdmin =
+        Array.isArray(
+            adminState.tornei
+        )
+        ?
+        adminState.tornei.findIndex(
+            t =>
+                String(t.id) ===
+                String(torneo.id)
+        )
+        :
+        -1;
+
+
+    if(indiceAdmin >= 0){
+
+        adminState.tornei[
+            indiceAdmin
+        ].coppie =
+            coppie;
+
+        if(
+            !adminState.tornei[
+                indiceAdmin
+            ].configurazione
+        ){
+
+            adminState.tornei[
+                indiceAdmin
+            ].configurazione = {};
+
+        }
+
+        adminState.tornei[
+            indiceAdmin
+        ].configurazione.coppie =
+            coppie;
 
     }
 
@@ -2803,7 +2857,6 @@ function renderCoppie(){
         document.getElementById(
             "btnCreaCoppiaAdmin"
         );
-
 
     if(!btn)
         return;
@@ -2826,7 +2879,6 @@ function renderCoppie(){
 
             const id1 =
                 select1?.value;
-
 
             const id2 =
                 select2?.value;
@@ -2889,22 +2941,32 @@ function renderCoppie(){
 
             const giaUsato =
                 coppie.some(
-                    coppia =>
-                        String(
-                            coppia?.giocatore1?.id
-                        ) === String(id1) ||
+                    coppia => {
 
-                        String(
-                            coppia?.giocatore2?.id
-                        ) === String(id1) ||
+                        if(!coppia)
+                            return false;
 
-                        String(
-                            coppia?.giocatore1?.id
-                        ) === String(id2) ||
+                        return (
 
-                        String(
-                            coppia?.giocatore2?.id
-                        ) === String(id2)
+                            String(
+                                coppia.giocatore1?.id
+                            ) === String(id1) ||
+
+                            String(
+                                coppia.giocatore2?.id
+                            ) === String(id1) ||
+
+                            String(
+                                coppia.giocatore1?.id
+                            ) === String(id2) ||
+
+                            String(
+                                coppia.giocatore2?.id
+                            ) === String(id2)
+
+                        );
+
+                    }
                 );
 
 
@@ -2971,21 +3033,16 @@ function renderCoppie(){
             };
 
 
-            torneo.coppie.push(
+            coppie.push(
                 nuovaCoppia
             );
 
 
+            torneo.coppie =
+                coppie;
+
             torneo.configurazione.coppie =
-                torneo.coppie;
-
-
-            const indiceAdmin =
-                adminState.tornei.findIndex(
-                    t =>
-                        String(t.id) ===
-                        String(torneo.id)
-                );
+                coppie;
 
 
             if(indiceAdmin >= 0){
@@ -3067,7 +3124,7 @@ function renderCoppie(){
     );
 
 }
-```
+
 
 function inviaWhatsAppTutti(){
 
