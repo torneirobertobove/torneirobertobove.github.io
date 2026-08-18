@@ -1743,11 +1743,6 @@ async function caricaRichiesteIscrizione(){
         /*
             SALVIAMO GLI ISCRITTI
             NEL CONTENITORE CENTRALE.
-
-            NESSUNA AUTENTICAZIONE.
-            NESSUN LOGIN.
-            NESSUN getUser().
-            NESSUN controllo admin.
         */
 
         window.iscrizioniTorneo =
@@ -1783,6 +1778,12 @@ async function caricaRichiesteIscrizione(){
         /*
             AGGIORNA SOLO LE SEZIONI
             CHE VISUALIZZANO I DATI.
+
+            NESSUNA AUTENTICAZIONE.
+            NESSUN LOGIN.
+            NESSUN getUser().
+            NESSUN controllo admin.
+            NESSUN renderAdmin().
         */
 
         if(
@@ -1801,73 +1802,6 @@ async function caricaRichiesteIscrizione(){
         ){
 
             renderCoppie();
-
-        }
-
-
-        /*
-            AGGIORNA ANCHE LA LISTA
-            DELLE RICHIESTE.
-        */
-
-        const reqBox =
-            document.getElementById(
-                "richiesteIscrizione"
-            );
-
-
-        if(reqBox){
-
-            if(
-                !window.iscrizioniTorneo.length
-            ){
-
-                reqBox.innerHTML =
-                    "<p>Nessuna richiesta di iscrizione.</p>";
-
-            }
-            else{
-
-                reqBox.innerHTML =
-                    window.iscrizioniTorneo.map(
-                        r =>
-                            `
-                            <div class="lista-item">
-
-                                <b>
-                                    ${
-                                        r.nome ||
-                                        r.giocatore1 ||
-                                        "Giocatore"
-                                    }
-                                </b>
-
-                                (
-                                    ${r.email || "-"}
-                                )
-
-                                <br>
-
-                                Stato:
-                                ${
-                                    r.stato ||
-                                    "in attesa"
-                                }
-
-                                <br>
-
-                                <button
-                                    onclick="selezionaGiocatoreAdmin(${r.id})"
-                                    class="btn-green"
-                                >
-                                    Gestisci
-                                </button>
-
-                            </div>
-                            `
-                    ).join("");
-
-            }
 
         }
 
@@ -1897,6 +1831,9 @@ async function caricaRichiesteIscrizione(){
     }
 
 }
+
+
+
 
 
 function renderGestioneTorneo(){
@@ -2059,7 +1996,6 @@ function renderGestioneTorneo(){
 
 }
 
-
 function selezionaGiocatoreAdmin(id){
 
     let lista =
@@ -2089,74 +2025,38 @@ function selezionaGiocatoreAdmin(id){
             "hidden"
         );
 
-    let nome =
-        document.getElementById(
-            "adminNomeGiocatore"
-        );
+    document.getElementById(
+        "adminNomeGiocatore"
+    ).value =
+        g.nome ||
+        g.giocatore1 ||
+        "";
 
-    if(nome){
+    document.getElementById(
+        "adminEmailGiocatore"
+    ).value =
+        g.email ||
+        "";
 
-        nome.value =
-            g.nome ||
-            g.giocatore1 ||
-            "";
+    document.getElementById(
+        "adminTelefonoGiocatore"
+    ).value =
+        g.telefono ||
+        "";
 
-    }
+    document.getElementById(
+        "adminLivelloGiocatore"
+    ).value =
+        g.livello ||
+        "-";
 
-    let email =
-        document.getElementById(
-            "adminEmailGiocatore"
-        );
-
-    if(email){
-
-        email.value =
-            g.email ||
-            "";
-
-    }
-
-    let telefono =
-        document.getElementById(
-            "adminTelefonoGiocatore"
-        );
-
-    if(telefono){
-
-        telefono.value =
-            g.telefono ||
-            "";
-
-    }
-
-    let livello =
-        document.getElementById(
-            "adminLivelloGiocatore"
-        );
-
-    if(livello){
-
-        livello.value =
-            g.livello ||
-            "-";
-
-    }
-
-    let nota =
-        document.getElementById(
-            "adminNotaGiocatore"
-        );
-
-    if(nota){
-
-        nota.value =
-            g.note ||
-            "";
-
-    }
+    document.getElementById(
+        "adminNotaGiocatore"
+    ).value =
+        g.note ||
+        "";
 
 }
-
 
 async function approvaGiocatore(){
 
@@ -2189,8 +2089,7 @@ async function approvaGiocatore(){
         if(error)
             throw error;
 
-        g.stato =
-            "approvato";
+        g.stato="approvato";
 
         alert(
             "Giocatore approvato!"
@@ -2204,7 +2103,7 @@ async function approvaGiocatore(){
                 "hidden"
             );
 
-        await caricaRichiesteIscrizione();
+        caricaRichiesteIscrizione();
 
     }
     catch(e){
@@ -2217,7 +2116,6 @@ async function approvaGiocatore(){
     }
 
 }
-
 
 async function rifiutaGiocatore(){
 
@@ -2250,8 +2148,7 @@ async function rifiutaGiocatore(){
         if(error)
             throw error;
 
-        g.stato =
-            "rifiutato";
+        g.stato="rifiutato";
 
         alert(
             "Giocatore rifiutato."
@@ -2265,7 +2162,7 @@ async function rifiutaGiocatore(){
                 "hidden"
             );
 
-        await caricaRichiesteIscrizione();
+        caricaRichiesteIscrizione();
 
     }
     catch(e){
@@ -2278,7 +2175,6 @@ async function rifiutaGiocatore(){
     }
 
 }
-
 
 function renderPartecipanti(){
 
@@ -2297,7 +2193,6 @@ function renderPartecipanti(){
     let approvati =
         lista.filter(
             x =>
-                x &&
                 x.stato ===
                 "approvato"
         );
@@ -2313,43 +2208,27 @@ function renderPartecipanti(){
 
     box.innerHTML =
         approvati.map(
-            p => {
+            p =>
+                `
+                <div class="lista-item">
 
-                let nome =
-                    [
-                        p.nome,
-                        p.cognome
-                    ]
-                    .filter(Boolean)
-                    .join(" ")
-                    .trim();
+                    ✅
+                    <b>
+                        ${
+                            p.nome ||
+                            p.giocatore1 ||
+                            "Partecipante"
+                        }
+                    </b>
 
-                nome =
-                    nome ||
-                    p.nome_giocatore ||
-                    p.giocatore1 ||
-                    p.email ||
-                    "Partecipante";
+                    -
+                    ${p.email || "-"}
 
-                return `
-                    <div class="lista-item">
-
-                        ✅
-                        <b>
-                            ${nome}
-                        </b>
-
-                        -
-                        ${p.email || "-"}
-
-                    </div>
-                `;
-
-            }
+                </div>
+                `
         ).join("");
 
 }
-
 
 
 function renderCoppie(){
@@ -2386,26 +2265,18 @@ function renderCoppie(){
 
 
     /*
-        GARANTIAMO LA PRESENZA DELLA CONFIGURAZIONE
-    */
-
-    if(
-        !torneo.configurazione ||
-        typeof torneo.configurazione !== "object"
-    ){
-
-        torneo.configurazione = {};
-
-    }
-
-
-    /*
         RECUPERO PARTECIPANTI
 
-        Nessuna autenticazione.
-        Nessun login.
-        Nessun getUser().
-        Nessun controllo admin.
+        Prima utilizziamo le iscrizioni appena caricate.
+
+        Se window.iscrizioniTorneo è vuoto,
+        recuperiamo direttamente i partecipanti
+        già salvati nella configurazione del torneo.
+
+        NON viene eseguita alcuna autenticazione.
+        NON viene eseguito alcun login.
+        NON viene eseguito alcun getUser().
+        NON viene effettuato alcun controllo admin.
     */
 
     let iscritti = [];
@@ -2429,7 +2300,11 @@ function renderCoppie(){
 
 
     /*
-        FALLBACK PARTECIPANTI SALVATI
+        FALLBACK:
+
+        se il contenitore temporaneo è vuoto,
+        utilizziamo i partecipanti salvati
+        nel torneo.
     */
 
     if(!iscritti.length){
@@ -2461,56 +2336,16 @@ function renderCoppie(){
             );
 
 
+        /*
+            Ripristiniamo anche il contenitore
+            centrale per evitare che una successiva
+            funzione di rendering perda i dati.
+        */
+
         window.iscrizioniTorneo =
             iscritti.slice();
 
     }
-
-
-    /*
-        RECUPERO COPPIE
-
-        Prima da torneo.coppie.
-        Se vuoto, dalla configurazione.
-    */
-
-    let coppie = [];
-
-
-    if(
-        Array.isArray(
-            torneo.coppie
-        )
-    ){
-
-        coppie =
-            torneo.coppie;
-
-    }
-
-
-    if(
-        !coppie.length &&
-        Array.isArray(
-            torneo.configurazione.coppie
-        )
-    ){
-
-        coppie =
-            torneo.configurazione.coppie;
-
-        torneo.coppie =
-            coppie;
-
-    }
-
-
-    /*
-        MANTENIAMO SINCRONIZZATE LE DUE STRUTTURE
-    */
-
-    torneo.configurazione.coppie =
-        coppie;
 
 
     console.log(
@@ -2519,166 +2354,41 @@ function renderCoppie(){
     );
 
 
-    console.log(
-        "COPPIE CARICATE ADMIN:",
-        coppie
-    );
-
-
     /*
-        FUNZIONE CENTRALE PER OTTENERE
-        SEMPRE IL NOME DEL GIOCATORE.
-
-        È QUI CHE EVITIAMO DEFINITIVAMENTE
-        [object Object].
+        INIZIALIZZAZIONE COPPIE
     */
 
-    function nomeGiocatore(g){
+    if(!Array.isArray(torneo.coppie)){
 
-        if(
-            g === null ||
-            g === undefined
-        ){
-
-            return "Giocatore";
-
-        }
-
-
-        /*
-            Se arriva una stringa,
-            la utilizziamo direttamente.
-        */
-
-        if(
-            typeof g === "string"
-        ){
-
-            return g.trim() ||
-                "Giocatore";
-
-        }
-
-
-        /*
-            Se arriva un numero,
-            lo convertiamo in stringa.
-        */
-
-        if(
-            typeof g === "number"
-        ){
-
-            return String(g);
-
-        }
-
-
-        /*
-            Se arriva un oggetto,
-            NON facciamo mai String(g).
-
-            Cerchiamo invece i campi reali.
-        */
-
-        if(
-            typeof g === "object"
-        ){
-
-            const nomeCompleto =
-                [
-                    g.nome,
-                    g.cognome
-                ]
-                .filter(
-                    valore =>
-                        valore !== null &&
-                        valore !== undefined &&
-                        String(valore).trim() !== ""
-                )
-                .map(
-                    valore =>
-                        String(valore).trim()
-                )
-                .join(" ")
-                .trim();
-
-
-            if(nomeCompleto){
-
-                return nomeCompleto;
-
-            }
-
-
-            if(
-                g.nome_giocatore !== null &&
-                g.nome_giocatore !== undefined &&
-                String(g.nome_giocatore).trim() !== ""
-            ){
-
-                return String(
-                    g.nome_giocatore
-                ).trim();
-
-            }
-
-
-            if(
-                g.nomeGiocatore !== null &&
-                g.nomeGiocatore !== undefined &&
-                String(g.nomeGiocatore).trim() !== ""
-            ){
-
-                return String(
-                    g.nomeGiocatore
-                ).trim();
-
-            }
-
-
-            if(
-                g.giocatore !== null &&
-                g.giocatore !== undefined
-            ){
-
-                return nomeGiocatore(
-                    g.giocatore
-                );
-
-            }
-
-
-            if(
-                g.player !== null &&
-                g.player !== undefined
-            ){
-
-                return nomeGiocatore(
-                    g.player
-                );
-
-            }
-
-
-            if(
-                g.email !== null &&
-                g.email !== undefined &&
-                String(g.email).trim() !== ""
-            ){
-
-                return String(
-                    g.email
-                ).trim();
-
-            }
-
-        }
-
-
-        return "Giocatore";
+        torneo.coppie = [];
 
     }
+
+
+    if(
+        !torneo.configurazione ||
+        typeof torneo.configurazione !== "object"
+    ){
+
+        torneo.configurazione = {};
+
+    }
+
+
+    if(
+        !Array.isArray(
+            torneo.configurazione.coppie
+        )
+    ){
+
+        torneo.configurazione.coppie =
+            torneo.coppie;
+
+    }
+
+
+    const coppie =
+        torneo.coppie;
 
 
     /*
@@ -2693,39 +2403,31 @@ function renderCoppie(){
     coppie.forEach(
         coppia => {
 
-            if(!coppia)
-                return;
-
-
-            const g1 =
-                coppia.giocatore1;
-
-
-            const g2 =
-                coppia.giocatore2;
-
-
             if(
-                g1 &&
-                typeof g1 === "object" &&
-                g1.id != null
+                coppia &&
+                coppia.giocatore1 &&
+                coppia.giocatore1.id != null
             ){
 
                 giocatoriGiaUsati.add(
-                    String(g1.id)
+                    String(
+                        coppia.giocatore1.id
+                    )
                 );
 
             }
 
 
             if(
-                g2 &&
-                typeof g2 === "object" &&
-                g2.id != null
+                coppia &&
+                coppia.giocatore2 &&
+                coppia.giocatore2.id != null
             ){
 
                 giocatoriGiaUsati.add(
-                    String(g2.id)
+                    String(
+                        coppia.giocatore2.id
+                    )
                 );
 
             }
@@ -2740,26 +2442,39 @@ function renderCoppie(){
 
     const disponibili =
         iscritti.filter(
-            giocatore => {
-
-                if(
-                    !giocatore ||
-                    giocatore.id == null
-                ){
-
-                    return true;
-
-                }
-
-
-                return !giocatoriGiaUsati.has(
+            giocatore =>
+                !giocatoriGiaUsati.has(
                     String(
                         giocatore.id
                     )
-                );
-
-            }
+                )
         );
+
+
+    function nomeGiocatore(g){
+
+        if(!g)
+            return "Giocatore";
+
+
+        const nome =
+            [
+                g.nome,
+                g.cognome
+            ]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+
+
+        return (
+            nome ||
+            g.nome_giocatore ||
+            g.email ||
+            "Giocatore"
+        );
+
+    }
 
 
     /*
@@ -2812,9 +2527,7 @@ function renderCoppie(){
                             .map(
                                 g =>
                                     `
-                                    <option
-                                        value="${g.id}"
-                                    >
+                                    <option value="${g.id}">
                                         ${nomeGiocatore(g)}
                                     </option>
                                     `
@@ -2843,9 +2556,7 @@ function renderCoppie(){
                             .map(
                                 g =>
                                     `
-                                    <option
-                                        value="${g.id}"
-                                    >
+                                    <option value="${g.id}">
                                         ${nomeGiocatore(g)}
                                     </option>
                                     `
@@ -2929,103 +2640,45 @@ function renderCoppie(){
 
                 coppie
                     .map(
-                        (coppia,index) => {
+                        (coppia,index) =>
 
-                            if(!coppia)
-                                return "";
+                            `
+                            <div
+                                class="lista-item"
+                                style="
+                                    margin-bottom:8px;
+                                    padding:10px;
+                                "
+                            >
 
+                                <b>
+                                    Coppia ${index + 1}
+                                </b>
 
-                            /*
-                                ESTRAIAMO I NOMI PRIMA
-                                DI INSERIRLI NELL'HTML.
-                            */
+                                <br>
 
-                            const giocatore1 =
-                                nomeGiocatore(
-                                    coppia.giocatore1
-                                );
+                                👤
+                                ${
+                                    nomeGiocatore(
+                                        coppia.giocatore1
+                                    )
+                                }
 
+                                <br>
 
-                            const giocatore2 =
-                                nomeGiocatore(
-                                    coppia.giocatore2
-                                );
+                                👤
+                                ${
+                                    nomeGiocatore(
+                                        coppia.giocatore2
+                                    )
+                                }
 
-
-                            return `
-
-                                <div
-                                    class="lista-item"
-                                    style="
-                                        margin-bottom:8px;
-                                        padding:10px;
-                                    "
-                                >
-
-                                    <b>
-                                        Coppia ${index + 1}
-                                    </b>
-
-                                    <br>
-
-                                    👤
-                                    ${giocatore1}
-
-                                    <br>
-
-                                    👤
-                                    ${giocatore2}
-
-                                </div>
-
-                            `;
-
-                        }
+                            </div>
+                            `
                     )
                     .join("");
 
         }
-
-    }
-
-
-    /*
-        AGGIORNIAMO LO STATO ADMIN
-    */
-
-    const indiceAdmin =
-        adminState.tornei.findIndex(
-            t =>
-                String(t.id) ===
-                String(torneo.id)
-        );
-
-
-    if(indiceAdmin >= 0){
-
-        adminState.tornei[
-            indiceAdmin
-        ].coppie =
-            coppie;
-
-
-        if(
-            !adminState.tornei[
-                indiceAdmin
-            ].configurazione
-        ){
-
-            adminState.tornei[
-                indiceAdmin
-            ].configurazione = {};
-
-        }
-
-
-        adminState.tornei[
-            indiceAdmin
-        ].configurazione.coppie =
-            coppie;
 
     }
 
@@ -3052,7 +2705,6 @@ function renderCoppie(){
                 document.getElementById(
                     "adminCoppiaGiocatore1"
                 );
-
 
             const select2 =
                 document.getElementById(
@@ -3125,33 +2777,22 @@ function renderCoppie(){
 
             const giaUsato =
                 coppie.some(
-                    coppia => {
+                    coppia =>
+                        String(
+                            coppia?.giocatore1?.id
+                        ) === String(id1) ||
 
-                        if(!coppia)
-                            return false;
+                        String(
+                            coppia?.giocatore2?.id
+                        ) === String(id1) ||
 
+                        String(
+                            coppia?.giocatore1?.id
+                        ) === String(id2) ||
 
-                        return (
-
-                            String(
-                                coppia.giocatore1?.id
-                            ) === String(id1) ||
-
-                            String(
-                                coppia.giocatore2?.id
-                            ) === String(id1) ||
-
-                            String(
-                                coppia.giocatore1?.id
-                            ) === String(id2) ||
-
-                            String(
-                                coppia.giocatore2?.id
-                            ) === String(id2)
-
-                        );
-
-                    }
+                        String(
+                            coppia?.giocatore2?.id
+                        ) === String(id2)
                 );
 
 
@@ -3218,17 +2859,21 @@ function renderCoppie(){
             };
 
 
-            coppie.push(
+            torneo.coppie.push(
                 nuovaCoppia
             );
 
 
-            torneo.coppie =
-                coppie;
-
-
             torneo.configurazione.coppie =
-                coppie;
+                torneo.coppie;
+
+
+            const indiceAdmin =
+                adminState.tornei.findIndex(
+                    t =>
+                        String(t.id) ===
+                        String(torneo.id)
+                );
 
 
             if(indiceAdmin >= 0){
@@ -3310,8 +2955,6 @@ function renderCoppie(){
     );
 
 }
-
-
 
 
 function inviaWhatsAppTutti(){
@@ -3978,4 +3621,3 @@ window.addEventListener(
 
 </body>
 </html>
-
