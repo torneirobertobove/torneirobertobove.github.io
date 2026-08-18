@@ -6016,12 +6016,6 @@ async function loadState(){
             }
 
 
-            /*
-            --------------------------------------------------------
-            NOME + COGNOME
-            --------------------------------------------------------
-            */
-
             const nome =
                 g.nome !== undefined &&
                 g.nome !== null
@@ -6068,12 +6062,6 @@ async function loadState(){
             }
 
 
-            /*
-            --------------------------------------------------------
-            FALLBACK nome_giocatore
-            --------------------------------------------------------
-            */
-
             if(
                 g.nome_giocatore !== undefined &&
                 g.nome_giocatore !== null
@@ -6096,12 +6084,6 @@ async function loadState(){
             }
 
 
-            /*
-            --------------------------------------------------------
-            FALLBACK nome_giocato
-            --------------------------------------------------------
-            */
-
             if(
                 g.nome_giocato !== undefined &&
                 g.nome_giocato !== null
@@ -6123,12 +6105,6 @@ async function loadState(){
 
             }
 
-
-            /*
-            --------------------------------------------------------
-            FALLBACK EMAIL
-            --------------------------------------------------------
-            */
 
             if(
                 g.email !== undefined &&
@@ -6166,12 +6142,6 @@ async function loadState(){
             }
 
 
-            /*
-            --------------------------------------------------------
-            STRINGA GIÀ CORRETTA
-            --------------------------------------------------------
-            */
-
             if(
                 typeof coppia === "string"
             ){
@@ -6197,12 +6167,6 @@ async function loadState(){
             }
 
 
-            /*
-            --------------------------------------------------------
-            NUMERO
-            --------------------------------------------------------
-            */
-
             if(
                 typeof coppia === "number"
             ){
@@ -6211,12 +6175,6 @@ async function loadState(){
 
             }
 
-
-            /*
-            --------------------------------------------------------
-            OGGETTO COPPIA
-            --------------------------------------------------------
-            */
 
             if(
                 typeof coppia !== "object"
@@ -6282,12 +6240,6 @@ async function loadState(){
 
             }
 
-
-            /*
-            --------------------------------------------------------
-            EVENTUALE NOME SQUADRA GIÀ SALVATO
-            --------------------------------------------------------
-            */
 
             if(
                 coppia.nomeSquadra !== undefined &&
@@ -6414,16 +6366,15 @@ async function loadState(){
         ============================================================
         */
 
-        const gironi =
-            [
-                "A",
-                "B",
-                "C",
-                "D",
-                "E",
-                "F",
-                "G"
-            ];
+        const gironi = [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G"
+        ];
 
 
 
@@ -6480,7 +6431,6 @@ async function loadState(){
                     data:torneo,
                     error
                 } =
-
                     await sb
                     .from("tornei")
                     .select("*")
@@ -6582,26 +6532,18 @@ async function loadState(){
                         Array.isArray(
                             configurazione.partecipanti
                         )
-
                         ?
-
                         configurazione.partecipanti
-
                         :
-
                         [],
 
                     coppie:
                         Array.isArray(
                             configurazione.coppie
                         )
-
                         ?
-
                         configurazione.coppie
-
                         :
-
                         []
 
                 };
@@ -6622,7 +6564,7 @@ async function loadState(){
                             )
                         ){
 
-                            state[g]=[];
+                            state[g] = [];
 
                         }
 
@@ -6690,7 +6632,6 @@ async function loadState(){
                     data:iscrizioni,
                     error:errorIscrizioni
                 } =
-
                     await sb
                     .from("iscrizioni")
                     .select("*")
@@ -6748,7 +6689,7 @@ async function loadState(){
                     )
                 ){
 
-                    state.coppie=[];
+                    state.coppie = [];
 
                 }
 
@@ -6824,7 +6765,7 @@ async function loadState(){
                 ====================================================
                 */
 
-                const squadreDaCoppie=[];
+                const squadreDaCoppie = [];
 
 
                 state.coppie.forEach(
@@ -6865,19 +6806,18 @@ async function loadState(){
                 RICOSTRUZIONE GIRONI
                 ====================================================
 
-                I gironi salvati vengono mantenuti se sono validi.
+                Se A/B non sono validi oppure contengono oggetti,
+                i gironi vengono ricostruiti direttamente dalle
+                coppie reali.
 
-                Se invece sono corrotti, come nel caso attuale:
+                IMPORTANTE:
 
-                    [object Object]/[object Object]
+                Quando i gironi vengono ricostruiti, anche risultati,
+                orari e campi devono essere ricostruiti.
 
-                vengono ricostruiti dalle coppie reali.
-
-                Per il torneo attuale:
-
-                    coppie 0-3 -> A
-                    coppie 4-7 -> B
-
+                Non è possibile mantenere Ares/Bres/Atime/Btime/
+                Acamp/Bcamp per indice perché le partite precedenti
+                possono non corrispondere alle nuove partite.
                 ====================================================
                 */
 
@@ -6900,7 +6840,7 @@ async function loadState(){
 
                     /*
                     ------------------------------------------------
-                    Determinazione numero gironi
+                    NUMERO GIRONI
                     ------------------------------------------------
                     */
 
@@ -6919,7 +6859,7 @@ async function loadState(){
                         numeroGironi < 1
                     ){
 
-                        numeroGironi=2;
+                        numeroGironi = 2;
 
                     }
 
@@ -6938,15 +6878,27 @@ async function loadState(){
 
                     /*
                     ------------------------------------------------
-                    Pulizia dei gironi soltanto.
-                    RISULTATI/TEMPI/CAMPI NON VENGONO TOCCATI.
+                    PULIZIA COMPLETA DEI GIRONI E DELLE PARTITE
+                    ------------------------------------------------
+
+                    Questo è fondamentale.
+
+                    I vecchi risultati/orari/campi non possono essere
+                    riutilizzati perché erano associati alla vecchia
+                    disposizione delle squadre.
                     ------------------------------------------------
                     */
 
                     gironi.forEach(
                         g => {
 
-                            state[g]=[];
+                            state[g] = [];
+
+                            state[g + "res"] = [];
+
+                            state[g + "time"] = [];
+
+                            state[g + "camp"] = [];
 
                         }
                     );
@@ -6974,12 +6926,12 @@ async function loadState(){
                         numeroGironi;
 
 
-                    let indice=0;
+                    let indice = 0;
 
 
                     for(
-                        let i=0;
-                        i<numeroGironi;
+                        let i = 0;
+                        i < numeroGironi;
                         i++
                     ){
 
@@ -7001,8 +6953,7 @@ async function loadState(){
                         state[tag] =
                             squadreDaCoppie.slice(
                                 indice,
-                                indice +
-                                quantita
+                                indice + quantita
                             );
 
 
@@ -7010,6 +6961,79 @@ async function loadState(){
                             quantita;
 
                     }
+
+
+                    /*
+                    ------------------------------------------------
+                    INIZIALIZZAZIONE PARTITE
+
+                    Le partite verranno generate da renderTables().
+
+                    Qui prepariamo soltanto gli array vuoti.
+                    ------------------------------------------------
+                    */
+
+                    gironi.forEach(
+                        g => {
+
+                            const n =
+                                Array.isArray(
+                                    state[g]
+                                )
+                                ?
+                                state[g].length
+                                :
+                                0;
+
+
+                            let partite =
+                                n > 1
+                                    ?
+                                    (
+                                        n *
+                                        (n - 1)
+                                    ) /
+                                    2
+                                    :
+                                    0;
+
+
+                            /*
+                            ----------------------------------------
+                            ANDATA / RITORNO
+                            ----------------------------------------
+                            */
+
+                            if(
+                                state.rules
+                                &&
+                                state.rules.garaAndataRitorno === true
+                            ){
+
+                                partite *= 2;
+
+                            }
+
+
+                            state[g + "res"] =
+                                Array(
+                                    partite
+                                ).fill("-");
+
+
+                            state[g + "time"] =
+                                Array(
+                                    partite
+                                ).fill("");
+
+
+                            state[g + "camp"] =
+                                Array(
+                                    partite
+                                ).fill("");
+
+                        }
+                    );
 
 
                     console.log(
@@ -7022,6 +7046,19 @@ async function loadState(){
                             E:state.E,
                             F:state.F,
                             G:state.G
+                        }
+                    );
+
+
+                    console.log(
+                        "PARTITE RESETTATE DOPO RICOSTRUZIONE:",
+                        {
+                            Ares:state.Ares,
+                            Atime:state.Atime,
+                            Acamp:state.Acamp,
+                            Bres:state.Bres,
+                            Btime:state.Btime,
+                            Bcamp:state.Bcamp
                         }
                     );
 
@@ -7226,7 +7263,7 @@ async function loadState(){
                         )
                     ){
 
-                        state[g]=[];
+                        state[g] = [];
 
                     }
 
@@ -7241,13 +7278,9 @@ async function loadState(){
             */
 
             if(
-
                 state.A.length === 0
-
                 &&
-
                 state.B.length === 0
-
             ){
 
                 const savedTeams =
@@ -7347,7 +7380,7 @@ async function loadState(){
                 )
             ){
 
-                state[g]=[];
+                state[g] = [];
 
             }
 
@@ -7358,19 +7391,6 @@ async function loadState(){
     /*
     ================================================================
     NUMERO PARTITE DI UN GIRONE
-    ================================================================
-
-    ATTENZIONE:
-
-    NON moltiplichiamo qui per 2.
-
-    renderTables() genera già i round di ritorno quando
-    garaAndataRitorno === true.
-
-    Quindi questa funzione deve restituire solamente:
-
-        n * (n - 1) / 2
-
     ================================================================
     */
 
@@ -7384,18 +7404,18 @@ async function loadState(){
             0;
 
 
-        let totale=0;
+        let totale = 0;
 
 
         for(
-            let i=0;
-            i<n;
+            let i = 0;
+            i < n;
             i++
         ){
 
             for(
-                let j=i+1;
-                j<n;
+                let j = i + 1;
+                j < n;
                 j++
             ){
 
@@ -7425,7 +7445,7 @@ async function loadState(){
             )
         ){
 
-            state[nome]=[];
+            state[nome] = [];
 
         }
 
@@ -7473,10 +7493,20 @@ async function loadState(){
     ].forEach(
         g => {
 
-            const totale =
+            let totale =
                 numeroPartite(
                     state[g]
                 );
+
+
+            if(
+                state.rules &&
+                state.rules.garaAndataRitorno === true
+            ){
+
+                totale *= 2;
+
+            }
 
 
             sistema(
@@ -7541,7 +7571,7 @@ async function loadState(){
         state.fTopRes === undefined
     ){
 
-        state.fTopRes="-";
+        state.fTopRes = "-";
 
     }
 
@@ -7552,7 +7582,7 @@ async function loadState(){
         )
     ){
 
-        state.finalTop=[];
+        state.finalTop = [];
 
     }
 
@@ -7561,7 +7591,7 @@ async function loadState(){
         state.campioneTop === undefined
     ){
 
-        state.campioneTop=null;
+        state.campioneTop = null;
 
     }
 
@@ -7569,10 +7599,6 @@ async function loadState(){
     /*
     ================================================================
     SALVATAGGIO LOCALE
-    ================================================================
-
-    Un torneo aperto da Supabase NON viene scritto nel localStorage.
-
     ================================================================
     */
 
@@ -7583,13 +7609,9 @@ async function loadState(){
     ){
 
         if(
-
             state.A.length > 0
-
             &&
-
             state.B.length > 0
-
         ){
 
             localStorage.setItem(
