@@ -12116,6 +12116,12 @@ async function initDefaults(){
                 }
 
 
+                /*
+                ============================
+                CARICAMENTO STATE
+                ============================
+                */
+
                 state = {
 
                     ...state,
@@ -12196,7 +12202,7 @@ async function initDefaults(){
 
                 /*
                 ============================
-                CREAZIONE GIRONI DA COPPIE
+                CREAZIONE GIRONI
                 ============================
                 */
 
@@ -12206,7 +12212,8 @@ async function initDefaults(){
                     "C",
                     "D",
                     "E",
-                    "F"
+                    "F",
+                    "G"
                 ].forEach(g=>{
 
                     state[g]=[];
@@ -12220,48 +12227,486 @@ async function initDefaults(){
                 ============================
                 */
 
-                
-
-window.addEventListener("load", async () => {
-
-    const parametroTorneo =
-        new URLSearchParams(
-            window.location.search
-        ).get("torneo");
+                const coppie =
+                    Array.isArray(state.coppie)
+                    ?
+                    state.coppie
+                    :
+                    [];
 
 
-    /*
-    ============================
-    APERTURA DA ADMIN
-    ============================
-    */
+                const squadre=[];
 
-    if (
-        parametroTorneo &&
-        typeof initDefaults === "function"
-    ) {
 
-        await initDefaults();
+                coppie.forEach(coppia=>{
 
-        return;
+                    if(
+                        coppia === null ||
+                        coppia === undefined
+                    )
+                        return;
+
+
+                    /*
+                    ----------------------------
+                    GIOCATORE 1
+                    ----------------------------
+                    */
+
+                    const g1 =
+                        coppia.giocatore1
+                        ||
+                        coppia.g1
+                        ||
+                        coppia.player1
+                        ||
+                        coppia.giocatoreA
+                        ||
+                        null;
+
+
+                    /*
+                    ----------------------------
+                    GIOCATORE 2
+                    ----------------------------
+                    */
+
+                    const g2 =
+                        coppia.giocatore2
+                        ||
+                        coppia.g2
+                        ||
+                        coppia.player2
+                        ||
+                        coppia.giocatoreB
+                        ||
+                        null;
+
+
+                    /*
+                    ----------------------------
+                    NOME GIOCATORE
+                    ----------------------------
+                    */
+
+                    function nomeGiocatoreLocale(g){
+
+                        if(
+                            g === null ||
+                            g === undefined
+                        )
+                            return "";
+
+
+                        if(typeof g==="string")
+                            return g.trim();
+
+
+                        if(typeof g==="number")
+                            return String(g);
+
+
+                        if(typeof g!=="object")
+                            return String(g).trim();
+
+
+                        const nome =
+                            g.nome
+                            ||
+                            g.name
+                            ||
+                            "";
+
+
+                        const cognome =
+                            g.cognome
+                            ||
+                            g.surname
+                            ||
+                            "";
+
+
+                        const risultato =
+                            (
+                                String(nome).trim()
+                                +
+                                " "
+                                +
+                                String(cognome).trim()
+                            )
+                            .trim();
+
+
+                        if(risultato)
+                            return risultato;
+
+
+                        if(g.email)
+                            return String(g.email).trim();
+
+
+                        return "";
+
+                    }
+
+
+                    /*
+                    ----------------------------
+                    NOME COPPIA
+                    ----------------------------
+                    */
+
+                    let nome1 =
+                        nomeGiocatoreLocale(g1);
+
+
+                    let nome2 =
+                        nomeGiocatoreLocale(g2);
+
+
+                    /*
+                    Se la coppia contiene già
+                    un nome squadra lo utilizziamo.
+                    */
+
+                    if(
+                        !nome1 &&
+                        !nome2 &&
+                        coppia.nome
+                    ){
+
+                        squadre.push(
+                            String(
+                                coppia.nome
+                            ).trim()
+                        );
+
+                        return;
+
+                    }
+
+
+                    if(
+                        !nome1 &&
+                        !nome2 &&
+                        coppia.nomeSquadra
+                    ){
+
+                        squadre.push(
+                            String(
+                                coppia.nomeSquadra
+                            ).trim()
+                        );
+
+                        return;
+
+                    }
+
+
+                    /*
+                    ----------------------------
+                    COSTRUZIONE NOME COPPIA
+                    ----------------------------
+                    */
+
+                    let nomeCoppia="";
+
+
+                    if(nome1 && nome2){
+
+                        nomeCoppia =
+                            nome1 +
+                            " / " +
+                            nome2;
+
+                    }
+                    else if(nome1){
+
+                        nomeCoppia =
+                            nome1;
+
+                    }
+                    else if(nome2){
+
+                        nomeCoppia =
+                            nome2;
+
+                    }
+
+
+                    if(nomeCoppia)
+                        squadre.push(nomeCoppia);
+
+                });
+
+
+                /*
+                ============================
+                DISTRIBUZIONE NEI GIRONI
+                ============================
+                */
+
+                const gironiAttivi =
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G"
+                    ]
+                    .slice(
+                        0,
+                        Math.max(
+                            1,
+                            Math.min(
+                                numeroGironi,
+                                7
+                            )
+                        )
+                    );
+
+
+                /*
+                ----------------------------
+                NUMERO COPPIE PER GIRONE
+                ----------------------------
+                */
+
+                const perGirone =
+                    Number(
+                        state.rules.squadrePerGirone
+                    )
+                    ||
+                    Math.ceil(
+                        squadre.length /
+                        gironiAttivi.length
+                    )
+                    ||
+                    4;
+
+
+                /*
+                ----------------------------
+                DISTRIBUZIONE SEQUENZIALE
+                ----------------------------
+                */
+
+                gironiAttivi.forEach((g,index)=>{
+
+                    const inizio =
+                        index *
+                        perGirone;
+
+
+                    const fine =
+                        inizio +
+                        perGirone;
+
+
+                    state[g] =
+                        squadre.slice(
+                            inizio,
+                            fine
+                        );
+
+                });
+
+
+                /*
+                ============================
+                LOG CONTROLLO GIRONI
+                ============================
+                */
+
+                console.log(
+                    "GIRONI TORNEO ADMIN:",
+                    {
+                        A: state.A,
+                        B: state.B,
+                        C: state.C,
+                        D: state.D,
+                        E: state.E,
+                        F: state.F,
+                        G: state.G
+                    }
+                );
+
+
+                /*
+                ============================
+                INIZIALIZZAZIONE RISULTATI
+                ============================
+                */
+
+                [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G"
+                ].forEach(g=>{
+
+                    if(
+                        !Array.isArray(
+                            state[g+"res"]
+                        )
+                    )
+                        state[g+"res"]=[];
+
+
+                    if(
+                        !Array.isArray(
+                            state[g+"time"]
+                        )
+                    )
+                        state[g+"time"]=[];
+
+
+                    if(
+                        !Array.isArray(
+                            state[g+"camp"]
+                        )
+                    )
+                        state[g+"camp"]=[];
+
+                });
+
+
+                /*
+                ============================
+                INIZIALIZZAZIONE FASE FINALE
+                ============================
+                */
+
+                if(
+                    !Array.isArray(
+                        state.qRes
+                    )
+                )
+                    state.qRes =
+                        Array(4).fill("-");
+
+
+                if(
+                    !Array.isArray(
+                        state.sTopRes
+                    )
+                )
+                    state.sTopRes =
+                        Array(2).fill("-");
+
+
+                if(
+                    typeof state.fTopRes !== "string"
+                )
+                    state.fTopRes="-";
+
+
+                if(
+                    !Array.isArray(
+                        state.finalTop
+                    )
+                )
+                    state.finalTop=[];
+
+
+                if(
+                    state.campioneTop === undefined
+                )
+                    state.campioneTop=null;
+
+
+                /*
+                ============================
+                NORMALIZZAZIONE REGOLE
+                ============================
+                */
+
+                ensureRules();
+
+
+                /*
+                ============================
+                SALVATAGGIO STATO CARICATO
+                ============================
+                */
+
+                localStorage.setItem(
+                    "torneoState",
+                    JSON.stringify(state)
+                );
+
+
+                /*
+                ============================
+                RENDER
+                ============================
+                */
+
+                if(
+                    typeof render === "function"
+                ){
+
+                    render();
+
+                }
+
+
+                console.log(
+                    "INIT DEFAULTS COMPLETATO",
+                    state
+                );
+
+
+                return;
+
+            }
+            catch(error){
+
+                console.error(
+                    "ERRORE CARICAMENTO TORNEO ADMIN:",
+                    error
+                );
+
+                return;
+
+            }
+
+        }
+
+
+        /*
+        ============================
+        APERTURA NORMALE
+        ============================
+        */
+
+        if(
+            typeof loadState === "function"
+        ){
+
+            await loadState();
+
+            return;
+
+        }
+
+
+    }
+    catch(error){
+
+        console.error(
+            "ERRORE initDefaults():",
+            error
+        );
+
     }
 
-
-    /*
-    ============================
-    APERTURA NORMALE BOVE
-    ============================
-    */
-
-    if (
-        typeof loadState === "function"
-    ) {
-
-        await loadState();
-
-    }
-
-});
+}
 </script>
 </body>
 </html>
