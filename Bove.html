@@ -7630,6 +7630,58 @@ nomiSquadre.forEach(
 
 /*
 ==========================================
+LETTURA REGOLE
+==========================================
+*/
+
+const regole =
+    (
+        typeof state !== "undefined" &&
+        state &&
+        state.rules &&
+        typeof state.rules === "object"
+    )
+    ?
+        state.rules
+    :
+        {};
+
+
+const valoreW =
+    Number(
+        regole.w
+    );
+
+
+const valoreD =
+    Number(
+        regole.d
+    );
+
+
+const puntiVittoria =
+    Number.isFinite(
+        valoreW
+    )
+    ?
+        valoreW
+    :
+        3;
+
+
+const puntiPareggio =
+    Number.isFinite(
+        valoreD
+    )
+    ?
+        valoreD
+    :
+        1;
+
+
+
+/*
+==========================================
 LETTURA RISULTATI
 ==========================================
 */
@@ -7698,7 +7750,6 @@ for(
         }
 
 
-
         risultato =
             String(
                 risultato
@@ -7749,7 +7800,6 @@ for(
             );
 
 
-
         if(
             !Number.isFinite(a) ||
             !Number.isFinite(b) ||
@@ -7785,43 +7835,6 @@ for(
         PUNTI
         ==========================================
         */
-
-        const valoreW =
-            Number(
-                state &&
-                state.rules &&
-                state.rules.w
-            );
-
-
-        const valoreD =
-            Number(
-                state &&
-                state.rules &&
-                state.rules.d
-            );
-
-
-        const puntiVittoria =
-            Number.isFinite(
-                valoreW
-            )
-            ?
-            valoreW
-            :
-            3;
-
-
-        const puntiPareggio =
-            Number.isFinite(
-                valoreD
-            )
-            ?
-            valoreD
-            :
-            1;
-
-
 
         if(a > b){
 
@@ -7872,6 +7885,112 @@ classifica.forEach(
 
 /*
 ==========================================
+CRITERI DI CLASSIFICA
+==========================================
+*/
+
+function normalizzaCriterio(criterio){
+
+    if(
+        criterio === undefined ||
+        criterio === null
+    ){
+
+        return "";
+
+    }
+
+
+    const valore =
+        String(
+            criterio
+        )
+        .trim()
+        .toLowerCase();
+
+
+    if(
+        valore === "punti" ||
+        valore === "punteggio" ||
+        valore === "points" ||
+        valore === "point" ||
+        valore === "pt"
+    ){
+
+        return "pt";
+
+    }
+
+
+    if(
+        valore === "differenza" ||
+        valore === "differenza reti" ||
+        valore === "differenza giochi" ||
+        valore === "diff" ||
+        valore === "df"
+    ){
+
+        return "df";
+
+    }
+
+
+    if(
+        valore === "gf" ||
+        valore === "gol fatti" ||
+        valore === "giochi fatti"
+    ){
+
+        return "gf";
+
+    }
+
+
+    if(
+        valore === "gs" ||
+        valore === "gol subiti" ||
+        valore === "giochi subiti"
+    ){
+
+        return "gs";
+
+    }
+
+
+    return "";
+
+}
+
+
+const criterio1 =
+    normalizzaCriterio(
+        regole.crit1
+    );
+
+
+const criterio2 =
+    normalizzaCriterio(
+        regole.crit2
+    );
+
+
+const criterio3 =
+    normalizzaCriterio(
+        regole.crit3
+    );
+
+
+const criteri =
+    [
+        criterio1 || "pt",
+        criterio2 || "df",
+        criterio3 || "gf"
+    ];
+
+
+
+/*
+==========================================
 ORDINAMENTO CLASSIFICA
 ==========================================
 */
@@ -7879,8 +7998,77 @@ ORDINAMENTO CLASSIFICA
 classifica.sort(
     (a,b) => {
 
+        for(
+            let k = 0;
+            k < criteri.length;
+            k++
+        ){
+
+            const criterio =
+                criteri[k];
+
+
+            if(
+                !criterio ||
+                a[criterio] === undefined ||
+                b[criterio] === undefined
+            ){
+
+                continue;
+
+            }
+
+
+            if(
+                a[criterio] !==
+                b[criterio]
+            ){
+
+                /*
+                PUNTI / DIFFERENZA / FATTI:
+                VALORE MAGGIORE = POSIZIONE MIGLIORE
+                */
+
+                if(
+                    criterio === "pt" ||
+                    criterio === "df" ||
+                    criterio === "gf"
+                ){
+
+                    return (
+                        b[criterio] -
+                        a[criterio]
+                    );
+
+                }
+
+
+                /*
+                SUBITI:
+                VALORE MINORE = POSIZIONE MIGLIORE
+                */
+
+                if(
+                    criterio === "gs"
+                ){
+
+                    return (
+                        a[criterio] -
+                        b[criterio]
+                    );
+
+                }
+
+            }
+
+        }
+
+
+
         /*
-        1. PUNTI
+        ------------------------------------------
+        QUARTO CRITERIO DI SICUREZZA
+        ------------------------------------------
         */
 
         if(
@@ -7892,11 +8080,6 @@ classifica.sort(
         }
 
 
-
-        /*
-        2. DIFFERENZA GIOCHI
-        */
-
         if(
             a.df !== b.df
         ){
@@ -7906,11 +8089,6 @@ classifica.sort(
         }
 
 
-
-        /*
-        3. GIOCHI FATTI
-        */
-
         if(
             a.gf !== b.gf
         ){
@@ -7919,11 +8097,6 @@ classifica.sort(
 
         }
 
-
-
-        /*
-        4. GIOCHI SUBITI
-        */
 
         if(
             a.gs !== b.gs
@@ -7936,7 +8109,9 @@ classifica.sort(
 
 
         /*
-        5. NOME
+        ------------------------------------------
+        ULTIMO CRITERIO: NOME
+        ------------------------------------------
         */
 
         return String(
@@ -7965,9 +8140,7 @@ POSIZIONE E QUALIFICAZIONE
 
 let numeroQualificate =
     Number(
-        state &&
-        state.rules &&
-        state.rules.qualificatePerGirone
+        regole.qualificatePerGirone
     );
 
 
@@ -7981,6 +8154,16 @@ if(
     numeroQualificate = 2;
 
 }
+
+
+
+numeroQualificate =
+    Math.min(
+        Math.floor(
+            numeroQualificate
+        ),
+        classifica.length
+    );
 
 
 
@@ -8015,7 +8198,6 @@ return classifica;
 
 
 }
-
 
 function updateRes(g,i,pos,val){
 
