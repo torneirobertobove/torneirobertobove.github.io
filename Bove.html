@@ -2583,12 +2583,6 @@ function ensureRules(){
     };
 
 
-    /*
-    ==========================================
-    DEFAULT
-    ==========================================
-    */
-
     Object.keys(defaults).forEach(key => {
 
         if(
@@ -2606,7 +2600,7 @@ function ensureRules(){
 
     /*
     ==========================================
-    NUMERO COPPIE REALMENTE CARICATE
+    CORREZIONE CONFIGURAZIONE DA COPPIE REALI
     ==========================================
     */
 
@@ -2617,45 +2611,81 @@ function ensureRules(){
 
 
     /*
-    ==========================================
+    ------------------------------------------
     NUMERO SQUADRE
-    ==========================================
+    ------------------------------------------
+    Se Supabase ha salvato 0 ma abbiamo
+    coppie reali, il valore corretto è
+    il numero delle coppie.
+    ------------------------------------------
     */
 
     if(
-        !Number.isFinite(
-            Number(state.rules.numeroSquadre)
+        numeroCoppie > 0 &&
+        (
+            !Number.isFinite(
+                Number(state.rules.numeroSquadre)
+            )
+            ||
+            Number(state.rules.numeroSquadre) <= 0
         )
-        ||
-        Number(state.rules.numeroSquadre) <= 0
     ){
 
-        if(numeroCoppie > 0){
-
-            state.rules.numeroSquadre =
-                numeroCoppie;
-
-        }
-        else{
-
-            state.rules.numeroSquadre =
-                defaults.numeroSquadre;
-
-        }
-
-    }
-    else{
-
         state.rules.numeroSquadre =
-            Number(state.rules.numeroSquadre);
+            numeroCoppie;
 
     }
 
 
     /*
-    ==========================================
+    ------------------------------------------
+    NUMERO GIRONI
+    ------------------------------------------
+    Ricaviamo il numero reale dai gironi
+    effettivamente ricostruiti.
+    ------------------------------------------
+    */
+
+    const gironiReali = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+    ].filter(lettera => {
+
+        return Array.isArray(
+            state[lettera]
+        )
+        &&
+        state[lettera].length > 0;
+
+    }).length;
+
+
+    if(
+        gironiReali > 0 &&
+        (
+            !Number.isFinite(
+                Number(state.rules.numeroGironi)
+            )
+            ||
+            Number(state.rules.numeroGironi) <= 0
+        )
+    ){
+
+        state.rules.numeroGironi =
+            gironiReali;
+
+    }
+
+
+    /*
+    ------------------------------------------
     SQUADRE PER GIRONE
-    ==========================================
+    ------------------------------------------
+    ------------------------------------------
     */
 
     if(
@@ -2666,122 +2696,18 @@ function ensureRules(){
         Number(state.rules.squadrePerGirone) <= 0
     ){
 
-        state.rules.squadrePerGirone =
-            defaults.squadrePerGirone;
+        if(
+            numeroCoppie > 0 &&
+            gironiReali > 0
+        ){
 
-    }
-    else{
-
-        state.rules.squadrePerGirone =
-            Number(state.rules.squadrePerGirone);
-
-    }
-
-
-    /*
-    ==========================================
-    GIRONI REALMENTE PRESENTI
-    ==========================================
-    */
-
-    const gruppiPresenti = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E"
-    ].filter(nome => {
-
-        return Array.isArray(state[nome]) &&
-               state[nome].length > 0;
-
-    });
-
-
-    /*
-    ==========================================
-    NUMERO GIRONI
-    ==========================================
-    */
-
-    if(
-        !Number.isFinite(
-            Number(state.rules.numeroGironi)
-        )
-        ||
-        Number(state.rules.numeroGironi) <= 0
-    ){
-
-        if(gruppiPresenti.length > 0){
-
-            state.rules.numeroGironi =
-                gruppiPresenti.length;
-
-        }
-        else if(numeroCoppie > 0){
-
-            state.rules.numeroGironi =
+            state.rules.squadrePerGirone =
                 Math.ceil(
                     numeroCoppie /
-                    state.rules.squadrePerGirone
+                    gironiReali
                 );
 
         }
-        else{
-
-            state.rules.numeroGironi =
-                defaults.numeroGironi;
-
-        }
-
-    }
-    else{
-
-        state.rules.numeroGironi =
-            Number(state.rules.numeroGironi);
-
-    }
-
-
-    /*
-    ==========================================
-    SE I GIRONI SONO GIÀ STATI RICOSTRUITI,
-    USIAMO IL NUMERO REALE DI SQUADRE
-    ==========================================
-    */
-
-    if(gruppiPresenti.length > 0){
-
-        const squadreNeiGironi =
-            gruppiPresenti.reduce(
-                (totale, nome) => {
-
-                    return totale +
-                        (
-                            Array.isArray(state[nome])
-                                ? state[nome].length
-                                : 0
-                        );
-
-                },
-                0
-            );
-
-        if(squadreNeiGironi > 0){
-
-            state.rules.numeroSquadre =
-                squadreNeiGironi;
-
-        }
-
-        state.rules.numeroGironi =
-            gruppiPresenti.length;
-
-    }
-    else if(numeroCoppie > 0){
-
-        state.rules.numeroSquadre =
-            numeroCoppie;
 
     }
 
@@ -2798,20 +2724,6 @@ function ensureRules(){
             state.rules.mostraQuarti !== undefined
                 ? state.rules.mostraQuarti
                 : true;
-
-    }
-
-
-    /*
-    ==========================================
-    SINCRONIZZA mostraQuarti
-    ==========================================
-    */
-
-    if(state.rules.mostraQuarti === undefined){
-
-        state.rules.mostraQuarti =
-            state.mostraQuarti;
 
     }
 
