@@ -2531,63 +2531,140 @@ short:{
 
 
 };
-    function ensureRules(){
+function ensureRules(){
 
-    if(!state.rules || typeof state.rules !== "object"){
+    /*
+    ============================================================
+    VALIDAZIONE OGGETTO RULES
+    ============================================================
+    */
+
+    if(
+        !state.rules ||
+        typeof state.rules !== "object" ||
+        Array.isArray(state.rules)
+    ){
+
         state.rules = {};
+
     }
+
+
+    /*
+    ============================================================
+    DEFAULT
+    ============================================================
+    */
 
     const defaults = {
 
-        formatoTorneo: state.formato || "8",
+        formatoTorneo:
+            state.formato || 8,
 
-        tipoTorneo: "classico",
+        tipoTorneo:
+            "classico",
 
-        numeroSquadre: 8,
-        numeroGironi: 2,
-        squadrePerGirone: 4,
+        numeroSquadre:
+            8,
 
-        w: 3,
-        d: 1,
-        l: 0,
+        numeroGironi:
+            2,
 
-        qualificatePerGirone: 2,
-        numeroQualificateFinali: 4,
+        squadrePerGirone:
+            4,
 
-        crit1: "points",
-        crit2: "df",
-        crit3: "gf",
+        w:
+            3,
 
-        formulaGironi: "girone",
-        formulaFinale: "eliminazione",
+        d:
+            1,
 
-        usaQuarti: true,
-        usaSemifinali: true,
-        usaFinale: true,
+        l:
+            0,
 
-        ripescaggio: false,
-        numeroRipescate: 0,
+        qualificatePerGirone:
+            2,
 
-        killerPoint: false,
-        rigori: true,
-        tempoSupplementare: true,
+        numeroQualificateFinali:
+            4,
 
-        garaAndataRitorno: false,
+        crit1:
+            "points",
 
-        start: "09:00",
-        duration: 60,
+        crit2:
+            "df",
 
-        criterioParitaExtra: "",
+        crit3:
+            "gf",
 
-        note: ""
+        formulaGironi:
+            "girone",
+
+        formulaFinale:
+            "eliminazione",
+
+        usaQuarti:
+            true,
+
+        usaSemifinali:
+            true,
+
+        usaFinale:
+            true,
+
+        ripescaggio:
+            false,
+
+        numeroRipescate:
+            0,
+
+        killerPoint:
+            false,
+
+        rigori:
+            true,
+
+        tempoSupplementare:
+            true,
+
+        garaAndataRitorno:
+            false,
+
+        start:
+            "09:00",
+
+        duration:
+            60,
+
+        criterioParitaExtra:
+            "",
+
+        note:
+            ""
+
     };
 
+
+    /*
+    ============================================================
+    APPLICA DEFAULT SOLO SE VALORE ASSENTE
+    ============================================================
+    */
 
     Object.keys(defaults).forEach(key => {
 
         if(
             state.rules[key] === undefined ||
-            state.rules[key] === null
+            state.rules[key] === null ||
+            (
+                (
+                    key === "numeroSquadre" ||
+                    key === "numeroGironi" ||
+                    key === "squadrePerGirone"
+                )
+                &&
+                Number(state.rules[key]) <= 0
+            )
         ){
 
             state.rules[key] =
@@ -2598,7 +2675,174 @@ short:{
     });
 
 
-    if(state.mostraQuarti === undefined){
+    /*
+    ============================================================
+    NORMALIZZAZIONE NUMERICA
+    ============================================================
+    */
+
+    state.rules.numeroSquadre =
+        Number(state.rules.numeroSquadre);
+
+    state.rules.numeroGironi =
+        Number(state.rules.numeroGironi);
+
+    state.rules.squadrePerGirone =
+        Number(state.rules.squadrePerGirone);
+
+
+    /*
+    ============================================================
+    RECUPERO STRUTTURA DA STATE QUANDO RULES È INCONSISTENTE
+    ============================================================
+    */
+
+    const squadreReali =
+        Array.isArray(state.coppie)
+            ? state.coppie.length
+            : 0;
+
+
+    if(
+        squadreReali > 0 &&
+        (
+            !Number.isFinite(state.rules.numeroSquadre) ||
+            state.rules.numeroSquadre <= 0
+        )
+    ){
+
+        state.rules.numeroSquadre =
+            squadreReali;
+
+    }
+
+
+    /*
+    ============================================================
+    CALCOLO AUTOMATICO GIRONI
+    ============================================================
+    */
+
+    if(
+        (
+            !Number.isFinite(state.rules.numeroGironi) ||
+            state.rules.numeroGironi <= 0
+        )
+        &&
+        state.rules.numeroSquadre > 0
+    ){
+
+        if(state.rules.numeroSquadre >= 20){
+
+            state.rules.numeroGironi =
+                state.rules.numeroSquadre / 4;
+
+        }
+        else if(state.rules.numeroSquadre >= 16){
+
+            state.rules.numeroGironi =
+                4;
+
+        }
+        else if(state.rules.numeroSquadre >= 12){
+
+            state.rules.numeroGironi =
+                3;
+
+        }
+        else{
+
+            state.rules.numeroGironi =
+                2;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    SQUADRE PER GIRONE
+    ============================================================
+    */
+
+    if(
+        !Number.isFinite(
+            state.rules.squadrePerGirone
+        )
+        ||
+        state.rules.squadrePerGirone <= 0
+    ){
+
+        if(
+            state.rules.numeroSquadre > 0 &&
+            state.rules.numeroGironi > 0
+        ){
+
+            state.rules.squadrePerGirone =
+                state.rules.numeroSquadre /
+                state.rules.numeroGironi;
+
+        }
+        else{
+
+            state.rules.squadrePerGirone =
+                4;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    FALLBACK FINALE
+    ============================================================
+    */
+
+    if(
+        !Number.isFinite(state.rules.numeroSquadre) ||
+        state.rules.numeroSquadre <= 0
+    ){
+
+        state.rules.numeroSquadre =
+            8;
+
+    }
+
+
+    if(
+        !Number.isFinite(state.rules.numeroGironi) ||
+        state.rules.numeroGironi <= 0
+    ){
+
+        state.rules.numeroGironi =
+            2;
+
+    }
+
+
+    if(
+        !Number.isFinite(state.rules.squadrePerGirone) ||
+        state.rules.squadrePerGirone <= 0
+    ){
+
+        state.rules.squadrePerGirone =
+            4;
+
+    }
+
+
+    /*
+    ============================================================
+    MOSTRA QUARTI
+    ============================================================
+    */
+
+    if(
+        state.mostraQuarti === undefined ||
+        state.mostraQuarti === null
+    ){
 
         state.mostraQuarti =
             state.rules.mostraQuarti !== undefined
@@ -2608,7 +2852,18 @@ short:{
     }
 
 
+    /*
+    ============================================================
+    SINCRONIZZAZIONE MOSTRA QUARTI
+    ============================================================
+    */
+
+    state.rules.mostraQuarti =
+        state.mostraQuarti;
+
+
     return state.rules;
+
 }
 
 function closeRules(){
