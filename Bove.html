@@ -2647,23 +2647,32 @@ function ensureRules(){
 
     /*
     ============================================================
-    APPLICA DEFAULT SOLO SE VALORE ASSENTE
+    APPLICA DEFAULT SE VALORE ASSENTE O NUMERO NON VALIDO
     ============================================================
     */
 
     Object.keys(defaults).forEach(key => {
 
+        const valore =
+            state.rules[key];
+
+        const campoNumerico =
+            key === "numeroSquadre" ||
+            key === "numeroGironi" ||
+            key === "squadrePerGirone";
+
         if(
-            state.rules[key] === undefined ||
-            state.rules[key] === null ||
+            valore === undefined ||
+            valore === null ||
             (
+                campoNumerico &&
                 (
-                    key === "numeroSquadre" ||
-                    key === "numeroGironi" ||
-                    key === "squadrePerGirone"
+                    !Number.isFinite(
+                        Number(valore)
+                    )
+                    ||
+                    Number(valore) <= 0
                 )
-                &&
-                Number(state.rules[key]) <= 0
             )
         ){
 
@@ -2693,67 +2702,86 @@ function ensureRules(){
 
     /*
     ============================================================
-    RECUPERO STRUTTURA DA STATE QUANDO RULES È INCONSISTENTE
+    RECUPERO DALLE COPPIE REALI
+    ============================================================
+    
+    Se il torneo è stato caricato da Supabase e le coppie
+    esistono, il numero reale delle squadre ha priorità
+    sui valori 0/non validi presenti nella configurazione.
     ============================================================
     */
 
-    const squadreReali =
+    const numeroCoppie =
         Array.isArray(state.coppie)
             ? state.coppie.length
             : 0;
 
 
     if(
-        squadreReali > 0 &&
-        (
-            !Number.isFinite(state.rules.numeroSquadre) ||
+        numeroCoppie > 0
+    ){
+
+        /*
+        --------------------------------------------------------
+        NUMERO SQUADRE
+        --------------------------------------------------------
+        */
+
+        if(
+            !Number.isFinite(
+                state.rules.numeroSquadre
+            )
+            ||
             state.rules.numeroSquadre <= 0
-        )
-    ){
+        ){
 
-        state.rules.numeroSquadre =
-            squadreReali;
+            state.rules.numeroSquadre =
+                numeroCoppie;
 
-    }
+        }
 
 
-    /*
-    ============================================================
-    CALCOLO AUTOMATICO GIRONI
-    ============================================================
-    */
+        /*
+        --------------------------------------------------------
+        NUMERO GIRONI
+        --------------------------------------------------------
+        */
 
-    if(
-        (
-            !Number.isFinite(state.rules.numeroGironi) ||
+        if(
+            !Number.isFinite(
+                state.rules.numeroGironi
+            )
+            ||
             state.rules.numeroGironi <= 0
-        )
-        &&
-        state.rules.numeroSquadre > 0
-    ){
-
-        if(state.rules.numeroSquadre >= 20){
+        ){
 
             state.rules.numeroGironi =
-                state.rules.numeroSquadre / 4;
+                Math.ceil(
+                    numeroCoppie / 4
+                );
 
         }
-        else if(state.rules.numeroSquadre >= 16){
 
-            state.rules.numeroGironi =
-                4;
 
-        }
-        else if(state.rules.numeroSquadre >= 12){
+        /*
+        --------------------------------------------------------
+        SQUADRE PER GIRONE
+        --------------------------------------------------------
+        */
 
-            state.rules.numeroGironi =
-                3;
+        if(
+            !Number.isFinite(
+                state.rules.squadrePerGirone
+            )
+            ||
+            state.rules.squadrePerGirone <= 0
+        ){
 
-        }
-        else{
-
-            state.rules.numeroGironi =
-                2;
+            state.rules.squadrePerGirone =
+                Math.ceil(
+                    numeroCoppie /
+                    state.rules.numeroGironi
+                );
 
         }
 
@@ -2762,46 +2790,15 @@ function ensureRules(){
 
     /*
     ============================================================
-    SQUADRE PER GIRONE
+    FALLBACK STRUTTURA
     ============================================================
     */
 
     if(
         !Number.isFinite(
-            state.rules.squadrePerGirone
+            state.rules.numeroSquadre
         )
         ||
-        state.rules.squadrePerGirone <= 0
-    ){
-
-        if(
-            state.rules.numeroSquadre > 0 &&
-            state.rules.numeroGironi > 0
-        ){
-
-            state.rules.squadrePerGirone =
-                state.rules.numeroSquadre /
-                state.rules.numeroGironi;
-
-        }
-        else{
-
-            state.rules.squadrePerGirone =
-                4;
-
-        }
-
-    }
-
-
-    /*
-    ============================================================
-    FALLBACK FINALE
-    ============================================================
-    */
-
-    if(
-        !Number.isFinite(state.rules.numeroSquadre) ||
         state.rules.numeroSquadre <= 0
     ){
 
@@ -2812,7 +2809,10 @@ function ensureRules(){
 
 
     if(
-        !Number.isFinite(state.rules.numeroGironi) ||
+        !Number.isFinite(
+            state.rules.numeroGironi
+        )
+        ||
         state.rules.numeroGironi <= 0
     ){
 
@@ -2823,7 +2823,10 @@ function ensureRules(){
 
 
     if(
-        !Number.isFinite(state.rules.squadrePerGirone) ||
+        !Number.isFinite(
+            state.rules.squadrePerGirone
+        )
+        ||
         state.rules.squadrePerGirone <= 0
     ){
 
@@ -2840,8 +2843,7 @@ function ensureRules(){
     */
 
     if(
-        state.mostraQuarti === undefined ||
-        state.mostraQuarti === null
+        state.mostraQuarti === undefined
     ){
 
         state.mostraQuarti =
@@ -2865,7 +2867,6 @@ function ensureRules(){
     return state.rules;
 
 }
-
 function closeRules(){
 
     const modal =
