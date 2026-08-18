@@ -10728,12 +10728,38 @@ function renderTables(){
 
 
     /*
-    ==========================================
-    FUNZIONE ROUND ROBIN
-    ==========================================
+    ============================================================
+    FUNZIONE GENERAZIONE PARTITE
+    ============================================================
+
+    IMPORTANTISSIMO:
+
+    L'ORDINE DEVE ESSERE IDENTICO A QUELLO UTILIZZATO DA calc():
+
+        0-1
+        0-2
+        0-3
+        1-2
+        1-3
+        2-3
+
+    Non utilizziamo quindi il Round Robin a rotazione,
+    perché calc() legge i risultati con:
+
+        for(i=0; i<n; i++)
+            for(j=i+1; j<n; j++)
+
+    Questo mantiene perfettamente allineati:
+
+        partita
+        risultato
+        classifica
+        campo
+        orario
+    ============================================================
     */
 
-    function generaRoundRobin(n){
+    function generaPartite(n){
 
         if(
             !Number.isInteger(n) ||
@@ -10745,119 +10771,48 @@ function renderTables(){
         }
 
 
-        let squadre =
-            Array.from(
-                {length:n},
-                (_,i)=>i
-            );
+        const partite = [];
 
 
         /*
-        ------------------------------------------
-        NUMERO DISPARI:
-        INSERISCE RIPOSO
-        ------------------------------------------
+        ------------------------------------------------------------
+        ANDATA
+        ------------------------------------------------------------
         */
 
-        if(
-            squadre.length % 2 !== 0
-        ){
-
-            squadre.push(null);
-
-        }
-
-
-        const totale =
-            squadre.length;
-
-
-        const turni =
-            totale - 1;
-
-
-        const meta =
-            totale / 2;
-
-
-        const rounds = [];
-
-
         for(
-            let r = 0;
-            r < turni;
-            r++
+            let i = 0;
+            i < n;
+            i++
         ){
-
-            const round = [];
-
 
             for(
-                let i = 0;
-                i < meta;
-                i++
+                let j = i + 1;
+                j < n;
+                j++
             ){
 
-                const a =
-                    squadre[i];
-
-
-                const b =
-                    squadre[totale - 1 - i];
-
-
-                if(
-                    a !== null &&
-                    b !== null
-                ){
-
-                    round.push([
-                        a,
-                        b
-                    ]);
-
-                }
+                partite.push([
+                    i,
+                    j
+                ]);
 
             }
 
-
-            rounds.push(
-                round
-            );
-
-
-            /*
-            --------------------------------------
-            ROTAZIONE
-            --------------------------------------
-            */
-
-            const fisso =
-                squadre[0];
-
-
-            const resto =
-                squadre.slice(1);
-
-
-            resto.unshift(
-                resto.pop()
-            );
-
-
-            squadre = [
-                fisso,
-                ...resto
-            ];
-
         }
 
 
 
         /*
-        ------------------------------------------
-        ANDATA / RITORNO
-        ------------------------------------------
+        ------------------------------------------------------------
+        RITORNO
+        ------------------------------------------------------------
+
+        Se è prevista andata/ritorno, aggiungiamo le stesse
+        partite invertendo casa e ospite.
+
+        L'ordine resta comunque perfettamente prevedibile.
+        ------------------------------------------------------------
         */
 
         if(
@@ -10865,35 +10820,34 @@ function renderTables(){
             state.rules.garaAndataRitorno === true
         ){
 
-            const ritorno =
-                rounds.map(
-                    round =>
-                        round.map(
-                            match => [
-                                match[1],
-                                match[0]
-                            ]
-                        )
-                );
+            const andata =
+                partite.slice();
 
 
-            rounds.push(
-                ...ritorno
+            andata.forEach(
+                match => {
+
+                    partite.push([
+                        match[1],
+                        match[0]
+                    ]);
+
+                }
             );
 
         }
 
 
-        return rounds;
+        return partite;
 
     }
 
 
 
     /*
-    ==========================================
+    ============================================================
     ESCAPE HTML
-    ==========================================
+    ============================================================
     */
 
     function escapeHtml(valore){
@@ -10908,38 +10862,36 @@ function renderTables(){
         }
 
 
-        return String(
-            valore
-        )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#39;"
-        );
+        return String(valore)
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#39;"
+            );
 
     }
 
 
 
     /*
-    ==========================================
-    CAMPI PER GIRONE
-    ==========================================
+    ============================================================
+    CAMPI DISPONIBILI PER GIRONE
+    ============================================================
     */
 
     const campiPerGirone = {
@@ -10963,13 +10915,14 @@ function renderTables(){
 
 
     /*
-    ==========================================
-    DURATA
-    ==========================================
+    ============================================================
+    DURATA PARTITA
+    ============================================================
     */
 
     let durata =
         Number(
+            state.rules &&
             state.rules.duration
         );
 
@@ -10993,19 +10946,22 @@ function renderTables(){
 
 
     /*
-    ==========================================
-    ORARIO DI PARTENZA
-    ==========================================
+    ============================================================
+    ORARIO INIZIALE
+    ============================================================
     */
 
     let start =
         String(
-            state.rules.start || "20:00"
+            state.rules &&
+            state.rules.start
+            ||
+            "20:00"
         )
         .trim();
 
 
-    let partiOra =
+    const partiOra =
         start.split(":");
 
 
@@ -11045,13 +11001,12 @@ function renderTables(){
 
 
     /*
-    ==========================================
+    ============================================================
     CALENDARIO
-    ==========================================
+    ============================================================
     */
 
     const calendario = [];
-
 
 
     [
@@ -11063,8 +11018,7 @@ function renderTables(){
         "F",
         "G"
 
-    ]
-    .forEach(
+    ].forEach(
         tag => {
 
             const squadre =
@@ -11081,39 +11035,39 @@ function renderTables(){
             }
 
 
-            const rounds =
-                generaRoundRobin(
+            /*
+            ----------------------------------------------------
+            GENERIAMO LE PARTITE NELLO STESSO ORDINE DI calc()
+            ----------------------------------------------------
+            */
+
+            const partite =
+                generaPartite(
                     squadre.length
                 );
 
 
-            rounds.forEach(
-                round => {
+            partite.forEach(
+                match => {
 
-                    round.forEach(
-                        match => {
+                    calendario.push({
 
-                            calendario.push({
+                        girone:
+                            tag,
 
-                                girone:
-                                    tag,
+                        casa:
+                            match[0],
 
-                                casa:
-                                    match[0],
+                        ospite:
+                            match[1],
 
-                                ospite:
-                                    match[1],
+                        campo:
+                            null,
 
-                                campo:
-                                    null,
+                        slot:
+                            null
 
-                                slot:
-                                    null
-
-                            });
-
-                        }
-                    );
+                    });
 
                 }
             );
@@ -11124,9 +11078,9 @@ function renderTables(){
 
 
     /*
-    ==========================================
+    ============================================================
     OCCUPAZIONI
-    ==========================================
+    ============================================================
     */
 
     const occupazioni = [];
@@ -11134,9 +11088,17 @@ function renderTables(){
 
 
     /*
-    ==========================================
-    ASSEGNAZIONE CAMPI / SLOT
-    ==========================================
+    ============================================================
+    ASSEGNAZIONE CAMPI E SLOT
+    ============================================================
+
+    Regole:
+
+    1. stesso campo + stesso slot = vietato
+    2. stessa squadra + stesso slot nello stesso girone = vietato
+    3. i gironi A/B/C... usano i propri campi
+    4. l'ordine delle partite NON viene modificato
+    ============================================================
     */
 
     calendario.forEach(
@@ -11144,27 +11106,25 @@ function renderTables(){
 
             let assegnata = false;
 
-
             let slot = 0;
-
 
             let tentativi = 0;
 
 
-            const campiDisponibili =
-                Array.isArray(
-                    campiPerGirone[
-                        partita.girone
-                    ]
-                )
-                &&
+            const campiConfigurati =
                 campiPerGirone[
                     partita.girone
-                ].length > 0
+                ];
+
+
+            const campiDisponibili =
+                Array.isArray(
+                    campiConfigurati
+                )
+                &&
+                campiConfigurati.length > 0
                 ?
-                    campiPerGirone[
-                        partita.girone
-                    ]
+                    campiConfigurati
                 :
                     [2,3];
 
@@ -11174,28 +11134,29 @@ function renderTables(){
                 !assegnata
             ){
 
-                /*
-                ----------------------------------
-                PROTEZIONE DA LOOP INFINITO
-                ----------------------------------
-                */
-
                 tentativi++;
 
+
+                /*
+                ------------------------------------------------
+                PROTEZIONE
+                ------------------------------------------------
+                */
 
                 if(
                     tentativi > 10000
                 ){
 
                     /*
-                    Fallback sicuro:
-                    assegna il primo campo
-                    disponibile senza bloccare
-                    il rendering.
+                    Fallback di sicurezza.
                     */
 
-                    partita.campo =
+                    const campoFallback =
                         campiDisponibili[0];
+
+
+                    partita.campo =
+                        campoFallback;
 
 
                     partita.slot =
@@ -11208,7 +11169,7 @@ function renderTables(){
                             slot,
 
                         campo:
-                            campiDisponibili[0],
+                            campoFallback,
 
                         girone:
                             partita.girone,
@@ -11229,6 +11190,12 @@ function renderTables(){
 
 
 
+                /*
+                ------------------------------------------------
+                CERCA UN CAMPO LIBERO NELLO SLOT
+                ------------------------------------------------
+                */
+
                 for(
                     let i = 0;
                     i < campiDisponibili.length;
@@ -11243,56 +11210,63 @@ function renderTables(){
                         false;
 
 
+                    for(
+                        let k = 0;
+                        k < occupazioni.length;
+                        k++
+                    ){
 
-                    occupazioni.forEach(
-                        occupazione => {
-
-                            /*
-                            --------------------------------
-                            STESSO CAMPO + STESSO SLOT
-                            = CONFLITTO REALE
-                            --------------------------------
-                            */
-
-                            if(
-                                occupazione.slot === slot &&
-                                occupazione.campo === campo
-                            ){
-
-                                conflitto = true;
-
-                            }
+                        const occupazione =
+                            occupazioni[k];
 
 
-                            /*
-                            --------------------------------
-                            UNA SQUADRA NON PUÒ GIOCARE
-                            DUE PARTITE NELLO STESSO SLOT
-                            NELLO STESSO GIRONE
-                            --------------------------------
-                            */
+                        /*
+                        ----------------------------------------
+                        STESSO CAMPO / STESSO SLOT
+                        ----------------------------------------
+                        */
 
-                            if(
-                                occupazione.slot === slot &&
-                                occupazione.girone ===
-                                    partita.girone &&
-                                (
-                                    occupazione.squadre.includes(
-                                        partita.casa
-                                    )
-                                    ||
-                                    occupazione.squadre.includes(
-                                        partita.ospite
-                                    )
-                                )
-                            ){
+                        if(
+                            occupazione.slot === slot &&
+                            occupazione.campo === campo
+                        ){
 
-                                conflitto = true;
+                            conflitto = true;
 
-                            }
+                            break;
 
                         }
-                    );
+
+
+                        /*
+                        ----------------------------------------
+                        STESSA SQUADRA / STESSO SLOT
+                        NELLO STESSO GIRONE
+                        ----------------------------------------
+                        */
+
+                        if(
+                            occupazione.slot === slot &&
+                            occupazione.girone ===
+                                partita.girone &&
+                            (
+                                occupazione.squadre.includes(
+                                    partita.casa
+                                )
+                                ||
+                                occupazione.squadre.includes(
+                                    partita.ospite
+                                )
+                            )
+                        ){
+
+                            conflitto = true;
+
+                            break;
+
+                        }
+
+                    }
 
 
 
@@ -11329,7 +11303,6 @@ function renderTables(){
 
                         assegnata = true;
 
-
                         break;
 
                     }
@@ -11337,6 +11310,13 @@ function renderTables(){
                 }
 
 
+
+                /*
+                ------------------------------------------------
+                NESSUN CAMPO LIBERO:
+                PASSA ALLO SLOT SUCCESSIVO
+                ------------------------------------------------
+                */
 
                 if(
                     !assegnata
@@ -11354,9 +11334,9 @@ function renderTables(){
 
 
     /*
-    ==========================================
-    RENDER GIRONE PER GIRONE
-    ==========================================
+    ============================================================
+    RENDER DEI GIRONI
+    ============================================================
     */
 
     [
@@ -11368,8 +11348,7 @@ function renderTables(){
         "F",
         "G"
 
-    ]
-    .forEach(
+    ].forEach(
         tag => {
 
             const box =
@@ -11385,7 +11364,6 @@ function renderTables(){
             }
 
 
-
             const partite =
                 calendario.filter(
                     partita =>
@@ -11395,9 +11373,9 @@ function renderTables(){
 
 
             /*
-            ======================================
-            RISULTATI
-            ======================================
+            ====================================================
+            ARRAY RISULTATI
+            ====================================================
             */
 
             const chiaveRes =
@@ -11443,9 +11421,9 @@ function renderTables(){
 
 
             /*
-            ======================================
-            ORARI
-            ======================================
+            ====================================================
+            ARRAY ORARI
+            ====================================================
             */
 
             const chiaveTime =
@@ -11491,9 +11469,9 @@ function renderTables(){
 
 
             /*
-            ======================================
-            CAMPI
-            ======================================
+            ====================================================
+            ARRAY CAMPI
+            ====================================================
             */
 
             const chiaveCamp =
@@ -11539,22 +11517,22 @@ function renderTables(){
 
 
             /*
-            ======================================
-            GENERAZIONE RIGHE
-            ======================================
+            ====================================================
+            GENERAZIONE HTML
+            ====================================================
             */
 
             let rows = "";
 
 
-
             partite.forEach(
                 (m,i) => {
 
+
                     /*
-                    ----------------------------------
-                    ORARIO CALCOLATO DALLO SLOT
-                    ----------------------------------
+                    ------------------------------------------------
+                    ORARIO
+                    ------------------------------------------------
                     */
 
                     const minutiTotali =
@@ -11601,11 +11579,10 @@ function renderTables(){
                         );
 
 
-
                     /*
-                    ----------------------------------
-                    L'ORARIO È GENERATO DAL CALENDARIO.
-                    ----------------------------------
+                    ------------------------------------------------
+                    SALVIAMO L'ORARIO GENERATO
+                    ------------------------------------------------
                     */
 
                     state[chiaveTime][i] =
@@ -11614,11 +11591,14 @@ function renderTables(){
 
 
                     /*
-                    ----------------------------------
-                    PRESERVA IL CAMPO ESISTENTE.
+                    ------------------------------------------------
+                    CAMPO
 
-                    Se non esiste, usa quello generato.
-                    ----------------------------------
+                    Se esiste già un campo scelto dall'utente,
+                    lo preserviamo.
+
+                    Altrimenti utilizziamo quello generato.
+                    ------------------------------------------------
                     */
 
                     let campo =
@@ -11628,7 +11608,9 @@ function renderTables(){
                     if(
                         campo === undefined ||
                         campo === null ||
-                        String(campo).trim() === ""
+                        String(
+                            campo
+                        ).trim() === ""
                     ){
 
                         campo =
@@ -11643,16 +11625,17 @@ function renderTables(){
 
 
                     /*
-                    ----------------------------------
+                    ------------------------------------------------
                     RISULTATO
-                    ----------------------------------
+
+                    NON TOCCHIAMO MAI UN RISULTATO VALIDO
+                    GIÀ PRESENTE.
+                    ------------------------------------------------
                     */
 
                     if(
-                        state[chiaveRes][i] ===
-                            undefined ||
-                        state[chiaveRes][i] ===
-                            null ||
+                        state[chiaveRes][i] === undefined ||
+                        state[chiaveRes][i] === null ||
                         String(
                             state[chiaveRes][i]
                         ).trim() === ""
@@ -11664,51 +11647,77 @@ function renderTables(){
                     }
 
 
-
                     const risultato =
                         String(
                             state[chiaveRes][i]
-                        );
+                        )
+                        .trim();
 
 
 
                     /*
-                    ----------------------------------
-                    PARSING VISUALIZZAZIONE
-                    ----------------------------------
+                    ------------------------------------------------
+                    PARSING RISULTATO
+                    ------------------------------------------------
                     */
 
-                    const partiRisultato =
-                        risultato
-                        .split("-");
+                    let valoreA = "";
+
+                    let valoreB = "";
 
 
-                    const valoreA =
-                        (
-                            partiRisultato[0] === "-" ||
-                            partiRisultato[0] === undefined
-                        )
-                        ?
-                            ""
-                        :
-                            partiRisultato[0].trim();
+                    if(
+                        risultato !== "-" &&
+                        risultato !== ""
+                    ){
+
+                        const partiRisultato =
+                            risultato.split("-");
 
 
-                    const valoreB =
-                        (
-                            partiRisultato[1] === undefined
-                        )
-                        ?
-                            ""
-                        :
-                            partiRisultato[1].trim();
+                        if(
+                            partiRisultato.length >= 1
+                        ){
+
+                            valoreA =
+                                (
+                                    partiRisultato[0] ===
+                                    undefined
+                                )
+                                ?
+                                    ""
+                                :
+                                    partiRisultato[0]
+                                        .trim();
+
+                        }
+
+
+                        if(
+                            partiRisultato.length >= 2
+                        ){
+
+                            valoreB =
+                                (
+                                    partiRisultato[1] ===
+                                    undefined
+                                )
+                                ?
+                                    ""
+                                :
+                                    partiRisultato[1]
+                                        .trim();
+
+                        }
+
+                    }
 
 
 
                     /*
-                    ----------------------------------
+                    ------------------------------------------------
                     NOMI SQUADRE
-                    ----------------------------------
+                    ------------------------------------------------
                     */
 
                     const nomeCasa =
@@ -11725,9 +11734,9 @@ function renderTables(){
 
 
                     /*
-                    ----------------------------------
+                    ------------------------------------------------
                     RIGA
-                    ----------------------------------
+                    ------------------------------------------------
                     */
 
                     rows += `
@@ -11773,6 +11782,7 @@ value="${escapeHtml(valoreA)}"
 oninput="updateRes('${tag}',${i},0,this.value)"
 >
 
+
 <input
 value="${escapeHtml(valoreB)}"
 oninput="updateRes('${tag}',${i},1,this.value)"
@@ -11789,9 +11799,9 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
             /*
-            ======================================
+            ====================================================
             AGGIORNAMENTO DOM
-            ======================================
+            ====================================================
             */
 
             box.innerHTML =
@@ -11803,14 +11813,14 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
     /*
-    ==========================================
+    ============================================================
     SINCRONIZZAZIONE
-    ==========================================
+    ============================================================
     */
 
     if(
         typeof updateAndSync ===
-            "function"
+        "function"
     ){
 
         updateAndSync();
