@@ -2230,6 +2230,7 @@ function renderPartecipanti(){
 
 }
 
+
 function renderCoppie(){
 
     const box =
@@ -2263,19 +2264,99 @@ function renderCoppie(){
     }
 
 
-    const iscritti =
+    /*
+        RECUPERO PARTECIPANTI
+
+        Prima utilizziamo le iscrizioni appena caricate.
+
+        Se window.iscrizioniTorneo è vuoto,
+        recuperiamo direttamente i partecipanti
+        già salvati nella configurazione del torneo.
+
+        NON viene eseguita alcuna autenticazione.
+        NON viene eseguito alcun login.
+        NON viene eseguito alcun getUser().
+        NON viene effettuato alcun controllo admin.
+    */
+
+    let iscritti = [];
+
+
+    if(
         Array.isArray(
             window.iscrizioniTorneo
-        )
-        ?
-        window.iscrizioniTorneo.filter(
-            g =>
-                g &&
-                g.stato === "approvato"
-        )
-        :
-        [];
+        ) &&
+        window.iscrizioniTorneo.length
+    ){
 
+        iscritti =
+            window.iscrizioniTorneo.filter(
+                g =>
+                    g &&
+                    g.stato === "approvato"
+            );
+
+    }
+
+
+    /*
+        FALLBACK:
+
+        se il contenitore temporaneo è vuoto,
+        utilizziamo i partecipanti salvati
+        nel torneo.
+    */
+
+    if(!iscritti.length){
+
+        const partecipantiSalvati =
+            Array.isArray(
+                torneo.configurazione?.partecipanti
+            )
+            ?
+            torneo.configurazione.partecipanti
+            :
+            Array.isArray(
+                torneo.partecipanti
+            )
+            ?
+            torneo.partecipanti
+            :
+            [];
+
+
+        iscritti =
+            partecipantiSalvati.filter(
+                g =>
+                    g &&
+                    (
+                        g.stato === "approvato" ||
+                        g.approvato === true
+                    )
+            );
+
+
+        /*
+            Ripristiniamo anche il contenitore
+            centrale per evitare che una successiva
+            funzione di rendering perda i dati.
+        */
+
+        window.iscrizioniTorneo =
+            iscritti.slice();
+
+    }
+
+
+    console.log(
+        "PARTECIPANTI DISPONIBILI PER COPPIE:",
+        iscritti
+    );
+
+
+    /*
+        INIZIALIZZAZIONE COPPIE
+    */
 
     if(!Array.isArray(torneo.coppie)){
 
@@ -2310,43 +2391,54 @@ function renderCoppie(){
         torneo.coppie;
 
 
+    /*
+        IDENTIFICHIAMO I GIOCATORI
+        GIÀ ASSEGNATI A UNA COPPIA
+    */
+
     const giocatoriGiaUsati =
         new Set();
 
 
-    coppie.forEach(coppia => {
+    coppie.forEach(
+        coppia => {
 
-        if(
-            coppia &&
-            coppia.giocatore1 &&
-            coppia.giocatore1.id != null
-        ){
+            if(
+                coppia &&
+                coppia.giocatore1 &&
+                coppia.giocatore1.id != null
+            ){
 
-            giocatoriGiaUsati.add(
-                String(
-                    coppia.giocatore1.id
-                )
-            );
+                giocatoriGiaUsati.add(
+                    String(
+                        coppia.giocatore1.id
+                    )
+                );
+
+            }
+
+
+            if(
+                coppia &&
+                coppia.giocatore2 &&
+                coppia.giocatore2.id != null
+            ){
+
+                giocatoriGiaUsati.add(
+                    String(
+                        coppia.giocatore2.id
+                    )
+                );
+
+            }
 
         }
+    );
 
 
-        if(
-            coppia &&
-            coppia.giocatore2 &&
-            coppia.giocatore2.id != null
-        ){
-
-            giocatoriGiaUsati.add(
-                String(
-                    coppia.giocatore2.id
-                )
-            );
-
-        }
-
-    });
-
+    /*
+        GIOCATORI ANCORA DISPONIBILI
+    */
 
     const disponibili =
         iscritti.filter(
@@ -2364,6 +2456,7 @@ function renderCoppie(){
         if(!g)
             return "Giocatore";
 
+
         const nome =
             [
                 g.nome,
@@ -2372,6 +2465,7 @@ function renderCoppie(){
             .filter(Boolean)
             .join(" ")
             .trim();
+
 
         return (
             nome ||
@@ -2382,6 +2476,10 @@ function renderCoppie(){
 
     }
 
+
+    /*
+        RENDER PANNELLO CREAZIONE COPPIE
+    */
 
     box.innerHTML = `
 
@@ -2520,6 +2618,10 @@ function renderCoppie(){
     `;
 
 
+    /*
+        LISTA COPPIE GIÀ CREATE
+    */
+
     if(listaBox){
 
         if(!coppie.length){
@@ -2580,6 +2682,10 @@ function renderCoppie(){
 
     }
 
+
+    /*
+        PULSANTE CREA COPPIA
+    */
 
     const btn =
         document.getElementById(
@@ -2831,7 +2937,6 @@ function renderCoppie(){
 
                 renderCoppie();
 
-
             }
             catch(e){
 
@@ -2850,6 +2955,8 @@ function renderCoppie(){
     );
 
 }
+
+
 function inviaWhatsAppTutti(){
 
     let msg =
