@@ -7284,7 +7284,6 @@ function reset(){
 }
 function calc(squadre, risultati){
 
-```
 /*
 ==========================================
 VALIDAZIONE
@@ -7312,7 +7311,7 @@ if(
 
 /*
 ==========================================
-CONVERSIONE SICURA NOME SQUADRA
+CONVERSIONE SICURA NOME GIOCATORE
 ==========================================
 */
 
@@ -7423,6 +7422,12 @@ function nomeGiocatore(g){
 
 
 
+/*
+==========================================
+CONVERSIONE SICURA NOME SQUADRA / COPPIA
+==========================================
+*/
+
 function nomeSquadra(squadra){
 
     if(
@@ -7493,6 +7498,7 @@ function nomeSquadra(squadra){
         const nome1 =
             nomeGiocatore(g1);
 
+
         const nome2 =
             nomeGiocatore(g2);
 
@@ -7525,6 +7531,7 @@ function nomeSquadra(squadra){
         }
 
     }
+
 
 
     /*
@@ -7567,7 +7574,7 @@ function nomeSquadra(squadra){
 
 /*
 ==========================================
-NORMALIZZIAMO LE SQUADRE
+NORMALIZZAZIONE SQUADRE
 ==========================================
 */
 
@@ -7609,7 +7616,10 @@ nomiSquadre.forEach(
                 0,
 
             qual:
-                false
+                false,
+
+            posizione:
+                0
 
         });
 
@@ -7620,23 +7630,11 @@ nomiSquadre.forEach(
 
 /*
 ==========================================
-RISULTATI GIRONE
+LETTURA RISULTATI
 ==========================================
-
-L'indice deve seguire ESATTAMENTE
-l'ordine delle partite:
-
-A-B
-A-C
-A-D
-B-C
-B-D
-C-D
-ecc.
 */
 
 let indice = 0;
-
 
 
 for(
@@ -7680,20 +7678,20 @@ for(
 
         /*
         ------------------------------------------
-        RISULTATO EVENTUALMENTE OGGETTO
+        RISULTATO OGGETTO
         ------------------------------------------
         */
 
         if(
-            typeof resultado === "object"
+            typeof risultato === "object"
         ){
 
             risultato =
-                resultado.risultato
+                risultato.risultato
                 ||
-                resultado.result
+                risultato.result
                 ||
-                resultado.score
+                risultato.score
                 ||
                 "";
 
@@ -7711,7 +7709,7 @@ for(
 
         /*
         ------------------------------------------
-        SUPPORTO FORMATI:
+        FORMATI SUPPORTATI
 
         6-3
         6 - 3
@@ -7725,10 +7723,8 @@ for(
                 .trim();
 
 
-
         let parti =
             base.split("-");
-
 
 
         if(
@@ -7790,35 +7786,38 @@ for(
         ==========================================
         */
 
+        const valoreW =
+            Number(
+                state &&
+                state.rules &&
+                state.rules.w
+            );
+
+
+        const valoreD =
+            Number(
+                state &&
+                state.rules &&
+                state.rules.d
+            );
+
+
         const puntiVittoria =
-            Number(
-                state?.rules?.w
-            );
-
-
-        const puntiPareggio =
-            Number(
-                state?.rules?.d
-            );
-
-
-
-        const w =
             Number.isFinite(
-                puntiVittoria
+                valoreW
             )
             ?
-            puntiVittoria
+            valoreW
             :
             3;
 
 
-        const d =
+        const puntiPareggio =
             Number.isFinite(
-                puntiPareggio
+                valoreD
             )
             ?
-            puntiPareggio
+            valoreD
             :
             1;
 
@@ -7826,20 +7825,24 @@ for(
 
         if(a > b){
 
-            classifica[i].pt += w;
+            classifica[i].pt +=
+                puntiVittoria;
 
         }
         else
         if(b > a){
 
-            classifica[j].pt += w;
+            classifica[j].pt +=
+                puntiVittoria;
 
         }
         else{
 
-            classifica[i].pt += d;
+            classifica[i].pt +=
+                puntiPareggio;
 
-            classifica[j].pt += d;
+            classifica[j].pt +=
+                puntiPareggio;
 
         }
 
@@ -7877,7 +7880,7 @@ classifica.sort(
     (a,b) => {
 
         /*
-        1 — PUNTI
+        1. PUNTI
         */
 
         if(
@@ -7891,7 +7894,7 @@ classifica.sort(
 
 
         /*
-        2 — DIFFERENZA GIOCHI
+        2. DIFFERENZA GIOCHI
         */
 
         if(
@@ -7905,7 +7908,7 @@ classifica.sort(
 
 
         /*
-        3 — GIOCHI FATTI
+        3. GIOCHI FATTI
         */
 
         if(
@@ -7919,7 +7922,7 @@ classifica.sort(
 
 
         /*
-        4 — GIOCHI SUBITI
+        4. GIOCHI SUBITI
         */
 
         if(
@@ -7933,7 +7936,7 @@ classifica.sort(
 
 
         /*
-        5 — NOME
+        5. NOME
         */
 
         return String(
@@ -7944,7 +7947,8 @@ classifica.sort(
             ),
             "it",
             {
-                sensitivity:"base"
+                sensitivity:
+                    "base"
             }
         );
 
@@ -7955,24 +7959,26 @@ classifica.sort(
 
 /*
 ==========================================
-QUALIFICAZIONI
+POSIZIONE E QUALIFICAZIONE
 ==========================================
 */
 
-let qualificate =
+let numeroQualificate =
     Number(
-        state?.rules?.qualificatePerGirone
+        state &&
+        state.rules &&
+        state.rules.qualificatePerGirone
     );
 
 
 if(
     !Number.isFinite(
-        qualificate
+        numeroQualificate
     ) ||
-    qualificate < 1
+    numeroQualificate < 1
 ){
 
-    qualificate = 2;
+    numeroQualificate = 2;
 
 }
 
@@ -7981,11 +7987,12 @@ if(
 classifica.forEach(
     (squadra,index) => {
 
-        squadra.qual =
-            index < qualificate;
-
         squadra.posizione =
             index + 1;
+
+        squadra.qual =
+            index <
+            numeroQualificate;
 
     }
 );
@@ -8004,11 +8011,11 @@ console.log(
 );
 
 
-
 return classifica;
-```
+
 
 }
+
 
 function updateRes(g,i,pos,val){
 
