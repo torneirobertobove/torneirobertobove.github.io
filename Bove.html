@@ -11057,10 +11057,6 @@ function renderTables(){
     /*
     ------------------------------------------------------------
     OGNI GIRONE VIENE GENERATO SEPARATAMENTE.
-    
-    IMPORTANTISSIMO:
-    LE PARTITE RESTANO NELLO STESSO ORDINE DEI RISULTATI
-    GIÀ PRESENTI IN state.Ares / Bres / ecc.
     ------------------------------------------------------------
     */
 
@@ -11077,11 +11073,16 @@ function renderTables(){
         tag => {
 
             const squadre =
-                state[tag];
+                Array.isArray(
+                    state[tag]
+                )
+                ?
+                state[tag]
+                :
+                [];
 
 
             if(
-                !Array.isArray(squadre) ||
                 squadre.length < 2
             ){
 
@@ -11121,23 +11122,6 @@ function renderTables(){
             /*
             --------------------------------------------------------
             COSTRUZIONE PER TURNI
-
-            Tutte le partite dello stesso round vengono giocate
-            nello stesso SLOT.
-
-            Esempio con 4 squadre:
-
-            Round 1:
-                campo 2 -> A-D
-                campo 3 -> B-C
-
-            Round 2:
-                campo 2 -> A-C
-                campo 3 -> D-B
-
-            Round 3:
-                campo 2 -> A-B
-                campo 3 -> C-D
             --------------------------------------------------------
             */
 
@@ -11146,16 +11130,6 @@ function renderTables(){
 
                     round.forEach(
                         (match,matchIndex) => {
-
-                            /*
-                            ------------------------------------------------
-                            CAMPO
-
-                            Se il numero di partite del round supera
-                            i campi disponibili, le partite eccedenti
-                            vengono distribuite su slot successivi.
-                            ------------------------------------------------
-                            */
 
                             const bloccoCampo =
                                 Math.floor(
@@ -11252,13 +11226,28 @@ function renderTables(){
 
             /*
             ========================================================
-            RISULTATI
+            CHIAVI STATO
             ========================================================
             */
 
             const chiaveRes =
                 tag + "res";
 
+
+            const chiaveTime =
+                tag + "time";
+
+
+            const chiaveCamp =
+                tag + "camp";
+
+
+
+            /*
+            ========================================================
+            GARANZIA RISULTATI
+            ========================================================
+            */
 
             if(
                 !Array.isArray(
@@ -11270,12 +11259,6 @@ function renderTables(){
 
             }
 
-
-            /*
-            --------------------------------------------------------
-            NON PERDIAMO I RISULTATI ESISTENTI
-            --------------------------------------------------------
-            */
 
             while(
                 state[chiaveRes].length <
@@ -11306,13 +11289,9 @@ function renderTables(){
 
             /*
             ========================================================
-            ORARI
+            GARANZIA ORARI
             ========================================================
             */
-
-            const chiaveTime =
-                tag + "time";
-
 
             if(
                 !Array.isArray(
@@ -11331,7 +11310,7 @@ function renderTables(){
             ){
 
                 state[chiaveTime].push(
-                    "-"
+                    ""
                 );
 
             }
@@ -11354,13 +11333,9 @@ function renderTables(){
 
             /*
             ========================================================
-            CAMPI
+            GARANZIA CAMPI
             ========================================================
             */
-
-            const chiaveCamp =
-                tag + "camp";
-
 
             if(
                 !Array.isArray(
@@ -11414,62 +11389,81 @@ function renderTables(){
 
                     /*
                     ------------------------------------------------
-                    ORARIO DELLO SLOT
+                    ORARIO
+
+                    IMPORTANTE:
+                    SE L'ORARIO È GIÀ PRESENTE NELLO STATE,
+                    VIENE MANTENUTO.
+
+                    Nel tuo caso:
+                    Atime = 20:00,20:00,20:30...
+                    Btime = 20:00,20:00,20:30...
                     ------------------------------------------------
                     */
 
-                    const minutiTotali =
-                        (
-                            oraBase * 60
-                        )
-                        +
-                        minutiBase
-                        +
-                        (
-                            m.slot *
-                            durata
-                        );
+                    let tempo =
+                        state[chiaveTime][i];
 
 
-                    const ora =
-                        Math.floor(
-                            minutiTotali / 60
-                        )
-                        % 24;
-
-
-                    const min =
-                        minutiTotali % 60;
-
-
-                    const tempo =
+                    if(
+                        tempo === undefined ||
+                        tempo === null ||
                         String(
-                            ora
-                        )
-                        .padStart(
-                            2,
-                            "0"
-                        )
-                        +
-                        ":"
-                        +
+                            tempo
+                        ).trim() === "" ||
                         String(
-                            min
-                        )
-                        .padStart(
-                            2,
-                            "0"
-                        );
+                            tempo
+                        ).trim() === "-"
+                    ){
+
+                        const minutiTotali =
+                            (
+                                oraBase * 60
+                            )
+                            +
+                            minutiBase
+                            +
+                            (
+                                m.slot *
+                                durata
+                            );
 
 
-                    /*
-                    ------------------------------------------------
-                    L'ORARIO VIENE SEMPRE RIGENERATO DAL CALENDARIO.
-                    ------------------------------------------------
-                    */
+                        const ora =
+                            Math.floor(
+                                minutiTotali / 60
+                            )
+                            % 24;
 
-                    state[chiaveTime][i] =
-                        tempo;
+
+                        const min =
+                            minutiTotali % 60;
+
+
+                        tempo =
+                            String(
+                                ora
+                            )
+                            .padStart(
+                                2,
+                                "0"
+                            )
+                            +
+                            ":"
+                            +
+                            String(
+                                min
+                            )
+                            .padStart(
+                                2,
+                                "0"
+                            );
+
+
+                        state[chiaveTime][i] =
+                            tempo;
+
+                    }
 
 
 
@@ -11477,24 +11471,37 @@ function renderTables(){
                     ------------------------------------------------
                     CAMPO
 
-                    QUI È LA CORREZIONE IMPORTANTE.
+                    IMPORTANTE:
+                    SE IL CAMPO È GIÀ PRESENTE NELLO STATE,
+                    VIENE MANTENUTO.
 
-                    I vecchi valori corrotti:
-                        A = 2,2,2,2,2,2
-                        B = 4,4,4,4,4,4
+                    Nel tuo caso:
 
-                    NON DEVONO PIÙ BLOCCARE IL CALENDARIO.
-
-                    Il campo viene quindi riallineato al calendario.
+                    A = 2,3,2,3,2,3
+                    B = 4,5,4,5,4,5
                     ------------------------------------------------
                     */
 
-                    const campo =
-                        m.campo;
+                    let campo =
+                        state[chiaveCamp][i];
 
 
-                    state[chiaveCamp][i] =
-                        campo;
+                    if(
+                        campo === undefined ||
+                        campo === null ||
+                        String(
+                            campo
+                        ).trim() === ""
+                    ){
+
+                        campo =
+                            m.campo;
+
+
+                        state[chiaveCamp][i] =
+                            campo;
+
+                    }
 
 
 
