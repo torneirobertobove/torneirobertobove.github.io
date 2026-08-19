@@ -10802,15 +10802,14 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 
 }
+```javascript
 function getFinalQualified(){
 
     ensureRules();
 
+    let qualificate = [];
 
-    let qualificate=[];
-
-
-    [
+    const gironi = [
         "A",
         "B",
         "C",
@@ -10818,115 +10817,160 @@ function getFinalQualified(){
         "E",
         "F",
         "G"
+    ];
 
-    ].forEach(tag=>{
+    /*
+    ============================================================
+    1. QUALIFICAZIONE DA OGNI GIRONE
+    ============================================================
+    */
 
+    gironi.forEach(tag => {
 
-        let squadre =
-            state[tag];
-
+        const squadre = state[tag];
 
         if(
             !Array.isArray(squadre) ||
-            squadre.length===0
-        )
-
+            squadre.length === 0
+        ){
             return;
+        }
 
+        const risultati =
+            state[tag + "res"];
 
-
-        let classifica =
-
+        const classifica =
             calc(
-
                 squadre,
-
-                state[tag+"res"]
-
+                Array.isArray(risultati)
+                    ? risultati
+                    : []
             );
-
-
 
         if(
             !Array.isArray(classifica) ||
-            classifica.length===0
-        )
-
+            classifica.length === 0
+        ){
             return;
+        }
 
-
+        /*
+        --------------------------------------------------------
+        NUMERO QUALIFICATE PER GIRONE
+        --------------------------------------------------------
+        */
 
         let q =
-
             Number(
-                state.rules.qualificatePerGirone
+                state.rules?.qualificatePerGirone
             );
 
-
+        /*
+        Se il valore è 0/non valido:
+        - con i quarti attivi e 8 squadre totali:
+          servono 2 qualificate per girone;
+        - altrimenti almeno 1.
+        */
 
         if(
             !Number.isFinite(q) ||
-            q<1
-        )
+            q < 1
+        ){
 
-            q=1;
+            if(
+                state.rules?.usaQuarti === true &&
+                Number(state.rules?.numeroSquadre) === 8 &&
+                Number(state.rules?.numeroGironi) === 2
+            ){
 
+                q = 2;
 
+            }
+            else{
 
-        classifica.forEach((x,i)=>{
-
-
-            if(i<q){
-
-
-                qualificate.push({
-
-                    nome:x.n,
-
-                    pt:x.pt,
-
-                    gf:x.gf,
-
-                    gs:x.gs,
-
-                    df:x.df,
-
-                    girone:tag,
-
-                    posizione:i+1
-
-                });
-
+                q = 1;
 
             }
 
+        }
 
-        });
+        /*
+        Non possiamo qualificare più squadre
+        di quante ne esistano realmente.
+        */
 
+        q =
+            Math.min(
+                q,
+                classifica.length
+            );
+
+        /*
+        --------------------------------------------------------
+        SALVA LE QUALIFICATE
+        --------------------------------------------------------
+        */
+
+        for(let i = 0; i < q; i++){
+
+            const x = classifica[i];
+
+            qualificate.push({
+
+                nome: x.n,
+
+                pt: x.pt,
+
+                gf: x.gf,
+
+                gs: x.gs,
+
+                df: x.df,
+
+                girone: tag,
+
+                posizione: i + 1
+
+            });
+
+        }
 
     });
 
 
+    /*
+    ============================================================
+    2. NESSUNA QUALIFICATA
+    ============================================================
+    */
+
+    if(qualificate.length === 0){
+
+        return [];
+
+    }
 
 
     /*
-    ===================================
-    NUMERO QUALIFICATE FINALI
-    ===================================
+    ============================================================
+    3. NUMERO QUALIFICATE FINALI
+    ============================================================
     */
 
-
     let limite =
-
         Number(
-            state.rules.numeroQualificateFinali
+            state.rules?.numeroQualificateFinali
         );
 
 
+    /*
+    Se non impostato, NON dobbiamo ridurre
+    le qualificate necessarie al tabellone.
+    */
 
     if(
         !Number.isFinite(limite) ||
-        limite<1
+        limite < 1
     ){
 
         limite =
@@ -10935,39 +10979,79 @@ function getFinalQualified(){
     }
 
 
-
     /*
-    ===================================
-    QUARTI DI FINALE
-    ===================================
-
-    Se i quarti sono attivi il tabellone
-    richiede 8 qualificate, ma solo se
-    sono realmente disponibili.
+    ============================================================
+    4. QUARTI DI FINALE
+    ============================================================
     */
 
-
     if(
-        state.rules.usaQuarti===true &&
-        qualificate.length>=8
+        state.rules?.usaQuarti === true
     ){
 
-        limite=8;
+        const numeroSquadre =
+            Number(
+                state.rules?.numeroSquadre
+            );
+
+        /*
+        --------------------------------------------------------
+        CASO 8 SQUADRE
+        --------------------------------------------------------
+        2 gironi x 2 qualificate = 4 squadre ai quarti
+        --------------------------------------------------------
+        */
+
+        if(numeroSquadre === 8){
+
+            /*
+            Con 2 gironi da 4 il tabellone dei quarti
+            richiede esattamente 4 qualificate.
+            */
+
+            if(qualificate.length >= 4){
+
+                limite = 4;
+
+            }
+
+        }
+
+        /*
+        --------------------------------------------------------
+        CASO GENERALE
+        --------------------------------------------------------
+        Per tabelloni più grandi manteniamo il numero
+        realmente disponibile.
+        --------------------------------------------------------
+        */
+
+        else{
+
+            /*
+            Se ci sono almeno 8 qualificate,
+            possiamo costruire il tabellone da 8.
+            */
+
+            if(qualificate.length >= 8){
+
+                limite = 8;
+
+            }
+
+        }
 
     }
 
 
-
     /*
-    ===================================
-    SE LE QUALIFICATE PER GIRONE
-    PRODUCONO MENO SQUADRE DEL LIMITE
-    ===================================
+    ============================================================
+    5. NON SUPERARE LE QUALIFICATE REALI
+    ============================================================
     */
 
-
     if(
-        limite>qualificate.length
+        limite > qualificate.length
     ){
 
         limite =
@@ -10976,72 +11060,59 @@ function getFinalQualified(){
     }
 
 
-
     /*
-    ===================================
-    DISTRIBUZIONE EQUILIBRATA
-    ===================================
-
-    Evita che con più gironi vengano
-    prese semplicemente le prime 8
-    provenienti da A/B.
+    ============================================================
+    6. DISTRIBUZIONE EQUILIBRATA TRA I GIRONI
+    ============================================================
     */
 
-
     if(
-        state.rules.usaQuarti===true &&
-        limite===8 &&
-        qualificate.length>8
+        state.rules?.usaQuarti === true &&
+        limite >= 4
     ){
 
+        const perGirone = {};
 
-        let perGirone={};
+        qualificate.forEach(x => {
 
+            if(!perGirone[x.girone]){
 
-        qualificate.forEach(x=>{
+                perGirone[x.girone] = [];
 
-
-            if(!perGirone[x.girone])
-                perGirone[x.girone]=[];
-
+            }
 
             perGirone[x.girone].push(x);
-
 
         });
 
 
-
-        let gironiAttivi =
+        const gironiAttivi =
             Object.keys(perGirone);
 
 
-
-        let ordinate=[];
-
+        const ordinate = [];
 
 
         /*
-        Prima prendiamo le prime
-        classificate di ogni girone.
+        Prima tutte le prime classificate,
+        poi le seconde, ecc.
         */
 
+        for(
+            let posizione = 1;
+            ;
+            posizione++
+        ){
 
-        for(let posizione=1; ; posizione++){
+            let aggiunte = 0;
 
 
-            let aggiunte=0;
+            gironiAttivi.forEach(tag => {
 
-
-            gironiAttivi.forEach(tag=>{
-
-
-                let squadra =
-
-                    perGirone[tag]
-                    .find(
+                const squadra =
+                    perGirone[tag].find(
                         x =>
-                        x.posizione===posizione
+                            x.posizione === posizione
                     );
 
 
@@ -11053,30 +11124,29 @@ function getFinalQualified(){
 
                 }
 
-
             });
 
 
-
             if(
-                ordinate.length>=8 ||
-                aggiunte===0
-            )
+                ordinate.length >= limite ||
+                aggiunte === 0
+            ){
 
                 break;
 
+            }
 
         }
 
 
-
         qualificate =
-            ordinate.slice(0,8);
-
+            ordinate.slice(
+                0,
+                limite
+            );
 
     }
     else{
-
 
         qualificate =
             qualificate.slice(
@@ -11084,20 +11154,21 @@ function getFinalQualified(){
                 limite
             );
 
-
     }
 
 
+    /*
+    ============================================================
+    7. RESTITUISCE SOLO I NOMI DELLE SQUADRE
+    ============================================================
+    */
 
     return qualificate.map(
-
-        x =>
-            x.nome
-
+        x => x.nome
     );
 
-
 }
+```
 
 
 function renderKO(){
