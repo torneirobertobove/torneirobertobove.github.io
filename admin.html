@@ -1940,14 +1940,11 @@ async function caricaRichiesteIscrizione(){
 
         /*
         ==========================================
-        2. QUERY DIRETTA
+        2. CARICAMENTO REALE DAL DATABASE
         ==========================================
         */
 
-        let {
-            data,
-            error
-        } =
+        const risultato =
             await sb
                 .from("iscrizioni")
                 .select("*")
@@ -1955,6 +1952,16 @@ async function caricaRichiesteIscrizione(){
                     "torneo_id",
                     torneoId
                 );
+
+
+        const data =
+            Array.isArray(risultato.data)
+                ? risultato.data
+                : [];
+
+
+        const error =
+            risultato.error;
 
 
         if(error){
@@ -1969,471 +1976,32 @@ async function caricaRichiesteIscrizione(){
         }
 
 
-        if(
-            Array.isArray(data) &&
-            data.length > 0
-        ){
-
-            console.log(
-                "✅ ISCRIZIONI TROVATE CON ID TORNEO:",
-                data
-            );
-
-        }
-        else{
-
-            /*
-            ==========================================
-            3. FALLBACK
-            ==========================================
-            */
-
-            console.warn(
-                "⚠️ NESSUNA ISCRIZIONE TROVATA CON:",
-                torneoId
-            );
-
-
-            const torneoResult =
-                await sb
-                    .from("tornei")
-                    .select("*")
-                    .eq(
-                        "id",
-                        torneoId
-                    )
-                    .single();
-
-
-            if(torneoResult.error){
-
-                console.error(
-                    "❌ IMPOSSIBILE RECUPERARE IL TORNEO:",
-                    torneoResult.error
-                );
-
-            }
-
-
-            const torneo =
-                torneoResult.data || null;
-
-
-            console.log(
-                "🔎 TORNEO USATO PER IL RECUPERO ISCRITTI:",
-                torneo
-            );
-
-
-            /*
-            ==========================================
-            4. RECUPERO DI TUTTE LE ISCRIZIONI
-            ==========================================
-            */
-
-            const fallback =
-                await sb
-                    .from("iscrizioni")
-                    .select("*");
-
-
-            if(fallback.error){
-
-                console.error(
-                    "❌ ERRORE RECUPERO ISCRIZIONI:",
-                    fallback.error
-                );
-
-                data = [];
-
-            }
-            else{
-
-                const tutte =
-                    Array.isArray(fallback.data)
-                        ? fallback.data
-                        : [];
-
-
-                console.log(
-                    "🔎 ISCRIZIONI DISPONIBILI NEL DB:",
-                    tutte.length
-                );
-
-
-                /*
-                ==========================================
-                5. RACCOLTA NOMI DEL TORNEO
-                ==========================================
-                */
-
-                const nomiTorneo =
-                    new Set();
-
-
-                function raccogliNomi(value){
-
-                    if(
-                        value === null ||
-                        value === undefined
-                    ){
-
-                        return;
-
-                    }
-
-
-                    if(Array.isArray(value)){
-
-                        value.forEach(
-                            item =>
-                                raccogliNomi(item)
-                        );
-
-                        return;
-
-                    }
-
-
-                    if(typeof value === "object"){
-
-                        Object.values(value)
-                            .forEach(
-                                item =>
-                                    raccogliNomi(item)
-                            );
-
-                        return;
-
-                    }
-
-
-                    if(typeof value !== "string"){
-
-                        return;
-
-                    }
-
-
-                    const testo =
-                        value.trim();
-
-
-                    if(!testo){
-
-                        return;
-
-                    }
-
-
-                    testo
-                        .split("/")
-                        .forEach(
-                            parte => {
-
-                                const nome =
-                                    parte
-                                        .trim()
-                                        .toLowerCase();
-
-
-                                if(nome){
-
-                                    nomiTorneo.add(nome);
-
-                                }
-
-                            }
-                        );
-
-
-                    nomiTorneo.add(
-                        testo.toLowerCase()
-                    );
-
-                }
-
-
-                if(torneo){
-
-                    raccogliNomi(
-                        torneo.configurazione
-                    );
-
-                    raccogliNomi(
-                        torneo.coppie
-                    );
-
-                    raccogliNomi(
-                        torneo.squadre
-                    );
-
-                    raccogliNomi(
-                        torneo.gironi
-                    );
-
-                    raccogliNomi(
-                        torneo.A
-                    );
-
-                    raccogliNomi(
-                        torneo.B
-                    );
-
-                    raccogliNomi(
-                        torneo.C
-                    );
-
-                    raccogliNomi(
-                        torneo.D
-                    );
-
-                    raccogliNomi(
-                        torneo.E
-                    );
-
-                    raccogliNomi(
-                        torneo.F
-                    );
-
-                }
-
-
-                console.log(
-                    "🔎 NOMI PRESENTI NELLA CONFIGURAZIONE:",
-                    [...nomiTorneo]
-                );
-
-
-                /*
-                ==========================================
-                6. MATCH ISCRIZIONE
-                ==========================================
-                */
-
-                function iscrizioneAppartieneAlTorneo(
-                    iscrizione
-                ){
-
-                    if(!iscrizione){
-
-                        return false;
-
-                    }
-
-
-                    /*
-                    ------------------------------------------
-                    ID ESATTO
-                    ------------------------------------------
-                    */
-
-                    if(
-                        String(
-                            iscrizione.torneo_id
-                        ) === String(
-                            torneoId
-                        )
-                    ){
-
-                        return true;
-
-                    }
-
-
-                    /*
-                    ------------------------------------------
-                    DATI GIOCATORE
-                    ------------------------------------------
-                    */
-
-                    const nome =
-                        String(
-                            iscrizione.nome ||
-                            iscrizione.nome_giocatore ||
-                            ""
-                        )
-                        .trim()
-                        .toLowerCase();
-
-
-                    const cognome =
-                        String(
-                            iscrizione.cognome ||
-                            ""
-                        )
-                        .trim()
-                        .toLowerCase();
-
-
-                    const nomeCompleto =
-                        (
-                            nome +
-                            " " +
-                            cognome
-                        )
-                        .trim()
-                        .toLowerCase();
-
-
-                    const nomeGiocatore =
-                        String(
-                            iscrizione.nome_giocatore ||
-                            ""
-                        )
-                        .trim()
-                        .toLowerCase();
-
-
-                    /*
-                    ------------------------------------------
-                    CONTROLLO NOMI
-                    ------------------------------------------
-                    */
-
-                    for(
-                        const nomeTorneo of nomiTorneo
-                    ){
-
-                        if(!nomeTorneo){
-
-                            continue;
-
-                        }
-
-
-                        if(
-                            nomeTorneo === nome ||
-                            nomeTorneo === cognome ||
-                            nomeTorneo === nomeCompleto ||
-                            nomeTorneo === nomeGiocatore
-                        ){
-
-                            return true;
-
-                        }
-
-
-                        /*
-                        --------------------------------------
-                        MATCH PARZIALE SICURO
-                        --------------------------------------
-                        */
-
-                        if(
-                            nomeCompleto.length >= 4 &&
-                            nomeTorneo.includes(nomeCompleto)
-                        ){
-
-                            return true;
-
-                        }
-
-
-                        if(
-                            nomeGiocatore.length >= 4 &&
-                            nomeTorneo.includes(nomeGiocatore)
-                        ){
-
-                            return true;
-
-                        }
-
-                    }
-
-
-                    return false;
-
-                }
-
-
-                /*
-                ==========================================
-                7. RECUPERO ISCRITTI
-                ==========================================
-                */
-
-                const recuperate =
-                    tutte.filter(
-                        iscrizione =>
-                            iscrizioneAppartieneAlTorneo(
-                                iscrizione
-                            )
-                    );
-
-
-                console.log(
-                    "✅ ISCRIZIONI RECUPERATE DALLE COPPIE/CONFIGURAZIONE:",
-                    recuperate
-                );
-
-
-                /*
-                ==========================================
-                8. ELIMINAZIONE DUPLICATI
-                ==========================================
-                */
-
-                const viste =
-                    new Set();
-
-
-                data =
-                    recuperate.filter(
-                        iscrizione => {
-
-                            const chiave =
-                                String(
-                                    iscrizione.id ??
-                                    (
-                                        String(
-                                            iscrizione.nome
-                                        ) +
-                                        "|" +
-                                        String(
-                                            iscrizione.cognome
-                                        ) +
-                                        "|" +
-                                        String(
-                                            iscrizione.email
-                                        )
-                                    )
-                                );
-
-
-                            if(
-                                viste.has(chiave)
-                            ){
-
-                                return false;
-
-                            }
-
-
-                            viste.add(
-                                chiave
-                            );
-
-                            return true;
-
-                        }
-                    );
-
-            }
-
-        }
+        /*
+        ==========================================
+        3. RISULTATO QUERY
+        ==========================================
+        */
+
+        console.log(
+            "✅ ISCRIZIONI TROVATE CON ID TORNEO:",
+            data
+        );
+
+
+        console.log(
+            "✅ NUMERO ISCRIZIONI REALI:",
+            data.length
+        );
 
 
         /*
         ==========================================
-        9. CONTENITORE CENTRALE
+        4. CONTENITORE CENTRALE
         ==========================================
         */
 
         window.iscrizioniTorneo =
-            Array.isArray(data)
-                ? data
-                : [];
+            data;
 
 
         console.log(
@@ -2444,7 +2012,7 @@ async function caricaRichiesteIscrizione(){
 
         /*
         ==========================================
-        10. PARTECIPANTI APPROVATI
+        5. PARTECIPANTI APPROVATI
         ==========================================
         */
 
@@ -2465,9 +2033,15 @@ async function caricaRichiesteIscrizione(){
         );
 
 
+        console.log(
+            "✅ NUMERO PARTECIPANTI APPROVATI:",
+            approvati.length
+        );
+
+
         /*
         ==========================================
-        11. AGGIORNAMENTO VISUALIZZAZIONE
+        6. AGGIORNAMENTO VISUALIZZAZIONE
         ==========================================
         */
 
@@ -2503,7 +2077,7 @@ async function caricaRichiesteIscrizione(){
 
         /*
         ==========================================
-        12. DEBUG FINALE
+        7. DEBUG FINALE
         ==========================================
         */
 
