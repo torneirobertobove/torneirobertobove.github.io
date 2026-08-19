@@ -11101,6 +11101,9 @@ function getFinalQualified(){
 # `renderKO()` — versione corretta
 
 
+# Funzione `renderKO()` corretta
+
+```javascript
 function renderKO(){
 
     ensureRules();
@@ -11117,8 +11120,11 @@ function renderKO(){
         document.getElementById("F");
 
 
-    if(!q || !s || !f)
+    if(!q || !s || !f){
+
         return;
+
+    }
 
 
     q.innerHTML = "";
@@ -11127,25 +11133,39 @@ function renderKO(){
 
 
     /*
-    ===================================
+    ==========================================
     INIZIALIZZAZIONE
-    ===================================
+    ==========================================
     */
 
-    if(!Array.isArray(state.finalTop))
+    if(!Array.isArray(state.finalTop)){
+
         state.finalTop = [];
 
+    }
 
-    if(state.campioneTop === undefined)
+
+    if(state.campioneTop === undefined){
+
         state.campioneTop = null;
 
-
-    if(!Array.isArray(state.qRes))
-        state.qRes = Array(4).fill("-");
+    }
 
 
-    if(!Array.isArray(state.sTopRes))
-        state.sTopRes = Array(2).fill("-");
+    if(!Array.isArray(state.qRes)){
+
+        state.qRes =
+            Array(4).fill("-");
+
+    }
+
+
+    if(!Array.isArray(state.sTopRes)){
+
+        state.sTopRes =
+            Array(2).fill("-");
+
+    }
 
 
     if(
@@ -11159,9 +11179,9 @@ function renderKO(){
 
 
     /*
-    ===================================
-    VISIBILITÀ QUARTI
-    ===================================
+    ==========================================
+    VISIBILITA QUARTI
+    ==========================================
     */
 
     q.style.display =
@@ -11171,9 +11191,9 @@ function renderKO(){
 
 
     /*
-    ===================================
+    ==========================================
     QUALIFICATE
-    ===================================
+    ==========================================
     */
 
     const teams =
@@ -11197,28 +11217,18 @@ function renderKO(){
 
 
     /*
-    ===================================
+    ==========================================
     QUARTI DI FINALE
-    ===================================
-
-    SE I QUARTI SONO ATTIVI:
-
-    - servono 8 qualificate
-    - vengono visualizzati i 4 quarti
-    - LE SEMIFINALI NON VENGONO CREATE
-      FINCHÉ TUTTI I 4 QUARTI NON HANNO
-      UN RISULTATO VALIDO
+    ==========================================
     */
 
-    if(state.rules.usaQuarti === true){
+    if(
+        state.rules.usaQuarti === true
+    ){
 
         /*
-        -----------------------------------
-        NON CI SONO 8 QUALIFICATE
-        -----------------------------------
-
-        Non dobbiamo trasformare 2 o 4
-        squadre direttamente in semifinaliste.
+        I QUARTI RICHIEDONO ESATTAMENTE
+        8 QUALIFICATE.
         */
 
         if(teams.length < 8){
@@ -11230,12 +11240,6 @@ function renderKO(){
 
         }
 
-
-        /*
-        -----------------------------------
-        TABELLONE QUARTI
-        -----------------------------------
-        */
 
         const quarti = [
 
@@ -11253,52 +11257,84 @@ function renderKO(){
         const vincitori = [];
 
 
-        /*
-        -----------------------------------
-        VISUALIZZA I 4 QUARTI
-        -----------------------------------
-        */
+        quarti.forEach(
+            (match, index) => {
 
-        quarti.forEach((match,index)=>{
+                q.innerHTML +=
 
-            q.innerHTML +=
+                    renderMatchCard(
 
-                renderMatchCard(
-                    "QUARTO " + (index + 1),
-                    match,
-                    "Q",
-                    index,
-                    state.qRes[index]
-                );
+                        "QUARTO " + (index + 1),
 
+                        match,
 
-            const vincitore =
+                        "Q",
 
-                getWinner(
-                    match,
-                    state.qRes[index]
-                );
+                        index,
+
+                        state.qRes[index]
+
+                    );
 
 
-            if(vincitore){
+                const vincitore =
 
-                vincitori.push(vincitore);
+                    getWinner(
+
+                        match,
+
+                        state.qRes[index]
+
+                    );
+
+
+                /*
+                AGGIUNGI ALLA SEMIFINALE
+                SOLO SE IL QUARTO E' STATO
+                REALMENTE GIOCATO E HA UN VINCITORE.
+                */
+
+                if(vincitore){
+
+                    vincitori.push(vincitore);
+
+                }
 
             }
-
-        });
+        );
 
 
         /*
-        -----------------------------------
-        BLOCCO SEMIFINALI
-        -----------------------------------
-
-        Devono esserci ESATTAMENTE 4
-        vincitori dei quarti.
+        ==========================================
+        SEMIFINALI SOLO DA VINCITORI DEI QUARTI
+        ==========================================
         */
 
-        if(vincitori.length !== 4){
+        if(vincitori.length === 4){
+
+            semifinali = [
+
+                [
+                    vincitori[0],
+                    vincitori[1]
+                ],
+
+                [
+                    vincitori[2],
+                    vincitori[3]
+                ]
+
+            ];
+
+        }
+        else{
+
+            /*
+            NON CREARE SEMIFINALI PARZIALI.
+            FINCHE' NON SONO TERMINATI TUTTI
+            I QUARTI, NON DEVE COMPARIRE
+            NESSUNA SEMIFINALE.
+            */
 
             state.finalTop = [];
             state.campioneTop = null;
@@ -11307,40 +11343,14 @@ function renderKO(){
 
         }
 
+    }
+    else{
 
         /*
-        -----------------------------------
-        COSTRUZIONE SEMIFINALI
-        -----------------------------------
+        ==========================================
+        NIENTE QUARTI
+        ==========================================
         */
-
-        semifinali = [
-
-            [
-                vincitori[0],
-                vincitori[1]
-            ],
-
-            [
-                vincitori[2],
-                vincitori[3]
-            ]
-
-        ];
-
-    }
-
-
-    /*
-    ===================================
-    NIENTE QUARTI
-    ===================================
-
-    Solo se usaQuarti è FALSE possiamo
-    costruire direttamente le semifinali.
-    */
-
-    else{
 
         if(teams.length >= 4){
 
@@ -11359,32 +11369,16 @@ function renderKO(){
             ];
 
         }
-
         else if(teams.length === 2){
 
-            /*
-            Caso torneo senza semifinali:
-            le 2 qualificate diventano
-            direttamente finaliste.
-            */
+            semifinali = [
 
-            if(state.rules.usaSemifinali === true){
+                [
+                    teams[0],
+                    teams[1]
+                ]
 
-                semifinali = [
-
-                    [
-                        teams[0],
-                        teams[1]
-                    ]
-
-                ];
-
-            }
-            else{
-
-                state.finalTop = [...teams];
-
-            }
+            ];
 
         }
 
@@ -11392,12 +11386,12 @@ function renderKO(){
 
 
     /*
-    ===================================
+    ==========================================
     SEMIFINALI
-    ===================================
+    ==========================================
     */
 
-    let finalisti = [];
+    const finalisti = [];
 
 
     if(
@@ -11405,58 +11399,74 @@ function renderKO(){
         semifinali.length > 0
     ){
 
-        /*
-        -----------------------------------
-        IMPORTANTE:
+        semifinali.forEach(
+            (match, index) => {
 
-        Se arriviamo dai quarti, semifinali
-        già costruite solo dopo 4 risultati.
-        -----------------------------------
-        */
+                s.innerHTML +=
 
-        semifinali.forEach((match,index)=>{
+                    renderMatchCard(
 
-            s.innerHTML +=
+                        "SEMIFINALE " + (index + 1),
 
-                renderMatchCard(
-                    "SEMIFINALE " + (index + 1),
-                    match,
-                    "S",
-                    index,
-                    state.sTopRes[index]
-                );
+                        match,
+
+                        "S",
+
+                        index,
+
+                        state.sTopRes[index]
+
+                    );
 
 
-            const vincitore =
+                const vincitore =
 
-                getWinner(
-                    match,
-                    state.sTopRes[index]
-                );
+                    getWinner(
+
+                        match,
+
+                        state.sTopRes[index]
+
+                    );
 
 
-            if(vincitore){
+                if(vincitore){
 
-                finalisti.push(vincitore);
+                    finalisti.push(vincitore);
+
+                }
 
             }
-
-        });
+        );
 
     }
-
     else{
 
-        finalisti =
-            semifinali.flat();
+        semifinali.forEach(
+            match => {
+
+                match.forEach(
+                    squadra => {
+
+                        if(squadra){
+
+                            finalisti.push(squadra);
+
+                        }
+
+                    }
+                );
+
+            }
+        );
 
     }
 
 
     /*
-    ===================================
-    AGGIORNA FINALISTI
-    ===================================
+    ==========================================
+    FINALISTI
+    ==========================================
     */
 
     if(finalisti.length === 2){
@@ -11474,40 +11484,52 @@ function renderKO(){
 
 
     /*
-    ===================================
+    ==========================================
     FINALE
-    ===================================
+    ==========================================
     */
 
-    if(state.rules.usaFinale !== true)
+    if(
+        state.rules.usaFinale !== true
+    ){
+
         return;
 
+    }
 
-    /*
-    La finale compare SOLO quando
-    esistono realmente 2 finalisti.
-    */
 
-    if(finalisti.length !== 2)
+    if(finalisti.length !== 2){
+
         return;
+
+    }
 
 
     f.innerHTML =
 
         renderMatchCard(
+
             "🏆 FINALE",
+
             finalisti,
+
             "F",
+
             0,
+
             state.fTopRes
+
         );
 
 
     const campione =
 
         getWinner(
+
             finalisti,
+
             state.fTopRes
+
         );
 
 
@@ -11521,11 +11543,8 @@ function renderKO(){
 
             `
             <div class="winner-box top-win">
-
                 🏆 CAMPIONE TORNEO:<br>
-
                 ${campione}
-
             </div>
             `;
 
@@ -11537,6 +11556,7 @@ function renderKO(){
     }
 
 }
+```
 
 
 function renderMatchCard(titolo, match, type, index, risultato){
