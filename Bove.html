@@ -4984,12 +4984,74 @@ function loadSavedTeams(){
     ensureRules();
 
 
+    /*
+    ============================================================
+    PROTEZIONE TORNEO CARICATO DA SUPABASE
+    ============================================================
+
+    Se il torneo è già stato caricato da Supabase e contiene
+    coppie reali oppure gironi già ricostruiti, NON dobbiamo
+    assolutamente sovrascriverli con il vecchio localStorage.
+    */
+
+    if(
+        Array.isArray(state.coppie) &&
+        state.coppie.length > 0
+    ){
+
+        console.log(
+            "LOAD SAVED TEAMS BLOCCATO:",
+            "torneo Supabase già caricato con coppie reali."
+        );
+
+        return;
+
+    }
+
+
+    if(
+        (
+            Array.isArray(state.A) &&
+            state.A.length > 0
+        )
+        ||
+        (
+            Array.isArray(state.B) &&
+            state.B.length > 0
+        )
+        ||
+        (
+            Array.isArray(state.C) &&
+            state.C.length > 0
+        )
+        ||
+        (
+            Array.isArray(state.D) &&
+            state.D.length > 0
+        )
+    ){
+
+        console.log(
+            "LOAD SAVED TEAMS BLOCCATO:",
+            "gironi già presenti nello stato."
+        );
+
+        return;
+
+    }
+
+
+
+    /*
+    ============================================================
+    CARICAMENTO LOCALSTORAGE
+    ============================================================
+    */
 
     let saved =
         localStorage.getItem(
             "savedTeams"
         );
-
 
 
     if(!saved)
@@ -4998,9 +5060,7 @@ function loadSavedTeams(){
 
 
 
-
     let teams;
-
 
 
     try{
@@ -5022,17 +5082,23 @@ function loadSavedTeams(){
 
 
 
-
-
     if(!Array.isArray(teams))
 
         return;
 
 
 
+    if(teams.length === 0)
+
+        return;
 
 
 
+    /*
+    ============================================================
+    NUMERO SQUADRE
+    ============================================================
+    */
 
     let richieste =
         Number(
@@ -5041,40 +5107,22 @@ function loadSavedTeams(){
 
 
 
-
-
     /*
-        ============================
-        CONTROLLO COMPATIBILITA'
-        ============================
+    ============================================================
+    CONTROLLO COMPATIBILITÀ
+    ============================================================
     */
-
-
-    if(
-        teams.length === 0
-    ){
-
-        return;
-
-    }
-
-
-
 
     if(
         teams.length !== richieste
     ){
 
-
         console.warn(
-
             "Numero squadre salvate incompatibile:",
             teams.length,
             "richieste:",
             richieste
-
         );
-
 
         return;
 
@@ -5082,30 +5130,11 @@ function loadSavedTeams(){
 
 
 
-
-
-
-
-
-
     /*
-        ============================
-        RESET GIRONI
-        ============================
+    ============================================================
+    NUMERO GIRONI
+    ============================================================
     */
-
-
-    state.A=[];
-    state.B=[];
-    state.C=[];
-    state.D=[];
-
-
-
-
-
-
-
 
     let numeroGironi =
         Number(
@@ -5121,19 +5150,10 @@ function loadSavedTeams(){
 
 
 
-
-
-
-
-
-
-
     if(
-
         numeroGironi *
         squadrePerGirone !==
         richieste
-
     ){
 
         console.warn(
@@ -5146,40 +5166,43 @@ function loadSavedTeams(){
 
 
 
+    /*
+    ============================================================
+    RESET GIRONI
 
+    Questo reset è consentito SOLO qui, perché abbiamo già
+    verificato che non esistono dati Supabase / gironi reali.
+    ============================================================
+    */
 
-
+    state.A=[];
+    state.B=[];
+    state.C=[];
+    state.D=[];
 
 
 
     /*
-        ============================
-        RICOSTRUZIONE GIRONI
-        ============================
+    ============================================================
+    RICOSTRUZIONE GIRONI
+    ============================================================
     */
 
-
     [
-
         "A",
         "B",
         "C",
         "D"
-
     ].forEach((g,i)=>{
 
-
         if(i < numeroGironi){
-
 
             let start =
                 i * squadrePerGirone;
 
 
-
             let end =
                 start + squadrePerGirone;
-
 
 
             state[g] =
@@ -5188,28 +5211,17 @@ function loadSavedTeams(){
                     end
                 );
 
-
         }
-
 
     });
 
 
 
-
-
-
-
-
-
-
-
     /*
-        ============================
-        PULIZIA GIRONI NON USATI
-        ============================
+    ============================================================
+    PULIZIA GIRONI NON UTILIZZATI
+    ============================================================
     */
-
 
     if(numeroGironi < 3)
 
@@ -5223,26 +5235,15 @@ function loadSavedTeams(){
 
 
 
-
-
-
-
-
-
-
-
     /*
-        ============================
-        RESET PARTITE
-        ============================
+    ============================================================
+    RESET PARTITE
+    ============================================================
     */
-
 
     function sistema(nome,girone){
 
-
         let totale=0;
-
 
 
         let n =
@@ -5254,11 +5255,17 @@ function loadSavedTeams(){
 
 
 
-        for(let i=0;i<n;i++){
+        for(
+            let i=0;
+            i<n;
+            i++
+        ){
 
-
-            for(let j=i+1;j<n;j++){
-
+            for(
+                let j=i+1;
+                j<n;
+                j++
+            ){
 
                 totale++;
 
@@ -5268,21 +5275,20 @@ function loadSavedTeams(){
 
 
 
-
-
         if(
             !Array.isArray(
                 state[nome+"res"]
             )
             ||
             state[nome+"res"].length !== totale
-        )
+        ){
 
             state[nome+"res"] =
-                Array(totale).fill("-");
+                Array(
+                    totale
+                ).fill("-");
 
-
-
+        }
 
 
 
@@ -5292,13 +5298,14 @@ function loadSavedTeams(){
             )
             ||
             state[nome+"time"].length !== totale
-        )
+        ){
 
             state[nome+"time"] =
-                Array(totale).fill("-");
+                Array(
+                    totale
+                ).fill("-");
 
-
-
+        }
 
 
 
@@ -5308,53 +5315,40 @@ function loadSavedTeams(){
             )
             ||
             state[nome+"camp"].length !== totale
-        )
+        ){
 
             state[nome+"camp"] =
-                Array(totale).fill("");
+                Array(
+                    totale
+                ).fill("");
+
+        }
 
     }
 
 
 
-
-
-
-
-
-
     [
-
         "A",
         "B",
         "C",
         "D"
-
     ].forEach(g=>{
-
 
         sistema(
             g,
             state[g]
         );
 
-
     });
 
 
 
-
-
-
-
-
-
     /*
-        ============================
-        SINCRONIZZAZIONE
-        ============================
+    ============================================================
+    SINCRONIZZAZIONE
+    ============================================================
     */
-
 
     state.formato =
         richieste;
@@ -5362,7 +5356,6 @@ function loadSavedTeams(){
 
 
     updateAndSync();
-
 
 }
 function saveTeams(){
