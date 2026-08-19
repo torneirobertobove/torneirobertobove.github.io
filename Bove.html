@@ -7836,188 +7836,98 @@ function calc(squadre, risultati){
     ==================================================
     */
 
-    if(!Array.isArray(squadre))
+    if(!Array.isArray(squadre)){
         return [];
+    }
 
-    if(!Array.isArray(risultati))
+    if(!Array.isArray(risultati)){
         risultati = [];
-
+    }
 
 
     /*
     ==================================================
-    2. CLASSIFICA INIZIALE
+    2. INIZIALIZZAZIONE CLASSIFICA
     ==================================================
     */
 
     const classifica =
-        squadre.map(
-            nome => ({
-
-                n:
-                    nome !== null &&
-                    nome !== undefined
-                        ? String(nome)
-                        : "",
-
-                pt: 0,
-
-                gf: 0,
-
-                gs: 0,
-
-                df: 0,
-
-                qual: false
-
-            })
-        );
-
+        squadre.map(nome => ({
+            n: nome,
+            pt: 0,
+            gf: 0,
+            gs: 0,
+            df: 0,
+            qual: false
+        }));
 
 
     /*
     ==================================================
-    3. REGOLE
-    ==================================================
-    */
-
-    const rules =
-        (
-            typeof state !== "undefined" &&
-            state &&
-            state.rules &&
-            typeof state.rules === "object"
-        )
-            ? state.rules
-            : {};
-
-
-
-    const puntiVittoria =
-        Number.isFinite(
-            Number(rules.w)
-        )
-            ? Number(rules.w)
-            : 3;
-
-
-
-    const puntiPareggio =
-        Number.isFinite(
-            Number(rules.d)
-        )
-            ? Number(rules.d)
-            : 1;
-
-
-
-    /*
-    ==================================================
-    4. RISULTATI
+    3. LETTURA RISULTATI
     ==================================================
     */
 
     let indice = 0;
 
+    for(let i = 0; i < squadre.length; i++){
 
+        for(let j = i + 1; j < squadre.length; j++){
 
-    for(
-        let i = 0;
-        i < squadre.length;
-        i++
-    ){
-
-        for(
-            let j = i + 1;
-            j < squadre.length;
-            j++
-        ){
-
-            /*
-            ------------------------------------------
-            IL RISULTATO CORRISPONDE SEMPRE ALLA
-            PARTITA CORRENTE.
-            ------------------------------------------
-            */
-
-            const risultato =
-                risultati[indice];
-
-
+            let risultato = risultati[indice];
 
             indice++;
 
 
-
             /*
             ------------------------------------------
-            PARTITA NON DISPUTATA
+            RISULTATO ASSENTE
             ------------------------------------------
             */
 
             if(
+                risultato === undefined ||
                 risultato === null ||
-                risultato === undefined
+                String(risultato).trim() === "" ||
+                String(risultato).trim() === "-"
             ){
 
                 continue;
 
             }
-
-
-
-            let testo =
-                String(
-                    risultato
-                )
-                .trim();
-
-
-
-            if(
-                testo === "" ||
-                testo === "-"
-            ){
-
-                continue;
-
-            }
-
 
 
             /*
             ------------------------------------------
-            EVENTUALE PARTE AGGIUNTIVA
-            ESEMPIO:
+            NORMALIZZAZIONE
+            ------------------------------------------
+            */
 
+            risultato =
+                String(risultato)
+                    .trim();
+
+
+            /*
+            ------------------------------------------
+            SUPPORTO EVENTUALE FORMATO:
             6-3|...
             ------------------------------------------
             */
 
             const base =
-                testo
+                risultato
                     .split("|")[0]
                     .trim();
 
-
-
-            /*
-            ------------------------------------------
-            FORMATO RISULTATO
-            ------------------------------------------
-            */
 
             const parti =
                 base.split("-");
 
 
-
             if(parti.length !== 2){
-
                 continue;
-
             }
-
 
 
             const a =
@@ -8026,12 +7936,10 @@ function calc(squadre, risultati){
                 );
 
 
-
             const b =
                 Number(
                     parti[1].trim()
                 );
-
 
 
             /*
@@ -8052,51 +7960,62 @@ function calc(squadre, risultati){
             }
 
 
-
             /*
             ==================================================
-            5. GIOCHI FATTI / SUBITI
+            4. GIOCHI FATTI / SUBITI
             ==================================================
             */
 
             classifica[i].gf += a;
-
             classifica[i].gs += b;
 
-
-
             classifica[j].gf += b;
-
             classifica[j].gs += a;
-
 
 
             /*
             ==================================================
-            6. PUNTI
+            5. PUNTI
             ==================================================
             */
 
+            const puntiVittoria =
+                Number(
+                    state?.rules?.w
+                );
+
+            const puntiPareggio =
+                Number(
+                    state?.rules?.d
+                );
+
+
+            const w =
+                Number.isFinite(puntiVittoria)
+                    ? puntiVittoria
+                    : 3;
+
+
+            const d =
+                Number.isFinite(puntiPareggio)
+                    ? puntiPareggio
+                    : 1;
+
+
             if(a > b){
 
-                classifica[i].pt +=
-                    puntiVittoria;
+                classifica[i].pt += w;
 
             }
-            else
-            if(b > a){
+            else if(b > a){
 
-                classifica[j].pt +=
-                    puntiVittoria;
+                classifica[j].pt += w;
 
             }
             else{
 
-                classifica[i].pt +=
-                    puntiPareggio;
-
-                classifica[j].pt +=
-                    puntiPareggio;
+                classifica[i].pt += d;
+                classifica[j].pt += d;
 
             }
 
@@ -8105,339 +8024,218 @@ function calc(squadre, risultati){
     }
 
 
-
     /*
     ==================================================
-    7. DIFFERENZA GIOCHI
+    6. DIFFERENZA GIOCHI
     ==================================================
     */
 
-    classifica.forEach(
-        squadra => {
+    classifica.forEach(x => {
 
-            squadra.df =
-                squadra.gf -
-                squadra.gs;
+        x.df =
+            x.gf - x.gs;
 
+    });
+
+
+    /*
+    ==================================================
+    7. ORDINAMENTO
+    ==================================================
+    */
+
+    classifica.sort((a,b) => {
+
+        /*
+        1. PUNTI
+        */
+
+        if(a.pt !== b.pt){
+            return b.pt - a.pt;
         }
-    );
 
 
+        /*
+        2. DIFFERENZA GIOCHI
+        */
 
-    /*
-    ==================================================
-    8. CRITERI DI CLASSIFICA
-    ==================================================
-    */
-
-    const criteriConfigurati =
-        Array.isArray(
-            rules.criteriClassifica
-        )
-            ? rules.criteriClassifica
-            : [
-                "pt",
-                "df",
-                "gf",
-                "gs"
-            ];
-
-
-
-    const criteri = [
-        ...criteriConfigurati
-    ];
-
-
-
-    /*
-    --------------------------------------------------
-    NORMALIZZA I CRITERI
-    --------------------------------------------------
-    */
-
-    const criteriValidi = [];
-
-
-
-    criteri.forEach(
-        criterio => {
-
-            const c =
-                String(
-                    criterio || ""
-                )
-                .trim()
-                .toLowerCase();
-
-
-
-            if(
-                (
-                    c === "pt" ||
-                    c === "df" ||
-                    c === "gf" ||
-                    c === "gs"
-                ) &&
-                !criteriValidi.includes(c)
-            ){
-
-                criteriValidi.push(c);
-
-            }
-
+        if(a.df !== b.df){
+            return b.df - a.df;
         }
-    );
 
 
+        /*
+        3. GIOCHI FATTI
+        */
 
-    /*
-    --------------------------------------------------
-    SE NON ESISTE UNA CONFIGURAZIONE VALIDA
-    --------------------------------------------------
-    */
-
-    if(
-        criteriValidi.length === 0
-    ){
-
-        criteriValidi.push(
-            "pt",
-            "df",
-            "gf",
-            "gs"
-        );
-
-    }
+        if(a.gf !== b.gf){
+            return b.gf - a.gf;
+        }
 
 
+        /*
+        4. GIOCHI SUBITI
+        */
 
-    /*
-    ==================================================
-    9. ORDINAMENTO
-    ==================================================
-    */
-
-    classifica.sort(
-        (a,b) => {
-
-            for(
-                const criterio
-                of criteriValidi
-            ){
-
-                const valoreA =
-                    Number(
-                        a[criterio]
-                    );
-
-                const valoreB =
-                    Number(
-                        b[criterio]
-                    );
+        if(a.gs !== b.gs){
+            return a.gs - b.gs;
+        }
 
 
+        /*
+        5. NOME
+        */
 
-                if(
-                    valoreA !==
-                    valoreB
-                ){
-
-                    /*
-                    ----------------------------------
-                    PT / DF / GF
-                    MAGGIORE = MIGLIORE
-                    ----------------------------------
-                    */
-
-                    if(
-                        criterio === "pt" ||
-                        criterio === "df" ||
-                        criterio === "gf"
-                    ){
-
-                        return
-                            valoreB -
-                            valoreA;
-
-                    }
-
-
-
-                    /*
-                    ----------------------------------
-                    GS
-                    MINORE = MIGLIORE
-                    ----------------------------------
-                    */
-
-                    if(
-                        criterio === "gs"
-                    ){
-
-                        return
-                            valoreA -
-                            valoreB;
-
-                    }
-
-                }
-
-            }
-
-
-
-            /*
-            ------------------------------------------
-            SPAREGGIO FINALE:
-            NOME
-            ------------------------------------------
-            */
-
-            return String(
-                a.n || ""
-            )
+        return String(a.n ?? "")
             .localeCompare(
-                String(
-                    b.n || ""
-                ),
+                String(b.n ?? ""),
                 "it",
                 {
-                    sensitivity:
-                        "base"
+                    sensitivity:"base"
                 }
             );
 
-        }
-    );
-
-
-
-    /*
-    ==================================================
-    10. QUALIFICAZIONI
-    ==================================================
-    */
-
-    let qualificate =
-        Number(
-            rules.qualificatePerGirone
-        );
-
-
-
-    if(
-        !Number.isFinite(
-            qualificate
-        ) ||
-        qualificate < 0
-    ){
-
-        qualificate = 0;
-
-    }
-
-
-
-    qualificate =
-        Math.floor(
-            qualificate
-        );
-
-
-
-    /*
-    --------------------------------------------------
-    NON PUÒ SUPERARE LE SQUADRE DEL GIRONE
-    --------------------------------------------------
-    */
-
-    qualificate =
-        Math.min(
-            qualificate,
-            classifica.length
-        );
-
-
-
-    /*
-    --------------------------------------------------
-    ASSEGNA QUALIFICAZIONE
-    --------------------------------------------------
-    */
-
-    classifica.forEach(
-        (squadra, indice) => {
-
-            squadra.qual =
-                indice <
-                qualificate;
-
-        }
-    );
-
+    });
 
 
     /*
     ==================================================
-    11. RISULTATO FINALE
+    8. QUALIFICATI
+    ==================================================
+    */
+
+    const qualificate =
+        Math.max(
+            0,
+            Number(
+                state?.rules?.qualificatePerGirone ?? 2
+            )
+        );
+
+
+    classifica.forEach((x,i) => {
+
+        x.qual =
+            i < qualificate;
+
+    });
+
+
+    /*
+    ==================================================
+    9. RITORNO CLASSIFICA
     ==================================================
     */
 
     return classifica;
 
 }
+
+
+
 function updateRes(g,i,pos,val){
 
-    let s;
+    /*
+    ==================================================
+    1. VALIDAZIONE GIRONE
+    ==================================================
+    */
+
+    const map = {
+
+        A: "Ares",
+        B: "Bres",
+        C: "Cres",
+        D: "Dres",
+        E: "Eres",
+        F: "Fres",
+        G: "Gres"
+
+    };
 
 
-    if(g==="A")
-        s=state.Ares;
+    const nomeArray =
+        map[g];
 
-    else if(g==="B")
-        s=state.Bres;
 
-    else if(g==="C")
-        s=state.Cres;
+    if(!nomeArray){
+        return;
+    }
 
-    else if(g==="D")
-        s=state.Dres;
 
-    else if(g==="E")
-        s=state.Eres;
+    /*
+    ==================================================
+    2. VALIDAZIONE INDICE
+    ==================================================
+    */
 
-    else if(g==="F")
-        s=state.Fres;
+    i =
+        Number(i);
 
-    else if(g==="G")
-        s=state.Gres;
+    pos =
+        Number(pos);
 
-    else
+
+    if(
+        !Number.isInteger(i) ||
+        i < 0
+    ){
+
         return;
 
+    }
 
 
-    if(!Array.isArray(s))
+    if(
+        pos !== 0 &&
+        pos !== 1
+    ){
+
         return;
 
+    }
 
 
-    if(!s[i])
-        s[i]="-";
+    /*
+    ==================================================
+    3. RECUPERO ARRAY
+    ==================================================
+    */
 
+    let s =
+        state[nomeArray];
+
+
+    if(!Array.isArray(s)){
+        return;
+    }
+
+
+    /*
+    ==================================================
+    4. CREAZIONE RISULTATO
+    ==================================================
+    */
+
+    if(
+        s[i] === undefined ||
+        s[i] === null ||
+        String(s[i]).trim() === ""
+    ){
+
+        s[i] = "-";
+
+    }
 
 
     let p =
-        s[i]
-        .toString()
-        .split("-");
+        String(s[i])
+            .split("-");
 
 
+    if(p.length !== 2){
 
-    if(p.length<2){
-
-        p=[
+        p = [
             "",
             ""
         ];
@@ -8445,81 +8243,278 @@ function updateRes(g,i,pos,val){
     }
 
 
+    /*
+    ==================================================
+    5. NORMALIZZAZIONE VALORE
+    ==================================================
+    */
 
-    p[pos]=val;
+    if(
+        val === null ||
+        val === undefined
+    ){
+
+        val = "";
+
+    }
 
 
+    val =
+        String(val)
+            .trim();
 
-    s[i]=
+
+    /*
+    ------------------------------------------
+    CONSENTIAMO CAMPO VUOTO
+    ------------------------------------------
+    */
+
+    if(val === ""){
+        p[pos] = "";
+    }
+    else{
+
+        const numero =
+            Number(val);
+
+
+        if(
+            !Number.isFinite(numero) ||
+            numero < 0
+        ){
+
+            return;
+
+        }
+
+
+        p[pos] =
+            String(
+                Math.floor(numero)
+            );
+
+    }
+
+
+    /*
+    ==================================================
+    6. SALVATAGGIO RISULTATO
+    ==================================================
+    */
+
+    s[i] =
         p.join("-");
 
 
-
     /*
-    ===================================
-    AGGIORNA LE FASI FINALI
-    ===================================
+    ==================================================
+    7. ASSICURA STRUTTURA REGOLE
+    ==================================================
     */
 
-    if(typeof renderKO==="function")
+    if(typeof ensureRules === "function"){
+
+        ensureRules();
+
+    }
+
+
+    /*
+    ==================================================
+    8. AGGIORNAMENTO FASI FINALI
+    ==================================================
+    */
+
+    if(typeof renderKO === "function"){
+
         renderKO();
 
+    }
 
 
     /*
-    ===================================
-    SALVA LO STATO
-    ===================================
+    ==================================================
+    9. AGGIORNAMENTO CLASSIFICA
+    ==================================================
     */
 
-    updateAndSync();
+    if(typeof render === "function"){
 
-
-
-    /*
-    ===================================
-    AGGIORNA LA CLASSIFICA VISIVA
-    ===================================
-    */
-
-    if(typeof render==="function"){
         render();
+
+    }
+
+
+    /*
+    ==================================================
+    10. SINCRONIZZAZIONE
+    ==================================================
+    */
+
+    if(typeof updateAndSync === "function"){
+
+        updateAndSync();
+
     }
 
 }
 function updateKOResult(type,index,valore){
 
-    ensureRules();
+    /*
+    ==================================================
+    1. REGOLE
+    ==================================================
+    */
 
-    valore=String(valore||"-").trim();
+    if(typeof ensureRules === "function"){
 
-    if(type==="Q"){
-
-        if(!Array.isArray(state.qRes))
-            state.qRes=Array(4).fill("-");
-
-        state.qRes[index]=valore;
-
-    }
-
-    else if(type==="S"){
-
-        if(!Array.isArray(state.sTopRes))
-            state.sTopRes=Array(2).fill("-");
-
-        state.sTopRes[index]=valore;
+        ensureRules();
 
     }
 
-    else if(type==="F"){
 
-        state.fTopRes=valore;
+    /*
+    ==================================================
+    2. NORMALIZZAZIONE
+    ==================================================
+    */
+
+    index =
+        Number(index);
+
+
+    if(
+        !Number.isInteger(index) ||
+        index < 0
+    ){
+
+        return;
 
     }
 
-    renderKO();
 
-    updateAndSync();
+    valore =
+        String(
+            valore ?? "-"
+        )
+        .trim();
+
+
+    if(!valore){
+        valore = "-";
+    }
+
+
+    /*
+    ==================================================
+    3. QUARTI
+    ==================================================
+    */
+
+    if(type === "Q"){
+
+        if(!Array.isArray(state.qRes)){
+
+            state.qRes =
+                Array(4).fill("-");
+
+        }
+
+
+        if(index >= state.qRes.length){
+
+            return;
+
+        }
+
+
+        state.qRes[index] =
+            valore;
+
+    }
+
+
+    /*
+    ==================================================
+    4. SEMIFINALI
+    ==================================================
+    */
+
+    else if(type === "S"){
+
+        if(!Array.isArray(state.sTopRes)){
+
+            state.sTopRes =
+                Array(2).fill("-");
+
+        }
+
+
+        if(index >= state.sTopRes.length){
+
+            return;
+
+        }
+
+
+        state.sTopRes[index] =
+            valore;
+
+    }
+
+
+    /*
+    ==================================================
+    5. FINALE
+    ==================================================
+    */
+
+    else if(type === "F"){
+
+        state.fTopRes =
+            valore;
+
+    }
+
+
+    /*
+    ==================================================
+    6. TIPO NON RICONOSCIUTO
+    ==================================================
+    */
+
+    else{
+
+        return;
+
+    }
+
+
+    /*
+    ==================================================
+    7. RENDER KO
+    ==================================================
+    */
+
+    if(typeof renderKO === "function"){
+
+        renderKO();
+
+    }
+
+
+    /*
+    ==================================================
+    8. SALVATAGGIO
+    ==================================================
+    */
+
+    if(typeof updateAndSync === "function"){
+
+        updateAndSync();
+
+    }
 
 }
 function getWinner(match,res){
