@@ -7830,40 +7830,92 @@ function reset(){
 }
 function calc(squadre, risultati){
 
-    if(
-        !Array.isArray(squadre) ||
-        !Array.isArray(risultati)
-    ){
+    /*
+    ==================================================
+    1. VALIDAZIONE
+    ==================================================
+    */
 
+    if(!Array.isArray(squadre))
         return [];
 
-    }
+    if(!Array.isArray(risultati))
+        risultati = [];
 
 
 
-    let classifica = [];
+    /*
+    ==================================================
+    2. CLASSIFICA INIZIALE
+    ==================================================
+    */
+
+    const classifica =
+        squadre.map(
+            nome => ({
+
+                n:
+                    nome !== null &&
+                    nome !== undefined
+                        ? String(nome)
+                        : "",
+
+                pt: 0,
+
+                gf: 0,
+
+                gs: 0,
+
+                df: 0,
+
+                qual: false
+
+            })
+        );
 
 
 
-    squadre.forEach(nome => {
+    /*
+    ==================================================
+    3. REGOLE
+    ==================================================
+    */
 
-        classifica.push({
-
-            n: nome,
-
-            pt: 0,
-
-            gf: 0,
-
-            gs: 0,
-
-            df: 0
-
-        });
-
-    });
+    const rules =
+        (
+            typeof state !== "undefined" &&
+            state &&
+            state.rules &&
+            typeof state.rules === "object"
+        )
+            ? state.rules
+            : {};
 
 
+
+    const puntiVittoria =
+        Number.isFinite(
+            Number(rules.w)
+        )
+            ? Number(rules.w)
+            : 3;
+
+
+
+    const puntiPareggio =
+        Number.isFinite(
+            Number(rules.d)
+        )
+            ? Number(rules.d)
+            : 1;
+
+
+
+    /*
+    ==================================================
+    4. RISULTATI
+    ==================================================
+    */
 
     let indice = 0;
 
@@ -7881,7 +7933,14 @@ function calc(squadre, risultati){
             j++
         ){
 
-            let risultato =
+            /*
+            ------------------------------------------
+            IL RISULTATO CORRISPONDE SEMPRE ALLA
+            PARTITA CORRENTE.
+            ------------------------------------------
+            */
+
+            const risultato =
                 risultati[indice];
 
 
@@ -7890,11 +7949,15 @@ function calc(squadre, risultati){
 
 
 
+            /*
+            ------------------------------------------
+            PARTITA NON DISPUTATA
+            ------------------------------------------
+            */
+
             if(
-                risultato === undefined ||
                 risultato === null ||
-                risultato === "" ||
-                risultato === "-"
+                risultato === undefined
             ){
 
                 continue;
@@ -7903,23 +7966,48 @@ function calc(squadre, risultati){
 
 
 
-            risultato =
-                String(risultato).trim();
+            let testo =
+                String(
+                    risultato
+                )
+                .trim();
+
+
+
+            if(
+                testo === "" ||
+                testo === "-"
+            ){
+
+                continue;
+
+            }
 
 
 
             /*
-            ==========================================
-            SUPPORTO RISULTATO
-            ==========================================
+            ------------------------------------------
+            EVENTUALE PARTE AGGIUNTIVA
+            ESEMPIO:
+
+            6-3|...
+            ------------------------------------------
             */
 
-            let base =
-                risultato.split("|")[0].trim();
+            const base =
+                testo
+                    .split("|")[0]
+                    .trim();
 
 
 
-            let parti =
+            /*
+            ------------------------------------------
+            FORMATO RISULTATO
+            ------------------------------------------
+            */
+
+            const parti =
                 base.split("-");
 
 
@@ -7932,23 +8020,31 @@ function calc(squadre, risultati){
 
 
 
-            let a =
+            const a =
                 Number(
                     parti[0].trim()
                 );
 
 
 
-            let b =
+            const b =
                 Number(
                     parti[1].trim()
                 );
 
 
 
+            /*
+            ------------------------------------------
+            RISULTATO NON VALIDO
+            ------------------------------------------
+            */
+
             if(
                 !Number.isFinite(a) ||
-                !Number.isFinite(b)
+                !Number.isFinite(b) ||
+                a < 0 ||
+                b < 0
             ){
 
                 continue;
@@ -7958,9 +8054,9 @@ function calc(squadre, risultati){
 
 
             /*
-            ==========================================
-            GIOCHI FATTI / SUBITI
-            ==========================================
+            ==================================================
+            5. GIOCHI FATTI / SUBITI
+            ==================================================
             */
 
             classifica[i].gf += a;
@@ -7976,24 +8072,10 @@ function calc(squadre, risultati){
 
 
             /*
-            ==========================================
-            PUNTI
-            ==========================================
+            ==================================================
+            6. PUNTI
+            ==================================================
             */
-
-            const puntiVittoria =
-                Number(
-                    state.rules?.w ?? 3
-                );
-
-
-
-            const puntiPareggio =
-                Number(
-                    state.rules?.d ?? 1
-                );
-
-
 
             if(a > b){
 
@@ -8025,108 +8107,282 @@ function calc(squadre, risultati){
 
 
     /*
-    ==========================================
-    DIFFERENZA GIOCHI
-    ==========================================
+    ==================================================
+    7. DIFFERENZA GIOCHI
+    ==================================================
     */
 
-    classifica.forEach(x => {
+    classifica.forEach(
+        squadra => {
 
-        x.df =
-            x.gf - x.gs;
+            squadra.df =
+                squadra.gf -
+                squadra.gs;
 
-    });
+        }
+    );
 
 
 
     /*
-    ==========================================
-    ORDINAMENTO CLASSIFICA
-    ==========================================
+    ==================================================
+    8. CRITERI DI CLASSIFICA
+    ==================================================
     */
 
-    classifica.sort((a, b) => {
-
-        /*
-        1. PUNTI
-        */
-
-        if(a.pt !== b.pt)
-
-            return b.pt - a.pt;
-
-
-
-        /*
-        2. DIFFERENZA GIOCHI
-        */
-
-        if(a.df !== b.df)
-
-            return b.df - a.df;
+    const criteriConfigurati =
+        Array.isArray(
+            rules.criteriClassifica
+        )
+            ? rules.criteriClassifica
+            : [
+                "pt",
+                "df",
+                "gf",
+                "gs"
+            ];
 
 
 
-        /*
-        3. GIOCHI FATTI
-        */
-
-        if(a.gf !== b.gf)
-
-            return b.gf - a.gf;
+    const criteri = [
+        ...criteriConfigurati
+    ];
 
 
 
-        /*
-        4. GIOCHI SUBITI
-        */
+    /*
+    --------------------------------------------------
+    NORMALIZZA I CRITERI
+    --------------------------------------------------
+    */
 
-        if(a.gs !== b.gs)
-
-            return a.gs - b.gs;
+    const criteriValidi = [];
 
 
 
-        /*
-        5. NOME
-        Solo come spareggio finale
-        per mantenere un ordinamento stabile.
-        */
+    criteri.forEach(
+        criterio => {
 
-        return String(a.n || "")
+            const c =
+                String(
+                    criterio || ""
+                )
+                .trim()
+                .toLowerCase();
+
+
+
+            if(
+                (
+                    c === "pt" ||
+                    c === "df" ||
+                    c === "gf" ||
+                    c === "gs"
+                ) &&
+                !criteriValidi.includes(c)
+            ){
+
+                criteriValidi.push(c);
+
+            }
+
+        }
+    );
+
+
+
+    /*
+    --------------------------------------------------
+    SE NON ESISTE UNA CONFIGURAZIONE VALIDA
+    --------------------------------------------------
+    */
+
+    if(
+        criteriValidi.length === 0
+    ){
+
+        criteriValidi.push(
+            "pt",
+            "df",
+            "gf",
+            "gs"
+        );
+
+    }
+
+
+
+    /*
+    ==================================================
+    9. ORDINAMENTO
+    ==================================================
+    */
+
+    classifica.sort(
+        (a,b) => {
+
+            for(
+                const criterio
+                of criteriValidi
+            ){
+
+                const valoreA =
+                    Number(
+                        a[criterio]
+                    );
+
+                const valoreB =
+                    Number(
+                        b[criterio]
+                    );
+
+
+
+                if(
+                    valoreA !==
+                    valoreB
+                ){
+
+                    /*
+                    ----------------------------------
+                    PT / DF / GF
+                    MAGGIORE = MIGLIORE
+                    ----------------------------------
+                    */
+
+                    if(
+                        criterio === "pt" ||
+                        criterio === "df" ||
+                        criterio === "gf"
+                    ){
+
+                        return
+                            valoreB -
+                            valoreA;
+
+                    }
+
+
+
+                    /*
+                    ----------------------------------
+                    GS
+                    MINORE = MIGLIORE
+                    ----------------------------------
+                    */
+
+                    if(
+                        criterio === "gs"
+                    ){
+
+                        return
+                            valoreA -
+                            valoreB;
+
+                    }
+
+                }
+
+            }
+
+
+
+            /*
+            ------------------------------------------
+            SPAREGGIO FINALE:
+            NOME
+            ------------------------------------------
+            */
+
+            return String(
+                a.n || ""
+            )
             .localeCompare(
-                String(b.n || ""),
-                "it"
+                String(
+                    b.n || ""
+                ),
+                "it",
+                {
+                    sensitivity:
+                        "base"
+                }
             );
 
-    });
+        }
+    );
 
 
 
     /*
-    ==========================================
-    QUALIFICAZIONI
-    ==========================================
+    ==================================================
+    10. QUALIFICAZIONI
+    ==================================================
     */
 
-    const qualificate =
-        Math.max(
-            0,
-            Number(
-                state.rules?.qualificatePerGirone ?? 2
-            )
+    let qualificate =
+        Number(
+            rules.qualificatePerGirone
         );
 
 
 
-    classifica.forEach((x, i) => {
+    if(
+        !Number.isFinite(
+            qualificate
+        ) ||
+        qualificate < 0
+    ){
 
-        x.qual =
-            i < qualificate;
+        qualificate = 0;
 
-    });
+    }
 
 
+
+    qualificate =
+        Math.floor(
+            qualificate
+        );
+
+
+
+    /*
+    --------------------------------------------------
+    NON PUÒ SUPERARE LE SQUADRE DEL GIRONE
+    --------------------------------------------------
+    */
+
+    qualificate =
+        Math.min(
+            qualificate,
+            classifica.length
+        );
+
+
+
+    /*
+    --------------------------------------------------
+    ASSEGNA QUALIFICAZIONE
+    --------------------------------------------------
+    */
+
+    classifica.forEach(
+        (squadra, indice) => {
+
+            squadra.qual =
+                indice <
+                qualificate;
+
+        }
+    );
+
+
+
+    /*
+    ==================================================
+    11. RISULTATO FINALE
+    ==================================================
+    */
 
     return classifica;
 
