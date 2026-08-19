@@ -1886,21 +1886,59 @@ async function chiudiIscrizioniTorneo(){
 
 }
 
+
 async function caricaRichiesteIscrizione(){
 
-    if(!adminState.torneoSelezionato){
+    if(
+        adminState.torneoSelezionato === null ||
+        adminState.torneoSelezionato === undefined ||
+        adminState.torneoSelezionato === ""
+    ){
 
-        alert(
-            "Seleziona prima un torneo"
+        console.error(
+            "❌ NESSUN TORNEO SELEZIONATO:",
+            adminState.torneoSelezionato
         );
 
         return;
-
     }
+
+
+    const torneoId =
+        Number(
+            adminState.torneoSelezionato
+        );
+
+
+    if(
+        !Number.isFinite(torneoId) ||
+        torneoId <= 0
+    ){
+
+        console.error(
+            "❌ ID TORNEO NON VALIDO:",
+            adminState.torneoSelezionato
+        );
+
+        return;
+    }
+
 
     try{
 
-        const {
+        console.log(
+            "🔎 CARICAMENTO ISCRITTI TORNEO:",
+            torneoId
+        );
+
+
+        /*
+        ==========================================
+        PRIMO TENTATIVO
+        ==========================================
+        */
+
+        let {
             data,
             error
         } =
@@ -1909,10 +1947,16 @@ async function caricaRichiesteIscrizione(){
                 .select("*")
                 .eq(
                     "torneo_id",
-                    adminState.torneoSelezionato
+                    torneoId
                 );
 
+
         if(error){
+
+            console.error(
+                "❌ ERRORE QUERY ISCRIZIONI:",
+                error
+            );
 
             throw error;
 
@@ -1920,8 +1964,87 @@ async function caricaRichiesteIscrizione(){
 
 
         /*
-            SALVIAMO GLI ISCRITTI
-            NEL CONTENITORE CENTRALE.
+        ==========================================
+        FALLBACK
+
+        Se la query per torneo_id restituisce
+        zero righe, leggiamo le iscrizioni
+        disponibili e verifichiamo l'ID in modo
+        robusto.
+        ==========================================
+        */
+
+        if(
+            !Array.isArray(data) ||
+            data.length === 0
+        ){
+
+            console.warn(
+                "⚠️ NESSUNA ISCRIZIONE TROVATA CON:",
+                torneoId
+            );
+
+
+            const fallback =
+                await sb
+                    .from("iscrizioni")
+                    .select("*");
+
+
+            if(fallback.error){
+
+                console.error(
+                    "❌ ERRORE FALLBACK ISCRIZIONI:",
+                    fallback.error
+                );
+
+            }
+            else{
+
+                const tutte =
+                    Array.isArray(fallback.data)
+                        ? fallback.data
+                        : [];
+
+
+                console.log(
+                    "🔎 ISCRIZIONI DISPONIBILI NEL DB:",
+                    tutte
+                );
+
+
+                data =
+                    tutte.filter(
+                        r => {
+
+                            if(!r)
+                                return false;
+
+
+                            return String(
+                                r.torneo_id
+                            ) === String(
+                                torneoId
+                            );
+
+                        }
+                    );
+
+
+                console.log(
+                    "✅ ISCRIZIONI RECUPERATE DAL FALLBACK:",
+                    data
+                );
+
+            }
+
+        }
+
+
+        /*
+        ==========================================
+        CONTENITORE CENTRALE
+        ==========================================
         */
 
         window.iscrizioniTorneo =
@@ -1931,39 +2054,49 @@ async function caricaRichiesteIscrizione(){
 
 
         console.log(
-            "ISCRIZIONI CARICATE:",
+            "✅ ISCRIZIONI CARICATE:",
             window.iscrizioniTorneo
         );
 
 
         /*
-            CALCOLO PARTECIPANTI APPROVATI
+        ==========================================
+        PARTECIPANTI APPROVATI
+        ==========================================
         */
 
         const approvati =
             window.iscrizioniTorneo.filter(
                 giocatore =>
                     giocatore &&
-                    giocatore.stato === "approvato"
+                    (
+                        giocatore.stato === "approvato" ||
+                        giocatore.approvato === true
+                    )
             );
 
 
         console.log(
-            "PARTECIPANTI APPROVATI:",
+            "✅ PARTECIPANTI APPROVATI:",
             approvati
         );
 
 
         /*
-            AGGIORNA SOLO LE SEZIONI
-            CHE VISUALIZZANO I DATI.
-
-            NESSUNA AUTENTICAZIONE.
-            NESSUN LOGIN.
-            NESSUN getUser().
-            NESSUN controllo admin.
-            NESSUN renderAdmin().
+        ==========================================
+        AGGIORNA VISUALIZZAZIONE
+        ==========================================
         */
+
+        if(
+            typeof renderGestioneTorneo ===
+            "function"
+        ){
+
+            renderGestioneTorneo();
+
+        }
+
 
         if(
             typeof renderPartecipanti ===
@@ -1985,33 +2118,49 @@ async function caricaRichiesteIscrizione(){
         }
 
 
+        /*
+        ==========================================
+        DEBUG FINALE
+        ==========================================
+        */
+
         console.log(
-            "AGGIORNAMENTO ISCRITTI COMPLETATO:",
-            {
-                totale:
-                    window.iscrizioniTorneo.length,
+            "=========================================="
+        );
 
-                approvati:
-                    approvati.length,
+        console.log(
+            "✅ AGGIORNAMENTO ISCRITTI COMPLETATO"
+        );
 
-                torneo:
-                    adminState.torneoSelezionato
-            }
+        console.log({
+            torneoId: torneoId,
+            totaleIscritti:
+                window.iscrizioniTorneo.length,
+            approvati:
+                approvati.length,
+            rifiutati:
+                window.iscrizioniTorneo.filter(
+                    x =>
+                        x &&
+                        x.stato === "rifiutato"
+                ).length
+        });
+
+        console.log(
+            "=========================================="
         );
 
     }
     catch(e){
 
         console.error(
-            "Errore caricamento iscrizioni:",
+            "❌ ERRORE CARICAMENTO ISCRIZIONI:",
             e
         );
 
     }
 
 }
-
-
 
 
 
