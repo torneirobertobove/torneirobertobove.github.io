@@ -8553,7 +8553,7 @@ if(typeof updateAndSync === "function")
     updateAndSync();
 }
 
-function updateKOResult(type,index,valore){
+function updateKOResult(type, index, valore){
 
     /*
     ==================================================
@@ -8561,66 +8561,322 @@ function updateKOResult(type,index,valore){
     ==================================================
     */
 
-  if(typeof ensureRules === "function")
-    ensureRules();
+    if(typeof ensureRules === "function"){
+        ensureRules();
+    }
 
-index = Number(index);
 
-if(
-    !Number.isInteger(index) ||
-    index < 0
-)
-    return;
+    /*
+    ==================================================
+    2. VALIDAZIONE TIPO
+    ==================================================
+    */
 
-if(
-    type !== "Q" &&
-    type !== "S" &&
-    type !== "F"
-)
-    return;
+    index = Number(index);
 
-valore =
-    String(
-        valore ?? "-"
-    )
-    .trim();
-
-if(!valore)
-    valore = "-";
-
-if(type === "Q"){
-
-    if(!Array.isArray(state.qRes))
-        state.qRes = Array(4).fill("-");
-
-    if(index >= state.qRes.length)
+    if(
+        !Number.isInteger(index) ||
+        index < 0
+    ){
         return;
+    }
 
-    state.qRes[index] = valore;
-
-}
-else if(type === "S"){
-
-    if(!Array.isArray(state.sTopRes))
-        state.sTopRes = Array(2).fill("-");
-
-    if(index >= state.sTopRes.length)
+    if(
+        type !== "Q" &&
+        type !== "S" &&
+        type !== "F"
+    ){
         return;
+    }
 
-    state.sTopRes[index] = valore;
 
-}
-else{
+    /*
+    ==================================================
+    3. NORMALIZZAZIONE RISULTATO
+    ==================================================
+    */
 
-    state.fTopRes = valore;
+    valore =
+        String(
+            valore ?? "-"
+        ).trim();
 
-}
+    if(!valore){
+        valore = "-";
+    }
 
-if(typeof renderKO === "function")
-    renderKO();
 
-if(typeof updateAndSync === "function")
-    updateAndSync(); 
+    /*
+    ==================================================
+    4. QUARTI
+    ==================================================
+    */
+
+    if(type === "Q"){
+
+        if(!Array.isArray(state.qRes)){
+            state.qRes =
+                Array(4).fill("-");
+        }
+
+        if(index >= state.qRes.length){
+            return;
+        }
+
+        state.qRes[index] = valore;
+
+
+        /*
+        ==================================================
+        5. CONTROLLO QUARTI COMPLETI
+        ==================================================
+        */
+
+        const quartiCompleti =
+            Array.isArray(state.quarti) &&
+            state.quarti.length === 4 &&
+            Array.isArray(state.qRes) &&
+            state.qRes.length === 4 &&
+            state.qRes.every(
+                r =>
+                    String(r ?? "-").trim() !== "" &&
+                    String(r ?? "-").trim() !== "-"
+            );
+
+
+        /*
+        ==================================================
+        6. COSTRUZIONE SEMIFINALI
+        ==================================================
+        */
+
+        if(quartiCompleti){
+
+            const vincitori = [];
+
+            for(let i = 0; i < 4; i++){
+
+                const match =
+                    state.quarti[i];
+
+                const risultato =
+                    state.qRes[i];
+
+                if(
+                    !Array.isArray(match) ||
+                    match.length < 2
+                ){
+                    return;
+                }
+
+                const vincitore =
+                    getWinner(
+                        match[0],
+                        match[1],
+                        risultato
+                    );
+
+                if(
+                    vincitore === null ||
+                    vincitore === undefined ||
+                    String(vincitore).trim() === ""
+                ){
+                    return;
+                }
+
+                vincitori.push(vincitore);
+            }
+
+
+            /*
+            ==================================================
+            7. CREAZIONE SEMIFINALI
+            ==================================================
+            */
+
+            state.semiTop = [
+
+                [
+                    vincitori[0],
+                    vincitori[1]
+                ],
+
+                [
+                    vincitori[2],
+                    vincitori[3]
+                ]
+
+            ];
+
+
+            /*
+            ==================================================
+            8. INIZIALIZZAZIONE RISULTATI SEMIFINALI
+            ==================================================
+            */
+
+            if(
+                !Array.isArray(state.sTopRes) ||
+                state.sTopRes.length !== 2
+            ){
+
+                state.sTopRes =
+                    Array(2).fill("-");
+
+            }
+
+
+            /*
+            ==================================================
+            9. RESET FINALE
+            ==================================================
+            */
+
+            state.finalTop = [];
+
+            state.fTopRes = "-";
+
+        }
+
+    }
+
+
+    /*
+    ==================================================
+    10. SEMIFINALI
+    ==================================================
+    */
+
+    else if(type === "S"){
+
+        if(!Array.isArray(state.sTopRes)){
+            state.sTopRes =
+                Array(2).fill("-");
+        }
+
+        if(index >= state.sTopRes.length){
+            return;
+        }
+
+        state.sTopRes[index] = valore;
+
+
+        /*
+        ==================================================
+        CONTROLLO SEMIFINALI COMPLETE
+        ==================================================
+        */
+
+        const semifinaliComplete =
+            Array.isArray(state.semiTop) &&
+            state.semiTop.length === 2 &&
+            Array.isArray(state.sTopRes) &&
+            state.sTopRes.length === 2 &&
+            state.sTopRes.every(
+                r =>
+                    String(r ?? "-").trim() !== "" &&
+                    String(r ?? "-").trim() !== "-"
+            );
+
+
+        /*
+        ==================================================
+        COSTRUZIONE FINALE
+        ==================================================
+        */
+
+        if(semifinaliComplete){
+
+            const vincitoriSemi = [];
+
+            for(let i = 0; i < 2; i++){
+
+                const match =
+                    state.semiTop[i];
+
+                const risultato =
+                    state.sTopRes[i];
+
+                if(
+                    !Array.isArray(match) ||
+                    match.length < 2
+                ){
+                    return;
+                }
+
+                const vincitore =
+                    getWinner(
+                        match[0],
+                        match[1],
+                        risultato
+                    );
+
+                if(
+                    vincitore === null ||
+                    vincitore === undefined ||
+                    String(vincitore).trim() === ""
+                ){
+                    return;
+                }
+
+                vincitoriSemi.push(vincitore);
+            }
+
+
+            /*
+            ==================================================
+            FINALE
+            ==================================================
+            */
+
+            state.finalTop = [
+                [
+                    vincitoriSemi[0],
+                    vincitoriSemi[1]
+                ]
+            ];
+
+
+            state.fTopRes = "-";
+
+        }
+
+    }
+
+
+    /*
+    ==================================================
+    11. FINALE
+    ==================================================
+    */
+
+    else if(type === "F"){
+
+        state.fTopRes = valore;
+
+    }
+
+
+    /*
+    ==================================================
+    12. RENDER
+    ==================================================
+    */
+
+    if(typeof renderKO === "function"){
+        renderKO();
+    }
+
+
+    /*
+    ==================================================
+    13. SINCRONIZZAZIONE
+    ==================================================
+    */
+
+    if(typeof updateAndSync === "function"){
+        updateAndSync();
+    }
 
 }
 function getWinner(match,res){
