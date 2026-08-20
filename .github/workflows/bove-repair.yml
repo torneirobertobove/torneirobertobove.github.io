@@ -19,6 +19,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           p = Path('Bove.html')
           text = p.read_text(encoding='utf-8')
@@ -34,123 +35,6 @@ jobs:
               print('PATCH APPLICATA: initDefaults delega idTorneo a loadState()')
           else:
               print('PATCH GIA PRESENTE')
-
-      - name: Repair surname-only display
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          p = Path('Bove.html')
-          text = p.read_text(encoding='utf-8')
-
-          surname_helper = r'''function soloCognomiTabellone(valore){
-
-    if(valore === null || valore === undefined)
-        return "";
-
-    if(typeof valore === "object"){
-
-        const g1 =
-            valore.giocatore1 ||
-            valore.g1 ||
-            valore.player1 ||
-            null;
-
-        const g2 =
-            valore.giocatore2 ||
-            valore.g2 ||
-            valore.player2 ||
-            null;
-
-        const cognome = g => {
-
-            if(g === null || g === undefined)
-                return "";
-
-            if(typeof g === "object"){
-
-                if(g.cognome !== undefined && g.cognome !== null)
-                    return String(g.cognome).trim();
-
-                if(g.nome_giocatore !== undefined && g.nome_giocatore !== null){
-                    const t = String(g.nome_giocatore).trim();
-                    const p = t.split(/\s+/).filter(Boolean);
-                    return p.length ? p[p.length - 1] : "";
-                }
-
-                return "";
-            }
-
-            const t = String(g).replace(/\s+/g," ").trim();
-            if(!t) return "";
-            const p = t.split(/\s+/).filter(Boolean);
-            return p.length ? p[p.length - 1] : "";
-        };
-
-        const c1 = cognome(g1);
-        const c2 = cognome(g2);
-
-        if(c1 && c2) return c1 + " / " + c2;
-        return c1 || c2 || "";
-    }
-
-    const testo = String(valore)
-        .replace(/\t/g," ")
-        .replace(/\s+/g," ")
-        .trim();
-
-    if(!testo) return "";
-
-    return testo
-        .split("/")
-        .map(parte => {
-            const p = parte.trim().split(/\s+/).filter(Boolean);
-            return p.length ? p[p.length - 1] : "";
-        })
-        .filter(Boolean)
-        .join(" / ");
-}
-
-'''
-
-          if 'function soloCognomiTabellone(' not in text:
-              marker = 'function renderTables(){'
-              if marker not in text:
-                  raise SystemExit('renderTables non trovato')
-              text = text.replace(marker, surname_helper + marker, 1)
-
-          pattern = re.compile(r'function renderTables\(\)\s*\{.*?\n\}\s*\n\s*function getFinalQualified\(\)', re.S)
-          m = pattern.search(text)
-          if not m:
-              raise SystemExit('Blocco renderTables non trovato')
-
-          block = m.group(0)
-          block = block.replace('soloCognomi(\n                    state[tag]?.[m.casa] ?? ""\n                )', 'soloCognomiTabellone(\n                    state[tag]?.[m.casa] ?? ""\n                )')
-          block = block.replace('soloCognomi(\n                    state[tag]?.[m.ospite] ?? ""\n                )', 'soloCognomiTabellone(\n                    state[tag]?.[m.ospite] ?? ""\n                )')
-          text = text[:m.start()] + block + text[m.end()-len('function getFinalQualified()'):]
-
-          pattern_class = re.compile(r'function renderClass\(\)\s*\{.*?\n\}\s*\n\s*function updateKOResult\(', re.S)
-          mc = pattern_class.search(text)
-          if not mc:
-              raise SystemExit('Blocco renderClass non trovato')
-
-          old = mc.group(0)
-          new = old
-          new = re.sub(
-              r'let cognome = "";.*?tdNome\.textContent =\s*cognome;',
-              '''let cognome = soloCognomiTabellone(x?.n ?? "");\n\n            tdNome.textContent =\n                cognome;''',
-              new,
-              count=1,
-              flags=re.S
-          )
-          if new == old:
-              raise SystemExit('Punto di sostituzione cognome in renderClass non trovato')
-
-          text = text[:mc.start()] + new + text[mc.end()-len('function updateKOResult('):]
-
-          p.write_text(text, encoding='utf-8')
-          print('PATCH APPLICATA: gironi e classifiche mostrano solo i cognomi')
 
       - name: JavaScript syntax test
         shell: python
@@ -185,8 +69,6 @@ jobs:
               'function loadState()',
               'function initDefaults()',
               'function renderTables()',
-              'function renderClass()',
-              'function soloCognomiTabellone(',
               'function updateCamp(',
               'function updateRes(',
               'function toggleAdminMenu()',
@@ -222,5 +104,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Fix surname-only tournament display'
+          git commit -m 'Fix Bove tournament loading and validate'
           git push
