@@ -1,0 +1,282 @@
+name: Apply tabellone visual fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply verified Bove.html fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('Bove.html')
+          text = path.read_text(encoding='utf-8')
+
+          css = r'''
+
+/* ============================================================
+   FIX VISUALIZZAZIONE TABELLONE
+   ============================================================ */
+
+.match-cell{
+    vertical-align:middle !important;
+    height:auto !important;
+    min-height:78px !important;
+    padding:8px 6px !important;
+    overflow:visible !important;
+    white-space:normal !important;
+}
+
+.match-cell .team-line{
+    display:block !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:20px !important;
+    margin:0 !important;
+    padding:3px 2px !important;
+    line-height:1.25 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+    box-sizing:border-box !important;
+}
+
+.match-cell .vs-line{
+    display:block !important;
+    height:auto !important;
+    min-height:18px !important;
+    margin:2px 0 !important;
+    padding:0 !important;
+    line-height:18px !important;
+    white-space:nowrap !important;
+}
+
+#Arows tr,#Brows tr,#Crows tr,#Drows tr,#Erows tr,#Frows tr{
+    height:auto !important;
+}
+
+#Arows td,#Brows td,#Crows td,#Drows td,#Erows td,#Frows td{
+    vertical-align:middle !important;
+}
+
+#Aclass tr,#Bclass tr,#Cclass tr,#Dclass tr,#Eclass tr,#Fclass tr{
+    height:auto !important;
+}
+
+#Aclass td,#Bclass td,#Cclass td,#Dclass td,#Eclass td,#Fclass td{
+    height:auto !important;
+    padding:7px 4px !important;
+    vertical-align:middle !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+}
+
+#Q,#S,#finaleBox{
+    vertical-align:top !important;
+}
+
+#Q > tr > td,#S > tr > td,#finaleBox > tr > td{
+    padding:0 !important;
+    border-bottom:0 !important;
+    vertical-align:top !important;
+}
+
+#Q .match-card,#S .match-card,#finaleBox .match-card{
+    width:100% !important;
+    margin:0 0 12px 0 !important;
+    box-sizing:border-box !important;
+}
+
+.match-card .team{
+    display:block !important;
+    width:100% !important;
+    min-height:22px !important;
+    padding:4px 6px !important;
+    line-height:1.3 !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+    box-sizing:border-box !important;
+}
+
+'''
+
+          marker = '</style>'
+          if 'FIX VISUALIZZAZIONE TABELLONE' not in text:
+              pos = text.find(marker)
+              if pos < 0:
+                  raise SystemExit('style block non trovato')
+              text = text[:pos] + css + text[pos:]
+
+          new_render_class = r'''function renderClass(){
+
+    ensureRules();
+
+    ["A","B","C","D","E","F"].forEach(tag => {
+
+        const box = document.getElementById(tag + "class");
+        if(!box) return;
+
+        const squadre = Array.isArray(state[tag]) ? state[tag] : [];
+        const risultati = Array.isArray(state[tag + "res"]) ? state[tag + "res"] : [];
+
+        box.innerHTML = "";
+
+        if(squadre.length === 0){
+            state["rank" + tag] = [];
+            return;
+        }
+
+        const classifica = calc(squadre, risultati);
+        state["rank" + tag] = Array.isArray(classifica) ? classifica : [];
+
+        state["rank" + tag].forEach((x, i) => {
+
+            const tr = document.createElement("tr");
+            const tdPos = document.createElement("td");
+            const tdNome = document.createElement("td");
+            const tdPt = document.createElement("td");
+            const tdGf = document.createElement("td");
+            const tdGs = document.createElement("td");
+            const tdDf = document.createElement("td");
+
+            tdPos.textContent = String(i + 1);
+
+            let nome = "";
+            if(x && typeof x.n === "object" && x.n !== null){
+                nome = typeof nomeCoppia === "function"
+                    ? nomeCoppia(x.n)
+                    : ((x.n.g1 || "") + "/" + (x.n.g2 || ""));
+            }else{
+                nome = String(x?.n ?? "");
+            }
+
+            tdNome.textContent = nome;
+            tdNome.style.textAlign = "left";
+            tdNome.style.paddingLeft = "6px";
+            tdNome.style.overflowWrap = "anywhere";
+            tdNome.style.wordBreak = "break-word";
+
+            tdPt.textContent = String(x?.pt ?? 0);
+            tdGf.textContent = String(x?.gf ?? 0);
+            tdGs.textContent = String(x?.gs ?? 0);
+            tdDf.textContent = String(x?.df ?? 0);
+
+            if(x?.qual){
+                tdNome.style.fontWeight = "700";
+                tdNome.style.color = "#22c55e";
+            }
+
+            tr.append(tdPos, tdNome, tdPt, tdGf, tdGs, tdDf);
+            box.appendChild(tr);
+        });
+    });
+}
+
+'''
+
+          pattern_class = re.compile(r'function renderClass\(\)\s*\{.*?\n\}\s*function render\(\)', re.S)
+          if not pattern_class.search(text):
+              raise SystemExit('renderClass non trovato')
+          text = pattern_class.sub(new_render_class + 'function render()', text, count=1)
+
+          new_match_card = r'''function renderMatchCard(titolo, match, type, index, risultato){
+
+    const res = risultato || "-";
+
+    function nomeSquadra(squadra){
+        if(squadra === null || squadra === undefined) return "";
+        if(typeof squadra === "string") return squadra.trim();
+        if(typeof squadra === "number") return String(squadra);
+        if(typeof squadra !== "object") return String(squadra).trim();
+
+        const g1 = squadra.giocatore1 || squadra.g1 || squadra.player1 || squadra.giocatoreA || null;
+        const g2 = squadra.giocatore2 || squadra.g2 || squadra.player2 || squadra.giocatoreB || null;
+
+        if((g1 || g2) && typeof nomeGiocatore === "function"){
+            const n1 = nomeGiocatore(g1);
+            const n2 = nomeGiocatore(g2);
+            if(n1 && n2) return n1 + " / " + n2;
+            if(n1) return n1;
+            if(n2) return n2;
+        }
+
+        if(squadra.nome != null && typeof squadra.nome !== "object" && String(squadra.nome).trim())
+            return String(squadra.nome).trim();
+
+        if(squadra.nomeSquadra != null && typeof squadra.nomeSquadra !== "object" && String(squadra.nomeSquadra).trim())
+            return String(squadra.nomeSquadra).trim();
+
+        if(squadra.squadra != null && typeof squadra.squadra !== "object" && String(squadra.squadra).trim())
+            return String(squadra.squadra).trim();
+
+        if(typeof nomeGiocatore === "function"){
+            const singolo = nomeGiocatore(squadra);
+            if(singolo) return singolo;
+        }
+
+        return "";
+    }
+
+    const squadra1 = Array.isArray(match)
+        ? nomeSquadra(match[0])
+        : nomeSquadra(match?.squadra1 || match?.team1 || match?.giocatore1 || "");
+
+    const squadra2 = Array.isArray(match)
+        ? nomeSquadra(match[1])
+        : nomeSquadra(match?.squadra2 || match?.team2 || match?.giocatore2 || "");
+
+    const winner = nomeSquadra(getWinner(match, risultato));
+    const stato = winner ? "Terminata" : "Da giocare";
+
+    /* Q/S/F sono <tbody>: restituiamo SEMPRE una riga valida della tabella. */
+    return `
+<tr class="ko-match-row">
+    <td colspan="4">
+        <div class="match-card">
+            <h4>${titolo || ""}</h4>
+
+            <div class="team">${squadra1}</div>
+
+            <div class="ko-result">
+                <input
+                    type="text"
+                    value="${String(res).replace(/"/g,"&quot;")}"
+                    onchange="updateKOResult('${type}',${index},this.value)"
+                    style="width:70px;text-align:center"
+                >
+            </div>
+
+            <div class="team">${squadra2}</div>
+
+            <div>Campo: Campo ${index + 1}</div>
+            <div>Stato: ${stato}</div>
+
+            ${winner ? `<div class="winner-box">🏆 Passa: ${winner}</div>` : ""}
+        </div>
+    </td>
+</tr>
+`;
+}
+
+'''
+
+          pattern_match = re.compile(r'function renderMatchCard\(titolo, match, type, index, risultato\)\s*\{.*?\n\}\s*function applicaModelloTorneo\(\)', re.S)
+          if not pattern_match.search(text):
+              raise SystemExit('renderMatchCard non trovato')
+          text = pattern_match.sub(new_match_card + 'function applicaModelloTorneo()', text, count=1)
+
+          path.write_text(text, encoding='utf-8')
+          print('Bove.html patch applicata')
