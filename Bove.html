@@ -10689,25 +10689,31 @@ function getFinalQualified(){
                 state.rules?.qualificatePerGirone
             );
 
+        /*
+        --------------------------------------------------------
+        QUANDO CI SONO I QUARTI:
+        8 SQUADRE = 2 GIRONI DA 4
+        DEVONO PASSARE TUTTE LE 4 SQUADRE
+        DI OGNI GIRONE.
+        --------------------------------------------------------
+        */
+
         if(
+            state.rules?.usaQuarti === true &&
+            Number(state.rules?.numeroSquadre) === 8 &&
+            Number(state.rules?.numeroGironi) === 2 &&
+            squadre.length === 4
+        ){
+
+            q = 4;
+
+        }
+        else if(
             !Number.isFinite(q) ||
             q < 1
         ){
 
-            if(
-                state.rules?.usaQuarti === true &&
-                Number(state.rules?.numeroSquadre) === 8 &&
-                Number(state.rules?.numeroGironi) === 2
-            ){
-
-                q = 2;
-
-            }
-            else{
-
-                q = 1;
-
-            }
+            q = 1;
 
         }
 
@@ -10717,9 +10723,19 @@ function getFinalQualified(){
                 classifica.length
             );
 
+        /*
+        --------------------------------------------------------
+        INSERIMENTO QUALIFICATE
+        --------------------------------------------------------
+        */
+
         for(let i = 0; i < q; i++){
 
             const x = classifica[i];
+
+            if(!x){
+                continue;
+            }
 
             qualificate.push({
 
@@ -10744,6 +10760,12 @@ function getFinalQualified(){
     });
 
 
+    /*
+    ============================================================
+    2. NESSUNA QUALIFICATA
+    ============================================================
+    */
+
     if(qualificate.length === 0){
 
         return [];
@@ -10751,22 +10773,25 @@ function getFinalQualified(){
     }
 
 
+    /*
+    ============================================================
+    3. LIMITE FINALE
+    ============================================================
+    */
+
     let limite =
         Number(
             state.rules?.numeroQualificateFinali
         );
 
 
-    if(
-        !Number.isFinite(limite) ||
-        limite < 1
-    ){
-
-        limite =
-            qualificate.length;
-
-    }
-
+    /*
+    ------------------------------------------------------------
+    QUARTI:
+    IL NUMERO DI QUALIFICATE NECESSARIO È PARI
+    AL NUMERO DI SQUADRE DELLA FASE QUARTI.
+    ------------------------------------------------------------
+    */
 
     if(
         state.rules?.usaQuarti === true
@@ -10777,37 +10802,73 @@ function getFinalQualified(){
                 state.rules?.numeroSquadre
             );
 
+        /*
+        --------------------------------------------------------
+        TORNEO DA 8:
+        8 QUALIFICATE → 4 QUARTI
+        --------------------------------------------------------
+        */
+
         if(numeroSquadre === 8){
 
-            if(qualificate.length >= 4){
-
-                limite = 4;
-
-            }
+            limite = 8;
 
         }
-        else{
 
-            if(qualificate.length >= 8){
+        /*
+        --------------------------------------------------------
+        TORNEI PIÙ GRANDI:
+        MANTENIAMO LA LOGICA A 8 PER LA FASE QUARTI.
+        --------------------------------------------------------
+        */
 
-                limite = 8;
+        else if(numeroSquadre >= 8){
 
-            }
+            limite = 8;
+
+        }
+
+    }
+    else{
+
+        /*
+        --------------------------------------------------------
+        SENZA QUARTI:
+        USIAMO IL NUMERO QUALIFICATE CONFIGURATO.
+        --------------------------------------------------------
+        */
+
+        if(
+            !Number.isFinite(limite) ||
+            limite < 1
+        ){
+
+            limite =
+                qualificate.length;
 
         }
 
     }
 
 
-    if(
-        limite > qualificate.length
-    ){
+    /*
+    ============================================================
+    4. NON SUPERARE LE QUALIFICATE DISPONIBILI
+    ============================================================
+    */
 
-        limite =
-            qualificate.length;
+    limite =
+        Math.min(
+            limite,
+            qualificate.length
+        );
 
-    }
 
+    /*
+    ============================================================
+    5. ORDINAMENTO FASE QUARTI
+    ============================================================
+    */
 
     if(
         state.rules?.usaQuarti === true &&
@@ -10836,14 +10897,34 @@ function getFinalQualified(){
         const ordinate = [];
 
 
-        for(
-            let posizione = 1;
-            ;
-            posizione++
+        /*
+        --------------------------------------------------------
+        ORDINE:
+
+        A1
+        B1
+        A2
+        B2
+        A3
+        B3
+        A4
+        B4
+
+        EQUIVALENTE A:
+
+        posizione 1 di ogni girone
+        posizione 2 di ogni girone
+        ecc.
+        --------------------------------------------------------
+        */
+
+        let posizione = 1;
+
+        while(
+            ordinate.length < limite
         ){
 
             let aggiunte = 0;
-
 
             gironiAttivi.forEach(tag => {
 
@@ -10852,7 +10933,6 @@ function getFinalQualified(){
                         x =>
                             x.posizione === posizione
                     );
-
 
                 if(squadra){
 
@@ -10865,14 +10945,19 @@ function getFinalQualified(){
             });
 
 
-            if(
-                ordinate.length >= limite ||
-                aggiunte === 0
-            ){
+            /*
+            ----------------------------------------------------
+            NESSUN ALTRO ELEMENTO DISPONIBILE
+            ----------------------------------------------------
+            */
+
+            if(aggiunte === 0){
 
                 break;
 
             }
+
+            posizione++;
 
         }
 
@@ -10886,6 +10971,13 @@ function getFinalQualified(){
     }
     else{
 
+        /*
+        --------------------------------------------------------
+        NESSUN QUARTO:
+        MANTENIAMO L'ORDINE DELLE CLASSIFICHE.
+        --------------------------------------------------------
+        */
+
         qualificate =
             qualificate.slice(
                 0,
@@ -10894,6 +10986,12 @@ function getFinalQualified(){
 
     }
 
+
+    /*
+    ============================================================
+    6. RESTITUZIONE NOMI
+    ============================================================
+    */
 
     return qualificate.map(
         x => x.nome
