@@ -1,0 +1,40 @@
+name: Apply Bove layout fix
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/layout-fix.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch layout only
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          replacements = [
+            ('''#A th:nth-child(1),\n#A td:nth-child(1),\n#B th:nth-child(1),\n#B td:nth-child(1),\n#C th:nth-child(1),\n#C td:nth-child(1),\n#D th:nth-child(1),\n#D td:nth-child(1),\n#E th:nth-child(1),\n#E td:nth-child(1),\n#F th:nth-child(1),\n#F td:nth-child(1){\n    width:16%;\n}''','''#A th:nth-child(1), #A td:nth-child(1),\n#B th:nth-child(1), #B td:nth-child(1),\n#C th:nth-child(1), #C td:nth-child(1),\n#D th:nth-child(1), #D td:nth-child(1),\n#E th:nth-child(1), #E td:nth-child(1),\n#F th:nth-child(1), #F td:nth-child(1),\n#G th:nth-child(1), #G td:nth-child(1){\n    width:10%;\n}'''),
+            ('''#A th:nth-child(2),\n#A td:nth-child(2),\n#B th:nth-child(2),\n#B td:nth-child(2),\n#C th:nth-child(2),\n#C td:nth-child(2),\n#D th:nth-child(2),\n#D td:nth-child(2),\n#E th:nth-child(2),\n#E td:nth-child(2),\n#F th:nth-child(2),\n#F td:nth-child(2){\n    width:20%;\n}''','''#A th:nth-child(2), #A td:nth-child(2),\n#B th:nth-child(2), #B td:nth-child(2),\n#C th:nth-child(2), #C td:nth-child(2),\n#D th:nth-child(2), #D td:nth-child(2),\n#E th:nth-child(2), #E td:nth-child(2),\n#F th:nth-child(2), #F td:nth-child(2),\n#G th:nth-child(2), #G td:nth-child(2){\n    width:14%;\n}'''),
+            ('''#A th:nth-child(3),\n#A td:nth-child(3),\n#B th:nth-child(3),\n#B td:nth-child(3),\n#C th:nth-child(3),\n#C td:nth-child(3),\n#D th:nth-child(3),\n#D td:nth-child(3),\n#E th:nth-child(3),\n#E td:nth-child(3),\n#F th:nth-child(3),\n#F td:nth-child(3){\n    width:38%;\n}''','''#A th:nth-child(3), #A td:nth-child(3),\n#B th:nth-child(3), #B td:nth-child(3),\n#C th:nth-child(3), #C td:nth-child(3),\n#D th:nth-child(3), #D td:nth-child(3),\n#E th:nth-child(3), #E td:nth-child(3),\n#F th:nth-child(3), #F td:nth-child(3),\n#G th:nth-child(3), #G td:nth-child(3){\n    width:56%;\n}'''),
+            ('''#A th:nth-child(4),\n#A td:nth-child(4),\n#B th:nth-child(4),\n#B td:nth-child(4),\n#C th:nth-child(4),\n#C td:nth-child(4),\n#D th:nth-child(4),\n#D td:nth-child(4),\n#E th:nth-child(4),\n#E td:nth-child(4),\n#F th:nth-child(4),\n#F td:nth-child(4){\n    width:26%;\n}''','''#A th:nth-child(4), #A td:nth-child(4),\n#B th:nth-child(4), #B td:nth-child(4),\n#C th:nth-child(4), #C td:nth-child(4),\n#D th:nth-child(4), #D td:nth-child(4),\n#E th:nth-child(4), #E td:nth-child(4),\n#F th:nth-child(4), #F td:nth-child(4),\n#G th:nth-child(4), #G td:nth-child(4){\n    width:20%;\n}''')]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit('Expected layout CSS not found; aborting.')
+              s = s.replace(old, new, 1)
+          css = '''\n/* BOVE LAYOUT FIX: layout only */\n#A,#B,#C,#D,#E,#F,#G{width:100%;table-layout:fixed;}\n#A td:nth-child(3),#B td:nth-child(3),#C td:nth-child(3),#D td:nth-child(3),#E td:nth-child(3),#F td:nth-child(3),#G td:nth-child(3){padding-left:12px;padding-right:22px;}\n#A td:nth-child(4),#B td:nth-child(4),#C td:nth-child(4),#D td:nth-child(4),#E td:nth-child(4),#F td:nth-child(4),#G td:nth-child(4){padding-left:22px;padding-right:8px;}\n.girone-match-row{min-height:58px;}\n.match-card{width:100%;}\n.match-card .team-line,.match-card .team{min-height:34px;padding:6px 12px;display:flex;align-items:center;justify-content:center;text-align:center;}\n@media(max-width:599px){.db-cell{gap:4px;}.db-cell input{width:42px;min-width:42px;flex-basis:42px;}}\n'''
+          if '/* BOVE LAYOUT FIX: layout only */' not in s:
+              s = s.replace('</style>', css + '</style>', 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit Bove.html
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix tournament board layout spacing'
+          git push
