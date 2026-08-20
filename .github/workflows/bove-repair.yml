@@ -1,0 +1,108 @@
+name: Bove repair and validation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repair idTorneo loading path
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          marker = 'const torneoDaAdmin =\n            params.get("torneo");'
+          guard = '''const idTorneoParam =\n            params.get("idTorneo");\n\n\n        /*\n        ============================================================\n        TORNEO APERTO DA ADMIN TRAMITE ID\n        Delegare tutto a loadState(), che carica anche le iscrizioni\n        reali da Supabase e ricostruisce le coppie quando necessario.\n        ============================================================\n        */\n\n        if(idTorneoParam){\n\n            await loadState();\n\n            return;\n\n        }\n\n\n        const torneoDaAdmin =\n            params.get("torneo");'''
+
+          if 'const idTorneoParam =' not in text:
+              if marker not in text:
+                  raise SystemExit('Marker initDefaults non trovato')
+              text = text.replace(marker, guard, 1)
+              p.write_text(text, encoding='utf-8')
+              print('PATCH APPLICATA: initDefaults delega idTorneo a loadState()')
+          else:
+              print('PATCH GIA PRESENTE')
+
+      - name: JavaScript syntax test
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          html = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          if not scripts:
+              raise SystemExit('Nessun blocco script trovato')
+
+          for i, script in enumerate(scripts, 1):
+              f = Path(tempfile.gettempdir()) / f'bove_script_{i}.js'
+              f.write_text(script, encoding='utf-8')
+              r = subprocess.run(['node', '--check', str(f)], text=True, capture_output=True)
+              if r.returncode != 0:
+                  print(r.stdout)
+                  print(r.stderr)
+                  raise SystemExit(f'Sintassi JavaScript non valida nello script {i}')
+          print(f'SINTASSI OK: {len(scripts)} blocchi script')
+
+      - name: Structural tests
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          text = Path('Bove.html').read_text(encoding='utf-8')
+
+          required = [
+              'function loadState()',
+              'function initDefaults()',
+              'function renderTables()',
+              'function updateCamp(',
+              'function updateRes(',
+              'function toggleAdminMenu()',
+              'function verifyAccess()',
+              'id="adminMenuButton"',
+              'id="adminMenu"',
+              'id="titoloTorneo"',
+              'id="nomeTorneoInput"',
+              'type="date"',
+          ]
+
+          missing = [x for x in required if x not in text]
+          if missing:
+              raise SystemExit('Elementi mancanti: ' + ', '.join(missing))
+
+          for ident in ['teamModal', 'adminMenuButton', 'adminMenu']:
+              n = len(re.findall(r'id=["\']' + re.escape(ident) + r'["\']', text))
+              if n != 1:
+                  raise SystemExit(f'ID duplicato/assente: {ident} ({n})')
+
+          if 'const idTorneoParam =' not in text:
+              raise SystemExit('Riparazione idTorneo non presente')
+
+          print('TEST STRUTTURALI OK')
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet -- Bove.html; then
+            echo 'Nessuna modifica necessaria.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git commit -m 'Fix Bove tournament loading and validate'
+          git push
