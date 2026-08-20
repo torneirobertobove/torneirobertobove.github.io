@@ -11028,103 +11028,249 @@ function normalizzaCognomiGironi(){
         : "";
 }   
 
+
 function renderTables(){
 
     ensureRules();
 
     /*
     ============================================================
-    FUNZIONE INTERNA
-    VISUALIZZAZIONE SOLO COGNOME
+    FUNZIONE LOCALE:
+    RESTITUISCE SOLO I COGNOMI DELLA SQUADRA
+    NON MODIFICA state
     ============================================================
     */
 
-    function cognomeVisualizzato(valore){
+    function cognomiSquadra(squadra){
 
-        if(
-            valore === null ||
-            valore === undefined
-        ){
+        if(!squadra)
             return "";
+
+        /*
+        --------------------------------------------------------
+        SQUADRA = ARRAY DI 2 GIOCATORI
+        --------------------------------------------------------
+        */
+
+        if(Array.isArray(squadra)){
+
+            return squadra
+                .map(giocatore => {
+
+                    if(
+                        giocatore &&
+                        typeof giocatore === "object"
+                    ){
+
+                        if(
+                            giocatore.cognome != null &&
+                            String(
+                                giocatore.cognome
+                            ).trim() !== ""
+                        ){
+
+                            return String(
+                                giocatore.cognome
+                            ).trim();
+
+                        }
+
+                        /*
+                        EVENTUALE STRUTTURA NIDIFICATA
+                        */
+
+                        if(
+                            giocatore.giocatore1
+                        ){
+
+                            return String(
+                                giocatore.giocatore1.cognome || ""
+                            ).trim();
+
+                        }
+
+                        if(
+                            giocatore.giocatore2
+                        ){
+
+                            return String(
+                                giocatore.giocatore2.cognome || ""
+                            ).trim();
+
+                        }
+
+                    }
+
+                    if(
+                        giocatore != null
+                    ){
+
+                        const testo =
+                            String(giocatore).trim();
+
+                        /*
+                        SE ARRIVA UNA STRINGA
+                        PRENDIAMO L'ULTIMA PAROLA
+                        */
+
+                        if(testo){
+
+                            const parti =
+                                testo.split(/\s+/);
+
+                            return
+                                parti[
+                                    parti.length - 1
+                                ];
+
+                        }
+
+                    }
+
+                    return "";
+
+                })
+                .filter(Boolean)
+                .join(" / ");
+
         }
 
         /*
         --------------------------------------------------------
-        OGGETTO GIOCATORE
+        SQUADRA = OGGETTO
         --------------------------------------------------------
         */
 
         if(
-            typeof valore === "object"
+            typeof squadra === "object"
         ){
 
+            /*
+            COPPIA CON giocatore1 / giocatore2
+            */
+
             if(
-                valore.cognome !== undefined &&
-                valore.cognome !== null &&
-                String(valore.cognome).trim() !== ""
+                squadra.giocatore1 ||
+                squadra.giocatore2
+            ){
+
+                const risultato = [];
+
+                if(
+                    squadra.giocatore1
+                ){
+
+                    const g =
+                        squadra.giocatore1;
+
+                    risultato.push(
+                        g.cognome != null
+                            ? String(g.cognome).trim()
+                            : ""
+                    );
+
+                }
+
+                if(
+                    squadra.giocatore2
+                ){
+
+                    const g =
+                        squadra.giocatore2;
+
+                    risultato.push(
+                        g.cognome != null
+                            ? String(g.cognome).trim()
+                            : ""
+                    );
+
+                }
+
+                return risultato
+                    .filter(Boolean)
+                    .join(" / ");
+
+            }
+
+            /*
+            SQUADRA CON ARRAY giocatori
+            */
+
+            if(
+                Array.isArray(
+                    squadra.giocatori
+                )
+            ){
+
+                return squadra.giocatori
+                    .map(g =>
+                        g &&
+                        typeof g === "object" &&
+                        g.cognome
+                            ? String(
+                                g.cognome
+                            ).trim()
+                            : ""
+                    )
+                    .filter(Boolean)
+                    .join(" / ");
+
+            }
+
+            /*
+            OGGETTO CON COGNOME DIRETTO
+            */
+
+            if(
+                squadra.cognome != null
             ){
 
                 return String(
-                    valore.cognome
+                    squadra.cognome
                 ).trim();
 
             }
 
-            if(valore.giocatore1){
+            /*
+            FALLBACK SU nome/n
+            */
 
-                const c1 =
-                    cognomeVisualizzato(
-                        valore.giocatore1
-                    );
+            const testo =
+                squadra.nome ||
+                squadra.n ||
+                "";
 
-                if(c1)
-                    return c1;
+            if(testo){
 
-            }
+                const parti =
+                    String(testo)
+                        .trim()
+                        .split(/\s+/);
 
-            if(valore.giocatore2){
-
-                const c2 =
-                    cognomeVisualizzato(
-                        valore.giocatore2
-                    );
-
-                if(c2)
-                    return c2;
-
-            }
-
-            if(valore.nomeCompleto){
-
-                return cognomeVisualizzato(
-                    valore.nomeCompleto
-                );
+                return
+                    parti[
+                        parti.length - 1
+                    ];
 
             }
 
-            return "";
         }
 
         /*
         --------------------------------------------------------
-        STRINGA
+        SQUADRA = STRINGA
         --------------------------------------------------------
         */
 
         const testo =
-            String(valore).trim();
+            String(squadra).trim();
 
         if(!testo)
             return "";
 
         /*
-        --------------------------------------------------------
-        COPPIA
-        ESEMPIO:
-        Josè Rizzi/Simone Rizzi
-        DIVENTA:
-        Rizzi/Rizzi
-        --------------------------------------------------------
+        GESTIONE DEL FORMATO:
+        "Nome Cognome/Nome Cognome"
         */
 
         if(
@@ -11136,45 +11282,26 @@ function renderTables(){
                 .map(parte => {
 
                     const p =
-                        String(parte)
-                            .trim();
+                        parte.trim()
+                            .split(/\s+/);
 
-                    if(!p)
-                        return "";
-
-                    const parole =
-                        p
-                            .split(/\s+/)
-                            .filter(Boolean);
-
-                    return parole.length
-                        ? parole[parole.length - 1]
-                        : "";
+                    return
+                        p[p.length - 1];
 
                 })
                 .filter(Boolean)
-                .join("/");
+                .join(" / ");
 
         }
 
-        /*
-        --------------------------------------------------------
-        SINGOLO GIOCATORE
-        ESEMPIO:
-        Josè Rizzi
-        DIVENTA:
-        Rizzi
-        --------------------------------------------------------
-        */
+        const parti =
+            testo.split(/\s+/);
 
-        const parole =
-            testo
-                .split(/\s+/)
-                .filter(Boolean);
+        return
+            parti[
+                parti.length - 1
+            ];
 
-        return parole.length
-            ? parole[parole.length - 1]
-            : "";
     }
 
 
@@ -11266,12 +11393,6 @@ function renderTables(){
 
         }
 
-        /*
-        ========================================================
-        ANDATA / RITORNO
-        ========================================================
-        */
-
         if(
             state.rules.garaAndataRitorno === true
         ){
@@ -11297,7 +11418,7 @@ function renderTables(){
 
     /*
     ============================================================
-    CAMPI PER GIRONE
+    CAMPI
     ============================================================
     */
 
@@ -11313,29 +11434,14 @@ function renderTables(){
 
     };
 
-
-    /*
-    ============================================================
-    DURATA
-    ============================================================
-    */
-
     const durata =
         Number(
             state.rules.duration
         ) || 30;
 
-
-    /*
-    ============================================================
-    ORA INIZIALE
-    ============================================================
-    */
-
     const start =
         String(
-            state.rules.start ||
-            "20:00"
+            state.rules.start || "20:00"
         );
 
     const partiOra =
@@ -11391,15 +11497,15 @@ function renderTables(){
 
                 calendario.push({
 
-                    girone: tag,
+                    girone:tag,
 
-                    casa: match[0],
+                    casa:match[0],
 
-                    ospite: match[1],
+                    ospite:match[1],
 
-                    campo: null,
+                    campo:null,
 
-                    slot: null
+                    slot:null
 
                 });
 
@@ -11429,9 +11535,7 @@ function renderTables(){
                 partita.girone
             ] || [2,3];
 
-        while(
-            !assegnata
-        ){
+        while(!assegnata){
 
             for(
                 let i = 0;
@@ -11476,14 +11580,14 @@ function renderTables(){
 
                     occupazioni.push({
 
-                        slot: slot,
+                        slot:slot,
 
-                        campo: campo,
+                        campo:campo,
 
                         girone:
                             partita.girone,
 
-                        squadre: [
+                        squadre:[
                             partita.casa,
                             partita.ospite
                         ]
@@ -11511,7 +11615,7 @@ function renderTables(){
 
     /*
     ============================================================
-    RENDER GIRONI
+    RENDER GIRONE
     ============================================================
     */
 
@@ -11557,13 +11661,6 @@ function renderTables(){
 
         }
 
-
-        /*
-        ========================================================
-        ARRAY ORARI
-        ========================================================
-        */
-
         if(
             !Array.isArray(
                 state[tag + "time"]
@@ -11573,13 +11670,6 @@ function renderTables(){
             state[tag + "time"] = [];
 
         }
-
-
-        /*
-        ========================================================
-        ARRAY CAMPI
-        ========================================================
-        */
 
         if(
             !Array.isArray(
@@ -11594,7 +11684,7 @@ function renderTables(){
 
         /*
         ========================================================
-        DIMENSIONAMENTO RISULTATI
+        DIMENSIONAMENTO
         ========================================================
         */
 
@@ -11607,13 +11697,6 @@ function renderTables(){
 
         }
 
-
-        /*
-        ========================================================
-        DIMENSIONAMENTO ORARI
-        ========================================================
-        */
-
         while(
             state[tag + "time"].length <
             partite.length
@@ -11623,13 +11706,6 @@ function renderTables(){
 
         }
 
-
-        /*
-        ========================================================
-        DIMENSIONAMENTO CAMPI
-        ========================================================
-        */
-
         while(
             state[tag + "camp"].length <
             partite.length
@@ -11638,13 +11714,6 @@ function renderTables(){
             state[tag + "camp"].push("");
 
         }
-
-
-        /*
-        ========================================================
-        TAGLIO ARRAY ECCEDENTI
-        ========================================================
-        */
 
         state[tag + "res"] =
             state[tag + "res"].slice(
@@ -11667,19 +11736,13 @@ function renderTables(){
 
         /*
         ========================================================
-        CREAZIONE HTML
+        HTML
         ========================================================
         */
 
         let rows = "";
 
         partite.forEach((m,i) => {
-
-            /*
-            ----------------------------------------------------
-            ORARIO
-            ----------------------------------------------------
-            */
 
             const minuti =
                 minutiBase +
@@ -11706,25 +11769,13 @@ function renderTables(){
                 String(min)
                     .padStart(2,"0");
 
+
             state[tag + "time"][i] =
                 tempo;
-
-
-            /*
-            ----------------------------------------------------
-            CAMPO
-            ----------------------------------------------------
-            */
 
             state[tag + "camp"][i] =
                 m.campo;
 
-
-            /*
-            ----------------------------------------------------
-            RISULTATO
-            ----------------------------------------------------
-            */
 
             if(
                 !state[tag + "res"][i]
@@ -11735,6 +11786,7 @@ function renderTables(){
 
             }
 
+
             const risultato =
                 String(
                     state[tag + "res"][i]
@@ -11744,50 +11796,37 @@ function renderTables(){
 
             /*
             ====================================================
-            SOLO COGNOME
+            QUI È LA CORREZIONE IMPORTANTE:
+            NON USIAMO PIÙ String(state[tag][indice])
             ====================================================
             */
 
             const nomeCasa =
-                cognomeVisualizzato(
+                cognomiSquadra(
                     state[tag]?.[m.casa]
                 );
 
             const nomeOspite =
-                cognomeVisualizzato(
+                cognomiSquadra(
                     state[tag]?.[m.ospite]
                 );
 
-
-            /*
-            ----------------------------------------------------
-            RIGA
-            ----------------------------------------------------
-            */
 
             rows += `
 
 <tr class="girone-match-row">
 
 <td>
-
 <input
 value="${m.campo ?? ""}"
-oninput="
-updateCamp(
-    '${tag}',
-    ${i},
-    this.value
-)"
+oninput="updateCamp('${tag}',${i},this.value)"
 style="
 width:45px;
 box-sizing:border-box;
 ">
-
 </td>
 
 <td>
-
 <input
 value="${tempo}"
 readonly
@@ -11795,7 +11834,6 @@ style="
 width:70px;
 box-sizing:border-box;
 ">
-
 </td>
 
 <td
@@ -11838,9 +11876,7 @@ margin:2px 0 !important;
 padding:0 !important;
 white-space:nowrap !important;
 ">
-
 <b>VS</b>
-
 </div>
 
 <div
@@ -11901,6 +11937,7 @@ updateRes(
 
         });
 
+
         box.innerHTML =
             rows;
 
@@ -11909,7 +11946,7 @@ updateRes(
 
     /*
     ============================================================
-    CSS DI SICUREZZA
+    CSS
     ============================================================
     */
 
@@ -12039,6 +12076,7 @@ updateRes(
     }
 
 }
+
 
     
 function getFinalQualified(){
