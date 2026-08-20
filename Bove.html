@@ -8462,82 +8462,6 @@ function renderClass(){
         "G"
     ];
 
-    /*
-    ============================================================
-    FUNZIONE INTERNA
-    ESTRAE SOLO IL COGNOME DA UN GIOCATORE
-    ============================================================
-    */
-
-    function soloCognome(valore){
-
-        if(valore == null)
-            return "";
-
-        const testo =
-            String(valore).trim();
-
-        if(!testo)
-            return "";
-
-        /*
-        --------------------------------------------------------
-        Se il valore contiene già una coppia:
-        "Roberto Bove/Claudio Falba"
-        diventa:
-        "Bove/Falba"
-        --------------------------------------------------------
-        */
-
-        if(testo.includes("/")){
-
-            return testo
-                .split("/")
-                .map(parte => {
-
-                    const parole =
-                        String(parte)
-                            .trim()
-                            .split(/\s+/)
-                            .filter(Boolean);
-
-                    if(!parole.length)
-                        return "";
-
-                    return parole[
-                        parole.length - 1
-                    ];
-
-                })
-                .filter(Boolean)
-                .join("/");
-
-        }
-
-        /*
-        --------------------------------------------------------
-        Giocatore singolo
-        --------------------------------------------------------
-        */
-
-        const parole =
-            testo
-                .split(/\s+/)
-                .filter(Boolean);
-
-        return parole.length
-            ? parole[parole.length - 1]
-            : "";
-
-    }
-
-
-    /*
-    ============================================================
-    RENDER DI TUTTI I GIRONI
-    ============================================================
-    */
-
     gironi.forEach(tag => {
 
         const tbody =
@@ -8547,12 +8471,6 @@ function renderClass(){
 
         if(!tbody)
             return;
-
-        /*
-        ========================================================
-        RESET
-        ========================================================
-        */
 
         tbody.innerHTML = "";
 
@@ -8564,24 +8482,10 @@ function renderClass(){
         if(squadre.length === 0)
             return;
 
-        /*
-        ========================================================
-        RISULTATI
-        ========================================================
-        */
-
         const risultati =
-            Array.isArray(
-                state[tag + "res"]
-            )
+            Array.isArray(state[tag + "res"])
                 ? state[tag + "res"]
                 : [];
-
-        /*
-        ========================================================
-        CALCOLO CLASSIFICA
-        ========================================================
-        */
 
         const classifica =
             calc(
@@ -8596,65 +8500,15 @@ function renderClass(){
             return;
         }
 
-        /*
-        ========================================================
-        NUMERO QUALIFICATE
-        ========================================================
-        */
-
-        let numeroQualificate = 0;
-
-        if(
-            Number.isFinite(
-                Number(
-                    state.rules?.qualificatePerGirone
-                )
-            )
-        ){
-
-            numeroQualificate =
-                Math.max(
-                    0,
-                    Number(
-                        state.rules.qualificatePerGirone
-                    )
-                );
-
-        }
-
-        /*
-        --------------------------------------------------------
-        FALLBACK:
-        usa il campo qual prodotto da calc()
-        --------------------------------------------------------
-        */
-
-        if(numeroQualificate === 0){
-
-            numeroQualificate =
-                classifica.filter(
-                    x => x?.qual === true
-                ).length;
-
-        }
-
-
-        /*
-        ========================================================
-        RENDER RIGHE
-        ========================================================
-        */
-
         classifica.forEach((x, indice) => {
 
             const tr =
                 document.createElement("tr");
 
-
             /*
-            ----------------------------------------------------
+            ========================================================
             POSIZIONE
-            ----------------------------------------------------
+            ========================================================
             */
 
             const tdPos =
@@ -8663,86 +8517,98 @@ function renderClass(){
             tdPos.textContent =
                 String(indice + 1);
 
-
             /*
-            ----------------------------------------------------
-            NOME / COGNOME
-            ----------------------------------------------------
+            ========================================================
+            NOME — SOLO COGNOME
+            ========================================================
             */
 
             const tdNome =
                 document.createElement("td");
 
+            let cognome = "";
+
+            /*
+            x.n può contenere:
+            "Nome Cognome"
+            oppure il nome completo della coppia.
+            */
+
+            if(
+                x &&
+                x.cognome !== undefined &&
+                x.cognome !== null
+            ){
+
+                cognome =
+                    String(x.cognome).trim();
+
+            }
+
+            /*
+            Se calc() restituisce soltanto x.n,
+            recuperiamo il cognome dalla squadra originale.
+            */
+
+            if(!cognome){
+
+                const squadra =
+                    squadre[indice];
+
+                if(
+                    squadra &&
+                    Array.isArray(squadra)
+                ){
+
+                    const giocatore =
+                        squadra[0];
+
+                    if(
+                        giocatore &&
+                        typeof giocatore === "object" &&
+                        giocatore.cognome
+                    ){
+
+                        cognome =
+                            String(
+                                giocatore.cognome
+                            ).trim();
+
+                    }
+
+                }
+
+            }
+
+            /*
+            Fallback:
+            estraiamo l'ultima parola da x.n.
+            */
+
+            if(!cognome){
+
+                const testo =
+                    x?.n != null
+                        ? String(x.n).trim()
+                        : "";
+
+                const parti =
+                    testo.split(/\s+/);
+
+                cognome =
+                    parti.length > 0
+                        ? parti[parti.length - 1]
+                        : "";
+
+            }
+
             tdNome.textContent =
-                soloCognome(
-                    x?.n
-                );
-
+                cognome;
 
             /*
-            ----------------------------------------------------
-            PUNTI
-            ----------------------------------------------------
-            */
-
-            const tdPt =
-                document.createElement("td");
-
-            tdPt.textContent =
-                String(
-                    Number(x?.pt) || 0
-                );
-
-
-            /*
-            ----------------------------------------------------
-            GF
-            ----------------------------------------------------
-            */
-
-            const tdGf =
-                document.createElement("td");
-
-            tdGf.textContent =
-                String(
-                    Number(x?.gf) || 0
-                );
-
-
-            /*
-            ----------------------------------------------------
-            GS
-            ----------------------------------------------------
-            */
-
-            const tdGs =
-                document.createElement("td");
-
-            tdGs.textContent =
-                String(
-                    Number(x?.gs) || 0
-                );
-
-
-            /*
-            ----------------------------------------------------
-            DF
-            ----------------------------------------------------
-            */
-
-            const tdDf =
-                document.createElement("td");
-
-            tdDf.textContent =
-                String(
-                    Number(x?.df) || 0
-                );
-
-
-            /*
-            ====================================================
-            FRECCIA DI CLASSIFICA
-            ====================================================
+            ========================================================
+            FRECCIA CLASSIFICA
+            ========================================================
             */
 
             const tdFreccia =
@@ -8757,29 +8623,13 @@ function renderClass(){
             tdFreccia.style.fontWeight =
                 "700";
 
-            /*
-            ----------------------------------------------------
-            QUALIFICATO
-            ----------------------------------------------------
-            */
-
-            const qualificato =
-                x?.qual === true ||
-                (
-                    numeroQualificate > 0 &&
-                    indice < numeroQualificate
-                );
-
-            if(qualificato){
+            if(x?.qual){
 
                 tdFreccia.textContent =
                     "↑";
 
                 tdFreccia.style.color =
                     "#22c55e";
-
-                tdFreccia.title =
-                    "Qualificato";
 
             }else{
 
@@ -8789,42 +8639,77 @@ function renderClass(){
                 tdFreccia.style.color =
                     "#ef4444";
 
-                tdFreccia.title =
-                    "Non qualificato";
-
             }
 
-
             /*
-            ====================================================
-            STILE NORMALE
-            NESSUN NOME VERDE
-            ====================================================
+            ========================================================
+            PUNTI
+            ========================================================
             */
 
-            tdPos.style.fontWeight =
-                "400";
+            const tdPt =
+                document.createElement("td");
 
-            tdNome.style.fontWeight =
-                "400";
-
-            tdNome.style.color =
-                "";
-
+            tdPt.textContent =
+                String(
+                    Number(x?.pt) || 0
+                );
 
             /*
-            ====================================================
+            ========================================================
+            GF
+            ========================================================
+            */
+
+            const tdGf =
+                document.createElement("td");
+
+            tdGf.textContent =
+                String(
+                    Number(x?.gf) || 0
+                );
+
+            /*
+            ========================================================
+            GS
+            ========================================================
+            */
+
+            const tdGs =
+                document.createElement("td");
+
+            tdGs.textContent =
+                String(
+                    Number(x?.gs) || 0
+                );
+
+            /*
+            ========================================================
+            DIFFERENZA RETI
+            ========================================================
+            */
+
+            const tdDf =
+                document.createElement("td");
+
+            tdDf.textContent =
+                String(
+                    Number(x?.df) || 0
+                );
+
+            /*
+            ========================================================
             APPEND
-            ====================================================
+            ========================================================
             */
 
             tr.appendChild(tdPos);
             tr.appendChild(tdNome);
+            tr.appendChild(tdFreccia);
             tr.appendChild(tdPt);
             tr.appendChild(tdGf);
             tr.appendChild(tdGs);
             tr.appendChild(tdDf);
-            tr.appendChild(tdFreccia);
 
             tbody.appendChild(tr);
 
@@ -8832,20 +8717,13 @@ function renderClass(){
 
     });
 
-
-    /*
-    ============================================================
-    CONTROLLO CONSOLE
-    ============================================================
-    */
-
     console.log(
-        "CLASSIFICA A:",
+        "RENDERCLASS COMPLETA — CLASSIFICA A:",
         document.getElementById("Aclass")?.innerText || ""
     );
 
     console.log(
-        "CLASSIFICA B:",
+        "RENDERCLASS COMPLETA — CLASSIFICA B:",
         document.getElementById("Bclass")?.innerText || ""
     );
 
