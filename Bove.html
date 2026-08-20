@@ -10609,98 +10609,229 @@ if(typeof updateAndSync === "function")
     }
 
 } 
-    
+ function soloCognome(valore){
+
+    if(valore === null || valore === undefined){
+        return "";
+    }
+
+    /*
+    ============================================================
+    OGGETTO GIOCATORE
+    ============================================================
+    */
+
+    if(typeof valore === "object"){
+
+        if(
+            valore.cognome !== undefined &&
+            valore.cognome !== null
+        ){
+
+            return String(
+                valore.cognome
+            ).trim();
+
+        }
+
+        /*
+        Coppia / struttura annidata
+        */
+
+        if(valore.giocatore1){
+
+            const cognome =
+                soloCognome(
+                    valore.giocatore1
+                );
+
+            if(cognome){
+                return cognome;
+            }
+
+        }
+
+        if(valore.giocatore2){
+
+            const cognome =
+                soloCognome(
+                    valore.giocatore2
+                );
+
+            if(cognome){
+                return cognome;
+            }
+
+        }
+
+        if(valore.nomeCompleto){
+
+            return soloCognome(
+                valore.nomeCompleto
+            );
+
+        }
+
+        return "";
+    }
+
+    /*
+    ============================================================
+    STRINGA
+    ============================================================
+    */
+
+    const testo =
+        String(valore).trim();
+
+    if(!testo){
+        return "";
+    }
+
+    /*
+    ============================================================
+    SEPARATORE SLASH
+    ESEMPIO:
+    "Josè Rizzi/Simone Rizzi"
+    =>
+    "Rizzi/Rizzi"
+    ============================================================
+    */
+
+    if(testo.includes("/")){
+
+        return testo
+            .split("/")
+            .map(parte =>
+                soloCognome(parte)
+            )
+            .filter(Boolean)
+            .join("/");
+
+    }
+
+    /*
+    ============================================================
+    SPAZI
+    ESEMPIO:
+    "Josè Rizzi"
+    =>
+    "Rizzi"
+    ============================================================
+    */
+
+    const parti =
+        testo
+            .split(/\s+/)
+            .filter(Boolean);
+
+    return parti.length
+        ? parti[parti.length - 1]
+        : "";
+}   
 
 
 function renderTables(){
 
     ensureRules();
 
-    function soloCognomi(valore){
-
-        if(valore === null || valore === undefined){
-            return "";
-        }
-
-        const testo =
-            String(valore)
-                .replace(/\t/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-        if(!testo){
-            return "";
-        }
-
-        const giocatori =
-            testo
-                .split("/")
-                .map(x => x.trim())
-                .filter(Boolean);
-
-        return giocatori
-            .map(giocatore => {
-
-                const parti =
-                    giocatore
-                        .split(/\s+/)
-                        .filter(Boolean);
-
-                return parti.length
-                    ? parti[parti.length - 1]
-                    : "";
-
-            })
-            .filter(Boolean)
-            .join(" / ");
-    }
-
+    /*
+    ============================================================
+    ROUND ROBIN
+    ============================================================
+    */
 
     function generaRoundRobin(n){
 
         let squadre =
             Array.from(
-                {length:n},
+                { length:n },
                 (_,i) => i
             );
 
-        if(squadre.length % 2 !== 0){
+        if(
+            squadre.length % 2 !== 0
+        ){
+
             squadre.push(null);
+
         }
 
         const rounds = [];
-        const totale = squadre.length;
-        const turni = totale - 1;
-        const meta = totale / 2;
 
-        for(let r = 0; r < turni; r++){
+        const totale =
+            squadre.length;
+
+        const turni =
+            totale - 1;
+
+        const meta =
+            totale / 2;
+
+        for(
+            let r = 0;
+            r < turni;
+            r++
+        ){
 
             const round = [];
 
-            for(let i = 0; i < meta; i++){
+            for(
+                let i = 0;
+                i < meta;
+                i++
+            ){
 
-                const a = squadre[i];
-                const b = squadre[totale - 1 - i];
+                const a =
+                    squadre[i];
 
-                if(a !== null && b !== null){
-                    round.push([a,b]);
+                const b =
+                    squadre[
+                        totale - 1 - i
+                    ];
+
+                if(
+                    a !== null &&
+                    b !== null
+                ){
+
+                    round.push([
+                        a,
+                        b
+                    ]);
+
                 }
+
             }
 
             rounds.push(round);
 
-            const fisso = squadre[0];
-            const resto = squadre.slice(1);
+            const fisso =
+                squadre[0];
 
-            resto.unshift(resto.pop());
+            const resto =
+                squadre.slice(1);
+
+            resto.unshift(
+                resto.pop()
+            );
 
             squadre = [
                 fisso,
                 ...resto
             ];
+
         }
 
-        if(state.rules.garaAndataRitorno === true){
+        /*
+        ========================================================
+        ANDATA / RITORNO
+        ========================================================
+        */
+
+        if(
+            state.rules.garaAndataRitorno === true
+        ){
 
             const ritorno =
                 rounds.map(round =>
@@ -10710,12 +10841,21 @@ function renderTables(){
                     ])
                 );
 
-            rounds.push(...ritorno);
+            rounds.push(
+                ...ritorno
+            );
+
         }
 
         return rounds;
+
     }
 
+    /*
+    ============================================================
+    CAMPI PER GIRONE
+    ============================================================
+    */
 
     const campiPerGirone = {
 
@@ -10729,12 +10869,28 @@ function renderTables(){
 
     };
 
+    /*
+    ============================================================
+    DURATA
+    ============================================================
+    */
 
     const durata =
-        Number(state.rules.duration) || 30;
+        Number(
+            state.rules.duration
+        ) || 30;
+
+    /*
+    ============================================================
+    ORA DI INIZIO
+    ============================================================
+    */
 
     const start =
-        String(state.rules.start || "20:00");
+        String(
+            state.rules.start ||
+            "20:00"
+        );
 
     const partiOra =
         start.split(":");
@@ -10745,6 +10901,11 @@ function renderTables(){
     const minutiBase =
         Number(partiOra[1]) || 0;
 
+    /*
+    ============================================================
+    CALENDARIO
+    ============================================================
+    */
 
     const calendario = [];
 
@@ -10764,8 +10925,12 @@ function renderTables(){
                 ? state[tag]
                 : [];
 
-        if(squadre.length < 2){
+        if(
+            squadre.length < 2
+        ){
+
             return;
+
         }
 
         const rounds =
@@ -10779,11 +10944,15 @@ function renderTables(){
 
                 calendario.push({
 
-                    girone: tag,
-                    casa: match[0],
-                    ospite: match[1],
-                    campo: null,
-                    slot: null
+                    girone:tag,
+
+                    casa:match[0],
+
+                    ospite:match[1],
+
+                    campo:null,
+
+                    slot:null
 
                 });
 
@@ -10793,20 +10962,34 @@ function renderTables(){
 
     });
 
+    /*
+    ============================================================
+    ASSEGNAZIONE CAMPI / SLOT
+    ============================================================
+    */
 
     const occupazioni = [];
 
     calendario.forEach(partita => {
 
         let assegnata = false;
+
         let slot = 0;
 
         const campiDisponibili =
-            campiPerGirone[partita.girone] || [2,3];
+            campiPerGirone[
+                partita.girone
+            ] || [2,3];
 
-        while(!assegnata){
+        while(
+            !assegnata
+        ){
 
-            for(let i = 0; i < campiDisponibili.length; i++){
+            for(
+                let i = 0;
+                i < campiDisponibili.length;
+                i++
+            ){
 
                 const campo =
                     campiDisponibili[i];
@@ -10819,27 +11002,42 @@ function renderTables(){
                         o.slot === slot &&
                         o.girone === partita.girone &&
                         (
-                            o.squadre.includes(partita.casa) ||
-                            o.squadre.includes(partita.ospite)
+                            o.squadre.includes(
+                                partita.casa
+                            )
+                            ||
+                            o.squadre.includes(
+                                partita.ospite
+                            )
                         )
                     ){
 
                         conflitto = true;
+
                     }
 
                 });
 
-                if(!conflitto){
+                if(
+                    !conflitto
+                ){
 
-                    partita.campo = campo;
-                    partita.slot = slot;
+                    partita.campo =
+                        campo;
+
+                    partita.slot =
+                        slot;
 
                     occupazioni.push({
 
-                        slot: slot,
-                        campo: campo,
-                        girone: partita.girone,
-                        squadre: [
+                        slot:slot,
+
+                        campo:campo,
+
+                        girone:
+                            partita.girone,
+
+                        squadre:[
                             partita.casa,
                             partita.ospite
                         ]
@@ -10847,16 +11045,30 @@ function renderTables(){
                     });
 
                     assegnata = true;
+
                     break;
+
                 }
+
             }
 
-            if(!assegnata){
+            if(
+                !assegnata
+            ){
+
                 slot++;
+
             }
+
         }
+
     });
 
+    /*
+    ============================================================
+    RENDER GIRONE
+    ============================================================
+    */
 
     [
         "A",
@@ -10870,52 +11082,108 @@ function renderTables(){
     ].forEach(tag => {
 
         const box =
-            document.getElementById(tag + "rows");
+            document.getElementById(
+                tag + "rows"
+            );
 
         if(!box){
+
             return;
+
         }
 
         const partite =
             calendario.filter(
-                p => p.girone === tag
+                p =>
+                    p.girone === tag
             );
 
+        /*
+        ========================================================
+        GARANZIA ARRAY
+        ========================================================
+        */
 
-        if(!Array.isArray(state[tag + "res"])){
+        if(
+            !Array.isArray(
+                state[tag + "res"]
+            )
+        ){
+
             state[tag + "res"] = [];
+
         }
 
-        if(!Array.isArray(state[tag + "time"])){
+        if(
+            !Array.isArray(
+                state[tag + "time"]
+            )
+        ){
+
             state[tag + "time"] = [];
+
         }
 
-        if(!Array.isArray(state[tag + "camp"])){
+        if(
+            !Array.isArray(
+                state[tag + "camp"]
+            )
+        ){
+
             state[tag + "camp"] = [];
+
         }
 
+        /*
+        ========================================================
+        DIMENSIONAMENTO RISULTATI
+        ========================================================
+        */
 
         while(
             state[tag + "res"].length <
             partite.length
         ){
+
             state[tag + "res"].push("-");
+
         }
+
+        /*
+        ========================================================
+        DIMENSIONAMENTO ORARI
+        ========================================================
+        */
 
         while(
             state[tag + "time"].length <
             partite.length
         ){
+
             state[tag + "time"].push("");
+
         }
+
+        /*
+        ========================================================
+        DIMENSIONAMENTO CAMPI
+        ========================================================
+        */
 
         while(
             state[tag + "camp"].length <
             partite.length
         ){
+
             state[tag + "camp"].push("");
+
         }
 
+        /*
+        ========================================================
+        TAGLIO ARRAY ECCEDENTI
+        ========================================================
+        */
 
         state[tag + "res"] =
             state[tag + "res"].slice(
@@ -10935,62 +11203,100 @@ function renderTables(){
                 partite.length
             );
 
+        /*
+        ========================================================
+        HTML
+        ========================================================
+        */
 
         let rows = "";
 
-
         partite.forEach((m,i) => {
+
+            /*
+            ====================================================
+            CALCOLO ORARIO
+            ====================================================
+            */
 
             const minuti =
                 minutiBase +
-                (m.slot * durata);
+                (
+                    m.slot *
+                    durata
+                );
 
             const ora =
                 oraBase +
-                Math.floor(minuti / 60);
+                Math.floor(
+                    minuti / 60
+                );
 
             const min =
                 minuti % 60;
 
             const tempo =
-                String(ora).padStart(2,"0") +
-                ":" +
-                String(min).padStart(2,"0");
-
+                String(ora)
+                    .padStart(2,"0")
+                +
+                ":"
+                +
+                String(min)
+                    .padStart(2,"0");
 
             state[tag + "time"][i] =
                 tempo;
 
+            /*
+            ====================================================
+            CAMPO
+            ====================================================
+            */
+
             state[tag + "camp"][i] =
                 m.campo;
 
+            /*
+            ====================================================
+            RISULTATO
+            ====================================================
+            */
 
-            if(!state[tag + "res"][i]){
-                state[tag + "res"][i] = "-";
+            if(
+                !state[tag + "res"][i]
+            ){
+
+                state[tag + "res"][i] =
+                    "-";
+
             }
 
-
             const risultato =
-                String(state[tag + "res"][i])
-                    .split("-");
-
+                String(
+                    state[tag + "res"][i]
+                ).split("-");
 
             /*
-            ========================================================
-            SOLO COGNOMI
-            ========================================================
+            ====================================================
+            SOLO COGNOME
+            ====================================================
             */
 
             const nomeCasa =
-                soloCognomi(
-                    state[tag]?.[m.casa] ?? ""
+                soloCognome(
+                    state[tag]?.[m.casa]
                 );
 
             const nomeOspite =
-                soloCognomi(
-                    state[tag]?.[m.ospite] ?? ""
+                soloCognome(
+                    state[tag]?.[m.ospite]
                 );
 
+            /*
+            ====================================================
+            RIGA HTML
+            ====================================================
+            */
 
             rows += `
 
@@ -11000,7 +11306,12 @@ function renderTables(){
 
 <input
 value="${m.campo ?? ""}"
-oninput="updateCamp('${tag}',${i},this.value)"
+oninput="
+updateCamp(
+    '${tag}',
+    ${i},
+    this.value
+)"
 style="
 width:45px;
 box-sizing:border-box;
@@ -11060,7 +11371,9 @@ margin:2px 0 !important;
 padding:0 !important;
 white-space:nowrap !important;
 ">
+
 <b>VS</b>
+
 </div>
 
 <div
@@ -11121,12 +11434,16 @@ updateRes(
 
         });
 
-
         box.innerHTML =
             rows;
 
     });
 
+    /*
+    ============================================================
+    CSS DI SICUREZZA
+    ============================================================
+    */
 
     let style =
         document.getElementById(
@@ -11141,9 +11458,11 @@ updateRes(
         style.id =
             "fixGironiDefinitivo";
 
-        document.head.appendChild(style);
-    }
+        document.head.appendChild(
+            style
+        );
 
+    }
 
     style.textContent = `
 
@@ -11154,7 +11473,9 @@ updateRes(
         #Erows tr,
         #Frows tr,
         #Grows tr{
+
             height:auto !important;
+
         }
 
         #Arows td,
@@ -11164,51 +11485,91 @@ updateRes(
         #Erows td,
         #Frows td,
         #Grows td{
+
             height:auto !important;
+
             vertical-align:middle !important;
+
         }
 
         .match-cell{
+
             height:auto !important;
+
             min-height:100px !important;
+
             overflow:visible !important;
+
             white-space:normal !important;
+
         }
 
         .match-cell .team-line{
+
             display:block !important;
+
             height:auto !important;
+
             min-height:20px !important;
+
             line-height:1.25 !important;
+
             white-space:normal !important;
+
             overflow:visible !important;
+
             overflow-wrap:anywhere !important;
+
             word-break:break-word !important;
+
             box-sizing:border-box !important;
+
         }
 
         .match-cell .vs-line{
+
             display:block !important;
+
             height:20px !important;
+
             line-height:20px !important;
+
             white-space:nowrap !important;
+
         }
 
     `;
 
+    /*
+    ============================================================
+    CLASSIFICA
+    ============================================================
+    */
 
-    if(typeof renderClass === "function"){
+    if(
+        typeof renderClass === "function"
+    ){
+
         renderClass();
+
     }
 
+    /*
+    ============================================================
+    SINCRONIZZAZIONE
+    ============================================================
+    */
 
-    if(typeof updateAndSync === "function"){
+    if(
+        typeof updateAndSync === "function"
+    ){
+
         updateAndSync();
+
     }
 
 }
-
-
+    
 function getFinalQualified(){
 
     ensureRules();
