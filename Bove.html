@@ -8461,6 +8461,82 @@ function renderClass(){
         "G"
     ];
 
+    /*
+    ============================================================
+    FUNZIONE INTERNA
+    ESTRAE SOLO IL COGNOME DA UN GIOCATORE
+    ============================================================
+    */
+
+    function soloCognome(valore){
+
+        if(valore == null)
+            return "";
+
+        const testo =
+            String(valore).trim();
+
+        if(!testo)
+            return "";
+
+        /*
+        --------------------------------------------------------
+        Se il valore contiene già una coppia:
+        "Roberto Bove/Claudio Falba"
+        diventa:
+        "Bove/Falba"
+        --------------------------------------------------------
+        */
+
+        if(testo.includes("/")){
+
+            return testo
+                .split("/")
+                .map(parte => {
+
+                    const parole =
+                        String(parte)
+                            .trim()
+                            .split(/\s+/)
+                            .filter(Boolean);
+
+                    if(!parole.length)
+                        return "";
+
+                    return parole[
+                        parole.length - 1
+                    ];
+
+                })
+                .filter(Boolean)
+                .join("/");
+
+        }
+
+        /*
+        --------------------------------------------------------
+        Giocatore singolo
+        --------------------------------------------------------
+        */
+
+        const parole =
+            testo
+                .split(/\s+/)
+                .filter(Boolean);
+
+        return parole.length
+            ? parole[parole.length - 1]
+            : "";
+
+    }
+
+
+    /*
+    ============================================================
+    RENDER DI TUTTI I GIRONI
+    ============================================================
+    */
+
     gironi.forEach(tag => {
 
         const tbody =
@@ -8472,9 +8548,9 @@ function renderClass(){
             return;
 
         /*
-        ============================================================
-        RESET COMPLETO
-        ============================================================
+        ========================================================
+        RESET
+        ========================================================
         */
 
         tbody.innerHTML = "";
@@ -8487,6 +8563,12 @@ function renderClass(){
         if(squadre.length === 0)
             return;
 
+        /*
+        ========================================================
+        RISULTATI
+        ========================================================
+        */
+
         const risultati =
             Array.isArray(
                 state[tag + "res"]
@@ -8495,9 +8577,9 @@ function renderClass(){
                 : [];
 
         /*
-        ============================================================
+        ========================================================
         CALCOLO CLASSIFICA
-        ============================================================
+        ========================================================
         */
 
         const classifica =
@@ -8514,9 +8596,52 @@ function renderClass(){
         }
 
         /*
-        ============================================================
+        ========================================================
+        NUMERO QUALIFICATE
+        ========================================================
+        */
+
+        let numeroQualificate = 0;
+
+        if(
+            Number.isFinite(
+                Number(
+                    state.rules?.qualificatePerGirone
+                )
+            )
+        ){
+
+            numeroQualificate =
+                Math.max(
+                    0,
+                    Number(
+                        state.rules.qualificatePerGirone
+                    )
+                );
+
+        }
+
+        /*
+        --------------------------------------------------------
+        FALLBACK:
+        usa il campo qual prodotto da calc()
+        --------------------------------------------------------
+        */
+
+        if(numeroQualificate === 0){
+
+            numeroQualificate =
+                classifica.filter(
+                    x => x?.qual === true
+                ).length;
+
+        }
+
+
+        /*
+        ========================================================
         RENDER RIGHE
-        ============================================================
+        ========================================================
         */
 
         classifica.forEach((x, indice) => {
@@ -8524,10 +8649,11 @@ function renderClass(){
             const tr =
                 document.createElement("tr");
 
+
             /*
-            --------------------------------------------------------
+            ----------------------------------------------------
             POSIZIONE
-            --------------------------------------------------------
+            ----------------------------------------------------
             */
 
             const tdPos =
@@ -8536,89 +8662,26 @@ function renderClass(){
             tdPos.textContent =
                 String(indice + 1);
 
+
             /*
-            --------------------------------------------------------
-            COGNOME
-            --------------------------------------------------------
+            ----------------------------------------------------
+            NOME / COGNOME
+            ----------------------------------------------------
             */
 
             const tdNome =
                 document.createElement("td");
 
-            let visualizzaCognome = "";
-
-            if(x?.n != null){
-
-                const testo =
-                    String(x.n).trim();
-
-                /*
-                ====================================================
-                CASO COPPIA
-                ====================================================
-                */
-
-                if(testo.includes("/")){
-
-                    visualizzaCognome =
-                        testo
-                            .split("/")
-                            .map(parte => {
-
-                                const valore =
-                                    String(parte).trim();
-
-                                if(!valore)
-                                    return "";
-
-                                /*
-                                ------------------------------------
-                                PRENDE L'ULTIMA PAROLA
-                                ------------------------------------
-                                */
-
-                                const parole =
-                                    valore
-                                        .split(/\s+/)
-                                        .filter(Boolean);
-
-                                return parole.length
-                                    ? parole[parole.length - 1]
-                                    : "";
-
-                            })
-                            .filter(Boolean)
-                            .join("/");
-
-                }else{
-
-                    /*
-                    =================================================
-                    CASO SINGOLO
-                    =================================================
-                    */
-
-                    const parole =
-                        testo
-                            .split(/\s+/)
-                            .filter(Boolean);
-
-                    visualizzaCognome =
-                        parole.length
-                            ? parole[parole.length - 1]
-                            : "";
-
-                }
-
-            }
-
             tdNome.textContent =
-                visualizzaCognome;
+                soloCognome(
+                    x?.n
+                );
+
 
             /*
-            --------------------------------------------------------
+            ----------------------------------------------------
             PUNTI
-            --------------------------------------------------------
+            ----------------------------------------------------
             */
 
             const tdPt =
@@ -8629,10 +8692,11 @@ function renderClass(){
                     Number(x?.pt) || 0
                 );
 
+
             /*
-            --------------------------------------------------------
+            ----------------------------------------------------
             GF
-            --------------------------------------------------------
+            ----------------------------------------------------
             */
 
             const tdGf =
@@ -8643,10 +8707,11 @@ function renderClass(){
                     Number(x?.gf) || 0
                 );
 
+
             /*
-            --------------------------------------------------------
+            ----------------------------------------------------
             GS
-            --------------------------------------------------------
+            ----------------------------------------------------
             */
 
             const tdGs =
@@ -8657,10 +8722,11 @@ function renderClass(){
                     Number(x?.gs) || 0
                 );
 
+
             /*
-            --------------------------------------------------------
+            ----------------------------------------------------
             DF
-            --------------------------------------------------------
+            ----------------------------------------------------
             */
 
             const tdDf =
@@ -8671,29 +8737,84 @@ function renderClass(){
                     Number(x?.df) || 0
                 );
 
+
             /*
-            --------------------------------------------------------
-            QUALIFICATO
-            --------------------------------------------------------
+            ====================================================
+            FRECCIA DI CLASSIFICA
+            ====================================================
             */
 
-            if(x?.qual){
+            const tdFreccia =
+                document.createElement("td");
 
-                tdPos.style.fontWeight =
-                    "700";
+            tdFreccia.style.width =
+                "24px";
 
-                tdNome.style.fontWeight =
-                    "700";
+            tdFreccia.style.textAlign =
+                "center";
 
-                tdNome.style.color =
+            tdFreccia.style.fontWeight =
+                "700";
+
+            /*
+            ----------------------------------------------------
+            QUALIFICATO
+            ----------------------------------------------------
+            */
+
+            const qualificato =
+                x?.qual === true ||
+                (
+                    numeroQualificate > 0 &&
+                    indice < numeroQualificate
+                );
+
+            if(qualificato){
+
+                tdFreccia.textContent =
+                    "↑";
+
+                tdFreccia.style.color =
                     "#22c55e";
+
+                tdFreccia.title =
+                    "Qualificato";
+
+            }else{
+
+                tdFreccia.textContent =
+                    "↓";
+
+                tdFreccia.style.color =
+                    "#ef4444";
+
+                tdFreccia.title =
+                    "Non qualificato";
 
             }
 
+
             /*
-            --------------------------------------------------------
+            ====================================================
+            STILE NORMALE
+            NESSUN NOME VERDE
+            ====================================================
+            */
+
+            tdPos.style.fontWeight =
+                "400";
+
+            tdNome.style.fontWeight =
+                "400";
+
+            tdNome.style.color =
+                "";
+
+
+            /*
+            ====================================================
             APPEND
-            --------------------------------------------------------
+            ====================================================
             */
 
             tr.appendChild(tdPos);
@@ -8702,12 +8823,20 @@ function renderClass(){
             tr.appendChild(tdGf);
             tr.appendChild(tdGs);
             tr.appendChild(tdDf);
+            tr.appendChild(tdFreccia);
 
             tbody.appendChild(tr);
 
         });
 
     });
+
+
+    /*
+    ============================================================
+    CONTROLLO CONSOLE
+    ============================================================
+    */
 
     console.log(
         "CLASSIFICA A:",
@@ -8719,108 +8848,6 @@ function renderClass(){
         document.getElementById("Bclass")?.innerText || ""
     );
 
-}
-function updateRes(g,i,pos,val){
-
-    /*
-    ==================================================
-    1. VALIDAZIONE GIRONE
-    ==================================================
-    */
-
-   const map = {
-    A:"Ares",
-    B:"Bres",
-    C:"Cres",
-    D:"Dres",
-    E:"Eres",
-    F:"Fres",
-    G:"Gres"
-};
-
-const nomeArray = map[g];
-
-if(!nomeArray)
-    return;
-
-i = Number(i);
-pos = Number(pos);
-
-if(
-    !Number.isInteger(i) ||
-    i < 0 ||
-    (pos !== 0 && pos !== 1)
-)
-    return;
-
-let s = state[nomeArray];
-
-if(!Array.isArray(s))
-    s = state[nomeArray] = [];
-
-if(
-    s[i] === undefined ||
-    s[i] === null ||
-    String(s[i]).trim() === ""
-){
-
-    s[i] = "-";
-
-}
-
-let p =
-    String(s[i])
-        .split("-");
-
-if(p.length !== 2){
-
-    p = ["",""];
-
-}
-
-if(val === null || val === undefined)
-    val = "";
-
-val =
-    String(val)
-        .trim();
-
-if(val === ""){
-
-    p[pos] = "";
-
-}
-else{
-
-    const numero = Number(val);
-
-    if(
-        !Number.isFinite(numero) ||
-        numero < 0
-    )
-        return;
-
-    p[pos] =
-        String(
-            Math.floor(numero)
-        );
-
-}
-
-s[i] =
-    p.join("-");
-
-if(typeof ensureRules === "function")
-    ensureRules();
-
-if(typeof renderKO === "function")
-    renderKO();
-
-if(typeof render === "function")
-    render();
-
-if(typeof updateAndSync === "function")
-    updateAndSync();
 }
 
 
