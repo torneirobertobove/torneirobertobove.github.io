@@ -766,6 +766,8 @@ async function verifyAccess(){
 
     if(error || !profilo){
 
+        window.__BOVE_ADMIN_AUTH_OK = false;
+
         console.warn(
             "Profilo amministratore non trovato"
         );
@@ -777,6 +779,8 @@ async function verifyAccess(){
 
     if(profilo.ruolo !== "admin"){
 
+        window.__BOVE_ADMIN_AUTH_OK = false;
+
         console.warn(
             "Utente senza permessi admin:",
             profilo
@@ -787,6 +791,8 @@ async function verifyAccess(){
         return;
     }
 
+    window.__BOVE_ADMIN_AUTH_OK = true;
+
     console.log(
         "ACCESSO ADMIN:",
         profilo.nome
@@ -795,6 +801,8 @@ async function verifyAccess(){
 
 function bloccaGestionale(){
 
+    window.__BOVE_ADMIN_AUTH_OK = false;
+
     document
         .querySelectorAll(
             'input, button, textarea, select'
@@ -802,13 +810,15 @@ function bloccaGestionale(){
         .forEach(el => {
 
             if(
-                !el.classList.contains("back") &&
-                el.innerText !== "Stampa"
+                el.closest("#adminHamburger") ||
+                el.classList.contains("back") ||
+                el.innerText === "Stampa"
             ){
-
-                el.disabled = true;
-                el.style.opacity = "0.6";
+                return;
             }
+
+            el.disabled = true;
+            el.style.opacity = "0.6";
         });
 
     console.warn(
@@ -6823,6 +6833,118 @@ async function loadState(){
                     "COPPIE CARICATE:",
                     state.coppie
                 );
+
+
+                /*
+                ====================================================
+                FALLBACK COPPIE DAGLI ISCRITTI REALI
+                Se Supabase ha caricato gli iscritti ma la
+                configurazione non contiene ancora coppie,
+                ricostruisce le coppie senza perdere i nominativi.
+                ====================================================
+                */
+
+                if(
+                    state.coppie.length === 0 &&
+                    Array.isArray(state.partecipanti) &&
+                    state.partecipanti.length > 0
+                ){
+
+                    const coppieDaIscritti = [];
+
+                    const nomePartecipante = function(p){
+
+                        if(p === null || p === undefined)
+                            return "";
+
+                        if(typeof p === "string")
+                            return p.trim();
+
+                        if(typeof p === "number")
+                            return String(p);
+
+                        if(typeof p !== "object")
+                            return String(p).trim();
+
+                        const nome = p.nome != null ? String(p.nome).trim() : "";
+                        const cognome = p.cognome != null ? String(p.cognome).trim() : "";
+
+                        if(nome && cognome)
+                            return nome + " " + cognome;
+
+                        if(nome)
+                            return nome;
+
+                        if(cognome)
+                            return cognome;
+
+                        if(p.nome_giocatore != null)
+                            return String(p.nome_giocatore).trim();
+
+                        if(p.email != null)
+                            return String(p.email).trim();
+
+                        return "";
+
+                    };
+
+                    /* Se le righe sono già coppie, conservarle. */
+                    state.partecipanti.forEach(p => {
+
+                        if(
+                            p &&
+                            typeof p === "object" &&
+                            (p.giocatore1 || p.giocatore2)
+                        ){
+
+                            const n1 = nomePartecipante(p.giocatore1);
+                            const n2 = nomePartecipante(p.giocatore2);
+
+                            if(n1 || n2){
+                                coppieDaIscritti.push({
+                                    giocatore1: p.giocatore1 || {nome:n1},
+                                    giocatore2: p.giocatore2 || {nome:n2}
+                                });
+                            }
+
+                        }
+
+                    });
+
+                    /* Altrimenti abbina gli iscritti due a due nell'ordine ricevuto. */
+                    if(coppieDaIscritti.length === 0){
+
+                        for(let i = 0; i + 1 < state.partecipanti.length; i += 2){
+
+                            const g1 = state.partecipanti[i];
+                            const g2 = state.partecipanti[i + 1];
+
+                            const n1 = nomePartecipante(g1);
+                            const n2 = nomePartecipante(g2);
+
+                            if(n1 || n2){
+                                coppieDaIscritti.push({
+                                    giocatore1: g1,
+                                    giocatore2: g2
+                                });
+                            }
+
+                        }
+
+                    }
+
+                    if(coppieDaIscritti.length > 0){
+
+                        state.coppie = coppieDaIscritti;
+
+                        console.log(
+                            "COPPIE RICOSTRUITE DAGLI ISCRITTI:",
+                            state.coppie
+                        );
+
+                    }
+
+                }
 
 
                 /*
@@ -12956,6 +13078,13 @@ async function initDefaults(){
 AVVIO AUTOMATICO
 ============================================================
 */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        verifyAccess();
+    }
+);
 
 document.addEventListener(
     "DOMContentLoaded",
