@@ -10730,10 +10730,155 @@ if(typeof updateAndSync === "function")
         : "";
 }   
 
-
 function renderTables(){
 
     ensureRules();
+
+    /*
+    ============================================================
+    FUNZIONE INTERNA
+    VISUALIZZAZIONE SOLO COGNOME
+    ============================================================
+    */
+
+    function cognomeVisualizzato(valore){
+
+        if(
+            valore === null ||
+            valore === undefined
+        ){
+            return "";
+        }
+
+        /*
+        --------------------------------------------------------
+        OGGETTO GIOCATORE
+        --------------------------------------------------------
+        */
+
+        if(
+            typeof valore === "object"
+        ){
+
+            if(
+                valore.cognome !== undefined &&
+                valore.cognome !== null &&
+                String(valore.cognome).trim() !== ""
+            ){
+
+                return String(
+                    valore.cognome
+                ).trim();
+
+            }
+
+            if(valore.giocatore1){
+
+                const c1 =
+                    cognomeVisualizzato(
+                        valore.giocatore1
+                    );
+
+                if(c1)
+                    return c1;
+
+            }
+
+            if(valore.giocatore2){
+
+                const c2 =
+                    cognomeVisualizzato(
+                        valore.giocatore2
+                    );
+
+                if(c2)
+                    return c2;
+
+            }
+
+            if(valore.nomeCompleto){
+
+                return cognomeVisualizzato(
+                    valore.nomeCompleto
+                );
+
+            }
+
+            return "";
+        }
+
+        /*
+        --------------------------------------------------------
+        STRINGA
+        --------------------------------------------------------
+        */
+
+        const testo =
+            String(valore).trim();
+
+        if(!testo)
+            return "";
+
+        /*
+        --------------------------------------------------------
+        COPPIA
+        ESEMPIO:
+        Josè Rizzi/Simone Rizzi
+        DIVENTA:
+        Rizzi/Rizzi
+        --------------------------------------------------------
+        */
+
+        if(
+            testo.includes("/")
+        ){
+
+            return testo
+                .split("/")
+                .map(parte => {
+
+                    const p =
+                        String(parte)
+                            .trim();
+
+                    if(!p)
+                        return "";
+
+                    const parole =
+                        p
+                            .split(/\s+/)
+                            .filter(Boolean);
+
+                    return parole.length
+                        ? parole[parole.length - 1]
+                        : "";
+
+                })
+                .filter(Boolean)
+                .join("/");
+
+        }
+
+        /*
+        --------------------------------------------------------
+        SINGOLO GIOCATORE
+        ESEMPIO:
+        Josè Rizzi
+        DIVENTA:
+        Rizzi
+        --------------------------------------------------------
+        */
+
+        const parole =
+            testo
+                .split(/\s+/)
+                .filter(Boolean);
+
+        return parole.length
+            ? parole[parole.length - 1]
+            : "";
+    }
+
 
     /*
     ============================================================
@@ -10745,7 +10890,7 @@ function renderTables(){
 
         let squadre =
             Array.from(
-                { length:n },
+                {length:n},
                 (_,i) => i
             );
 
@@ -10851,6 +10996,7 @@ function renderTables(){
 
     }
 
+
     /*
     ============================================================
     CAMPI PER GIRONE
@@ -10869,6 +11015,7 @@ function renderTables(){
 
     };
 
+
     /*
     ============================================================
     DURATA
@@ -10880,9 +11027,10 @@ function renderTables(){
             state.rules.duration
         ) || 30;
 
+
     /*
     ============================================================
-    ORA DI INIZIO
+    ORA INIZIALE
     ============================================================
     */
 
@@ -10900,6 +11048,7 @@ function renderTables(){
 
     const minutiBase =
         Number(partiOra[1]) || 0;
+
 
     /*
     ============================================================
@@ -10944,15 +11093,15 @@ function renderTables(){
 
                 calendario.push({
 
-                    girone:tag,
+                    girone: tag,
 
-                    casa:match[0],
+                    casa: match[0],
 
-                    ospite:match[1],
+                    ospite: match[1],
 
-                    campo:null,
+                    campo: null,
 
-                    slot:null
+                    slot: null
 
                 });
 
@@ -10961,6 +11110,7 @@ function renderTables(){
         });
 
     });
+
 
     /*
     ============================================================
@@ -11018,9 +11168,7 @@ function renderTables(){
 
                 });
 
-                if(
-                    !conflitto
-                ){
+                if(!conflitto){
 
                     partita.campo =
                         campo;
@@ -11030,14 +11178,14 @@ function renderTables(){
 
                     occupazioni.push({
 
-                        slot:slot,
+                        slot: slot,
 
-                        campo:campo,
+                        campo: campo,
 
                         girone:
                             partita.girone,
 
-                        squadre:[
+                        squadre: [
                             partita.casa,
                             partita.ospite
                         ]
@@ -11052,9 +11200,7 @@ function renderTables(){
 
             }
 
-            if(
-                !assegnata
-            ){
+            if(!assegnata){
 
                 slot++;
 
@@ -11064,9 +11210,10 @@ function renderTables(){
 
     });
 
+
     /*
     ============================================================
-    RENDER GIRONE
+    RENDER GIRONI
     ============================================================
     */
 
@@ -11086,11 +11233,8 @@ function renderTables(){
                 tag + "rows"
             );
 
-        if(!box){
-
+        if(!box)
             return;
-
-        }
 
         const partite =
             calendario.filter(
@@ -11098,9 +11242,10 @@ function renderTables(){
                     p.girone === tag
             );
 
+
         /*
         ========================================================
-        GARANZIA ARRAY
+        ARRAY RISULTATI
         ========================================================
         */
 
@@ -11114,6 +11259,13 @@ function renderTables(){
 
         }
 
+
+        /*
+        ========================================================
+        ARRAY ORARI
+        ========================================================
+        */
+
         if(
             !Array.isArray(
                 state[tag + "time"]
@@ -11124,6 +11276,13 @@ function renderTables(){
 
         }
 
+
+        /*
+        ========================================================
+        ARRAY CAMPI
+        ========================================================
+        */
+
         if(
             !Array.isArray(
                 state[tag + "camp"]
@@ -11133,6 +11292,7 @@ function renderTables(){
             state[tag + "camp"] = [];
 
         }
+
 
         /*
         ========================================================
@@ -11149,6 +11309,7 @@ function renderTables(){
 
         }
 
+
         /*
         ========================================================
         DIMENSIONAMENTO ORARI
@@ -11164,6 +11325,7 @@ function renderTables(){
 
         }
 
+
         /*
         ========================================================
         DIMENSIONAMENTO CAMPI
@@ -11178,6 +11340,7 @@ function renderTables(){
             state[tag + "camp"].push("");
 
         }
+
 
         /*
         ========================================================
@@ -11203,9 +11366,10 @@ function renderTables(){
                 partite.length
             );
 
+
         /*
         ========================================================
-        HTML
+        CREAZIONE HTML
         ========================================================
         */
 
@@ -11214,9 +11378,9 @@ function renderTables(){
         partite.forEach((m,i) => {
 
             /*
-            ====================================================
-            CALCOLO ORARIO
-            ====================================================
+            ----------------------------------------------------
+            ORARIO
+            ----------------------------------------------------
             */
 
             const minuti =
@@ -11247,19 +11411,21 @@ function renderTables(){
             state[tag + "time"][i] =
                 tempo;
 
+
             /*
-            ====================================================
+            ----------------------------------------------------
             CAMPO
-            ====================================================
+            ----------------------------------------------------
             */
 
             state[tag + "camp"][i] =
                 m.campo;
 
+
             /*
-            ====================================================
+            ----------------------------------------------------
             RISULTATO
-            ====================================================
+            ----------------------------------------------------
             */
 
             if(
@@ -11274,7 +11440,9 @@ function renderTables(){
             const risultato =
                 String(
                     state[tag + "res"][i]
-                ).split("-");
+                )
+                .split("-");
+
 
             /*
             ====================================================
@@ -11283,19 +11451,20 @@ function renderTables(){
             */
 
             const nomeCasa =
-                soloCognome(
+                cognomeVisualizzato(
                     state[tag]?.[m.casa]
                 );
 
             const nomeOspite =
-                soloCognome(
+                cognomeVisualizzato(
                     state[tag]?.[m.ospite]
                 );
 
+
             /*
-            ====================================================
-            RIGA HTML
-            ====================================================
+            ----------------------------------------------------
+            RIGA
+            ----------------------------------------------------
             */
 
             rows += `
@@ -11439,6 +11608,7 @@ updateRes(
 
     });
 
+
     /*
     ============================================================
     CSS DI SICUREZZA
@@ -11540,6 +11710,7 @@ updateRes(
 
     `;
 
+
     /*
     ============================================================
     CLASSIFICA
@@ -11553,6 +11724,7 @@ updateRes(
         renderClass();
 
     }
+
 
     /*
     ============================================================
@@ -11569,6 +11741,7 @@ updateRes(
     }
 
 }
+
     
 function getFinalQualified(){
 
