@@ -10609,6 +10609,304 @@ if(typeof updateAndSync === "function")
     }
 
 } 
+function normalizzaCognomiGironi(){
+
+    const gironi = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ];
+
+    /*
+    ============================================================
+    ESTRAE IL COGNOME DA UN GIOCATORE
+    ============================================================
+    */
+
+    function cognomeGiocatore(g){
+
+        if(
+            g === null ||
+            g === undefined
+        ){
+            return "";
+        }
+
+        /*
+        STRINGA
+        */
+
+        if(typeof g === "string"){
+
+            const testo =
+                g
+                    .trim()
+                    .replace(/\s+/g," ");
+
+            if(!testo)
+                return "";
+
+            /*
+            Se arriva già una coppia:
+            "Rizzi/Milan"
+            */
+
+            if(testo.includes("/")){
+
+                return testo
+                    .split("/")
+                    .map(parte =>
+                        cognomeGiocatore(parte)
+                    )
+                    .filter(Boolean)
+                    .join("/");
+
+            }
+
+            /*
+            Nome Cognome
+            */
+
+            const parti =
+                testo.split(" ");
+
+            return (
+                parti[parti.length - 1] ||
+                ""
+            );
+
+        }
+
+        /*
+        OGGETTO GIOCATORE
+        */
+
+        if(typeof g === "object"){
+
+            const cognome =
+                g.cognome != null
+                    ? String(g.cognome).trim()
+                    : "";
+
+            if(cognome)
+                return cognome;
+
+            /*
+            Alcuni record possono avere
+            cognome_giocatore
+            */
+
+            if(
+                g.cognome_giocatore != null
+            ){
+
+                const c =
+                    String(
+                        g.cognome_giocatore
+                    ).trim();
+
+                if(c)
+                    return c;
+
+            }
+
+            /*
+            Fallback: nome completo
+            */
+
+            if(g.nome != null){
+
+                return cognomeGiocatore(
+                    String(g.nome)
+                );
+
+            }
+
+            if(
+                g.nome_giocatore != null
+            ){
+
+                return cognomeGiocatore(
+                    String(
+                        g.nome_giocatore
+                    )
+                );
+
+            }
+
+        }
+
+        return "";
+
+    }
+
+
+    /*
+    ============================================================
+    ESTRAE I COGNOMI DI UNA COPPIA
+    ============================================================
+    */
+
+    function cognomiCoppia(coppia){
+
+        if(
+            coppia === null ||
+            coppia === undefined
+        ){
+            return "";
+        }
+
+        /*
+        Coppia già stringa:
+        "Josè Rizzi/Milan Milan"
+        */
+
+        if(typeof coppia === "string"){
+
+            return coppia
+                .split("/")
+                .map(parte =>
+                    cognomeGiocatore(parte)
+                )
+                .filter(Boolean)
+                .join("/");
+
+        }
+
+        /*
+        Coppia oggetto
+        */
+
+        if(typeof coppia === "object"){
+
+            const g1 =
+                coppia.giocatore1 ??
+                coppia.player1 ??
+                coppia.g1 ??
+                null;
+
+            const g2 =
+                coppia.giocatore2 ??
+                coppia.player2 ??
+                coppia.g2 ??
+                null;
+
+            const c1 =
+                cognomeGiocatore(g1);
+
+            const c2 =
+                cognomeGiocatore(g2);
+
+            if(c1 || c2){
+
+                return [
+                    c1,
+                    c2
+                ]
+                .filter(Boolean)
+                .join("/");
+
+            }
+
+            /*
+            Alcuni dati possono essere già
+            contenuti in nome/nomeCoppia
+            */
+
+            if(coppia.nomeCoppia){
+
+                return cognomiCoppia(
+                    coppia.nomeCoppia
+                );
+
+            }
+
+            if(coppia.nome){
+
+                return cognomiCoppia(
+                    coppia.nome
+                );
+
+            }
+
+        }
+
+        return "";
+
+    }
+
+
+    /*
+    ============================================================
+    NORMALIZZA TUTTI I GIRONI
+    ============================================================
+    */
+
+    gironi.forEach(tag => {
+
+        if(
+            !Array.isArray(
+                state[tag]
+            )
+        ){
+            return;
+        }
+
+        state[tag] =
+            state[tag]
+                .map(squadra =>
+                    cognomiCoppia(squadra)
+                )
+                .filter(Boolean);
+
+    });
+
+
+    /*
+    ============================================================
+    NORMALIZZA ANCHE LE COPPIE
+    ============================================================
+    */
+
+    if(
+        Array.isArray(state.coppie)
+    ){
+
+        state.coppie =
+            state.coppie.map(coppia => {
+
+                const nome =
+                    cognomiCoppia(coppia);
+
+                return {
+                    ...coppia,
+                    nomeCoppia:nome
+                };
+
+            });
+
+    }
+
+
+    console.log(
+        "GIRONI NORMALIZZATI — SOLO COGNOMI:",
+        {
+            A:state.A,
+            B:state.B,
+            C:state.C,
+            D:state.D,
+            E:state.E,
+            F:state.F,
+            G:state.G
+        }
+    );
+
+}
+    
  function soloCognome(valore){
 
     if(valore === null || valore === undefined){
