@@ -19,7 +19,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           p = Path('Bove.html')
           text = p.read_text(encoding='utf-8')
@@ -35,6 +34,470 @@ jobs:
               print('PATCH APPLICATA: initDefaults delega idTorneo a loadState()')
           else:
               print('PATCH GIA PRESENTE')
+
+      - name: Clean old surname repair helpers and repair display functions
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # Elimina esclusivamente i due helper temporanei aggiunti durante le prove.
+          text = re.sub(
+              r'function normalizzaCognomiGironi\(\)\s*\{.*?\n\}\s*\n\s*function soloCognome\(valore\)\s*\{.*?\n\}\s*\n\s*function renderTables\(\)',
+              'function renderTables()',
+              text,
+              count=1,
+              flags=re.S
+          )
+
+          render_tables = r'''function renderTables(){
+
+    ensureRules();
+
+    function cognomeVisualizzato(valore){
+
+        if(valore === null || valore === undefined)
+            return "";
+
+        if(typeof valore === "object"){
+
+            const g1 =
+                valore.giocatore1 ||
+                valore.g1 ||
+                valore.player1 ||
+                null;
+
+            const g2 =
+                valore.giocatore2 ||
+                valore.g2 ||
+                valore.player2 ||
+                null;
+
+            const cognome = g => {
+
+                if(g === null || g === undefined)
+                    return "";
+
+                if(typeof g === "object"){
+
+                    if(g.cognome !== undefined && g.cognome !== null){
+                        const c = String(g.cognome).trim();
+                        if(c) return c;
+                    }
+
+                    if(g.cognome_giocatore !== undefined && g.cognome_giocatore !== null){
+                        const c = String(g.cognome_giocatore).trim();
+                        if(c) return c;
+                    }
+
+                    if(g.nome_giocatore !== undefined && g.nome_giocatore !== null)
+                        return cognome(String(g.nome_giocatore));
+
+                    if(g.nome !== undefined && g.nome !== null)
+                        return cognome(String(g.nome));
+
+                    return "";
+                }
+
+                const t = String(g).replace(/\s+/g," ").trim();
+                if(!t) return "";
+
+                const p = t.split(/\s+/).filter(Boolean);
+                return p.length ? p[p.length - 1] : "";
+            };
+
+            const c1 = cognome(g1);
+            const c2 = cognome(g2);
+
+            if(c1 && c2) return c1 + " / " + c2;
+            return c1 || c2 || "";
+        }
+
+        const testo = String(valore)
+            .replace(/\t/g," ")
+            .replace(/\s+/g," ")
+            .trim();
+
+        if(!testo) return "";
+
+        return testo
+            .split("/")
+            .map(parte => {
+                const p = parte.trim().split(/\s+/).filter(Boolean);
+                return p.length ? p[p.length - 1] : "";
+            })
+            .filter(Boolean)
+            .join(" / ");
+    }
+
+    function generaRoundRobin(n){
+
+        let squadre = Array.from({length:n}, (_,i) => i);
+
+        if(squadre.length % 2 !== 0)
+            squadre.push(null);
+
+        const rounds = [];
+        const totale = squadre.length;
+        const turni = totale - 1;
+        const meta = totale / 2;
+
+        for(let r=0; r<turni; r++){
+
+            const round = [];
+
+            for(let i=0; i<meta; i++){
+
+                const a = squadre[i];
+                const b = squadre[totale - 1 - i];
+
+                if(a !== null && b !== null)
+                    round.push([a,b]);
+            }
+
+            rounds.push(round);
+
+            const fisso = squadre[0];
+            const resto = squadre.slice(1);
+            resto.unshift(resto.pop());
+            squadre = [fisso, ...resto];
+        }
+
+        if(state.rules.garaAndataRitorno === true){
+
+            const ritorno = rounds.map(round =>
+                round.map(match => [match[1], match[0]])
+            );
+
+            rounds.push(...ritorno);
+        }
+
+        return rounds;
+    }
+
+    const campiPerGirone = {
+        A:[2,3], B:[4,5], C:[6,7], D:[8,9],
+        E:[10,11], F:[12,13], G:[14,15]
+    };
+
+    const durata = Number(state.rules.duration) || 30;
+    const start = String(state.rules.start || "20:00");
+    const partiOra = start.split(":");
+    const oraBase = Number(partiOra[0]) || 20;
+    const minutiBase = Number(partiOra[1]) || 0;
+
+    const calendario = [];
+
+    ["A","B","C","D","E","F","G"].forEach(tag => {
+
+        const squadre = Array.isArray(state[tag]) ? state[tag] : [];
+        if(squadre.length < 2) return;
+
+        const rounds = generaRoundRobin(squadre.length);
+
+        rounds.forEach(round => {
+            round.forEach(match => {
+                calendario.push({
+                    girone:tag,
+                    casa:match[0],
+                    ospite:match[1],
+                    campo:null,
+                    slot:null
+                });
+            });
+        });
+    });
+
+    const occupazioni = [];
+
+    calendario.forEach(partita => {
+
+        let assegnata = false;
+        let slot = 0;
+        const campiDisponibili =
+            campiPerGirone[partita.girone] || [2,3];
+
+        while(!assegnata){
+
+            for(let i=0; i<campiDisponibili.length; i++){
+
+                const campo = campiDisponibili[i];
+                let conflitto = false;
+
+                occupazioni.forEach(o => {
+                    if(
+                        o.slot === slot &&
+                        o.girone === partita.girone &&
+                        (
+                            o.squadre.includes(partita.casa) ||
+                            o.squadre.includes(partita.ospite)
+                        )
+                    ){
+                        conflitto = true;
+                    }
+                });
+
+                if(!conflitto){
+
+                    partita.campo = campo;
+                    partita.slot = slot;
+
+                    occupazioni.push({
+                        slot:slot,
+                        campo:campo,
+                        girone:partita.girone,
+                        squadre:[partita.casa,partita.ospite]
+                    });
+
+                    assegnata = true;
+                    break;
+                }
+            }
+
+            if(!assegnata)
+                slot++;
+        }
+    });
+
+    ["A","B","C","D","E","F","G"].forEach(tag => {
+
+        const box = document.getElementById(tag + "rows");
+        if(!box) return;
+
+        const partite = calendario.filter(p => p.girone === tag);
+
+        if(!Array.isArray(state[tag + "res"])) state[tag + "res"] = [];
+        if(!Array.isArray(state[tag + "time"])) state[tag + "time"] = [];
+        if(!Array.isArray(state[tag + "camp"])) state[tag + "camp"] = [];
+
+        while(state[tag + "res"].length < partite.length)
+            state[tag + "res"].push("-");
+
+        while(state[tag + "time"].length < partite.length)
+            state[tag + "time"].push("");
+
+        while(state[tag + "camp"].length < partite.length)
+            state[tag + "camp"].push("");
+
+        state[tag + "res"] = state[tag + "res"].slice(0,partite.length);
+        state[tag + "time"] = state[tag + "time"].slice(0,partite.length);
+        state[tag + "camp"] = state[tag + "camp"].slice(0,partite.length);
+
+        let rows = "";
+
+        partite.forEach((m,i) => {
+
+            const minuti = minutiBase + (m.slot * durata);
+            const ora = oraBase + Math.floor(minuti / 60);
+            const min = minuti % 60;
+            const tempo =
+                String(ora).padStart(2,"0") + ":" +
+                String(min).padStart(2,"0");
+
+            state[tag + "time"][i] = tempo;
+            state[tag + "camp"][i] = m.campo;
+
+            if(!state[tag + "res"][i])
+                state[tag + "res"][i] = "-";
+
+            let risultatoCasa = "";
+            let risultatoOspite = "";
+            const raw = state[tag + "res"][i];
+
+            if(Array.isArray(raw)){
+                risultatoCasa = raw[0] ?? "";
+                risultatoOspite = raw[1] ?? "";
+            }
+            else{
+                const parti = String(raw).split("-");
+                risultatoCasa = parti[0] === "-" ? "" : (parti[0] || "");
+                risultatoOspite = parti[1] || "";
+            }
+
+            const nomeCasa = cognomeVisualizzato(state[tag]?.[m.casa]);
+            const nomeOspite = cognomeVisualizzato(state[tag]?.[m.ospite]);
+
+            rows += `
+<tr class="girone-match-row">
+<td>
+<input value="${m.campo ?? ""}" oninput="updateCamp('${tag}',${i},this.value)" style="width:45px;box-sizing:border-box;">
+</td>
+<td>
+<input value="${tempo}" readonly style="width:70px;box-sizing:border-box;">
+</td>
+<td class="match-cell" style="height:auto !important;min-height:100px !important;padding:8px 6px !important;vertical-align:middle !important;overflow:visible !important;white-space:normal !important;box-sizing:border-box !important;">
+<div class="team-line" style="display:block !important;height:auto !important;min-height:20px !important;line-height:1.25 !important;margin:0 !important;padding:2px 0 !important;white-space:normal !important;overflow:visible !important;overflow-wrap:anywhere !important;word-break:break-word !important;box-sizing:border-box !important;">${nomeCasa}</div>
+<div class="vs-line" style="display:block !important;height:20px !important;line-height:20px !important;margin:2px 0 !important;padding:0 !important;white-space:nowrap !important;"><b>VS</b></div>
+<div class="team-line" style="display:block !important;height:auto !important;min-height:20px !important;line-height:1.25 !important;margin:0 !important;padding:2px 0 !important;white-space:normal !important;overflow:visible !important;overflow-wrap:anywhere !important;word-break:break-word !important;box-sizing:border-box !important;">${nomeOspite}</div>
+</td>
+<td class="db-cell">
+<input value="${risultatoCasa}" oninput="updateRes('${tag}',${i},0,this.value)">
+<input value="${risultatoOspite}" oninput="updateRes('${tag}',${i},1,this.value)">
+</td>
+</tr>
+`;
+        });
+
+        box.innerHTML = rows;
+    });
+
+    let style = document.getElementById("fixGironiDefinitivo");
+
+    if(!style){
+        style = document.createElement("style");
+        style.id = "fixGironiDefinitivo";
+        document.head.appendChild(style);
+    }
+
+    style.textContent = `
+        #Arows tr,#Brows tr,#Crows tr,#Drows tr,#Erows tr,#Frows tr,#Grows tr{height:auto !important;}
+        #Arows td,#Brows td,#Crows td,#Drows td,#Erows td,#Frows td,#Grows td{height:auto !important;vertical-align:middle !important;}
+        .match-cell{height:auto !important;min-height:100px !important;overflow:visible !important;white-space:normal !important;}
+        .match-cell .team-line{display:block !important;height:auto !important;min-height:20px !important;line-height:1.25 !important;white-space:normal !important;overflow:visible !important;overflow-wrap:anywhere !important;word-break:break-word !important;box-sizing:border-box !important;}
+        .match-cell .vs-line{display:block !important;height:20px !important;line-height:20px !important;white-space:nowrap !important;}
+    `;
+
+    if(typeof renderClass === "function")
+        renderClass();
+}
+'''
+
+          pattern_tables = re.compile(
+              r'function renderTables\(\)\s*\{.*?\n\}\s*\n\s*function getFinalQualified\(\)',
+              re.S
+          )
+          m = pattern_tables.search(text)
+          if not m:
+              raise SystemExit('Blocco renderTables non trovato')
+
+          text = text[:m.start()] + render_tables + '\n\nfunction getFinalQualified()' + text[m.end():]
+
+          render_class = r'''function renderClass(){
+
+    ensureRules();
+
+    function cognomeClassifica(valore){
+
+        if(valore === null || valore === undefined)
+            return "";
+
+        if(typeof valore === "object"){
+
+            if(valore.cognome !== undefined && valore.cognome !== null){
+                const c = String(valore.cognome).trim();
+                if(c) return c;
+            }
+
+            const g1 = valore.giocatore1 || valore.g1 || valore.player1 || null;
+            const g2 = valore.giocatore2 || valore.g2 || valore.player2 || null;
+
+            const c1 = cognomeClassifica(g1);
+            const c2 = cognomeClassifica(g2);
+
+            if(c1 && c2) return c1 + " / " + c2;
+            return c1 || c2 || "";
+        }
+
+        const testo = String(valore)
+            .replace(/\t/g," ")
+            .replace(/\s+/g," ")
+            .trim();
+
+        if(!testo) return "";
+
+        return testo
+            .split("/")
+            .map(parte => {
+                const p = parte.trim().split(/\s+/).filter(Boolean);
+                return p.length ? p[p.length - 1] : "";
+            })
+            .filter(Boolean)
+            .join(" / ");
+    }
+
+    ["A","B","C","D","E","F","G"].forEach(tag => {
+
+        const tbody = document.getElementById(tag + "class");
+        if(!tbody) return;
+
+        tbody.innerHTML = "";
+
+        const squadre = Array.isArray(state[tag]) ? state[tag] : [];
+        if(squadre.length === 0) return;
+
+        const risultati = Array.isArray(state[tag + "res"])
+            ? state[tag + "res"]
+            : [];
+
+        const classifica = calc(squadre, risultati);
+        if(!Array.isArray(classifica) || classifica.length === 0) return;
+
+        classifica.forEach((x, indice) => {
+
+            const tr = document.createElement("tr");
+
+            const tdPos = document.createElement("td");
+            tdPos.textContent = String(indice + 1);
+
+            const tdNome = document.createElement("td");
+            tdNome.textContent = cognomeClassifica(x?.n ?? "");
+
+            const tdFreccia = document.createElement("td");
+            tdFreccia.style.width = "24px";
+            tdFreccia.style.textAlign = "center";
+            tdFreccia.style.fontWeight = "700";
+            tdFreccia.style.fontSize = "18px";
+
+            if(x?.qual){
+                tdFreccia.textContent = "↑";
+                tdFreccia.style.color = "#22c55e";
+            }
+            else{
+                tdFreccia.textContent = "↓";
+                tdFreccia.style.color = "#ef4444";
+            }
+
+            const tdPt = document.createElement("td");
+            tdPt.textContent = String(Number(x?.pt) || 0);
+
+            const tdGf = document.createElement("td");
+            tdGf.textContent = String(Number(x?.gf) || 0);
+
+            const tdGs = document.createElement("td");
+            tdGs.textContent = String(Number(x?.gs) || 0);
+
+            const tdDf = document.createElement("td");
+            tdDf.textContent = String(Number(x?.df) || 0);
+
+            tr.appendChild(tdPos);
+            tr.appendChild(tdNome);
+            tr.appendChild(tdFreccia);
+            tr.appendChild(tdPt);
+            tr.appendChild(tdGf);
+            tr.appendChild(tdGs);
+            tr.appendChild(tdDf);
+
+            tbody.appendChild(tr);
+        });
+    });
+}
+'''
+
+          pattern_class = re.compile(
+              r'function renderClass\(\)\s*\{.*?\n\}\s*\n\s*function updateKOResult\(',
+              re.S
+          )
+          mc = pattern_class.search(text)
+          if not mc:
+              raise SystemExit('Blocco renderClass non trovato')
+
+          text = text[:mc.start()] + render_class + '\n\nfunction updateKOResult(' + text[mc.end():]
+
+          p.write_text(text, encoding='utf-8')
+          print('PATCH APPLICATA: gironi e classifiche mostrano solo i cognomi; helper temporanei rimossi')
 
       - name: JavaScript syntax test
         shell: python
@@ -69,6 +532,7 @@ jobs:
               'function loadState()',
               'function initDefaults()',
               'function renderTables()',
+              'function renderClass()',
               'function updateCamp(',
               'function updateRes(',
               'function toggleAdminMenu()',
@@ -83,6 +547,15 @@ jobs:
           missing = [x for x in required if x not in text]
           if missing:
               raise SystemExit('Elementi mancanti: ' + ', '.join(missing))
+
+          if 'function soloCognome(' in text or 'function normalizzaCognomiGironi(' in text:
+              raise SystemExit('Helper temporanei di cognome ancora presenti')
+
+          if text.count('function renderTables()') != 1:
+              raise SystemExit('renderTables duplicata/assente')
+
+          if text.count('function renderClass()') != 1:
+              raise SystemExit('renderClass duplicata/assente')
 
           for ident in ['teamModal', 'adminMenuButton', 'adminMenu']:
               n = len(re.findall(r'id=["\']' + re.escape(ident) + r'["\']', text))
@@ -104,5 +577,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Fix Bove tournament loading and validate'
+          git commit -m 'Fix surname-only tournament display and clean helpers'
           git push
