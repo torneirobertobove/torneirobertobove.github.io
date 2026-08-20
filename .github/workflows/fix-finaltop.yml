@@ -1,0 +1,73 @@
+name: Fix finalTop structure
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix renderKO finalTop structure
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("Bove.html")
+          text = path.read_text(encoding="utf-8")
+
+          pattern = re.compile(
+              r'if\(finalisti\.length === 2\)\{\s*'
+              r'state\.finalTop\s*=\s*\[\.\.\.finalisti\];\s*'
+              r'\}',
+              re.S
+          )
+
+          replacement = '''if(finalisti.length === 2){
+
+              state.finalTop = [
+                  [
+                      finalisti[0],
+                      finalisti[1]
+                  ]
+              ];
+
+          }'''
+
+          text, count = pattern.subn(replacement, text, count=1)
+
+          if count != 1:
+              raise SystemExit(
+                  f"ERRORE: blocco renderKO finalTop trovato {count} volte; modifica annullata"
+              )
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Validate change
+        run: |
+          grep -n -A10 -B2 'if(finalisti.length === 2)' Bove.html
+          git diff --check
+          git diff -- Bove.html
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/fix-finaltop.yml
+          git add Bove.html .github/workflows/fix-finaltop.yml
+          git commit -m "Fix finalTop structure in renderKO"
+          git push
+
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST repos/${{ github.repository }}/pages/builds
