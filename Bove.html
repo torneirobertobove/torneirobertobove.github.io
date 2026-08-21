@@ -9013,260 +9013,696 @@ function ensureClassificaStyle(){
 
 function renderClass(){
 
-    ensureRules();
+ensureRules();
+
+const gironi = [
+"A",
+"B",
+"C",
+"D",
+"E",
+"F",
+"G"
+];
+
+gironi.forEach(tag => {
+
+const tbody =
+document.getElementById(
+tag + "class"
+);
+
+if(!tbody)
+return;
+
+tbody.innerHTML = "";
+
+const squadre =
+Array.isArray(state[tag])
+? state[tag]
+: [];
 
-    ensureClassificaStyle();
+if(squadre.length === 0)
+return;
 
+const risultati =
+Array.isArray(state[tag + "res"])
+? state[tag + "res"]
+: [];
 
-    const gironi = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
-    ];
+const classifica =
+calc(
+squadre,
+risultati
+);
 
+if(
+!Array.isArray(classifica) ||
+classifica.length === 0
+){
+return;
+}
+
+classifica.forEach((x, indice) => {
 
-    gironi.forEach(
-        tag => {
+const tr =
+document.createElement("tr");
 
-            const tbody =
-                document.getElementById(
-                    tag + "class"
-                );
+/*
+========================================================
+POSIZIONE
+========================================================
+*/
 
-            if(!tbody){
-                return;
-            }
+const tdPos =
+document.createElement("td");
 
-            tbody.innerHTML =
-                "";
+tdPos.textContent =
+String(indice + 1);
 
+/*
+========================================================
+NOME — SOLO COGNOME
+========================================================
+*/
 
-            const tabella =
-                tbody.closest(
-                    "table"
-                );
+const tdNome =
+document.createElement("td");
 
-            if(tabella){
+let cognome = "";
 
-                tabella.style.width =
-                    "100%";
+/*
+x.n può contenere:
+"Nome Cognome"
+oppure il nome completo della coppia.
+*/
 
-                tabella.style.minWidth =
-                    "0";
+if(
+x &&
+x.cognome !== undefined &&
+x.cognome !== null
+){
 
-                tabella.style.maxWidth =
-                    "100%";
+cognome =
+String(x.cognome).trim();
 
-                tabella.style.tableLayout =
-                    "fixed";
+}
 
-                tabella.style.borderCollapse =
-                    "collapse";
+/*
+Se calc() restituisce soltanto x.n,
+recuperiamo il cognome dalla squadra originale.
+*/
 
-            }
+if(!cognome){
 
+const squadra =
+squadre[indice];
 
-            const squadre =
-                Array.isArray(
-                    state[tag]
-                )
-                    ? state[tag]
-                    : [];
+if(
+squadra &&
+Array.isArray(squadra)
+){
 
+const giocatore =
+squadra[0];
 
-            if(
-                squadre.length === 0
-            ){
-                return;
-            }
+if(
+giocatore &&
+typeof giocatore === "object" &&
+giocatore.cognome
+){
 
+cognome =
+String(
+giocatore.cognome
+).trim();
 
-            const risultati =
-                Array.isArray(
-                    state[tag + "res"]
-                )
-                    ? state[tag + "res"]
-                    : [];
+}
 
+}
 
-            const classifica =
-                calc(
-                    squadre,
-                    risultati
-                );
+}
 
+/*
+Fallback:
+estraiamo l'ultima parola da x.n.
+*/
 
-            if(
-                !Array.isArray(
-                    classifica
-                ) ||
-                classifica.length === 0
-            ){
-                return;
-            }
+if(!cognome){
 
+const testo =
+x?.n != null
+? String(x.n).trim()
+: "";
 
-            classifica.forEach(
-                (x,indice) => {
+const parti =
+testo.split(/\s+/);
 
-                    const tr =
-                        document.createElement(
-                            "tr"
-                        );
+cognome =
+parti.length > 0
+? parti[parti.length - 1]
+: "";
 
+}
 
-                    const tdPos =
-                        document.createElement(
-                            "td"
-                        );
+tdNome.textContent =
+cognome;
 
-                    tdPos.textContent =
-                        String(
-                            indice + 1
-                        );
+/*
+========================================================
+FRECCIA CLASSIFICA
+========================================================
+*/
 
+const tdFreccia =
+document.createElement("td");
 
-                    const tdNome =
-                        document.createElement(
-                            "td"
-                        );
+tdFreccia.style.width =
+"24px";
 
-                    tdNome.textContent =
-                        String(
-                            x.cognome ||
-                            x.n ||
-                            ""
-                        ).trim();
+tdFreccia.style.textAlign =
+"center";
 
+tdFreccia.style.fontWeight =
+"700";
 
-                    const tdFreccia =
-                        document.createElement(
-                            "td"
-                        );
+if(x?.qual){
 
-                    tdFreccia.style.fontWeight =
-                        "700";
+tdFreccia.textContent =
+"↑";
 
-                    tdFreccia.style.textAlign =
-                        "center";
+tdFreccia.style.color =
+"#22c55e";
 
+}else{
 
-                    if(x.qual){
+tdFreccia.textContent =
+"↓";
 
-                        tdFreccia.textContent =
-                            "↑";
+tdFreccia.style.color =
+"#ef4444";
 
-                        tdFreccia.style.color =
-                            "#22c55e";
+}
 
-                        tdFreccia.title =
-                            "Qualificata";
+/*
+========================================================
+PUNTI
+========================================================
+*/
 
-                    }
-                    else{
+const tdPt =
+document.createElement("td");
 
-                        tdFreccia.textContent =
-                            "↓";
+tdPt.textContent =
+String(
+Number(x?.pt) || 0
+);
 
-                        tdFreccia.style.color =
-                            "#ef4444";
+/*
+========================================================
+GF
+========================================================
+*/
 
-                        tdFreccia.title =
-                            "Non qualificata";
+const tdGf =
+document.createElement("td");
 
-                    }
+tdGf.textContent =
+String(
+Number(x?.gf) || 0
+);
 
+/*
+========================================================
+GS
+========================================================
+*/
 
-                    const tdPt =
-                        document.createElement(
-                            "td"
-                        );
+const tdGs =
+document.createElement("td");
 
-                    tdPt.textContent =
-                        String(
-                            Number(
-                                x.pt
-                            ) || 0
-                        );
+tdGs.textContent =
+String(
+Number(x?.gs) || 0
+);
 
+/*
+========================================================
+DIFFERENZA RETI
+========================================================
+*/
 
-                    const tdGf =
-                        document.createElement(
-                            "td"
-                        );
+const tdDf =
+document.createElement("td");
 
-                    tdGf.textContent =
-                        String(
-                            Number(
-                                x.gf
-                            ) || 0
-                        );
+tdDf.textContent =
+String(
+Number(x?.df) || 0
+);
 
+/*
+========================================================
+APPEND
+========================================================
+*/
 
-                    const tdGs =
-                        document.createElement(
-                            "td"
-                        );
+tr.appendChild(tdPos);
+tr.appendChild(tdNome);
+tr.appendChild(tdFreccia);
+tr.appendChild(tdPt);
+tr.appendChild(tdGf);
+tr.appendChild(tdGs);
+tr.appendChild(tdDf);
 
-                    tdGs.textContent =
-                        String(
-                            Number(
-                                x.gs
-                            ) || 0
-                        );
+tbody.appendChild(tr);
 
+});
 
-                    const tdDf =
-                        document.createElement(
-                            "td"
-                        );
+});
 
-                    const differenza =
-                        Number(
-                            x.df
-                        ) || 0;
+console.log(
+"RENDERCLASS COMPLETA — CLASSIFICA A:",
+document.getElementById("Aclass")?.innerText || ""
+);
 
-                    tdDf.textContent =
-                        differenza > 0
-                            ? "+" + differenza
-                            : String(differenza);
+console.log(
+"RENDERCLASS COMPLETA — CLASSIFICA B:",
+document.getElementById("Bclass")?.innerText || ""
+);
 
-                    tdDf.style.fontWeight =
-                        "700";
+}
 
-                    if(differenza > 0){
+function updateKOResult(type, index, valore){
 
-                        tdDf.style.color =
-                            "#22c55e";
+/*
+==================================================
+1. REGOLE
+==================================================
+*/
 
-                    }
-                    else if(differenza < 0){
+if(typeof ensureRules === "function"){
+ensureRules();
+}
 
-                        tdDf.style.color =
-                            "#ef4444";
 
-                    }
+/*
+==================================================
+2. VALIDAZIONE TIPO
+==================================================
+*/
 
+index = Number(index);
 
-                    tr.appendChild(tdPos);
-                    tr.appendChild(tdNome);
-                    tr.appendChild(tdFreccia);
-                    tr.appendChild(tdPt);
-                    tr.appendChild(tdGf);
-                    tr.appendChild(tdGs);
-                    tr.appendChild(tdDf);
+if(
+!Number.isInteger(index) ||
+index < 0
+){
+return;
+}
 
-                    tbody.appendChild(tr);
+if(
+type !== "Q" &&
+type !== "S" &&
+type !== "F"
+){
+return;
+}
 
-                }
-            );
 
-        }
-    );
+/*
+==================================================
+3. NORMALIZZAZIONE RISULTATO
+==================================================
+*/
+
+valore =
+String(
+valore ?? "-"
+).trim();
+
+if(!valore){
+valore = "-";
+}
+
+
+/*
+==================================================
+4. QUARTI
+==================================================
+*/
+
+if(type === "Q"){
+
+if(!Array.isArray(state.qRes)){
+state.qRes =
+Array(4).fill("-");
+}
+
+if(index >= state.qRes.length){
+return;
+}
+
+state.qRes[index] = valore;
+
+
+/*
+==================================================
+5. CONTROLLO QUARTI COMPLETI
+==================================================
+*/
+
+const quartiCompleti =
+Array.isArray(state.quarti) &&
+state.quarti.length === 4 &&
+Array.isArray(state.qRes) &&
+state.qRes.length === 4 &&
+state.qRes.every(
+r =>
+String(r ?? "-").trim() !== "" &&
+String(r ?? "-").trim() !== "-"
+);
+
+
+/*
+==================================================
+6. COSTRUZIONE SEMIFINALI
+==================================================
+*/
+
+if(quartiCompleti){
+
+const vincitori = [];
+
+for(let i = 0; i < 4; i++){
+
+const match =
+state.quarti[i];
+
+const risultato =
+state.qRes[i];
+
+if(
+!Array.isArray(match) ||
+match.length < 2
+){
+return;
+}
+
+const vincitore =
+getWinner(
+match,
+risultato
+);
+
+if(
+vincitore === null ||
+vincitore === undefined ||
+String(vincitore).trim() === ""
+){
+return;
+}
+
+vincitori.push(vincitore);
+}
+
+
+/*
+==================================================
+7. CREAZIONE SEMIFINALI
+==================================================
+*/
+
+state.semiTop = [
+
+[
+vincitori[0],
+vincitori[1]
+],
+
+[
+vincitori[2],
+vincitori[3]
+]
+
+];
+
+
+/*
+==================================================
+8. INIZIALIZZAZIONE RISULTATI SEMIFINALI
+==================================================
+*/
+
+if(
+!Array.isArray(state.sTopRes) ||
+state.sTopRes.length !== 2
+){
+
+state.sTopRes =
+Array(2).fill("-");
+
+}
+
+
+/*
+==================================================
+9. RESET FINALE
+==================================================
+*/
+
+state.finalTop = [];
+
+state.fTopRes = "-";
+
+}
+
+}
+
+
+/*
+==================================================
+10. SEMIFINALI
+==================================================
+*/
+
+else if(type === "S"){
+
+if(!Array.isArray(state.sTopRes)){
+state.sTopRes =
+Array(2).fill("-");
+}
+
+if(index >= state.sTopRes.length){
+return;
+}
+
+state.sTopRes[index] = valore;
+
+
+/*
+==================================================
+11. CONTROLLO SEMIFINALI COMPLETE
+==================================================
+*/
+
+const semifinaliComplete =
+Array.isArray(state.semiTop) &&
+state.semiTop.length === 2 &&
+Array.isArray(state.sTopRes) &&
+state.sTopRes.length === 2 &&
+state.sTopRes.every(
+r =>
+String(r ?? "-").trim() !== "" &&
+String(r ?? "-").trim() !== "-"
+);
+
+
+/*
+==================================================
+12. COSTRUZIONE FINALE
+==================================================
+*/
+
+if(semifinaliComplete){
+
+const vincitoriSemi = [];
+
+for(let i = 0; i < 2; i++){
+
+const match =
+state.semiTop[i];
+
+const risultato =
+state.sTopRes[i];
+
+if(
+!Array.isArray(match) ||
+match.length < 2
+){
+return;
+}
+
+const vincitore =
+getWinner(
+match,
+risultato
+);
+
+if(
+vincitore === null ||
+vincitore === undefined ||
+String(vincitore).trim() === ""
+){
+return;
+}
+
+vincitoriSemi.push(vincitore);
+}
+
+
+/*
+==================================================
+13. FINALE
+STRUTTURA CORRETTA:
+
+[
+[
+squadra1,
+squadra2
+]
+]
+==================================================
+*/
+
+state.finalTop = [
+[
+vincitoriSemi[0],
+vincitoriSemi[1]
+]
+];
+
+state.fTopRes = "-";
+
+}
+
+}
+
+
+/*
+==================================================
+14. FINALE
+==================================================
+*/
+
+else if(type === "F"){
+
+state.fTopRes = valore;
+
+}
+
+
+/*
+==================================================
+15. RENDER
+==================================================
+*/
+
+if(typeof renderKO === "function"){
+renderKO();
+}
+
+
+/*
+==================================================
+16. RIPRISTINO STRUTTURA FINALE
+==================================================
+
+renderKO() nella versione attuale di Bove.html
+riscrive finalTop come:
+
+[squadra1, squadra2]
+
+La struttura corretta dello stato è invece:
+
+[[squadra1, squadra2]]
+
+Ricostruiamo quindi finalTop dopo il render
+quando le semifinali sono concluse.
+==================================================
+*/
+
+if(
+type === "S" &&
+Array.isArray(state.sTopRes) &&
+state.sTopRes.length === 2 &&
+state.sTopRes.every(
+r =>
+String(r ?? "-").trim() !== "" &&
+String(r ?? "-").trim() !== "-"
+) &&
+Array.isArray(state.semiTop) &&
+state.semiTop.length === 2
+){
+
+const vincitoriFinale = [];
+
+for(let i = 0; i < 2; i++){
+
+const match =
+state.semiTop[i];
+
+const risultato =
+state.sTopRes[i];
+
+if(
+!Array.isArray(match) ||
+match.length < 2
+){
+continue;
+}
+
+const vincitore =
+getWinner(
+match,
+risultato
+);
+
+if(
+vincitore !== null &&
+vincitore !== undefined &&
+String(vincitore).trim() !== ""
+){
+
+vincitoriFinale.push(vincitore);
+
+}
+
+}
+
+
+if(vincitoriFinale.length === 2){
+
+state.finalTop = [
+[
+vincitoriFinale[0],
+vincitoriFinale[1]
+]
+];
+
+}
+
+}
+
+
+/*
+==================================================
+17. SINCRONIZZAZIONE
+==================================================
+*/
+
+if(typeof updateAndSync === "function"){
+updateAndSync();
+}
 
 }
 
