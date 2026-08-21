@@ -5540,23 +5540,19 @@ async function loadState(){
                 window.location.search
             );
 
-
         const idParam =
             params.get("idTorneo");
-
 
         const torneoParam =
             params.get("torneo");
 
-
-        let configurazione=null;
-
+        let configurazione = null;
 
 
         /*
-            ============================
-            CARICAMENTO DA URL ADMIN
-            ============================
+        ==========================================
+        TORNEO DA URL
+        ==========================================
         */
 
         if(torneoParam){
@@ -5577,11 +5573,7 @@ async function loadState(){
                 );
 
 
-                /*
-                    CARICAMENTO STATO PRINCIPALE
-                */
-
-                state={
+                state = {
 
                     ...state,
 
@@ -5591,9 +5583,15 @@ async function loadState(){
 
                         ...state.rules,
 
-                        ...(configurazione.rules||{}),
+                        ...(
+                            configurazione
+                            .configurazione
+                            ?.rules || {}
+                        ),
 
-                        ...(configurazione.configurazione?.rules||{})
+                        ...(
+                            configurazione.rules || {}
+                        )
 
                     }
 
@@ -5601,33 +5599,9 @@ async function loadState(){
 
 
                 /*
-                    COPPIE
-                */
-
-                if(
-                    Array.isArray(
-                        configurazione.coppie
-                    )
-                ){
-
-                    state.coppie =
-                        configurazione.coppie;
-
-                }
-                else if(
-                    Array.isArray(
-                        configurazione.configurazione?.coppie
-                    )
-                ){
-
-                    state.coppie =
-                        configurazione.configurazione.coppie;
-
-                }
-
-
-                /*
-                    PARTECIPANTI
+                ==========================================
+                PARTECIPANTI
+                ==========================================
                 */
 
                 if(
@@ -5640,16 +5614,78 @@ async function loadState(){
                         configurazione.partecipanti;
 
                 }
-                else if(
+                else{
+
+                    state.partecipanti = [];
+
+                }
+
+
+                /*
+                ==========================================
+                COPPIE
+                ==========================================
+                */
+
+                if(
                     Array.isArray(
-                        configurazione.configurazione?.partecipanti
+                        configurazione.coppie
                     )
                 ){
 
-                    state.partecipanti =
-                        configurazione.configurazione.partecipanti;
+                    state.coppie =
+                        configurazione.coppie;
 
                 }
+                else{
+
+                    state.coppie = [];
+
+                }
+
+
+                /*
+                ==========================================
+                CONFIGURAZIONE INTERNA
+                ==========================================
+                */
+
+                if(
+                    configurazione.configurazione
+                ){
+
+                    const cfg =
+                        configurazione.configurazione;
+
+
+                    if(
+                        Array.isArray(
+                            cfg.partecipanti
+                        )
+                    ){
+
+                        state.partecipanti =
+                            cfg.partecipanti;
+
+                    }
+
+
+                    if(
+                        Array.isArray(
+                            cfg.coppie
+                        )
+                    ){
+
+                        state.coppie =
+                            cfg.coppie;
+
+                    }
+
+                }
+
+
+                generaPartiteGironi();
+
 
             }
             catch(err){
@@ -5666,20 +5702,20 @@ async function loadState(){
 
 
         /*
-            ============================
-            CARICAMENTO DA SUPABASE
-            ============================
+        ==========================================
+        TORNEO DA SUPABASE
+        ==========================================
         */
 
         if(
             idParam &&
-            typeof sb!=="undefined"
+            typeof sb !== "undefined"
         ){
 
             try{
 
                 const {
-                    data:torneo,
+                    data: torneo,
                     error
                 } =
                     await sb
@@ -5705,20 +5741,18 @@ async function loadState(){
                 if(torneo){
 
                     configurazione =
-                        torneo.configurazione
-                        ||
-                        {};
+                        torneo.configurazione || {};
 
 
                     /*
-                        STATO PRINCIPALE
+                    ==========================================
+                    DATI PRINCIPALI TORNEO
+                    ==========================================
                     */
 
-                    state={
+                    state = {
 
                         ...state,
-
-                        ...configurazione,
 
                         idTorneo:
                             torneo.id,
@@ -5726,16 +5760,12 @@ async function loadState(){
                         nomeTorneo:
                             torneo.nome
                             ||
-                            configurazione.nomeTorneo
-                            ||
                             state.nomeTorneo
                             ||
                             "",
 
                         dataTorneo:
                             torneo.data
-                            ||
-                            configurazione.dataTorneo
                             ||
                             state.dataTorneo
                             ||
@@ -5745,9 +5775,10 @@ async function loadState(){
 
                             ...state.rules,
 
-                            ...(configurazione.rules||{}),
-
-                            ...(configurazione.configurazione?.rules||{})
+                            ...(
+                                configurazione.rules
+                                || {}
+                            )
 
                         }
 
@@ -5755,33 +5786,9 @@ async function loadState(){
 
 
                     /*
-                        COPPIE
-                    */
-
-                    if(
-                        Array.isArray(
-                            configurazione.coppie
-                        )
-                    ){
-
-                        state.coppie =
-                            configurazione.coppie;
-
-                    }
-                    else if(
-                        Array.isArray(
-                            configurazione.configurazione?.coppie
-                        )
-                    ){
-
-                        state.coppie =
-                            configurazione.configurazione.coppie;
-
-                    }
-
-
-                    /*
-                        PARTECIPANTI
+                    ==========================================
+                    PARTECIPANTI DA CONFIGURAZIONE
+                    ==========================================
                     */
 
                     if(
@@ -5794,18 +5801,82 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
-                    else if(
+
+
+                    /*
+                    ==========================================
+                    COPPIE DA CONFIGURAZIONE
+                    ==========================================
+                    */
+
+                    if(
                         Array.isArray(
-                            configurazione.configurazione?.partecipanti
+                            configurazione.coppie
                         )
                     ){
 
-                        state.partecipanti =
-                            configurazione.configurazione.partecipanti;
+                        state.coppie =
+                            configurazione.coppie;
+
+                    }
+
+
+                    /*
+                    ==========================================
+                    CONFIGURAZIONE NIDIFICATA
+                    ==========================================
+                    */
+
+                    if(
+                        configurazione.configurazione
+                    ){
+
+                        const cfg =
+                            configurazione.configurazione;
+
+
+                        if(
+                            cfg.rules
+                        ){
+
+                            state.rules = {
+
+                                ...state.rules,
+
+                                ...cfg.rules
+
+                            };
+
+                        }
+
+
+                        if(
+                            Array.isArray(
+                                cfg.partecipanti
+                            )
+                        ){
+
+                            state.partecipanti =
+                                cfg.partecipanti;
+
+                        }
+
+
+                        if(
+                            Array.isArray(
+                                cfg.coppie
+                            )
+                        ){
+
+                            state.coppie =
+                                cfg.coppie;
+
+                        }
 
                     }
 
                 }
+
 
             }
             catch(err){
@@ -5822,14 +5893,14 @@ async function loadState(){
 
 
         /*
-            ============================
-            RECUPERO ARRAY TORNEO
-            ============================
+        ==========================================
+        RECUPERO ARRAY DELLA CONFIGURAZIONE
+        ==========================================
         */
 
         if(configurazione){
 
-            const arrayDaRecuperare=[
+            const arrayDaRecuperare = [
 
                 "A",
                 "B",
@@ -5866,36 +5937,33 @@ async function loadState(){
                 "qRes",
                 "sTopRes",
                 "fTopRes",
-                "finalTop",
-
-                "qCamp",
-                "qTime",
-                "sCamp",
-                "sTime",
-                "fCamp",
-                "fTime"
+                "finalTop"
 
             ];
 
 
-            arrayDaRecuperare.forEach(k=>{
+            arrayDaRecuperare.forEach(
+                k=>{
 
-                if(
-                    Array.isArray(
-                        configurazione[k]
-                    )
-                ){
+                    if(
+                        Array.isArray(
+                            configurazione[k]
+                        )
+                    ){
 
-                    state[k] =
-                        configurazione[k];
+                        state[k] =
+                            configurazione[k];
+
+                    }
 
                 }
-
-            });
+            );
 
 
             /*
-                CONFIGURAZIONE ANNIDATA
+            ==========================================
+            CONFIGURAZIONE INTERNA
+            ==========================================
             */
 
             if(
@@ -5908,25 +5976,13 @@ async function loadState(){
 
                 if(cfg.rules){
 
-                    state.rules={
+                    state.rules = {
 
                         ...state.rules,
 
                         ...cfg.rules
 
                     };
-
-                }
-
-
-                if(
-                    Array.isArray(
-                        cfg.coppie
-                    )
-                ){
-
-                    state.coppie =
-                        cfg.coppie;
 
                 }
 
@@ -5943,20 +5999,16 @@ async function loadState(){
                 }
 
 
-                arrayDaRecuperare.forEach(k=>{
+                if(
+                    Array.isArray(
+                        cfg.coppie
+                    )
+                ){
 
-                    if(
-                        Array.isArray(
-                            cfg[k]
-                        )
-                    ){
+                    state.coppie =
+                        cfg.coppie;
 
-                        state[k]=
-                            cfg[k];
-
-                    }
-
-                });
+                }
 
             }
 
@@ -5965,36 +6017,18 @@ async function loadState(){
 
 
         /*
-            ============================
-            NORMALIZZAZIONE REGOLAMENTO
-            ============================
-        */
-
-        if(
-            typeof ensureRules==="function"
-        ){
-
-            ensureRules();
-
-        }
-
-
-
-        /*
-            ============================
-            GIRONI
-            ============================
+        ==========================================
+        NORMALIZZAZIONE GIRONI
+        ==========================================
         */
 
         let numeroGironi =
             Number(
                 state.rules.numeroGironi
-            )
-            ||
-            2;
+            ) || 2;
 
 
-        let lettereGironi=[
+        let lettereGironi = [
 
             "A",
             "B",
@@ -6010,7 +6044,9 @@ async function loadState(){
         lettereGironi.forEach(
             (g,index)=>{
 
-                if(index<numeroGironi){
+                if(
+                    index < numeroGironi
+                ){
 
                     if(
                         !Array.isArray(
@@ -6035,15 +6071,17 @@ async function loadState(){
 
 
         /*
-            ============================
-            GENERAZIONE GIRONI DA COPPIE
-            SOLO SE I GIRONI SONO VUOTI
-            ============================
+        ==========================================
+        GENERAZIONE GIRONI DA COPPIE
+        ==========================================
         */
 
         if(
-            Array.isArray(state.coppie) &&
-            state.coppie.length>0
+            Array.isArray(
+                state.coppie
+            )
+            &&
+            state.coppie.length > 0
         ){
 
             let vuoti=true;
@@ -6054,8 +6092,8 @@ async function loadState(){
             ){
 
                 if(
-                    Array.isArray(state[g]) &&
-                    state[g].length>0
+                    state[g] &&
+                    state[g].length > 0
                 ){
 
                     vuoti=false;
@@ -6071,17 +6109,18 @@ async function loadState(){
 
                 let perGirone =
                     Number(
-                        state.rules.squadrePerGirone
-                    )
-                    ||
-                    4;
+                        state.rules
+                        .squadrePerGirone
+                    ) || 4;
 
 
-                lettereGironi.forEach(g=>{
+                lettereGironi.forEach(
+                    g=>{
 
-                    state[g]=[];
+                        state[g]=[];
 
-                });
+                    }
+                );
 
 
                 state.coppie.forEach(
@@ -6089,20 +6128,22 @@ async function loadState(){
 
                         let indice =
                             Math.floor(
-                                i/perGirone
+                                i / perGirone
                             );
 
 
                         if(
-                            indice<
-                            numeroGironi &&
                             state[
-                                lettereGironi[indice]
+                                lettereGironi[
+                                    indice
+                                ]
                             ]
                         ){
 
                             state[
-                                lettereGironi[indice]
+                                lettereGironi[
+                                    indice
+                                ]
                             ].push(c);
 
                         }
@@ -6116,10 +6157,7 @@ async function loadState(){
                     state.A,
                     state.B,
                     state.C,
-                    state.D,
-                    state.E,
-                    state.F,
-                    state.G
+                    state.D
                 );
 
             }
@@ -6129,10 +6167,25 @@ async function loadState(){
 
 
         /*
-            ============================
-            CARICAMENTO LOCALE
-            SOLO SENZA PARAMETRI
-            ============================
+        ==========================================
+        REGOLE
+        ==========================================
+        */
+
+        if(
+            typeof ensureRules === "function"
+        ){
+
+            ensureRules();
+
+        }
+
+
+
+        /*
+        ==========================================
+        STATO LOCALE
+        ==========================================
         */
 
         if(
@@ -6166,25 +6219,11 @@ async function loadState(){
 
                             ...state.rules,
 
-                            ...(salvato.rules||{})
+                            ...(salvato.rules || {})
 
                         }
 
                     };
-
-
-                    /*
-                        NORMALIZZA NUOVAMENTE
-                        DOPO IL CARICAMENTO LOCALE
-                    */
-
-                    if(
-                        typeof ensureRules==="function"
-                    ){
-
-                        ensureRules();
-
-                    }
 
                 }
                 catch(err){
@@ -6203,9 +6242,9 @@ async function loadState(){
 
 
         /*
-            ============================
-            LOG FINALE
-            ============================
+        ==========================================
+        LOG CARICAMENTO
+        ==========================================
         */
 
         console.log(
@@ -6223,17 +6262,18 @@ async function loadState(){
         );
 
 
-
         /*
-            ============================
-            SALVATAGGIO LOCALE
-            SOLO CON COPPIE PRESENTI
-            ============================
+        ==========================================
+        SALVATAGGIO LOCALE
+        ==========================================
         */
 
         if(
-            Array.isArray(state.coppie) &&
-            state.coppie.length>0
+            state.coppie &&
+            Array.isArray(
+                state.coppie
+            ) &&
+            state.coppie.length > 0
         ){
 
             localStorage.setItem(
@@ -6249,13 +6289,13 @@ async function loadState(){
 
 
         /*
-            ============================
-            RENDER
-            ============================
+        ==========================================
+        RENDER
+        ==========================================
         */
 
         if(
-            typeof render==="function"
+            typeof render === "function"
         ){
 
             try{
@@ -6277,9 +6317,9 @@ async function loadState(){
 
 
         /*
-            ============================
-            APERTURA REGOLAMENTO
-            ============================
+        ==========================================
+        APERTURA REGOLE
+        ==========================================
         */
 
         const apriRegole =
@@ -6289,26 +6329,30 @@ async function loadState(){
 
 
         if(
-            apriRegole==="true"
+            apriRegole === "true"
         ){
 
-            setTimeout(()=>{
+            setTimeout(
+                ()=>{
 
-                if(
-                    typeof openRules==="function"
-                ){
+                    if(
+                        typeof openRules ===
+                        "function"
+                    ){
 
-                    openRules();
+                        openRules();
 
-                }
+                    }
 
-            },300);
+                },
+                300
+            );
 
         }
 
 
-
         return state;
+
 
     }
     catch(e){
