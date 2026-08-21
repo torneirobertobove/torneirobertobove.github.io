@@ -5532,8 +5532,6 @@ async function updateAndSync(){
 }
 
 
-
-
 async function loadState(){
 
     try{
@@ -5878,64 +5876,6 @@ async function loadState(){
 
                     }
 
-
-                    /*
-                    ==========================================
-                    ISCRITTI APPROVATI DA SUPABASE
-                    ==========================================
-                    */
-
-                    const {
-                        data: iscritti,
-                        error: erroreIscritti
-                    } =
-                        await sb
-                        .from("iscrizioni")
-                        .select("*")
-                        .eq(
-                            "torneo_id",
-                            Number(idParam)
-                        )
-                        .eq(
-                            "approvato",
-                            true
-                        );
-
-
-                    if(erroreIscritti){
-
-                        console.error(
-                            "Errore caricamento iscritti:",
-                            erroreIscritti
-                        );
-
-                    }
-                    else{
-
-                        state.iscritti =
-                            Array.isArray(iscritti)
-                            ?
-                            iscritti
-                            :
-                            [];
-
-                        /*
-                        ==========================================
-                        PARTECIPANTI DAGLI ISCRITTI APPROVATI
-                        ==========================================
-                        */
-
-                        if(
-                            state.iscritti.length > 0
-                        ){
-
-                            state.partecipanti =
-                                state.iscritti;
-
-                        }
-
-                    }
-
                 }
 
 
@@ -5946,6 +5886,69 @@ async function loadState(){
                     "Errore recupero torneo Supabase:",
                     err
                 );
+
+            }
+
+
+            /*
+            ==========================================
+            ISCRITTI APPROVATI
+            ==========================================
+            */
+
+            try{
+
+                const {
+                    data: iscritti,
+                    error: erroreIscritti
+                } =
+                    await sb
+                    .from("iscrizioni")
+                    .select("*")
+                    .eq(
+                        "torneo_id",
+                        Number(idParam)
+                    )
+                    .eq(
+                        "approvato",
+                        true
+                    );
+
+
+                if(erroreIscritti){
+
+                    console.error(
+                        "Errore caricamento iscritti:",
+                        erroreIscritti
+                    );
+
+                    state.iscritti = [];
+
+                }
+                else{
+
+                    state.iscritti =
+                        Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        state.iscritti
+                    );
+
+                }
+
+            }
+            catch(err){
+
+                console.error(
+                    "Errore recupero iscritti:",
+                    err
+                );
+
+                state.iscritti = [];
 
             }
 
@@ -6323,6 +6326,16 @@ async function loadState(){
         );
 
 
+        console.log(
+
+            "ISCRITTI APPROVATI:",
+
+            state.iscritti || []
+
+        );
+
+
+
         /*
         ==========================================
         SALVATAGGIO LOCALE
@@ -6429,6 +6442,8 @@ async function loadState(){
     }
 
 }
+
+
 
 
 
