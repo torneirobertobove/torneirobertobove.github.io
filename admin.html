@@ -2521,7 +2521,7 @@ function renderPartecipanti(){
 }
 
 
-function renderCoppie(){
+async function renderCoppie(){
 
     const box =
         document.getElementById(
@@ -2555,46 +2555,107 @@ function renderCoppie(){
 
 
     /*
-        RECUPERO PARTECIPANTI
-
-        Prima utilizziamo le iscrizioni appena caricate.
-
-        Se window.iscrizioniTorneo è vuoto,
-        recuperiamo direttamente i partecipanti
-        già salvati nella configurazione del torneo.
-
-        NON viene eseguita alcuna autenticazione.
-        NON viene eseguito alcun login.
-        NON viene eseguito alcun getUser().
-        NON viene effettuato alcun controllo admin.
+    ==========================================
+    RECUPERO ISCRITTI APPROVATI
+    ==========================================
     */
 
     let iscritti = [];
 
 
+    /*
+        PRIMA PROVIAMO GLI ISCRITTI GIÀ PRESENTI
+        NEL CONTENITORE CENTRALE
+    */
+
     if(
         Array.isArray(
             window.iscrizioniTorneo
-        ) &&
-        window.iscrizioniTorneo.length
+        )
+        &&
+        window.iscrizioniTorneo.length > 0
     ){
 
         iscritti =
             window.iscrizioniTorneo.filter(
                 g =>
                     g &&
-                    g.stato === "approvato"
+                    (
+                        g.stato === "approvato" ||
+                        g.approvato === true
+                    )
             );
 
     }
 
 
     /*
-        FALLBACK:
+    ==========================================
+    RECUPERO DIRETTO DA SUPABASE
+    ==========================================
+    */
 
-        se il contenitore temporaneo è vuoto,
-        utilizziamo i partecipanti salvati
-        nel torneo.
+    if(
+        !iscritti.length &&
+        typeof sb !== "undefined"
+    ){
+
+        try{
+
+            const {
+                data,
+                error
+            } =
+                await sb
+                    .from("iscrizioni")
+                    .select("*")
+                    .eq(
+                        "torneo_id",
+                        torneo.id
+                    );
+
+
+            if(error){
+
+                console.error(
+                    "Errore caricamento iscritti approvati:",
+                    error
+                );
+
+            }
+            else if(
+                Array.isArray(data)
+            ){
+
+                iscritti =
+                    data.filter(
+                        g =>
+                            g &&
+                            (
+                                g.stato === "approvato" ||
+                                g.approvato === true
+                            )
+                    );
+
+            }
+
+        }
+        catch(e){
+
+            console.error(
+                "Errore recupero iscritti Supabase:",
+                e
+            );
+
+        }
+
+    }
+
+
+    /*
+    ==========================================
+    FALLBACK DATI SALVATI NEL TORNEO
+    ==========================================
     */
 
     if(!iscritti.length){
@@ -2625,17 +2686,17 @@ function renderCoppie(){
                     )
             );
 
-
-        /*
-            Ripristiniamo anche il contenitore
-            centrale per evitare che una successiva
-            funzione di rendering perda i dati.
-        */
-
-        window.iscrizioniTorneo =
-            iscritti.slice();
-
     }
+
+
+    /*
+    ==========================================
+    MEMORIZZAZIONE CENTRALE
+    ==========================================
+    */
+
+    window.iscrizioniTorneo =
+        iscritti.slice();
 
 
     console.log(
@@ -2645,7 +2706,9 @@ function renderCoppie(){
 
 
     /*
-        INIZIALIZZAZIONE COPPIE
+    ==========================================
+    INIZIALIZZAZIONE COPPIE
+    ==========================================
     */
 
     if(!Array.isArray(torneo.coppie)){
@@ -2682,8 +2745,9 @@ function renderCoppie(){
 
 
     /*
-        IDENTIFICHIAMO I GIOCATORI
-        GIÀ ASSEGNATI A UNA COPPIA
+    ==========================================
+    GIOCATORI GIÀ ASSEGNATI
+    ==========================================
     */
 
     const giocatoriGiaUsati =
@@ -2727,7 +2791,9 @@ function renderCoppie(){
 
 
     /*
-        GIOCATORI ANCORA DISPONIBILI
+    ==========================================
+    GIOCATORI DISPONIBILI
+    ==========================================
     */
 
     const disponibili =
@@ -2740,6 +2806,12 @@ function renderCoppie(){
                 )
         );
 
+
+    /*
+    ==========================================
+    NOME GIOCATORE
+    ==========================================
+    */
 
     function nomeGiocatore(g){
 
@@ -2768,7 +2840,9 @@ function renderCoppie(){
 
 
     /*
-        RENDER PANNELLO CREAZIONE COPPIE
+    ==========================================
+    RENDER CREAZIONE COPPIE
+    ==========================================
     */
 
     box.innerHTML = `
@@ -2909,7 +2983,9 @@ function renderCoppie(){
 
 
     /*
-        LISTA COPPIE GIÀ CREATE
+    ==========================================
+    LISTA COPPIE CREATE
+    ==========================================
     */
 
     if(listaBox){
@@ -2974,7 +3050,9 @@ function renderCoppie(){
 
 
     /*
-        PULSANTE CREA COPPIA
+    ==========================================
+    PULSANTE CREA COPPIA
+    ==========================================
     */
 
     const btn =
@@ -3245,6 +3323,7 @@ function renderCoppie(){
     );
 
 }
+    
 
 
 function inviaWhatsAppTutti(){
