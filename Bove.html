@@ -6687,9 +6687,14 @@ function reset(){
 }
 function calc(squadre, risultati){
 
+    /*
+        ============================
+        VALIDAZIONE
+        ============================
+    */
+
     if(
-        !Array.isArray(squadre)
-        ||
+        !Array.isArray(squadre) ||
         !Array.isArray(risultati)
     ){
 
@@ -6699,12 +6704,16 @@ function calc(squadre, risultati){
 
 
 
+    /*
+        ============================
+        CLASSIFICA INIZIALE
+        ============================
+    */
+
     let classifica=[];
 
 
-
     squadre.forEach(nome=>{
-
 
         classifica.push({
 
@@ -6720,137 +6729,145 @@ function calc(squadre, risultati){
 
         });
 
-
     });
 
 
 
-    let indice=0;
+    /*
+        ============================
+        ORDINE PARTITE
+        ============================
+
+        Deve essere identico a
+        generaPartiteGironi():
+
+        0-1
+        2-3
+        0-2
+        1-3
+        0-3
+        1-2
+
+        Per un numero diverso di squadre
+        viene utilizzato il normale
+        round-robin.
+    */
+
+    let partite=[];
 
 
-
-    for(
-        let i=0;
-        i<squadre.length;
-        i++
+    if(
+        squadre.length===4
     ){
 
-        for(
-            let j=i+1;
-            j<squadre.length;
-            j++
+        partite=[
+
+            [0,1],
+
+            [2,3],
+
+            [0,2],
+
+            [1,3],
+
+            [0,3],
+
+            [1,2]
+
+        ];
+
+    }
+    else{
+
+        let indici =
+            Array.from(
+                {
+                    length:squadre.length
+                },
+                (_,i)=>i
+            );
+
+
+        if(
+            indici.length%2!==0
         ){
 
+            indici.push(null);
 
-            let risultato =
-                risultati[indice];
-
-
-            indice++;
+        }
 
 
+        let totale =
+            indici.length;
 
-            if(
-                !risultato
-                ||
-                risultato==="-"
+
+        let turni =
+            totale-1;
+
+
+        let meta =
+            totale/2;
+
+
+        for(
+            let r=0;
+            r<turni;
+            r++
+        ){
+
+            for(
+                let i=0;
+                i<meta;
+                i++
             ){
 
-                continue;
+                let casa =
+                    indici[i];
+
+
+                let ospite =
+                    indici[
+                        totale-1-i
+                    ];
+
+
+                if(
+                    casa!==null &&
+                    ospite!==null
+                ){
+
+                    partite.push([
+
+                        casa,
+                        ospite
+
+                    ]);
+
+                }
 
             }
 
 
-
-            let parti =
-                risultato
-                .split("-");
+            let fisso =
+                indici[0];
 
 
-
-            if(parti.length!==2){
-
-                continue;
-
-            }
+            let resto =
+                indici.slice(1);
 
 
-
-            let a =
-                Number(
-                    parti[0]
-                );
+            resto.unshift(
+                resto.pop()
+            );
 
 
-            let b =
-                Number(
-                    parti[1]
-                );
+            indici=[
 
+                fisso,
 
+                ...resto
 
-            if(
-                Number.isNaN(a)
-                ||
-                Number.isNaN(b)
-            ){
-
-                continue;
-
-            }
-
-
-
-            classifica[i].gf += a;
-
-            classifica[i].gs += b;
-
-
-
-            classifica[j].gf += b;
-
-            classifica[j].gs += a;
-
-
-
-            if(a>b){
-
-
-                classifica[i].pt +=
-                    Number(
-                        state.rules?.w || 3
-                    );
-
-
-            }
-            else
-            if(b>a){
-
-
-                classifica[j].pt +=
-                    Number(
-                        state.rules?.w || 3
-                    );
-
-
-            }
-            else{
-
-
-                classifica[i].pt +=
-                    Number(
-                        state.rules?.d || 1
-                    );
-
-
-                classifica[j].pt +=
-                    Number(
-                        state.rules?.d || 1
-                    );
-
-
-            }
-
+            ];
 
         }
 
@@ -6858,66 +6875,345 @@ function calc(squadre, risultati){
 
 
 
-    classifica.forEach(x=>{
+    /*
+        ============================
+        CALCOLO RISULTATI
+        ============================
+    */
 
+    for(
+        let indice=0;
+        indice<partite.length;
+        indice++
+    ){
+
+        let match =
+            partite[indice];
+
+
+        if(!match)
+
+            continue;
+
+
+        let i =
+            match[0];
+
+
+        let j =
+            match[1];
+
+
+        if(
+            !classifica[i] ||
+            !classifica[j]
+        ){
+
+            continue;
+
+        }
+
+
+        let risultato =
+            risultati[indice];
+
+
+        if(
+            risultato===undefined ||
+            risultato===null ||
+            risultato==="" ||
+            risultato==="-"
+        ){
+
+            continue;
+
+        }
+
+
+        let parti =
+            String(
+                risultato
+            )
+            .split("-");
+
+
+        if(
+            parti.length!==2
+        ){
+
+            continue;
+
+        }
+
+
+        let a =
+            Number(
+                parti[0]
+            );
+
+
+        let b =
+            Number(
+                parti[1]
+            );
+
+
+        if(
+            !Number.isFinite(a) ||
+            !Number.isFinite(b) ||
+            a<0 ||
+            b<0
+        ){
+
+            continue;
+
+        }
+
+
+
+        /*
+            ============================
+            GOL FATTI / SUBITI
+            ============================
+        */
+
+        classifica[i].gf += a;
+
+        classifica[i].gs += b;
+
+
+        classifica[j].gf += b;
+
+        classifica[j].gs += a;
+
+
+
+        /*
+            ============================
+            PUNTI
+            ============================
+        */
+
+        let puntiVittoria =
+            Number(
+                state.rules?.w
+            );
+
+
+        if(
+            !Number.isFinite(
+                puntiVittoria
+            )
+        ){
+
+            puntiVittoria=3;
+
+        }
+
+
+        let puntiPareggio =
+            Number(
+                state.rules?.d
+            );
+
+
+        if(
+            !Number.isFinite(
+                puntiPareggio
+            )
+        ){
+
+            puntiPareggio=1;
+
+        }
+
+
+
+        if(a>b){
+
+            classifica[i].pt +=
+                puntiVittoria;
+
+        }
+        else
+        if(b>a){
+
+            classifica[j].pt +=
+                puntiVittoria;
+
+        }
+        else{
+
+            classifica[i].pt +=
+                puntiPareggio;
+
+            classifica[j].pt +=
+                puntiPareggio;
+
+        }
+
+    }
+
+
+
+    /*
+        ============================
+        DIFFERENZA RETI
+        ============================
+    */
+
+    classifica.forEach(x=>{
 
         x.df =
             x.gf -
             x.gs;
 
-
     });
 
 
+
+    /*
+        ============================
+        CRITERI CLASSIFICA
+        ============================
+    */
+
+    let criteri =
+        Array.isArray(
+            state.rules?.criteriClassifica
+        )
+        ?
+        state.rules.criteriClassifica
+        :
+        [
+            "pt",
+            "df",
+            "gf",
+            "gs"
+        ];
+
+
+
+    /*
+        Assicura sempre i punti
+        come primo criterio.
+    */
+
+    if(
+        criteri[0]!=="pt"
+    ){
+
+        criteri=[
+
+            "pt",
+
+            ...criteri.filter(
+                x=>x!=="pt"
+            )
+
+        ];
+
+    }
+
+
+
+    /*
+        ============================
+        ORDINAMENTO
+        ============================
+    */
 
     classifica.sort((a,b)=>{
 
+        for(
+            let k=0;
+            k<criteri.length;
+            k++
+        ){
 
-        if(
-            b.pt!==a.pt
-        )
-
-            return b.pt-a.pt;
-
-
-
-        if(
-            b.df!==a.df
-        )
-
-            return b.df-a.df;
+            let criterio =
+                criteri[k];
 
 
-
-        if(
-            b.gf!==a.gf
-        )
-
-            return b.gf-a.gf;
+            let differenza=0;
 
 
+            if(
+                criterio==="pt"
+            ){
 
-        return a.gs-b.gs;
+                differenza =
+                    b.pt-a.pt;
 
+            }
+            else
+            if(
+                criterio==="df"
+            ){
+
+                differenza =
+                    b.df-a.df;
+
+            }
+            else
+            if(
+                criterio==="gf"
+            ){
+
+                differenza =
+                    b.gf-a.gf;
+
+            }
+            else
+            if(
+                criterio==="gs"
+            ){
+
+                differenza =
+                    a.gs-b.gs;
+
+            }
+
+
+            if(
+                differenza!==0
+            ){
+
+                return differenza;
+
+            }
+
+        }
+
+
+        /*
+            ============================
+            ORDINE STABILE FINALE
+            ============================
+        */
+
+        return 0;
 
     });
 
 
 
+    /*
+        ============================
+        QUALIFICATI
+        ============================
+    */
+
     const qualificate =
-
         Number(
-            state.rules?.qualificatePerGirone || 2
-        );
-
+            state.rules?.qualificatePerGirone
+        ) || 2;
 
 
     classifica.forEach((x,i)=>{
 
-
         x.qual =
             i < qualificate;
-
 
     });
 
@@ -6925,8 +7221,8 @@ function calc(squadre, risultati){
 
     return classifica;
 
-
 }
+   
 function renderClass(){
 
     ensureRules();
