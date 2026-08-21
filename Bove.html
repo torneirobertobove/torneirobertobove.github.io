@@ -5531,6 +5531,7 @@ async function updateAndSync(){
 
 }
 
+
 async function loadState(){
 
     try{
@@ -5614,9 +5615,22 @@ async function loadState(){
                         configurazione.partecipanti;
 
                 }
-                else{
 
-                    state.partecipanti = [];
+
+                /*
+                ==========================================
+                ISCRITTI
+                ==========================================
+                */
+
+                if(
+                    Array.isArray(
+                        configurazione.iscritti
+                    )
+                ){
+
+                    state.iscritti =
+                        configurazione.iscritti;
 
                 }
 
@@ -5635,11 +5649,6 @@ async function loadState(){
 
                     state.coppie =
                         configurazione.coppie;
-
-                }
-                else{
-
-                    state.coppie = [];
 
                 }
 
@@ -5666,6 +5675,18 @@ async function loadState(){
 
                         state.partecipanti =
                             cfg.partecipanti;
+
+                    }
+
+
+                    if(
+                        Array.isArray(
+                            cfg.iscritti
+                        )
+                    ){
+
+                        state.iscritti =
+                            cfg.iscritti;
 
                     }
 
@@ -5805,6 +5826,24 @@ async function loadState(){
 
                     /*
                     ==========================================
+                    ISCRITTI DA CONFIGURAZIONE
+                    ==========================================
+                    */
+
+                    if(
+                        Array.isArray(
+                            configurazione.iscritti
+                        )
+                    ){
+
+                        state.iscritti =
+                            configurazione.iscritti;
+
+                    }
+
+
+                    /*
+                    ==========================================
                     COPPIE DA CONFIGURAZIONE
                     ==========================================
                     */
@@ -5817,6 +5856,48 @@ async function loadState(){
 
                         state.coppie =
                             configurazione.coppie;
+
+                    }
+
+
+                    /*
+                    ==========================================
+                    DATI DIRETTI DEL TORNEO
+                    ==========================================
+                    */
+
+                    if(
+                        Array.isArray(
+                            torneo.partecipanti
+                        )
+                    ){
+
+                        state.partecipanti =
+                            torneo.partecipanti;
+
+                    }
+
+
+                    if(
+                        Array.isArray(
+                            torneo.iscritti
+                        )
+                    ){
+
+                        state.iscritti =
+                            torneo.iscritti;
+
+                    }
+
+
+                    if(
+                        Array.isArray(
+                            torneo.coppie
+                        )
+                    ){
+
+                        state.coppie =
+                            torneo.coppie;
 
                     }
 
@@ -5858,6 +5939,18 @@ async function loadState(){
 
                             state.partecipanti =
                                 cfg.partecipanti;
+
+                        }
+
+
+                        if(
+                            Array.isArray(
+                                cfg.iscritti
+                            )
+                        ){
+
+                            state.iscritti =
+                                cfg.iscritti;
 
                         }
 
@@ -6001,6 +6094,18 @@ async function loadState(){
 
                 if(
                     Array.isArray(
+                        cfg.iscritti
+                    )
+                ){
+
+                    state.iscritti =
+                        cfg.iscritti;
+
+                }
+
+
+                if(
+                    Array.isArray(
                         cfg.coppie
                     )
                 ){
@@ -6009,6 +6114,122 @@ async function loadState(){
                         cfg.coppie;
 
                 }
+
+            }
+
+        }
+
+
+
+        /*
+        ==========================================
+        RECUPERO ISCRITTI APPROVATI
+        ==========================================
+        */
+
+        if(
+            idParam &&
+            typeof sb !== "undefined"
+        ){
+
+            try{
+
+                const {
+                    data: iscrizioni,
+                    error: erroreIscrizioni
+                } =
+                    await sb
+                    .from("iscrizioni")
+                    .select("*")
+                    .eq(
+                        "id_torneo",
+                        Number(idParam)
+                    );
+
+
+                if(erroreIscrizioni){
+
+                    console.error(
+                        "Errore caricamento iscritti:",
+                        erroreIscrizioni
+                    );
+
+                }
+                else
+                if(
+                    Array.isArray(iscrizioni)
+                ){
+
+                    const approvati =
+                        iscrizioni.filter(
+                            iscrizione => {
+
+                                const stato =
+                                    String(
+                                        iscrizione.stato
+                                        ||
+                                        iscrizione.status
+                                        ||
+                                        ""
+                                    )
+                                    .toLowerCase()
+                                    .trim();
+
+                                return (
+                                    stato === "approvato" ||
+                                    stato === "approvata" ||
+                                    stato === "approved" ||
+                                    stato === "accettato" ||
+                                    stato === "accettata"
+                                );
+
+                            }
+                        );
+
+
+                    if(
+                        approvati.length > 0
+                    ){
+
+                        state.iscritti =
+                            approvati;
+
+
+                        /*
+                        ==========================================
+                        CREA PARTECIPANTI SE MANCANTI
+                        ==========================================
+                        */
+
+                        if(
+                            !Array.isArray(
+                                state.partecipanti
+                            ) ||
+                            state.partecipanti.length===0
+                        ){
+
+                            state.partecipanti =
+                                approvati;
+
+                        }
+
+                    }
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        approvati
+                    );
+
+                }
+
+            }
+            catch(err){
+
+                console.error(
+                    "Errore recupero iscritti approvati:",
+                    err
+                );
 
             }
 
@@ -6290,6 +6511,23 @@ async function loadState(){
 
         /*
         ==========================================
+        GENERAZIONE PARTITE
+        ==========================================
+        */
+
+        if(
+            typeof generaPartiteGironi ===
+            "function"
+        ){
+
+            generaPartiteGironi();
+
+        }
+
+
+
+        /*
+        ==========================================
         RENDER
         ==========================================
         */
@@ -6368,6 +6606,8 @@ async function loadState(){
     }
 
 }
+
+
    
 function handleFile(e){
     let r=new FileReader();
