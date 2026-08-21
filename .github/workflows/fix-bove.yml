@@ -1,0 +1,225 @@
+name: Fix Bove
+
+on:
+  push:
+    branches: ["bove-correzioni-2026-08-21"]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply safe Bove corrections
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path("Bove.html")
+          s = p.read_text(encoding="utf-8")
+
+          # 1) Gironi A-G: every hard-coded six-letter list becomes A-G.
+          s = re.sub(
+              r'("A",\s*"B",\s*"C",\s*"D",\s*"E",\s*"F")',
+              r'"A",\n        "B",\n        "C",\n        "D",\n        "E",\n        "F",\n        "G"',
+              s
+          )
+          s = re.sub(
+              r'("A",\s*"B",\s*"C",\s*"D",\s*"E",\s*"F")',
+              r'"A", "B", "C", "D", "E", "F", "G"',
+              s
+          )
+
+          # 2) Initial state: add the missing G arrays next to F.
+          s = s.replace('    F:[],\n\n    /*\n        ============================\n        TORNEO SVIZZERO',
+                        '    F:[],\n\n    G:[],\n\n    /*\n        ============================\n        TORNEO SVIZZERO')
+          s = s.replace('    Dres:[],\n\n    /*\n        ============================\n        ORARI',
+                        '    Dres:[],\n\n    Eres:[],\n\n    Fres:[],\n\n    Gres:[],\n\n    /*\n        ============================\n        ORARI')
+          s = s.replace('    Dtime:[],\n\n    /*\n        ============================\n        CAMPI',
+                        '    Dtime:[],\n\n    Etime:[],\n\n    Ftime:[],\n\n    Gtime:[],\n\n    /*\n        ============================\n        CAMPI')
+          s = s.replace('    Dcamp:[],\n\n    /*\n        ============================\n        CLASSIFICHE',
+                        '    Dcamp:[],\n\n    Ecamp:[],\n\n    Fcamp:[],\n\n    Gcamp:[],\n\n    /*\n        ============================\n        CLASSIFICHE')
+          s = s.replace('    rankD:[],\n\n    /*\n        ============================\n        FASE FINALE',
+                        '    rankD:[],\n\n    rankE:[],\n\n    rankF:[],\n\n    rankG:[],\n\n    /*\n        ============================\n        FASE FINALE')
+
+          # 3) Result storage: keep Ares..Gres as strings "x-y", never arrays.
+          start = s.find('function updateRes(g, i, campo, val){')
+          end = s.find('function normalizzaCognomiGironi(){', start)
+          if start < 0 or end < 0:
+              raise SystemExit('updateRes markers not found')
+
+          new_update = r'''function updateRes(g, i, campo, val){
+
+    ensureRules();
+
+    const map = {
+        A:"Ares",
+        B:"Bres",
+        C:"Cres",
+        D:"Dres",
+        E:"Eres",
+        F:"Fres",
+        G:"Gres"
+    };
+
+    const key = map[g];
+
+    if(!key)
+        return;
+
+    i = Number(i);
+    campo = Number(campo);
+
+    if(!Number.isInteger(i) || i < 0)
+        return;
+
+    if(campo !== 0 && campo !== 1)
+        return;
+
+    if(!Array.isArray(state[key]))
+        state[key] = [];
+
+    while(state[key].length <= i)
+        state[key].push("-");
+
+    let sinistro = "";
+    let destro = "";
+    const precedente = state[key][i];
+
+    if(Array.isArray(precedente)){
+        sinistro = String(precedente[0] ?? "").trim();
+        destro = String(precedente[1] ?? "").trim();
+    }
+    else{
+        const testo = String(precedente ?? "").trim();
+        if(testo && testo !== "-"){
+            const parti = testo.split("-");
+            sinistro = String(parti[0] ?? "").trim();
+            destro = String(parti[1] ?? "").trim();
+        }
+    }
+
+    let valore = String(val ?? "").trim();
+
+    if(valore !== ""){
+        const numero = Number(valore);
+        if(!Number.isFinite(numero) || numero < 0)
+            return;
+        valore = String(Math.floor(numero));
+    }
+
+    if(campo === 0)
+        sinistro = valore;
+    else
+        destro = valore;
+
+    if(sinistro === "" && destro === ""){
+        state[key][i] = "-";
+    }
+    else if(sinistro !== "" && destro !== ""){
+        state[key][i] = sinistro + "-" + destro;
+    }
+    else{
+        state[key][i] = sinistro || destro;
+    }
+
+    if(typeof renderClass === "function")
+        renderClass();
+
+    if(typeof renderKO === "function")
+        renderKO();
+
+    if(typeof updateAndSync === "function")
+        updateAndSync();
+}
+
+'''
+          s = s[:start] + new_update + s[end:]
+
+          # 4) Keep finalTop structurally consistent: one final match is nested.
+          s = s.replace('    state.finalTop =\n        [...finalisti];',
+                        '    state.finalTop =\n        [[finalisti[0], finalisti[1]]];')
+
+          # 5) Static final tables must use the same four-column geometry as A-G.
+          anchor = '/* BOVE LAYOUT FIX: layout only */'
+          css_fix = '''
+/* BOVE FINAL TABLE ALIGNMENT FIX */
+table:has(> tbody#Q),
+table:has(> tbody#S),
+table:has(> tbody#finaleBox){
+    width:100% !important;
+    min-width:100% !important;
+    max-width:100% !important;
+    table-layout:fixed !important;
+    border-collapse:collapse !important;
+}
+
+table:has(> tbody#Q) th:nth-child(1),
+table:has(> tbody#S) th:nth-child(1),
+table:has(> tbody#finaleBox) th:nth-child(1),
+table:has(> tbody#Q) td:nth-child(1),
+table:has(> tbody#S) td:nth-child(1),
+table:has(> tbody#finaleBox) td:nth-child(1){width:10% !important;}
+
+table:has(> tbody#Q) th:nth-child(2),
+table:has(> tbody#S) th:nth-child(2),
+table:has(> tbody#finaleBox) th:nth-child(2),
+table:has(> tbody#Q) td:nth-child(2),
+table:has(> tbody#S) td:nth-child(2),
+table:has(> tbody#finaleBox) td:nth-child(2){width:14% !important;}
+
+table:has(> tbody#Q) th:nth-child(3),
+table:has(> tbody#S) th:nth-child(3),
+table:has(> tbody#finaleBox) th:nth-child(3),
+table:has(> tbody#Q) td:nth-child(3),
+table:has(> tbody#S) td:nth-child(3),
+table:has(> tbody#finaleBox) td:nth-child(3){width:56% !important;}
+
+table:has(> tbody#Q) th:nth-child(4),
+table:has(> tbody#S) th:nth-child(4),
+table:has(> tbody#finaleBox) th:nth-child(4),
+table:has(> tbody#Q) td:nth-child(4),
+table:has(> tbody#S) td:nth-child(4),
+table:has(> tbody#finaleBox) td:nth-child(4){width:20% !important;}
+
+''' 
+          if 'BOVE FINAL TABLE ALIGNMENT FIX' not in s:
+              s = s.replace(anchor, css_fix + anchor, 1)
+
+          # 6) Syntax check is performed by Node below.
+          p.write_text(s, encoding="utf-8")
+
+      - name: Check JavaScript syntax
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, sys
+          s = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', s, re.S|re.I)
+          if not scripts:
+              raise SystemExit('No inline scripts found')
+          for i, code in enumerate(scripts):
+              Path(f'/tmp/bove-{i}.js').write_text(code, encoding='utf-8')
+              r = subprocess.run(['node','--check',f'/tmp/bove-{i}.js'], capture_output=True, text=True)
+              if r.returncode:
+                  print(r.stdout)
+                  print(r.stderr)
+                  raise SystemExit(f'JavaScript syntax error in script {i}')
+          print('Bove.html JavaScript syntax: OK')
+
+      - name: Commit corrected Bove.html
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          if git diff --cached --quiet; then
+            echo "No Bove.html changes"
+            exit 0
+          fi
+          git commit -m "fix Bove gironi risultati e allineamento"
+          git push
