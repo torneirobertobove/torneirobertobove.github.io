@@ -6932,51 +6932,54 @@ function renderClass(){
     ensureRules();
 
 
+    /*
+        ============================
+        GIRONI
+        ============================
+    */
 
     [
 
         "A",
-
         "B",
-
         "C",
-
-        "D"
+        "D",
+        "E",
+        "F",
+        "G"
 
     ].forEach(tag=>{
 
 
+        /*
+            ============================
+            CONTROLLO GIRONE
+            ============================
+        */
 
         if(
-            tag==="C" &&
-            (!Array.isArray(state.C) ||
-            state.C.length===0)
-        )
+            !Array.isArray(state[tag]) ||
+            state[tag].length===0
+        ){
+
+            state["rank"+tag]=[];
 
             return;
 
+        }
 
 
 
-        if(
-            tag==="D" &&
-            (!Array.isArray(state.D) ||
-            state.D.length===0)
-        )
-
-            return;
-
-
-
-
-
-
+        /*
+            ============================
+            BOX CLASSIFICA
+            ============================
+        */
 
         let box =
             document.getElementById(
                 tag+"class"
             );
-
 
 
         if(!box)
@@ -6985,39 +6988,65 @@ function renderClass(){
 
 
 
+        /*
+            ============================
+            CALCOLO CLASSIFICA
+            ============================
+        */
 
-
-
-
+        let risultati =
+            Array.isArray(
+                state[tag+"res"]
+            )
+            ?
+            state[tag+"res"]
+            :
+            [];
 
 
         let classifica =
-
-    calc(
-
-        state[tag],
-
-        state[tag+"res"]
-
-    );
+            calc(
+                state[tag],
+                risultati
+            );
 
 
-if(
-    !Array.isArray(classifica)
-)
+        /*
+            ============================
+            PROTEZIONE RISULTATO
+            ============================
+        */
 
-    classifica=[];
-       state["rank"+tag] = classifica;
+        if(
+            !Array.isArray(classifica)
+        ){
+
+            classifica=[];
+
+        }
 
 
-state["rank"+tag] = classifica;
+
+        /*
+            ============================
+            SALVATAGGIO RANKING
+            ============================
+        */
+
+        state["rank"+tag] =
+            classifica;
 
 
+
+        /*
+            ============================
+            RENDER CLASSIFICA
+            ============================
+        */
 
         box.innerHTML =
 
         classifica.map(x=>`
-
 
 
 <tr>
@@ -7027,20 +7056,20 @@ state["rank"+tag] = classifica;
 
 
 <span class="${
-x.qual
-?
-"qual-arrow-up"
-:
-"qual-arrow-down"
+    x.qual
+    ?
+    "qual-arrow-up"
+    :
+    "qual-arrow-down"
 }">
 
 
 ${
-x.qual
-?
-"▲"
-:
-"▼"
+    x.qual
+    ?
+    "▲"
+    :
+    "▼"
 }
 
 
@@ -7048,16 +7077,13 @@ x.qual
 
 
 ${
-
-String(x.n || "")
-
+    String(
+        x.n || ""
+    )
 }
 
 
-
 </td>
-
-
 
 
 <td>${x.pt}</td>
@@ -7069,256 +7095,14 @@ String(x.n || "")
 <td>${x.df}</td>
 
 
-
 </tr>
-
 
 
 `).join("");
 
 
-
-
-
     });
 
-
-}
-function updateRes(g,i,pos,val){
-
-    /*
-        ============================
-        VALIDAZIONE GIRONI
-        ============================
-    */
-
-    const map = {
-
-        A:"Ares",
-        B:"Bres",
-        C:"Cres",
-        D:"Dres",
-        E:"Eres",
-        F:"Fres",
-        G:"Gres"
-
-    };
-
-
-    const chiave =
-        map[g];
-
-
-    if(!chiave)
-
-        return;
-
-
-
-    /*
-        ============================
-        VALIDAZIONE INDICE
-        ============================
-    */
-
-    i =
-        Number(i);
-
-
-    pos =
-        Number(pos);
-
-
-    if(
-        !Number.isInteger(i) ||
-        i<0
-    ){
-
-        return;
-
-    }
-
-
-    if(
-        pos!==0 &&
-        pos!==1
-    ){
-
-        return;
-
-    }
-
-
-
-    /*
-        ============================
-        ARRAY RISULTATI
-        ============================
-    */
-
-    if(
-        !Array.isArray(
-            state[chiave]
-        )
-    ){
-
-        state[chiave]=[];
-
-    }
-
-
-
-    let s =
-        state[chiave];
-
-
-
-    /*
-        ============================
-        INIZIALIZZAZIONE RISULTATO
-        ============================
-    */
-
-    if(
-        s[i]===undefined ||
-        s[i]===null ||
-        s[i]===""
-    ){
-
-        s[i]="-";
-
-    }
-
-
-
-    /*
-        ============================
-        LETTURA RISULTATO ESISTENTE
-        ============================
-    */
-
-    let p =
-        String(
-            s[i]
-        ).split("-");
-
-
-
-    /*
-        Un risultato non ancora
-        compilato deve diventare
-        due campi separati.
-    */
-
-    if(
-        p.length!==2
-    ){
-
-        p=[
-
-            "",
-            ""
-
-        ];
-
-    }
-
-
-
-    /*
-        ============================
-        NUOVO VALORE
-        ============================
-    */
-
-    p[pos] =
-        String(
-            val ?? ""
-        ).trim();
-
-
-
-    /*
-        ============================
-        NORMALIZZAZIONE
-        ============================
-    */
-
-    const casa =
-        p[0] || "";
-
-
-    const ospite =
-        p[1] || "";
-
-
-
-    if(
-        casa==="" &&
-        ospite===""
-    ){
-
-        s[i]="-";
-
-    }
-    else{
-
-        s[i]=
-            casa
-            +
-            "-"
-            +
-            ospite;
-
-    }
-
-
-
-    /*
-        ============================
-        AGGIORNAMENTO CLASSIFICA
-        ============================
-    */
-
-    if(
-        typeof renderClass==="function"
-    ){
-
-        renderClass();
-
-    }
-
-
-
-    /*
-        ============================
-        AGGIORNAMENTO FASE KO
-        ============================
-    */
-
-    if(
-        typeof renderKO==="function"
-    ){
-
-        renderKO();
-
-    }
-
-
-
-    /*
-        ============================
-        SALVATAGGIO
-        ============================
-    */
-
-    if(
-        typeof updateAndSync==="function"
-    ){
-
-        updateAndSync();
-
-    }
 
 }
    
