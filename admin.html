@@ -408,28 +408,28 @@ function renderGestioneTorneo(){
 
 async function approvaGiocatoreDiretto(id){
 
-    const iscrizione =
-        (
-            Array.isArray(
-                window.iscrizioniTorneo
-            )
-            ?
-            window.iscrizioniTorneo
-            :
-            []
-        )
-        .find(
-            x =>
-                String(x.id)
-                ===
-                String(id)
+    console.log(
+        "=========================================="
+    );
+
+    console.log(
+        "✅ APPROVAZIONE ISCRIZIONE"
+    );
+
+    console.log(
+        "ID ISCRIZIONE:",
+        id
+    );
+
+
+    if(!id){
+
+        console.error(
+            "❌ ID ISCRIZIONE MANCANTE"
         );
 
-
-    if(!iscrizione){
-
         alert(
-            "Iscrizione non trovata."
+            "Errore: ID iscrizione mancante."
         );
 
         return;
@@ -439,35 +439,121 @@ async function approvaGiocatoreDiretto(id){
 
     try{
 
-        const {
-            error
-        } =
+        const risultato =
             await sb
                 .from("iscrizioni")
                 .update({
 
-                    stato:
-                        "approvato"
+                    stato: "approvato"
 
                 })
                 .eq(
                     "id",
-                    iscrizione.id
-                );
+                    id
+                )
+                .select();
 
 
-        if(error)
-            throw error;
+        console.log(
+            "RISULTATO UPDATE:",
+            risultato
+        );
 
 
-        await caricaRichiesteIscrizione();
+        if(risultato.error){
+
+            console.error(
+                "❌ ERRORE SUPABASE:",
+                risultato.error
+            );
+
+            alert(
+                "Errore approvazione:\n" +
+                risultato.error.message
+            );
+
+            return;
+
+        }
+
+
+        if(
+            !Array.isArray(
+                risultato.data
+            )
+            ||
+            risultato.data.length === 0
+        ){
+
+            console.error(
+                "❌ NESSUNA RIGA AGGIORNATA"
+            );
+
+            alert(
+                "L'iscrizione non è stata aggiornata."
+            );
+
+            return;
+
+        }
+
+
+        console.log(
+            "✅ ISCRIZIONE APPROVATA:",
+            risultato.data[0]
+        );
+
+
+        /*
+        ==========================================
+        RICARICA LE ISCRIZIONI
+        ==========================================
+        */
+
+        if(
+            typeof caricaRichiesteIscrizione ===
+            "function"
+        ){
+
+            await caricaRichiesteIscrizione();
+
+        }
+
+
+        /*
+        ==========================================
+        RICARICA PARTECIPANTI
+        ==========================================
+        */
+
+        if(
+            typeof renderPartecipanti ===
+            "function"
+        ){
+
+            renderPartecipanti();
+
+        }
+
+
+        console.log(
+            "=========================================="
+        );
+
+        console.log(
+            "✅ APPROVAZIONE COMPLETATA"
+        );
+
+        console.log(
+            "=========================================="
+        );
 
 
     }
     catch(error){
 
         console.error(
-            "ERRORE APPROVAZIONE ISCRIZIONE:",
+            "❌ ECCEZIONE APPROVAZIONE:",
             error
         );
 
@@ -479,7 +565,6 @@ async function approvaGiocatoreDiretto(id){
     }
 
 }
-
 async function rifiutaGiocatoreDiretto(id){
 
     const iscrizione =
