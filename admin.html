@@ -281,28 +281,19 @@ function renderGestioneTorneo(){
 
 async function approvaGiocatoreDiretto(id){
 
-    console.log(
-        "=========================================="
-    );
-
-    console.log(
-        "✅ APPROVAZIONE ISCRIZIONE"
-    );
-
-    console.log(
-        "ID ISCRIZIONE:",
-        id
-    );
+    let g =
+        (window.iscrizioniTorneo || [])
+            .find(
+                x =>
+                    String(x.id) ===
+                    String(id)
+            );
 
 
-    if(!id){
-
-        console.error(
-            "❌ ID ISCRIZIONE MANCANTE"
-        );
+    if(!g){
 
         alert(
-            "Errore: ID iscrizione mancante."
+            "Giocatore non trovato"
         );
 
         return;
@@ -312,127 +303,99 @@ async function approvaGiocatoreDiretto(id){
 
     try{
 
-        const risultato =
+        const {
+            error
+        } =
             await sb
                 .from("iscrizioni")
                 .update({
-
-                    stato: "approvato"
-
+                    stato:"approvato"
                 })
                 .eq(
                     "id",
-                    id
-                )
-                .select();
+                    g.id
+                );
 
 
-        console.log(
-            "RISULTATO UPDATE:",
-            risultato
-        );
+        if(error)
+            throw error;
 
 
-        if(risultato.error){
-
-            console.error(
-                "❌ ERRORE SUPABASE:",
-                risultato.error
-            );
-
-            alert(
-                "Errore approvazione:\n" +
-                risultato.error.message
-            );
-
-            return;
-
-        }
-
-
-        if(
-            !Array.isArray(
-                risultato.data
-            )
-            ||
-            risultato.data.length === 0
-        ){
-
-            console.error(
-                "❌ NESSUNA RIGA AGGIORNATA"
-            );
-
-            alert(
-                "L'iscrizione non è stata aggiornata."
-            );
-
-            return;
-
-        }
-
-
-        console.log(
-            "✅ ISCRIZIONE APPROVATA:",
-            risultato.data[0]
-        );
-
-
-        /*
-        ==========================================
-        RICARICA LE ISCRIZIONI
-        ==========================================
-        */
-
-        if(
-            typeof caricaRichiesteIscrizione ===
-            "function"
-        ){
-
-            await caricaRichiesteIscrizione();
-
-        }
-
-
-        /*
-        ==========================================
-        RICARICA PARTECIPANTI
-        ==========================================
-        */
-
-        if(
-            typeof renderPartecipanti ===
-            "function"
-        ){
-
-            renderPartecipanti();
-
-        }
-
-
-        console.log(
-            "=========================================="
-        );
-
-        console.log(
-            "✅ APPROVAZIONE COMPLETATA"
-        );
-
-        console.log(
-            "=========================================="
-        );
+        await caricaRichiesteIscrizione();
 
 
     }
-    catch(error){
+    catch(e){
 
         console.error(
-            "❌ ECCEZIONE APPROVAZIONE:",
-            error
+            "Errore approvazione diretta:",
+            e
         );
 
+        alert(
+            "Errore durante l'approvazione"
+        );
+
+    }
+
+}
+
+
+async function rifiutaGiocatoreDiretto(id){
+
+    let g =
+        (window.iscrizioniTorneo || [])
+            .find(
+                x =>
+                    String(x.id) ===
+                    String(id)
+            );
+
+
+    if(!g){
 
         alert(
-            "Errore durante l'approvazione."
+            "Giocatore non trovato"
+        );
+
+        return;
+
+    }
+
+
+    try{
+
+        const {
+            error
+        } =
+            await sb
+                .from("iscrizioni")
+                .update({
+                    stato:"rifiutato"
+                })
+                .eq(
+                    "id",
+                    g.id
+                );
+
+
+        if(error)
+            throw error;
+
+
+        await caricaRichiesteIscrizione();
+
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore rifiuto diretto:",
+            e
+        );
+
+        alert(
+            "Errore durante il rifiuto"
         );
 
     }
