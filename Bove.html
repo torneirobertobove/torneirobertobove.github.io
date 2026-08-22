@@ -5653,48 +5653,32 @@ async function updateAndSync(){
 }
 
 
-
 async function loadState(){
 
     try{
 
-        const params =
-            new URLSearchParams(
-                window.location.search
-            );
-
-        const idParam =
-            params.get("idTorneo");
-
-        const torneoParam =
-            params.get("torneo");
-
+        const params = new URLSearchParams(window.location.search);
+        const idTorneo = params.get("idTorneo");
+        const torneoParam = params.get("torneo");
         let configurazione = null;
-
 
         /*
         =========================================
         TORNEO DA URL
         =========================================
         */
-
         if(torneoParam){
 
             try{
 
-                configurazione =
-                    JSON.parse(
-                        decodeURIComponent(
-                            torneoParam
-                        )
-                    );
-
+                configurazione = JSON.parse(
+                    decodeURIComponent(torneoParam)
+                );
 
                 console.log(
                     "TORNEO ADMIN CARICATO:",
                     configurazione
                 );
-
 
                 state = {
 
@@ -5720,13 +5704,11 @@ async function loadState(){
 
                 };
 
-
                 /*
                 =========================================
                 PARTECIPANTI
                 =========================================
                 */
-
                 if(
                     Array.isArray(
                         configurazione.partecipanti
@@ -5743,13 +5725,11 @@ async function loadState(){
 
                 }
 
-
                 /*
                 =========================================
                 COPPIE
                 =========================================
                 */
-
                 if(
                     Array.isArray(
                         configurazione.coppie
@@ -5766,20 +5746,17 @@ async function loadState(){
 
                 }
 
-
                 /*
                 =========================================
                 CONFIGURAZIONE INTERNA
                 =========================================
                 */
-
                 if(
                     configurazione.configurazione
                 ){
 
                     const cfg =
                         configurazione.configurazione;
-
 
                     if(
                         Array.isArray(
@@ -5791,7 +5768,6 @@ async function loadState(){
                             cfg.partecipanti;
 
                     }
-
 
                     if(
                         Array.isArray(
@@ -5806,9 +5782,7 @@ async function loadState(){
 
                 }
 
-
                 generaPartiteGironi();
-
 
             }
             catch(err){
@@ -5822,16 +5796,13 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         TORNEO DA SUPABASE
         =========================================
         */
-
         if(
-            idParam &&
+            idTorneo &&
             typeof sb !== "undefined"
         ){
 
@@ -5846,10 +5817,9 @@ async function loadState(){
                     .select("*")
                     .eq(
                         "id",
-                        Number(idParam)
+                        Number(idTorneo)
                     )
                     .single();
-
 
                 if(error){
 
@@ -5860,19 +5830,16 @@ async function loadState(){
 
                 }
 
-
                 if(torneo){
 
                     configurazione =
                         torneo.configurazione || {};
-
 
                     /*
                     =========================================
                     DATI PRINCIPALI TORNEO
                     =========================================
                     */
-
                     state = {
 
                         ...state,
@@ -5907,13 +5874,11 @@ async function loadState(){
 
                     };
 
-
                     /*
                     =========================================
                     PARTECIPANTI DA CONFIGURAZIONE
                     =========================================
                     */
-
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -5925,13 +5890,11 @@ async function loadState(){
 
                     }
 
-
                     /*
                     =========================================
                     COPPIE DA CONFIGURAZIONE
                     =========================================
                     */
-
                     if(
                         Array.isArray(
                             configurazione.coppie
@@ -5943,20 +5906,17 @@ async function loadState(){
 
                     }
 
-
                     /*
                     =========================================
                     CONFIGURAZIONE NIDIFICATA
                     =========================================
                     */
-
                     if(
                         configurazione.configurazione
                     ){
 
                         const cfg =
                             configurazione.configurazione;
-
 
                         if(cfg.rules){
 
@@ -5970,7 +5930,6 @@ async function loadState(){
 
                         }
 
-
                         if(
                             Array.isArray(
                                 cfg.partecipanti
@@ -5981,7 +5940,6 @@ async function loadState(){
                                 cfg.partecipanti;
 
                         }
-
 
                         if(
                             Array.isArray(
@@ -5998,7 +5956,6 @@ async function loadState(){
 
                 }
 
-
             }
             catch(err){
 
@@ -6009,13 +5966,11 @@ async function loadState(){
 
             }
 
-
             /*
             =========================================
             ISCRITTI APPROVATI E CONVERSIONE AUTOMATICA
             =========================================
             */
-
             try{
 
                 const {
@@ -6027,12 +5982,11 @@ async function loadState(){
                     .select("*")
                     .eq(
                         "torneo_id",
-                        Number(idParam)
+                        Number(idTorneo)
                     )
                     .or(
                         "stato.eq.approvato,approvato.eq.true"
                     );
-
 
                 if(erroreIscritti){
 
@@ -6051,13 +6005,11 @@ async function loadState(){
                         ? iscritti
                         : [];
 
-
                     console.log(
                         "ISCRITTI APPROVATI CARICATI:",
                         state.iscritti
                     );
 
-                    // Se non ci sono coppie salvate ma abbiamo iscritti approvati, creiamo le coppie dagli iscritti!
                     if((!state.coppie || state.coppie.length === 0) && state.iscritti.length > 0){
                         state.coppie = state.iscritti.map(item => item.nome_squadra || item.giocatore1 || "Squadra");
                         console.log("COPPIE GENERATE AUTOMATICAMENTE DAGLI ISCRITTI:", state.coppie);
@@ -6079,14 +6031,11 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         RECUPERO ARRAY DELLA CONFIGURAZIONE
         =========================================
         */
-
         if(configurazione){
 
             const arrayDaRecuperare = [
@@ -6130,7 +6079,6 @@ async function loadState(){
 
             ];
 
-
             arrayDaRecuperare.forEach(
                 k=>{
 
@@ -6148,20 +6096,17 @@ async function loadState(){
                 }
             );
 
-
             /*
             =========================================
             CONFIGURAZIONE INTERNA
             =========================================
             */
-
             if(
                 configurazione.configurazione
             ){
 
                 const cfg =
                     configurazione.configurazione;
-
 
                 if(cfg.rules){
 
@@ -6175,7 +6120,6 @@ async function loadState(){
 
                 }
 
-
                 if(
                     Array.isArray(
                         cfg.partecipanti
@@ -6186,7 +6130,6 @@ async function loadState(){
                         cfg.partecipanti;
 
                 }
-
 
                 if(
                     Array.isArray(
@@ -6203,19 +6146,15 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         NORMALIZZAZIONE GIRONI
         =========================================
         */
-
         let numeroGironi =
             Number(
                 state.rules.numeroGironi
             ) || 2;
-
 
         let lettereGironi = [
 
@@ -6228,7 +6167,6 @@ async function loadState(){
             "G"
 
         ];
-
 
         lettereGironi.forEach(
             (g,index)=>{
@@ -6257,14 +6195,11 @@ async function loadState(){
             }
         );
 
-
-
         /*
         =========================================
         GENERAZIONE GIRONI DA COPPIE
         =========================================
         */
-
         if(
             Array.isArray(
                 state.coppie
@@ -6274,7 +6209,6 @@ async function loadState(){
         ){
 
             let vuoti=true;
-
 
             for(
                 let g of lettereGironi
@@ -6293,7 +6227,6 @@ async function loadState(){
 
             }
 
-
             if(vuoti){
 
                 let perGirone =
@@ -6301,7 +6234,6 @@ async function loadState(){
                         state.rules
                         .squadrePerGirone
                     ) || 4;
-
 
                 lettereGironi.forEach(
                     g=>{
@@ -6311,7 +6243,6 @@ async function loadState(){
                     }
                 );
 
-
                 state.coppie.forEach(
                     (c,i)=>{
 
@@ -6319,7 +6250,6 @@ async function loadState(){
                             Math.floor(
                                 i / perGirone
                             );
-
 
                         if(
                             state[
@@ -6340,7 +6270,6 @@ async function loadState(){
                     }
                 );
 
-
                 console.log(
                     "GIRONI GENERATI:",
                     state.A,
@@ -6353,14 +6282,11 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         REGOLE
         =========================================
         */
-
         if(
             typeof ensureRules === "function"
         ){
@@ -6369,14 +6295,11 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         STATO LOCALE
         =========================================
         */
-
         if(
             !torneoParam &&
             !idParam
@@ -6387,7 +6310,6 @@ async function loadState(){
                     "torneoState"
                 );
 
-
             if(locale){
 
                 try{
@@ -6396,7 +6318,6 @@ async function loadState(){
                         JSON.parse(
                             locale
                         );
-
 
                     state={
 
@@ -6428,14 +6349,11 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         LOG CARICAMENTO
         =========================================
         */
-
         console.log(
 
             "TORNEO CARICATO:",
@@ -6450,7 +6368,6 @@ async function loadState(){
 
         );
 
-
         console.log(
 
             "ISCRITTI APPROVATI:",
@@ -6459,14 +6376,11 @@ async function loadState(){
 
         );
 
-
-
         /*
         =========================================
         SALVATAGGIO LOCALE
         =========================================
         */
-
         if(
             state.coppie &&
             Array.isArray(
@@ -6485,14 +6399,11 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         RENDER
         =========================================
         */
-
         if(
             typeof render === "function"
         ){
@@ -6513,19 +6424,15 @@ async function loadState(){
 
         }
 
-
-
         /*
         =========================================
         APERTURA REGOLE
         =========================================
         */
-
         const apriRegole =
             params.get(
                 "apriRegole"
             );
-
 
         if(
             apriRegole === "true"
@@ -6549,9 +6456,7 @@ async function loadState(){
 
         }
 
-
         return state;
-
 
     }
     catch(e){
@@ -6561,12 +6466,12 @@ async function loadState(){
             e
         );
 
-
         return null;
 
     }
 
 }
+
 
 
 
