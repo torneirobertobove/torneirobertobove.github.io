@@ -775,28 +775,9 @@ function apriBoveConTorneo(idTorneo){
 
 window.loginAdmin = async function(){
 
-    const email =
-        document
-            .getElementById("adminEmail")
-            ?.value
-            .trim();
-
-    const password =
-        document
-            .getElementById("adminPassword")
-            ?.value
-            .trim();
-
-    if(!email || !password){
-
-        mostraLoginMessaggio(
-            "Inserire email e password",
-            "#ef4444"
-        );
-
-        return;
-
-    }
+    console.log(
+        "🔐 LOGIN ADMIN — VERIFICA SESSIONE SUPABASE"
+    );
 
     try{
 
@@ -804,20 +785,17 @@ window.loginAdmin = async function(){
             data,
             error
         } =
-            await sb.auth.signInWithPassword({
-                email:email,
-                password:password
-            });
+            await sb.auth.getSession();
 
         if(error){
 
             console.error(
-                "LOGIN FALLITO:",
+                "❌ ERRORE LETTURA SESSIONE:",
                 error
             );
 
             mostraLoginMessaggio(
-                "Accesso negato",
+                "Errore verifica sessione",
                 "#ef4444"
             );
 
@@ -825,15 +803,38 @@ window.loginAdmin = async function(){
 
         }
 
-        adminState.adminLoggato=true;
-        adminState.adminEmail=email;
+        const session =
+            data?.session;
+
+        if(!session){
+
+            console.error(
+                "❌ NESSUNA SESSIONE SUPABASE ATTIVA"
+            );
+
+            mostraLoginMessaggio(
+                "Sessione non autenticata",
+                "#ef4444"
+            );
+
+            return;
+
+        }
+
+        const user =
+            session.user;
+
+        console.log(
+            "✅ SESSIONE SUPABASE TROVATA:",
+            user?.email
+        );
+
+        adminState.adminLoggato = true;
+
+        adminState.adminEmail =
+            user?.email || "";
 
         salvaAdminState();
-
-        mostraLoginMessaggio(
-            "Accesso effettuato",
-            "#22c55e"
-        );
 
         const login =
             document.getElementById(
@@ -846,28 +847,41 @@ window.loginAdmin = async function(){
             );
 
         if(login)
-            login.style.display="none";
+            login.style.display =
+                "none";
 
         if(area)
-            area.classList.remove("hidden");
+            area.classList.remove(
+                "hidden"
+            );
 
         if(
             typeof caricaTorneiSupabase ===
             "function"
-        )
+        ){
+
             await caricaTorneiSupabase();
+
+        }
 
         if(
             typeof renderAdmin ===
             "function"
-        )
-            renderAdmin();
+        ){
+
+            await renderAdmin();
+
+        }
+
+        console.log(
+            "✅ ACCESSO ADMIN COMPLETATO"
+        );
 
     }
     catch(e){
 
         console.error(
-            "ERRORE LOGIN ADMIN:",
+            "❌ ERRORE LOGIN ADMIN:",
             e
         );
 
