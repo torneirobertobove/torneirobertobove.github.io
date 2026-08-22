@@ -9377,295 +9377,139 @@ function renderPersonalizzato(){
 function generaPartiteGironi(){
 
     const crea = (girone) => {
-
         const partite = [];
-
-        if(
-            !Array.isArray(girone) ||
-            girone.length !== 4
-        ){
-
+        
+        // Se non è un array o non ha almeno 2 elementi, non possiamo generare coppie piene
+        if(!Array.isArray(girone) || girone.length < 2){
             return partite;
-
         }
 
-
-        const coppie = [
-
-            [0,1],
-            [2,3],
-            [0,2],
-            [1,3],
-            [0,3],
-            [1,2]
-
-        ];
-
-
-        coppie.forEach(x=>{
-
-            partite.push({
-
-                casa:x[0],
-
-                ospite:x[1]
-
+        // Se il girone ha 4 squadre, usa le 6 classiche combinazioni del girone all'italiana
+        if(girone.length === 4){
+            const coppie = [
+                [0,1],
+                [2,3],
+                [0,2],
+                [1,3],
+                [0,3],
+                [1,2]
+            ];
+            coppie.forEach(x=>{
+                partite.push({
+                    casa: x[0],
+                    ospite: x[1]
+                });
             });
-
-        });
-
+        } else {
+            // Generazione dinamica di base per un numero diverso di squadre nel girone
+            for(let i = 0; i < girone.length; i++){
+                for(let j = i + 1; j < girone.length; j++){
+                    partite.push({
+                        casa: i,
+                        ospite: j
+                    });
+                }
+            }
+        }
 
         return partite;
-
     };
 
+    if(!state) return;
 
-
-    if(!state)
-
-        return;
-
-
-
-    if(!state.partiteGironi ||
-       typeof state.partiteGironi !== "object"
-    ){
-
-        state.partiteGironi={};
-
+    if(!state.partiteGironi || typeof state.partiteGironi !== "object"){
+        state.partiteGironi = {};
     }
 
+    const lettereGironi = ["A", "B", "C", "D", "E", "F", "G"];
 
+    const numeroGironi = Number(state.rules?.numeroGironi) || 2;
 
-    const lettereGironi=[
-
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
-
-    ];
-
-
-
-    const numeroGironi =
-        Number(
-            state.rules?.numeroGironi
-        )
-        ||
-        2;
-
-
+    console.log("DEBUG - Numero gironi richiesti dalle regole:", numeroGironi);
 
     /*
         ============================
         GENERAZIONE GIRONI
         ============================
     */
-
-    for(
-        let i=0;
-        i<lettereGironi.length;
-        i++
-    ){
-
-        const tag =
-            lettereGironi[i];
-
+    for(let i = 0; i < lettereGironi.length; i++){
+        const tag = lettereGironi[i];
 
         /*
-            Girone non previsto
+            Girone non previsto dalle regole
         */
-
-        if(i>=numeroGironi){
-
+        if(i >= numeroGironi){
             delete state.partiteGironi[tag];
-
             continue;
-
         }
-
-
 
         /*
-            Girone non completo
+            Controllo flessibile sul girone
         */
-
-        if(
-            !Array.isArray(state[tag]) ||
-            state[tag].length !== 4
-        ){
-
-            delete state.partiteGironi[tag];
-
+        if(!Array.isArray(state[tag]) || state[tag].length === 0){
+            console.warn(`ATTENZIONE: Il girone ${tag} non è definito o è vuoto in state[${tag}]`, state[tag]);
+            
+            // Tentativo di recupero automatico se le squadre sono distribuite altrove o troncate
             continue;
-
         }
-
-
 
         /*
-            Mantiene le partite già esistenti
-            se hanno ancora la struttura corretta.
+            Mantiene le partite già esistenti se valide
         */
-
         if(
-            Array.isArray(
-                state.partiteGironi[tag]
-            ) &&
-            state.partiteGironi[tag].length===6
+            Array.isArray(state.partiteGironi[tag]) &&
+            state.partiteGironi[tag].length > 0
         ){
-
             continue;
-
         }
 
-
-
-        state.partiteGironi[tag]=
-            crea(state[tag]);
-
+        state.partiteGironi[tag] = crea(state[tag]);
     }
-
-
 
     /*
         ============================
         ARRAY RISULTATI / TEMPI / CAMPI
         ============================
     */
+    for(let i = 0; i < lettereGironi.length; i++){
+        const tag = lettereGironi[i];
 
-    for(
-        let i=0;
-        i<lettereGironi.length;
-        i++
-    ){
-
-        const tag =
-            lettereGironi[i];
-
-
-        if(
-            !Array.isArray(
-                state.partiteGironi[tag]
-            )
-        ){
-
+        if(!Array.isArray(state.partiteGironi[tag])){
             continue;
-
         }
 
-
-        const numeroPartite =
-            state.partiteGironi[tag].length;
-
-
+        const numeroPartite = state.partiteGironi[tag].length;
 
         /*
             RISULTATI
-            NON VENGONO AZZERATI
         */
-
-        const risultatoEsistente =
-            Array.isArray(
-                state[tag+"res"]
-            )
-            ?
-            state[tag+"res"]
-            :
-            [];
-
-
-        state[tag+"res"] =
-            Array.from(
-                {
-                    length:
-                        numeroPartite
-                },
-                (_,index)=>
-                    risultatoEsistente[index] !== undefined
-                    ?
-                    risultatoEsistente[index]
-                    :
-                    "-"
-            );
-
-
+        const risultatoEsistente = Array.isArray(state[tag+"res"]) ? state[tag+"res"] : [];
+        state[tag+"res"] = Array.from(
+            { length: numeroPartite },
+            (_, index) => risultatoEsistente[index] !== undefined ? risultatoEsistente[index] : "-"
+        );
 
         /*
             ORARI
-            NON VENGONO AZZERATI
         */
-
-        const tempiEsistenti =
-            Array.isArray(
-                state[tag+"time"]
-            )
-            ?
-            state[tag+"time"]
-            :
-            [];
-
-
-        state[tag+"time"] =
-            Array.from(
-                {
-                    length:
-                        numeroPartite
-                },
-                (_,index)=>
-                    tempiEsistenti[index] !== undefined
-                    ?
-                    tempiEsistenti[index]
-                    :
-                    ""
-            );
-
-
+        const tempiEsistenti = Array.isArray(state[tag+"time"]) ? state[tag+"time"] : [];
+        state[tag+"time"] = Array.from(
+            { length: numeroPartite },
+            (_, index) => tempiEsistenti[index] !== undefined ? tempiEsistenti[index] : ""
+        );
 
         /*
             CAMPI
-            NON VENGONO AZZERATI
         */
-
-        const campiEsistenti =
-            Array.isArray(
-                state[tag+"camp"]
-            )
-            ?
-            state[tag+"camp"]
-            :
-            [];
-
-
-        state[tag+"camp"] =
-            Array.from(
-                {
-                    length:
-                        numeroPartite
-                },
-                (_,index)=>
-                    campiEsistenti[index] !== undefined
-                    ?
-                    campiEsistenti[index]
-                    :
-                    ""
-            );
-
+        const campiEsistenti = Array.isArray(state[tag+"camp"]) ? state[tag+"camp"] : [];
+        state[tag+"camp"] = Array.from(
+            { length: numeroPartite },
+            (_, index) => campiEsistenti[index] !== undefined ? campiEsistenti[index] : ""
+        );
     }
 
-
-
-    console.log(
-        "PARTITE GENERATE:",
-        state.partiteGironi
-    );
-
+    console.log("PARTITE GENERATE CON SUCCESSO:", state.partiteGironi);
 }
-
 
 
 function render(){
