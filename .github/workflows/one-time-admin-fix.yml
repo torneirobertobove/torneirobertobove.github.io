@@ -1,0 +1,45 @@
+name: One-time admin approval fix
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-admin-fix.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix admin approval UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''function renderGestioneTorneo(){let box=document.getElementById("dettaglioTorneoAdmin"),card=document.getElementById("gestioneTorneoAdmin");if(!box||!card)return;let torneo=getTorneoAdminCorrente();if(!torneo){card.classList.add("hidden");box.innerHTML="";return}card.classList.remove("hidden");let rules=torneo.configurazione?.rules||torneo.rules||{};box.innerHTML=`<div class="admin-card-dati"><h3>${torneo.nome||"Torneo senza nome"}</h3><p>📅 Data: ${torneo.data||"-"}</p><p>👥 Squadre: ${torneo.posti||rules.numeroSquadre||0}</p><p>🏆 Formula: ${rules.tipoTorneo||torneo.formula||"-"}</p><p>Stato: ${torneo.stato||"bozza"} | Pubblicato: ${torneo.pubblicato?"Sì":"No"} | Iscrizioni: ${torneo.iscrizioni_chiuse?"Chiuse":"aperte"}</p></div>`;let reqBox=document.getElementById("richiesteIscrizione");if(reqBox){let listaReq=window.iscrizioniTorneo||[];reqBox.innerHTML=listaReq.length?listaReq.map(r=>`<div class="lista-item"><b>${r.nome||r.giocatore1||"Giocatore"}</b> (${r.email||"-"})<br>Stato: ${r.stato||"in attesa"}<br><button onclick="selezionaGiocatoreAdmin(${r.id})" class="btn-green">Gestisci</button></div>`).join(""):"<p>Nessuna richiesta di iscrizione.</p>"}}'''
+          new = '''function renderGestioneTorneo(){let box=document.getElementById("dettaglioTorneoAdmin"),card=document.getElementById("gestioneTorneoAdmin");if(!box||!card)return;let torneo=getTorneoAdminCorrente();if(!torneo){card.classList.add("hidden");box.innerHTML="";return}card.classList.remove("hidden");let rules=torneo.configurazione?.rules||torneo.rules||{};box.innerHTML=`<div class="admin-card-dati"><h3>${torneo.nome||"Torneo senza nome"}</h3><p>📅 Data: ${torneo.data||"-"}</p><p>👥 Squadre: ${torneo.posti||rules.numeroSquadre||0}</p><p>🏆 Formula: ${rules.tipoTorneo||torneo.formula||"-"}</p><p>Stato: ${torneo.stato||"bozza"} | Pubblicato: ${torneo.pubblicato?"Sì":"No"} | Iscrizioni: ${torneo.iscrizioni_chiuse?"Chiuse":"aperte"}</p></div>`;let reqBox=document.getElementById("richiesteIscrizione");if(reqBox){let listaReq=window.iscrizioniTorneo||[];reqBox.innerHTML=listaReq.length?listaReq.map(r=>{let stato=r.stato||"in attesa";let nome=r.nome_giocatore||r.nome||r.giocatore1||"Giocatore";let azioni=stato==="approvato"?`<span class="badge">✅ Approvato</span>`:stato==="rifiutato"?`<span class="badge">❌ Rifiutato</span>`:`<button onclick="selezionaGiocatoreAdmin(${r.id})" class="btn-green">👤 Gestisci</button><button onclick="approvaGiocatoreDiretto(${r.id})" class="btn-green">✅ Approva</button><button onclick="rifiutaGiocatoreDiretto(${r.id})" class="btn-red">❌ Rifiuta</button>`;return `<div class="lista-item"><b>${nome}</b> (${r.email||"-"})<br>Stato: ${stato}<br>${azioni}</div>`}).join(""):"<p>Nessuna richiesta di iscrizione.</p>"}}'''
+          if old not in s:
+              raise SystemExit('renderGestioneTorneo target non trovato; nessuna modifica eseguita')
+          s=s.replace(old,new,1)
+          marker='async function approvaGiocatore(){'
+          insert='''async function approvaGiocatoreDiretto(id){let g=(window.iscrizioniTorneo||[]).find(x=>String(x.id)===String(id));if(!g){alert("Giocatore non trovato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"approvato"}).eq("id",g.id);if(error)throw error;await caricaRichiesteIscrizione()}catch(e){console.error("Errore approvazione diretta:",e);alert("Errore durante l'approvazione")}}
+async function rifiutaGiocatoreDiretto(id){let g=(window.iscrizioniTorneo||[]).find(x=>String(x.id)===String(id));if(!g){alert("Giocatore non trovato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"rifiutato"}).eq("id",g.id);if(error)throw error;await caricaRichiesteIscrizione()}catch(e){console.error("Errore rifiuto diretto:",e);alert("Errore durante il rifiuto")}}
+'''
+          if marker not in s:
+              raise SystemExit('approvaGiocatore target non trovato; nessuna modifica eseguita')
+          s=s.replace(marker,insert+marker,1)
+          export_marker='window.approvaGiocatore=approvaGiocatore;'
+          s=s.replace(export_marker,'window.approvaGiocatore=approvaGiocatore;window.rifiutaGiocatore=rifiutaGiocatore;window.approvaGiocatoreDiretto=approvaGiocatoreDiretto;window.rifiutaGiocatoreDiretto=rifiutaGiocatoreDiretto;',1)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git commit -m "Fix direct approval actions in admin"
+          git push
+      - name: Remove one-time workflow
+        run: |
+          git rm .github/workflows/one-time-admin-fix.yml
+          git commit -m "Remove one-time admin fix workflow"
+          git push
