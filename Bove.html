@@ -8359,60 +8359,36 @@ function renderPersonalizzato(){
 
 }
 
+
 function generaPartiteGironi() {
-    // Controllo di sicurezza: se non ci andiamo a pescare coppie valide, fermiamoci
-    if (!Array.isArray(state.coppie) || state.coppie.length === 0) {
-        console.warn("Nessuna coppia trovata per generare i gironi.");
-        return;
-    }
+    // Svuotiamo eventuali partite precedenti per evitare duplicati
+    state.partiteGironi = [];
 
-    const numeroGironi = state.numeroGironi || 2;
-    const lettereGironi = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-
-    // 1. Pulizia dei vecchi gironi nello stato per evitare residui
-    lettereGironi.forEach(lettera => {
-        state[lettera] = [];
-    });
-
-    // 2. Smistamento equilibrato delle coppie nei vari gironi
-    state.coppie.forEach((coppia, index) => {
-        const indiceGirone = index % numeroGironi;
-        const letteraGirone = lettereGironi[indiceGirone];
-        state[letteraGirone].push(coppia);
-    });
-
-    // 3. Generazione delle partite per ogni girone
-    state.partiteGironi = []; // Array globale delle partite dei gironi
+    let lettereGironi = ["A", "B", "C", "D", "E", "F", "G"];
+    let numeroGironi = Number(state.rules.numeroGironi) || 2;
 
     for (let i = 0; i < numeroGironi; i++) {
-        const lettera = lettereGironi[i];
-        const squadreGirone = state[lettera];
+        let lettera = lettereGironi[i];
+        let squadre = state[lettera];
 
-        // Algoritmo standard all'italiana per le sfide del girone
-        for (let x = 0; x < squadreGirone.length; x++) {
-            for (let y = x + 1; y < squadreGirone.length; y++) {
-                state.partiteGironi.push({
-                    girone: lettera,
-                    squadra1: squadreGirone[x],
-                    squadra2: squadreGirone[y],
-                    risultato1: "",
-                    risultato2: "",
-                    giocata: false
-                });
+        if (Array.isArray(squadre) && squadre.length > 1) {
+            // Generazione del calendario all'italiana per il girone corrente
+            for (let s1 = 0; s1 < squadre.length; s1++) {
+                for (let s2 = s1 + 1; s2 < squadre.length; s2++) {
+                    state.partiteGironi.push({
+                        girone: lettera,
+                        squadra1: squadre[s1],
+                        squadra2: squadre[s2],
+                        risultato1: "",
+                        risultato2: "",
+                        giocata: false
+                    });
+                }
             }
         }
     }
 
-    console.log("Gironi e partite generati correttamente:", {
-        coppieTotali: state.coppie.length,
-        gironiAttivi: numeroGironi,
-        partiteTotali: state.partiteGironi.length
-    });
-
-    // 4. Aggiorniamo l'interfaccia grafica (UI) se hai una funzione di render dedicata
-    if (typeof renderInterfaccia === "function") {
-        renderInterfaccia();
-    }
+    console.log("Partite dei gironi generate con il metodo originale:", state.partiteGironi);
 }
    
 function render(){
