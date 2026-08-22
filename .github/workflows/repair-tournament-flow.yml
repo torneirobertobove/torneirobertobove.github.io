@@ -1,0 +1,100 @@
+name: Repair tournament flow
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/repair-tournament-flow.yml'
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repair Bove loadState flow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''                    state.iscritti =
+                        Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        state.iscritti
+                    );'''
+
+          new = '''                    state.iscritti =
+                        Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
+
+
+                    if(
+                        state.iscritti.length > 0 &&
+                        (!Array.isArray(state.partecipanti) ||
+                         state.partecipanti.length === 0)
+                    ){
+
+                        state.partecipanti =
+                            state.iscritti.slice();
+
+                    }
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        state.iscritti
+                    );'''
+
+          if old in s and new not in s:
+              s = s.replace(old, new, 1)
+
+          marker = '''                console.log(
+                    "GIRONI GENERATI:",
+                    state.A,
+                    state.B,
+                    state.C,
+                    state.D
+                );'''
+
+          insertion = marker + '''\n\n\n                if(\n                    typeof generaPartiteGironi === "function"\n                ){\n\n                    generaPartiteGironi();\n\n                }'''
+
+          if marker in s and insertion not in s:
+              s = s.replace(marker, insertion, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
+          Path('/tmp/bove-js.js').write_text('\n'.join(scripts), encoding='utf-8')
+          PY
+          node --check /tmp/bove-js.js
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then
+            echo 'No repair needed'
+          else
+            git commit -m 'Repair Bove tournament loading flow'
+            git push
+          fi
