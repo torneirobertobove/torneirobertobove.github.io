@@ -9404,7 +9404,7 @@ function generaPartiteGironi(){
                 });
             });
         } else {
-            // Generazione dinamica di base per un numero diverso di squadre nel girone
+            // Generazione dinamica per un numero diverso di squadre nel girone
             for(let i = 0; i < girone.length; i++){
                 for(let j = i + 1; j < girone.length; j++){
                     partite.push({
@@ -9425,15 +9425,34 @@ function generaPartiteGironi(){
     }
 
     const lettereGironi = ["A", "B", "C", "D", "E", "F", "G"];
-
     const numeroGironi = Number(state.rules?.numeroGironi) || 2;
 
     console.log("DEBUG - Numero gironi richiesti dalle regole:", numeroGironi);
 
     /*
-        ============================
+        ============================================
+        RIPARAZIONE AUTOMATICA: DISTRIBUZIONE SQUADRE
+        ============================================
+        Se abbiamo coppie ma i gironi sono vuoti o disallineati, li popoliamo al volo!
+    */
+    if(Array.isArray(state.coppie) && state.coppie.length > 0){
+        let squadrePerGirone = Math.ceil(state.coppie.length / numeroGironi);
+        
+        for(let i = 0; i < numeroGironi; i++){
+            const tag = lettereGironi[i];
+            if(!Array.isArray(state[tag]) || state[tag].length === 0){
+                let inizio = i * squadrePerGirone;
+                let fine = inizio + squadrePerGirone;
+                state[tag] = state.coppie.slice(inizio, fine);
+                console.log(`RIPARAZIONE: Girone ${tag} popolato con`, state[tag]);
+            }
+        }
+    }
+
+    /*
+        ============================================
         GENERAZIONE GIRONI
-        ============================
+        ============================================
     */
     for(let i = 0; i < lettereGironi.length; i++){
         const tag = lettereGironi[i];
@@ -9451,8 +9470,6 @@ function generaPartiteGironi(){
         */
         if(!Array.isArray(state[tag]) || state[tag].length === 0){
             console.warn(`ATTENZIONE: Il girone ${tag} non è definito o è vuoto in state[${tag}]`, state[tag]);
-            
-            // Tentativo di recupero automatico se le squadre sono distribuite altrove o troncate
             continue;
         }
 
@@ -9470,9 +9487,9 @@ function generaPartiteGironi(){
     }
 
     /*
-        ============================
+        ============================================
         ARRAY RISULTATI / TEMPI / CAMPI
-        ============================
+        ============================================
     */
     for(let i = 0; i < lettereGironi.length; i++){
         const tag = lettereGironi[i];
@@ -9513,7 +9530,6 @@ function generaPartiteGironi(){
 
     console.log("PARTITE GENERATE CON SUCCESSO:", state.partiteGironi);
 }
-
 
 function render(){
 
