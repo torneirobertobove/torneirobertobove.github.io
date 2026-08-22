@@ -5657,7 +5657,6 @@ async function updateAndSync(){
 
  async function loadState(){
 
-    // Unico ritocco indispensabile: dichiarate subito all'inizio per evitare il ReferenceError
     const params = new URLSearchParams(window.location.search);
     const idTorneo = params.get("idTorneo");
     const torneoParam = params.get("torneo");
@@ -5676,11 +5675,6 @@ async function updateAndSync(){
 
                 configurazione = JSON.parse(
                     decodeURIComponent(torneoParam)
-                );
-
-                console.log(
-                    "TORNEO ADMIN CARICATO:",
-                    configurazione
                 );
 
                 state = {
@@ -5707,11 +5701,6 @@ async function updateAndSync(){
 
                 };
 
-                /*
-                =========================================
-                PARTECIPANTI
-                =========================================
-                */
                 if(
                     Array.isArray(
                         configurazione.partecipanti
@@ -5728,11 +5717,6 @@ async function updateAndSync(){
 
                 }
 
-                /*
-                =========================================
-                COPPIE
-                =========================================
-                */
                 if(
                     Array.isArray(
                         configurazione.coppie
@@ -5749,11 +5733,6 @@ async function updateAndSync(){
 
                 }
 
-                /*
-                =========================================
-                CONFIGURAZIONE INTERNA
-                =========================================
-                */
                 if(
                     configurazione.configurazione
                 ){
@@ -5784,8 +5763,6 @@ async function updateAndSync(){
                     }
 
                 }
-
-                generaPartiteGironi();
 
             }
             catch(err){
@@ -5838,11 +5815,6 @@ async function updateAndSync(){
                     configurazione =
                         torneo.configurazione || {};
 
-                    /*
-                    =========================================
-                    DATI PRINCIPALI TORNEO
-                    =========================================
-                    */
                     state = {
 
                         ...state,
@@ -5877,11 +5849,6 @@ async function updateAndSync(){
 
                     };
 
-                    /*
-                    =========================================
-                    PARTECIPANTI DA CONFIGURAZIONE
-                    =========================================
-                    */
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -5893,11 +5860,6 @@ async function updateAndSync(){
 
                     }
 
-                    /*
-                    =========================================
-                    COPPIE DA CONFIGURAZIONE
-                    =========================================
-                    */
                     if(
                         Array.isArray(
                             configurazione.coppie
@@ -5909,11 +5871,6 @@ async function updateAndSync(){
 
                     }
 
-                    /*
-                    =========================================
-                    CONFIGURAZIONE NIDIFICATA
-                    =========================================
-                    */
                     if(
                         configurazione.configurazione
                     ){
@@ -5971,7 +5928,7 @@ async function updateAndSync(){
 
             /*
             =========================================
-            ISCRITTI APPROVATI E CONVERSIONE AUTOMATICA
+            ISCRITTI APPROVATI DA SUPABASE
             =========================================
             */
             try{
@@ -6013,9 +5970,14 @@ async function updateAndSync(){
                         state.iscritti
                     );
 
+                    // Se non ci sono coppie salvate nella configurazione del torneo, 
+                    // prendiamo direttamente i dati puliti dalla tabella iscrizioni
                     if((!state.coppie || state.coppie.length === 0) && state.iscritti.length > 0){
-                        state.coppie = state.iscritti.map(item => item.nome_squadra || item.giocatore1 || "Squadra");
-                        console.log("COPPIE GENERATE AUTOMATICAMENTE DAGLI ISCRITTI:", state.coppie);
+                        state.coppie = state.iscritti.map(item => {
+                            if(item.nome_squadra) return item.nome_squadra;
+                            if(item.giocatore1 && item.giocatore2) return `${item.giocatore1} / ${item.giocatore2}`;
+                            return item.giocatore1 || item.email || "Squadra";
+                        });
                     }
 
                 }
@@ -6099,11 +6061,6 @@ async function updateAndSync(){
                 }
             );
 
-            /*
-            =========================================
-            CONFIGURAZIONE INTERNA
-            =========================================
-            */
             if(
                 configurazione.configurazione
             ){
@@ -6354,56 +6311,6 @@ async function updateAndSync(){
 
         /*
         =========================================
-        LOG CARICAMENTO
-        =========================================
-        */
-        console.log(
-
-            "TORNEO CARICATO:",
-
-            state.nomeTorneo,
-
-            state.rules.numeroSquadre,
-
-            state.rules.numeroGironi,
-
-            state.coppie
-
-        );
-
-        console.log(
-
-            "ISCRITTI APPROVATI:",
-
-            state.iscritti || []
-
-        );
-
-        /*
-        =========================================
-        SALVATAGGIO LOCALE
-        =========================================
-        */
-        if(
-            state.coppie &&
-            Array.isArray(
-                state.coppie
-            ) &&
-            state.coppie.length > 0
-        ){
-
-            localStorage.setItem(
-
-                "torneoState",
-
-                JSON.stringify(state)
-
-            );
-
-        }
-
-        /*
-        =========================================
         RENDER
         =========================================
         */
@@ -6427,11 +6334,6 @@ async function updateAndSync(){
 
         }
 
-        /*
-        =========================================
-        APERTURA REGOLE
-        =========================================
-        */
         const apriRegole =
             params.get(
                 "apriRegole"
