@@ -5655,6 +5655,7 @@ async function updateAndSync(){
 
 
 async function loadState(){
+
     // Dichiarate subito all'inizio per evitare qualsiasi ReferenceError
     const params = new URLSearchParams(window.location.search);
     const idTorneo = params.get("idTorneo");
@@ -5662,13 +5663,16 @@ async function loadState(){
     let configurazione = null;
 
     try{
+
         /*
         =========================================
         TORNEO DA URL
         =========================================
         */
         if(torneoParam){
+
             try{
+
                 configurazione = JSON.parse(
                     decodeURIComponent(torneoParam)
                 );
@@ -5679,19 +5683,27 @@ async function loadState(){
                 );
 
                 state = {
+
                     ...state,
+
                     ...configurazione,
+
                     rules:{
+
                         ...state.rules,
+
                         ...(
                             configurazione
                             .configurazione
                             ?.rules || {}
                         ),
+
                         ...(
                             configurazione.rules || {}
                         )
+
                     }
+
                 };
 
                 /*
@@ -5704,11 +5716,15 @@ async function loadState(){
                         configurazione.partecipanti
                     )
                 ){
+
                     state.partecipanti =
                         configurazione.partecipanti;
+
                 }
                 else{
+
                     state.partecipanti = [];
+
                 }
 
                 /*
@@ -5721,11 +5737,15 @@ async function loadState(){
                         configurazione.coppie
                     )
                 ){
+
                     state.coppie =
                         configurazione.coppie;
+
                 }
                 else{
+
                     state.coppie = [];
+
                 }
 
                 /*
@@ -5736,6 +5756,7 @@ async function loadState(){
                 if(
                     configurazione.configurazione
                 ){
+
                     const cfg =
                         configurazione.configurazione;
 
@@ -5744,8 +5765,10 @@ async function loadState(){
                             cfg.partecipanti
                         )
                     ){
+
                         state.partecipanti =
                             cfg.partecipanti;
+
                     }
 
                     if(
@@ -5753,30 +5776,40 @@ async function loadState(){
                             cfg.coppie
                         )
                     ){
+
                         state.coppie =
                             cfg.coppie;
+
                     }
+
                 }
+
+                generaPartiteGironi();
 
             }
             catch(err){
+
                 console.error(
                     "Errore lettura torneo URL:",
                     err
                 );
+
             }
+
         }
 
         /*
         =========================================
-        TORNEO DA SUPABASE (Usiamo la variabile 'sb' corretta)
+        TORNEO DA SUPABASE
         =========================================
         */
         if(
             idTorneo &&
             typeof sb !== "undefined"
         ){
+
             try{
+
                 const {
                     data: torneo,
                     error
@@ -5791,70 +5824,112 @@ async function loadState(){
                     .single();
 
                 if(error){
+
                     console.error(
                         "Errore caricamento Supabase:",
                         error
                     );
+
                 }
 
                 if(torneo){
+
                     configurazione =
                         torneo.configurazione || {};
 
+                    /*
+                    =========================================
+                    DATI PRINCIPALI TORNEO
+                    =========================================
+                    */
                     state = {
+
                         ...state,
+
                         idTorneo:
                             torneo.id,
+
                         nomeTorneo:
                             torneo.nome
                             ||
                             state.nomeTorneo
                             ||
                             "",
+
                         dataTorneo:
                             torneo.data
                             ||
                             state.dataTorneo
                             ||
                             "",
+
                         rules:{
+
                             ...state.rules,
+
                             ...(
                                 configurazione.rules
                                 || {}
                             )
+
                         }
+
                     };
 
+                    /*
+                    =========================================
+                    PARTECIPANTI DA CONFIGURAZIONE
+                    =========================================
+                    */
                     if(
                         Array.isArray(
                             configurazione.partecipanti
                         )
                     ){
+
                         state.partecipanti =
                             configurazione.partecipanti;
+
                     }
 
+                    /*
+                    =========================================
+                    COPPIE DA CONFIGURAZIONE
+                    =========================================
+                    */
                     if(
                         Array.isArray(
                             configurazione.coppie
                         )
                     ){
+
                         state.coppie =
                             configurazione.coppie;
+
                     }
 
+                    /*
+                    =========================================
+                    CONFIGURAZIONE NIDIFICATA
+                    =========================================
+                    */
                     if(
                         configurazione.configurazione
                     ){
+
                         const cfg =
                             configurazione.configurazione;
 
                         if(cfg.rules){
+
                             state.rules = {
+
                                 ...state.rules,
+
                                 ...cfg.rules
+
                             };
+
                         }
 
                         if(
@@ -5862,8 +5937,10 @@ async function loadState(){
                                 cfg.partecipanti
                             )
                         ){
+
                             state.partecipanti =
                                 cfg.partecipanti;
+
                         }
 
                         if(
@@ -5871,17 +5948,24 @@ async function loadState(){
                                 cfg.coppie
                             )
                         ){
+
                             state.coppie =
                                 cfg.coppie;
+
                         }
+
                     }
+
                 }
+
             }
             catch(err){
+
                 console.error(
                     "Errore recupero torneo Supabase:",
                     err
                 );
+
             }
 
             /*
@@ -5890,6 +5974,7 @@ async function loadState(){
             =========================================
             */
             try{
+
                 const {
                     data: iscritti,
                     error: erroreIscritti
@@ -5906,13 +5991,17 @@ async function loadState(){
                     );
 
                 if(erroreIscritti){
+
                     console.error(
                         "Errore caricamento iscritti:",
                         erroreIscritti
                     );
+
                     state.iscritti = [];
+
                 }
                 else{
+
                     state.iscritti =
                         Array.isArray(iscritti)
                         ? iscritti
@@ -5923,19 +6012,27 @@ async function loadState(){
                         state.iscritti
                     );
 
+                    // CORRETTO: Se ci sono iscritti approvati su Supabase, le coppie DEVONO rispecchiarli 
+                    // (forzando il ricalcolo se il numero è diverso o se state.coppie è vuoto)
                     if(state.iscritti.length > 0){
                         state.coppie = state.iscritti.map(item => item.nome_squadra || item.giocatore1 || "Squadra");
                         console.log("COPPIE SINCRONIZZATE CON GLI ISCRITTI DI SUPABASE:", state.coppie);
                     }
+
                 }
+
             }
             catch(err){
+
                 console.error(
                     "Errore recupero iscritti:",
                     err
                 );
+
                 state.iscritti = [];
+
             }
+
         }
 
         /*
@@ -5944,65 +6041,223 @@ async function loadState(){
         =========================================
         */
         if(configurazione){
+
             const arrayDaRecuperare = [
-                "A", "B", "C", "D", "E", "F", "G",
-                "Ares", "Bres", "Cres", "Dres", "Eres", "Fres", "Gres",
-                "Atime", "Btime", "Ctime", "Dtime", "Etime", "Ftime", "Gtime",
-                "Acamp", "Bcamp", "Ccamp", "Dcamp", "Ecamp", "Fcamp", "Gcamp",
-                "qRes", "sTopRes", "fTopRes", "finalTop"
+
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+
+                "Ares",
+                "Bres",
+                "Cres",
+                "Dres",
+                "Eres",
+                "Fres",
+                "Gres",
+
+                "Atime",
+                "Btime",
+                "Ctime",
+                "Dtime",
+                "Etime",
+                "Ftime",
+                "Gtime",
+
+                "Acamp",
+                "Bcamp",
+                "Ccamp",
+                "Dcamp",
+                "Ecamp",
+                "Fcamp",
+                "Gcamp",
+
+                "qRes",
+                "sTopRes",
+                "fTopRes",
+                "finalTop"
+
             ];
 
             arrayDaRecuperare.forEach(
                 k=>{
+
                     if(
                         Array.isArray(
                             configurazione[k]
                         )
                     ){
+
                         state[k] =
                             configurazione[k];
+
                     }
+
                 }
             );
+
+            /*
+            =========================================
+            CONFIGURAZIONE INTERNA
+            =========================================
+            */
+            if(
+                configurazione.configurazione
+            ){
+
+                const cfg =
+                    configurazione.configurazione;
+
+                if(cfg.rules){
+
+                    state.rules = {
+
+                        ...state.rules,
+
+                        ...cfg.rules
+
+                    };
+
+                }
+
+                if(
+                    Array.isArray(
+                        cfg.partecipanti
+                    )
+                ){
+
+                    state.partecipanti =
+                        cfg.partecipanti;
+
+                }
+
+                if(
+                    Array.isArray(
+                        cfg.coppie
+                    ) && state.iscritti.length === 0
+                ){
+                    // Prende le coppie dalla configurazione solo se non ci sono iscritti da Supabase
+                    state.coppie = cfg.coppie;
+                }
+
+            }
+
         }
 
         /*
         =========================================
-        STATO LOCALE (FALLBACK)
+        NORMALIZZAZIONE GIRONI
+        =========================================
+        */
+        let numeroGironi =
+            Number(
+                state.rules.numeroGironi
+            ) || 2;
+
+        let lettereGironi = [
+
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G"
+
+        ];
+
+        lettereGironi.forEach(
+            (g,index)=>{
+
+                if(
+                    index < numeroGironi
+                ){
+
+                    if(
+                        !Array.isArray(
+                            state[g]
+                        )
+                    ){
+
+                        state[g]=[];
+
+                    }
+
+                }
+                else{
+
+                    state[g]=[];
+
+                }
+
+            }
+        );
+
+        /*
+        =========================================
+        GENERAZIONE GIRONI DA COPPIE (SEMPRE FORZATA SE CAMBIANO LE COPPIE)
         =========================================
         */
         if(
-            !torneoParam &&
-            !idTorneo
+            Array.isArray(
+                state.coppie
+            )
+            &&
+            state.coppie.length > 0
         ){
-            const locale =
-                localStorage.getItem(
-                    "torneoState"
-                );
 
-            if(locale){
-                try{
-                    const salvato =
-                        JSON.parse(
-                            locale
+            // Svuotiamo i gironi e redistribuiamo tutte le 16 coppie correttamente nei gironi in base a 'squadrePerGirone'
+            let perGirone =
+                Number(
+                    state.rules
+                    .squadrePerGirone
+                ) || 4;
+
+            lettereGironi.forEach(
+                g=>{
+
+                    state[g]=[];
+
+                }
+            );
+
+            state.coppie.forEach(
+                (c,i)=>{
+
+                    let indice =
+                        Math.floor(
+                            i / perGirone
                         );
 
-                    state={
-                        ...state,
-                        ...salvato,
-                        rules:{
-                            ...state.rules,
-                            ...(salvato.rules || {})
-                        }
-                    };
+                    if(
+                        indice < numeroGironi &&
+                        state[
+                            lettereGironi[
+                                indice
+                            ]
+                        ]
+                    ){
+
+                        state[
+                            lettereGironi[
+                                indice
+                            ]
+                        ].push(c);
+
+                    }
+
                 }
-                catch(err){
-                    console.error(
-                        "Errore lettura stato locale:",
-                        err
-                    );
-                }
-            }
+            );
+
+            console.log(
+                "GIRONI GENERATI CORRETTAMENTE:",
+                { A: state.A, B: state.B }
+            );
+
         }
 
         /*
@@ -6013,21 +6268,95 @@ async function loadState(){
         if(
             typeof ensureRules === "function"
         ){
+
             ensureRules();
+
         }
 
         /*
         =========================================
-        UNICA CHIAMATA DI GENERAZIONE PARTITE / GIRONI
+        STATO LOCALE
         =========================================
         */
-        if (typeof generaPartiteGironi === "function") {
-            generaPartiteGironi();
+        if(
+            !torneoParam &&
+            !idTorneo
+        ){
+
+            const locale =
+                localStorage.getItem(
+                    "torneoState"
+                );
+
+            if(locale){
+
+                try{
+
+                    const salvato =
+                        JSON.parse(
+                            locale
+                        );
+
+                    state={
+
+                        ...state,
+
+                        ...salvato,
+
+                        rules:{
+
+                            ...state.rules,
+
+                            ...(salvato.rules || {})
+
+                        }
+
+                    };
+
+                }
+                catch(err){
+
+                    console.error(
+                        "Errore lettura stato locale:",
+                        err
+                    );
+
+                }
+
+            }
+
         }
 
         /*
         =========================================
-        SALVATAGGIO E RENDER FINALE
+        LOG CARICAMENTO
+        =========================================
+        */
+        console.log(
+
+            "TORNEO CARICATO:",
+
+            state.nomeTorneo,
+
+            state.rules.numeroSquadre,
+
+            state.rules.numeroGironi,
+
+            state.coppie
+
+        );
+
+        console.log(
+
+            "ISCRITTI APPROVATI:",
+
+            state.iscritti || []
+
+        );
+
+        /*
+        =========================================
+        SALVATAGGIO LOCALE
         =========================================
         */
         if(
@@ -6037,26 +6366,47 @@ async function loadState(){
             ) &&
             state.coppie.length > 0
         ){
+
             localStorage.setItem(
+
                 "torneoState",
+
                 JSON.stringify(state)
+
             );
+
         }
 
+        /*
+        =========================================
+        RENDER
+        =========================================
+        */
         if(
             typeof render === "function"
         ){
+
             try{
+
                 render();
+
             }
             catch(err){
+
                 console.error(
                     "Errore render torneo:",
                     err
                 );
+
             }
+
         }
 
+        /*
+        =========================================
+        APERTURA REGOLE
+        =========================================
+        */
         const apriRegole =
             params.get(
                 "apriRegole"
@@ -6065,566 +6415,38 @@ async function loadState(){
         if(
             apriRegole === "true"
         ){
+
             setTimeout(
                 ()=>{
+
                     if(
                         typeof openRules ===
                         "function"
                     ){
+
                         openRules();
+
                     }
+
                 },
                 300
             );
+
         }
 
         return state;
 
     }
     catch(e){
+
         console.error(
             "Errore loadState:",
             e
         );
+
         return null;
-    }
-}
-   
-function calc(squadre, risultati){
-
-    /*
-        ============================
-        VALIDAZIONE
-        ============================
-    */
-
-    if(
-        !Array.isArray(squadre) ||
-        !Array.isArray(risultati)
-    ){
-
-        return [];
 
     }
-
-
-
-    /*
-        ============================
-        CLASSIFICA INIZIALE
-        ============================
-    */
-
-    let classifica=[];
-
-
-    squadre.forEach(nome=>{
-
-        classifica.push({
-
-            n:nome,
-
-            pt:0,
-
-            gf:0,
-
-            gs:0,
-
-            df:0
-
-        });
-
-    });
-
-
-
-    /*
-        ============================
-        ORDINE PARTITE
-        ============================
-
-        Deve essere identico a
-        generaPartiteGironi():
-
-        0-1
-        2-3
-        0-2
-        1-3
-        0-3
-        1-2
-
-        Per un numero diverso di squadre
-        viene utilizzato il normale
-        round-robin.
-    */
-
-    let partite=[];
-
-
-    if(
-        squadre.length===4
-    ){
-
-        partite=[
-
-            [0,1],
-
-            [2,3],
-
-            [0,2],
-
-            [1,3],
-
-            [0,3],
-
-            [1,2]
-
-        ];
-
-    }
-    else{
-
-        let indici =
-            Array.from(
-                {
-                    length:squadre.length
-                },
-                (_,i)=>i
-            );
-
-
-        if(
-            indici.length%2!==0
-        ){
-
-            indici.push(null);
-
-        }
-
-
-        let totale =
-            indici.length;
-
-
-        let turni =
-            totale-1;
-
-
-        let meta =
-            totale/2;
-
-
-        for(
-            let r=0;
-            r<turni;
-            r++
-        ){
-
-            for(
-                let i=0;
-                i<meta;
-                i++
-            ){
-
-                let casa =
-                    indici[i];
-
-
-                let ospite =
-                    indici[
-                        totale-1-i
-                    ];
-
-
-                if(
-                    casa!==null &&
-                    ospite!==null
-                ){
-
-                    partite.push([
-
-                        casa,
-                        ospite
-
-                    ]);
-
-                }
-
-            }
-
-
-            let fisso =
-                indici[0];
-
-
-            let resto =
-                indici.slice(1);
-
-
-            resto.unshift(
-                resto.pop()
-            );
-
-
-            indici=[
-
-                fisso,
-
-                ...resto
-
-            ];
-
-        }
-
-    }
-
-
-
-    /*
-        ============================
-        CALCOLO RISULTATI
-        ============================
-    */
-
-    for(
-        let indice=0;
-        indice<partite.length;
-        indice++
-    ){
-
-        let match =
-            partite[indice];
-
-
-        if(!match)
-
-            continue;
-
-
-        let i =
-            match[0];
-
-
-        let j =
-            match[1];
-
-
-        if(
-            !classifica[i] ||
-            !classifica[j]
-        ){
-
-            continue;
-
-        }
-
-
-        let risultato =
-            risultati[indice];
-
-
-        if(
-            risultato===undefined ||
-            risultato===null ||
-            risultato==="" ||
-            risultato==="-"
-        ){
-
-            continue;
-
-        }
-
-
-        let parti =
-            String(
-                risultato
-            )
-            .split("-");
-
-
-        if(
-            parti.length!==2
-        ){
-
-            continue;
-
-        }
-
-
-        let a =
-            Number(
-                parti[0]
-            );
-
-
-        let b =
-            Number(
-                parti[1]
-            );
-
-
-        if(
-            !Number.isFinite(a) ||
-            !Number.isFinite(b) ||
-            a<0 ||
-            b<0
-        ){
-
-            continue;
-
-        }
-
-
-
-        /*
-            ============================
-            GOL FATTI / SUBITI
-            ============================
-        */
-
-        classifica[i].gf += a;
-
-        classifica[i].gs += b;
-
-
-        classifica[j].gf += b;
-
-        classifica[j].gs += a;
-
-
-
-        /*
-            ============================
-            PUNTI
-            ============================
-        */
-
-        let puntiVittoria =
-            Number(
-                state.rules?.w
-            );
-
-
-        if(
-            !Number.isFinite(
-                puntiVittoria
-            )
-        ){
-
-            puntiVittoria=3;
-
-        }
-
-
-        let puntiPareggio =
-            Number(
-                state.rules?.d
-            );
-
-
-        if(
-            !Number.isFinite(
-                puntiPareggio
-            )
-        ){
-
-            puntiPareggio=1;
-
-        }
-
-
-
-        if(a>b){
-
-            classifica[i].pt +=
-                puntiVittoria;
-
-        }
-        else
-        if(b>a){
-
-            classifica[j].pt +=
-                puntiVittoria;
-
-        }
-        else{
-
-            classifica[i].pt +=
-                puntiPareggio;
-
-            classifica[j].pt +=
-                puntiPareggio;
-
-        }
-
-    }
-
-
-
-    /*
-        ============================
-        DIFFERENZA RETI
-        ============================
-    */
-
-    classifica.forEach(x=>{
-
-        x.df =
-            x.gf -
-            x.gs;
-
-    });
-
-
-
-    /*
-        ============================
-        CRITERI CLASSIFICA
-        ============================
-    */
-
-    let criteri =
-        Array.isArray(
-            state.rules?.criteriClassifica
-        )
-        ?
-        state.rules.criteriClassifica
-        :
-        [
-            "pt",
-            "df",
-            "gf",
-            "gs"
-        ];
-
-
-
-    /*
-        Assicura sempre i punti
-        come primo criterio.
-    */
-
-    if(
-        criteri[0]!=="pt"
-    ){
-
-        criteri=[
-
-            "pt",
-
-            ...criteri.filter(
-                x=>x!=="pt"
-            )
-
-        ];
-
-    }
-
-
-
-    /*
-        ============================
-        ORDINAMENTO
-        ============================
-    */
-
-    classifica.sort((a,b)=>{
-
-        for(
-            let k=0;
-            k<criteri.length;
-            k++
-        ){
-
-            let criterio =
-                criteri[k];
-
-
-            let differenza=0;
-
-
-            if(
-                criterio==="pt"
-            ){
-
-                differenza =
-                    b.pt-a.pt;
-
-            }
-            else
-            if(
-                criterio==="df"
-            ){
-
-                differenza =
-                    b.df-a.df;
-
-            }
-            else
-            if(
-                criterio==="gf"
-            ){
-
-                differenza =
-                    b.gf-a.gf;
-
-            }
-            else
-            if(
-                criterio==="gs"
-            ){
-
-                differenza =
-                    a.gs-b.gs;
-
-            }
-
-
-            if(
-                differenza!==0
-            ){
-
-                return differenza;
-
-            }
-
-        }
-
-
-        /*
-            ============================
-            ORDINE STABILE FINALE
-            ============================
-        */
-
-        return 0;
-
-    });
-
-
-
-    /*
-        ============================
-        QUALIFICATI
-        ============================
-    */
-
-    const qualificate =
-        Number(
-            state.rules?.qualificatePerGirone
-        ) || 2;
-
-
-    classifica.forEach((x,i)=>{
-
-        x.qual =
-            i < qualificate;
-
-    });
-
-
-
-    return classifica;
 
 }
    
