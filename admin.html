@@ -2739,162 +2739,176 @@ function selezionaGiocatoreAdmin(id){
     );
 
     /*
-    ==========================================
-    RECUPERO DIRETTO DA SUPABASE
-    NON DIPENDIAMO DA window.iscrizioniTorneo
-    ==========================================
+    ==========================================================
+    RECUPERO DEL GIOCATORE
+    ==========================================================
     */
 
-    sb
-        .from("iscrizioni")
-        .select("*")
-        .eq("id", id)
-        .single()
-        .then(({ data, error }) => {
+    let lista =
+        Array.isArray(window.iscrizioniTorneo)
+            ? window.iscrizioniTorneo
+            : [];
 
-            if(error){
+    /*
+    Se la lista globale non è disponibile,
+    recuperiamo direttamente l'iscrizione da Supabase.
+    */
 
-                console.error(
-                    "❌ ERRORE RECUPERO GIOCATORE:",
-                    error
-                );
+    let g =
+        lista.find(
+            x =>
+                String(x.id) ===
+                String(id)
+        );
 
-                alert(
-                    "Errore nel caricamento del giocatore."
-                );
+    /*
+    ==========================================================
+    FALLBACK SUPABASE
+    ==========================================================
+    */
 
-                return;
-            }
+    if(!g){
 
-            if(!data){
+        sb
+            .from("iscrizioni")
+            .select("*")
+            .eq("id", id)
+            .single()
+            .then(({data,error}) => {
 
-                console.error(
-                    "❌ GIOCATORE NON TROVATO:",
-                    id
-                );
+                if(error){
 
-                alert(
-                    "Giocatore non trovato."
-                );
+                    console.error(
+                        "❌ ERRORE RECUPERO GIOCATORE:",
+                        error
+                    );
 
-                return;
-            }
-
-            /*
-            ==========================================
-            SALVIAMO IL GIOCATORE SELEZIONATO
-            ==========================================
-            */
-
-            window.giocatoreSelezionatoCorrente =
-                data;
-
-            console.log(
-                "✅ GIOCATORE SELEZIONATO:",
-                data
-            );
-
-            /*
-            ==========================================
-            APRI SCHEDA
-            ==========================================
-            */
-
-            const box =
-                document.getElementById(
-                    "schedaGiocatoreAdmin"
-                );
-
-            if(box){
-
-                box.classList.remove(
-                    "hidden"
-                );
-
-            }
-
-            /*
-            ==========================================
-            COMPILA DATI
-            ==========================================
-            */
-
-            const nome =
-                document.getElementById(
-                    "adminNomeGiocatore"
-                );
-
-            if(nome){
-
-                nome.value =
-                    data.nome_giocatore ||
-                    (
-                        String(data.nome || "") +
-                        " " +
-                        String(data.cognome || "")
-                    ).trim() ||
-                    data.nome ||
-                    "";
-
-            }
-
-            const email =
-                document.getElementById(
-                    "adminEmailGiocatore"
-                );
-
-            if(email)
-                email.value =
-                    data.email || "";
-
-            const telefono =
-                document.getElementById(
-                    "adminTelefonoGiocatore"
-                );
-
-            if(telefono)
-                telefono.value =
-                    data.telefono || "";
-
-            const livello =
-                document.getElementById(
-                    "adminLivelloGiocatore"
-                );
-
-            if(livello)
-                livello.value =
-                    data.livello || "-";
-
-            const nota =
-                document.getElementById(
-                    "adminNotaGiocatore"
-                );
-
-            if(nota)
-                nota.value =
-                    data.note || "";
-
-            console.log(
-                "✅ SCHEDA GIOCATORE APERTA:",
-                {
-                    id:data.id,
-                    nome:data.nome_giocatore,
-                    stato:data.stato,
-                    approvato:data.approvato
+                    return;
                 }
-            );
 
-        })
-        .catch(error => {
+                if(!data){
 
-            console.error(
-                "❌ ERRORE SELEZIONE GIOCATORE:",
-                error
-            );
+                    console.error(
+                        "❌ GIOCATORE NON TROVATO:",
+                        id
+                    );
 
-        });
+                    return;
+                }
+
+                /*
+                Salviamo il record corretto
+                */
+
+                window.giocatoreSelezionatoCorrente =
+                    data;
+
+                console.log(
+                    "✅ GIOCATORE SELEZIONATO:",
+                    data
+                );
+
+                mostraSchedaGiocatoreAdmin(data);
+
+            });
+
+        return;
+    }
+
+    /*
+    ==========================================================
+    GIOCATORE TROVATO NELLA LISTA
+    ==========================================================
+    */
+
+    window.giocatoreSelezionatoCorrente =
+        g;
+
+    console.log(
+        "✅ GIOCATORE SELEZIONATO:",
+        g
+    );
+
+    mostraSchedaGiocatoreAdmin(g);
+}
+
+
+/*
+==============================================================
+MOSTRA SCHEDA GIOCATORE
+==============================================================
+*/
+
+function mostraSchedaGiocatoreAdmin(g){
+
+    if(!g)
+        return;
+
+    const box =
+        document.getElementById(
+            "schedaGiocatoreAdmin"
+        );
+
+    if(box)
+        box.classList.remove(
+            "hidden"
+        );
+
+    const nome =
+        document.getElementById(
+            "adminNomeGiocatore"
+        );
+
+    if(nome)
+        nome.value =
+            g.nome_giocatore ||
+            g.nome ||
+            g.giocatore1 ||
+            "";
+
+    const email =
+        document.getElementById(
+            "adminEmailGiocatore"
+        );
+
+    if(email)
+        email.value =
+            g.email ||
+            "";
+
+    const telefono =
+        document.getElementById(
+            "adminTelefonoGiocatore"
+        );
+
+    if(telefono)
+        telefono.value =
+            g.telefono ||
+            "";
+
+    const livello =
+        document.getElementById(
+            "adminLivelloGiocatore"
+        );
+
+    if(livello)
+        livello.value =
+            g.livello ||
+            "-";
+
+    const nota =
+        document.getElementById(
+            "adminNotaGiocatore"
+        );
+
+    if(nota)
+        nota.value =
+            g.note ||
+            "";
 
 }
+
+
 async function approvaGiocatore(){
 
     const g =
