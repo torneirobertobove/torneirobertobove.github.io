@@ -45,7 +45,519 @@ async function eliminaTorneoAdmin(id){if(!confirm("Vuoi davvero eliminare questo
 async function pubblicaTorneo(){let torneo=getTorneoAdminCorrente();if(!torneo){alert("Seleziona prima un torneo");return}try{const {error}=await sb.from("tornei").update({pubblicato:true,stato:"attivo"}).eq("id",torneo.id);if(error)throw error;torneo.pubblicato=true;torneo.stato="attivo";salvaAdminState();renderAdmin();alert("Torneo pubblicato con successo!")}catch(e){console.error("Errore pubblicazione torneo:",e);alert("Errore pubblicazione torneo")}}
 async function chiudiIscrizioniTorneo(){let torneo=getTorneoAdminCorrente();if(!torneo){alert("Seleziona prima un torneo");return}try{const {error}=await sb.from("tornei").update({iscrizioni_chiuse:true}).eq("id",torneo.id);if(error)throw error;torneo.iscrizioni_chiuse=true;salvaAdminState();renderAdmin();alert("Iscrizioni chiuse.")}catch(e){console.error("Errore chiusura iscrizioni:",e);alert("Errore chiusura iscrizioni")}}
 async function caricaRichiesteIscrizione(){if(adminState.torneoSelezionato==null||adminState.torneoSelezionato==="")return;const torneoId=Number(adminState.torneoSelezionato);if(!Number.isFinite(torneoId)||torneoId<=0)return;try{const risultato=await sb.from("iscrizioni").select("*").eq("torneo_id",torneoId);if(risultato.error)throw risultato.error;window.iscrizioniTorneo=Array.isArray(risultato.data)?risultato.data:[];renderGestioneTorneo();renderPartecipanti();renderCoppie()}catch(e){console.error("❌ ERRORE CARICAMENTO ISCRIZIONI:",e)}}
-function renderGestioneTorneo(){let box=document.getElementById("dettaglioTorneoAdmin"),card=document.getElementById("gestioneTorneoAdmin");if(!box||!card)return;let torneo=getTorneoAdminCorrente();if(!torneo){card.classList.add("hidden");box.innerHTML="";return}card.classList.remove("hidden");let rules=torneo.configurazione?.rules||torneo.rules||{};box.innerHTML=`<div class="admin-card-dati"><h3>${torneo.nome||"Torneo senza nome"}</h3><p>📅 Data: ${torneo.data||"-"}</p><p>👥 Squadre: ${torneo.posti||rules.numeroSquadre||0}</p><p>🏆 Formula: ${rules.tipoTorneo||torneo.formula||"-"}</p><p>Stato: ${torneo.stato||"bozza"} | Pubblicato: ${torneo.pubblicato?"Sì":"No"} | Iscrizioni: ${torneo.iscrizioni_chiuse?"Chiuse":"aperte"}</p></div>`;let reqBox=document.getElementById("richiesteIscrizione");if(reqBox){let listaReq=window.iscrizioniTorneo||[];reqBox.innerHTML=listaReq.length?listaReq.map(r=>`<div class="lista-item"><b>${r.nome||r.giocatore1||"Giocatore"}</b> (${r.email||"-"})<br>Stato: ${r.stato||"in attesa"}<br><button onclick="selezionaGiocatoreAdmin(${r.id})" class="btn-green">Gestisci</button></div>`).join(""):"<p>Nessuna richiesta di iscrizione.</p>"}}
+# Correzione approvazione iscritti in `admin.html`
+
+
+function renderGestioneTorneo(){
+
+    const box =
+        document.getElementById(
+            "dettaglioTorneoAdmin"
+        );
+
+    const card =
+        document.getElementById(
+            "gestioneTorneoAdmin"
+        );
+
+    if(
+        !box ||
+        !card
+    )
+        return;
+
+
+    const torneo =
+        getTorneoAdminCorrente();
+
+
+    /*
+    ==================================================
+    NESSUN TORNEO SELEZIONATO
+    ==================================================
+    */
+
+    if(!torneo){
+
+        card.classList.add(
+            "hidden"
+        );
+
+        box.innerHTML = "";
+
+        return;
+
+    }
+
+
+    card.classList.remove(
+        "hidden"
+    );
+
+
+    /*
+    ==================================================
+    DATI TORNEO
+    ==================================================
+    */
+
+    const rules =
+        torneo.configurazione?.rules
+        ||
+        torneo.rules
+        ||
+        {};
+
+
+    box.innerHTML = `
+
+        <div class="admin-card-dati">
+
+            <h3>
+                ${torneo.nome || "Torneo senza nome"}
+            </h3>
+
+            <p>
+                📅 Data:
+                ${torneo.data || "-"}
+            </p>
+
+            <p>
+                👥 Squadre:
+                ${
+                    torneo.posti
+                    ||
+                    rules.numeroSquadre
+                    ||
+                    0
+                }
+            </p>
+
+            <p>
+                🏆 Formula:
+                ${
+                    rules.tipoTorneo
+                    ||
+                    torneo.formula
+                    ||
+                    "-"
+                }
+            </p>
+
+            <p>
+                Stato:
+                ${torneo.stato || "bozza"}
+
+                |
+
+                Pubblicato:
+                ${
+                    torneo.pubblicato
+                    ? "Sì"
+                    : "No"
+                }
+
+                |
+
+                Iscrizioni:
+                ${
+                    torneo.iscrizioni_chiuse
+                    ? "Chiuse"
+                    : "aperte"
+                }
+            </p>
+
+        </div>
+
+    `;
+
+
+    /*
+    ==================================================
+    RICHIESTE ISCRIZIONE
+    ==================================================
+    */
+
+    const reqBox =
+        document.getElementById(
+            "richiesteIscrizione"
+        );
+
+
+    if(!reqBox)
+        return;
+
+
+    const listaReq =
+        Array.isArray(
+            window.iscrizioniTorneo
+        )
+        ?
+        window.iscrizioniTorneo
+        :
+        [];
+
+
+    /*
+    ==================================================
+    NESSUNA ISCRIZIONE
+    ==================================================
+    */
+
+    if(listaReq.length===0){
+
+        reqBox.innerHTML =
+            "<p>Nessuna richiesta di iscrizione.</p>";
+
+        return;
+
+    }
+
+
+    /*
+    ==================================================
+    RENDER ISCRIZIONI
+    ==================================================
+    */
+
+    reqBox.innerHTML =
+        listaReq
+        .map(
+            r => {
+
+                const stato =
+                    String(
+                        r.stato
+                        ||
+                        "in attesa"
+                    )
+                    .toLowerCase()
+                    .trim();
+
+
+                const nome =
+                    r.nome_giocatore
+                    ||
+                    r.nome
+                    ||
+                    "Giocatore";
+
+
+                let azioni = "";
+
+
+                /*
+                ==========================================
+                APPROVATO
+                ==========================================
+                */
+
+                if(
+                    stato === "approvato"
+                    ||
+                    stato === "approvata"
+                ){
+
+                    azioni = `
+
+                        <span
+                            class="badge"
+                        >
+                            ✅ APPROVATO
+                        </span>
+
+                    `;
+
+                }
+
+
+                /*
+                ==========================================
+                RIFIUTATO
+                ==========================================
+                */
+
+                else if(
+                    stato === "rifiutato"
+                    ||
+                    stato === "rifiutata"
+                ){
+
+                    azioni = `
+
+                        <span
+                            class="badge"
+                        >
+                            ❌ RIFIUTATO
+                        </span>
+
+                    `;
+
+                }
+
+
+                /*
+                ==========================================
+                IN ATTESA
+                ==========================================
+                */
+
+                else{
+
+                    azioni = `
+
+                        <div
+                            style="
+                                display:flex;
+                                gap:8px;
+                                margin-top:8px;
+                                flex-wrap:wrap;
+                            "
+                        >
+
+                            <button
+                                type="button"
+                                class="btn-green"
+                                onclick="
+                                    approvaGiocatoreDiretto(
+                                        '${r.id}'
+                                    )
+                                "
+                            >
+                                ✅ Approva
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="btn-red"
+                                onclick="
+                                    rifiutaGiocatoreDiretto(
+                                        '${r.id}'
+                                    )
+                                "
+                            >
+                                ❌ Rifiuta
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="btn-green"
+                                onclick="
+                                    selezionaGiocatoreAdmin(
+                                        '${r.id}'
+                                    )
+                                "
+                            >
+                                👤 Gestisci
+                            </button>
+
+                        </div>
+
+                    `;
+
+                }
+
+
+                return `
+
+                    <div
+                        class="lista-item"
+                    >
+
+                        <b>
+                            ${nome}
+                        </b>
+
+                        <br>
+
+                        📧
+                        ${r.email || "-"}
+
+                        <br>
+
+                        📞
+                        ${r.telefono || "-"}
+
+                        <br>
+
+                        Livello:
+                        ${r.livello || "-"}
+
+                        <br>
+
+                        Stato:
+                        <b>
+                            ${r.stato || "in attesa"}
+                        </b>
+
+                        ${azioni}
+
+                    </div>
+
+                `;
+
+            }
+        )
+        .join("");
+
+}
+```
+
+## Inserisci anche queste due funzioni
+
+```javascript
+async function approvaGiocatoreDiretto(id){
+
+    const iscrizione =
+        (
+            Array.isArray(
+                window.iscrizioniTorneo
+            )
+            ?
+            window.iscrizioniTorneo
+            :
+            []
+        )
+        .find(
+            x =>
+                String(x.id)
+                ===
+                String(id)
+        );
+
+
+    if(!iscrizione){
+
+        alert(
+            "Iscrizione non trovata."
+        );
+
+        return;
+
+    }
+
+
+    try{
+
+        const {
+            error
+        } =
+            await sb
+                .from("iscrizioni")
+                .update({
+
+                    stato:
+                        "approvato"
+
+                })
+                .eq(
+                    "id",
+                    iscrizione.id
+                );
+
+
+        if(error)
+            throw error;
+
+
+        await caricaRichiesteIscrizione();
+
+
+    }
+    catch(error){
+
+        console.error(
+            "ERRORE APPROVAZIONE ISCRIZIONE:",
+            error
+        );
+
+
+        alert(
+            "Errore durante l'approvazione."
+        );
+
+    }
+
+}
+```
+
+```javascript
+async function rifiutaGiocatoreDiretto(id){
+
+    const iscrizione =
+        (
+            Array.isArray(
+                window.iscrizioniTorneo
+            )
+            ?
+            window.iscrizioniTorneo
+            :
+            []
+        )
+        .find(
+            x =>
+                String(x.id)
+                ===
+                String(id)
+        );
+
+
+    if(!iscrizione){
+
+        alert(
+            "Iscrizione non trovata."
+        );
+
+        return;
+
+    }
+
+
+    try{
+
+        const {
+            error
+        } =
+            await sb
+                .from("iscrizioni")
+                .update({
+
+                    stato:
+                        "rifiutato"
+
+                })
+                .eq(
+                    "id",
+                    iscrizione.id
+                );
+
+
+        if(error)
+            throw error;
+
+
+        await caricaRichiesteIscrizione();
+
+
+    }
+    catch(error){
+
+        console.error(
+            "ERRORE RIFIUTO ISCRIZIONE:",
+            error
+        );
+
+
+        alert(
+            "Errore durante il rifiuto."
+        );
+
+    }
+
+}
+
 function selezionaGiocatoreAdmin(id){let g=(window.iscrizioniTorneo||[]).find(x=>String(x.id)===String(id));if(!g)return;window.giocatoreSelezionatoCorrente=g;document.getElementById("schedaGiocatoreAdmin")?.classList.remove("hidden");document.getElementById("adminNomeGiocatore").value=g.nome||g.giocatore1||"";document.getElementById("adminEmailGiocatore").value=g.email||"";document.getElementById("adminTelefonoGiocatore").value=g.telefono||"";document.getElementById("adminLivelloGiocatore").value=g.livello||"-";document.getElementById("adminNotaGiocatore").value=g.note||""}
 async function approvaGiocatore(){let g=window.giocatoreSelezionatoCorrente;if(!g){alert("Nessun giocatore selezionato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"approvato"}).eq("id",g.id);if(error)throw error;g.stato="approvato";document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");caricaRichiesteIscrizione()}catch(e){console.error("Errore approvazione:",e)}}
 async function rifiutaGiocatore(){let g=window.giocatoreSelezionatoCorrente;if(!g){alert("Nessun giocatore selezionato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"rifiutato"}).eq("id",g.id);if(error)throw error;g.stato="rifiutato";document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");caricaRichiesteIscrizione()}catch(e){console.error("Errore rifiuto:",e)}}
