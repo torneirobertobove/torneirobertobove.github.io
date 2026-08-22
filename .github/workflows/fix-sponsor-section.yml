@@ -1,0 +1,60 @@
+name: Fix sponsor section
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Separate sponsor management from tournament management
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("admin.html")
+          text = path.read_text(encoding="utf-8")
+
+          start = text.find('<details>\n\n<summary>\n🏆 Gestione Sponsor\n</summary>')
+          if start == -1:
+              raise SystemExit("Sezione Gestione Sponsor non trovata")
+
+          end = text.find('\n\n</details>', start)
+          if end == -1:
+              raise SystemExit("Chiusura Gestione Sponsor non trovata")
+          end += len('\n\n</details>')
+
+          section = text[start:end]
+          section = section.replace(
+              '<details>\n\n<summary>\n🏆 Gestione Sponsor\n</summary>',
+              '<details id="gestioneSponsorAdmin">\n\n<summary>\n🏆 Gestione Sponsor\n</summary>',
+              1
+          )
+
+          # Keep sponsor management explicitly outside the tournament-management block.
+          before = text[:start]
+          after = text[end:]
+          text = before + section + after
+
+          path.write_text(text, encoding="utf-8")
+          print("Gestione Sponsor separata e identificata con #gestioneSponsorAdmin")
+          PY
+
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git rm .github/workflows/fix-sponsor-section.yml
+          git commit -m "Separazione gestione sponsor in admin"
+          git push
