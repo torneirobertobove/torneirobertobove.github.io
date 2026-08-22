@@ -640,7 +640,281 @@ async function rifiutaGiocatoreDiretto(id){
 }
 
 function selezionaGiocatoreAdmin(id){let g=(window.iscrizioniTorneo||[]).find(x=>String(x.id)===String(id));if(!g)return;window.giocatoreSelezionatoCorrente=g;document.getElementById("schedaGiocatoreAdmin")?.classList.remove("hidden");document.getElementById("adminNomeGiocatore").value=g.nome||g.giocatore1||"";document.getElementById("adminEmailGiocatore").value=g.email||"";document.getElementById("adminTelefonoGiocatore").value=g.telefono||"";document.getElementById("adminLivelloGiocatore").value=g.livello||"-";document.getElementById("adminNotaGiocatore").value=g.note||""}
-async function approvaGiocatore(){let g=window.giocatoreSelezionatoCorrente;if(!g){alert("Nessun giocatore selezionato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"approvato"}).eq("id",g.id);if(error)throw error;g.stato="approvato";document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");caricaRichiesteIscrizione()}catch(e){console.error("Errore approvazione:",e)}}
+async function approvaGiocatore(){
+
+    console.log("==========================================");
+    console.log("🔎 CLICK APPROVA GIOCATORE");
+
+    /*
+    ==========================================
+    IDENTIFICA IL GIOCATORE SELEZIONATO
+    ==========================================
+    */
+
+    if(
+        !adminState ||
+        !adminState.torneoSelezionato
+    ){
+
+        console.error(
+            "❌ NESSUN TORNEO SELEZIONATO"
+        );
+
+        alert("Nessun torneo selezionato.");
+        return;
+
+    }
+
+
+    /*
+    ==========================================
+    RECUPERA LE ISCRIZIONI DEL TORNEO
+    ==========================================
+    */
+
+    const torneoId =
+        Number(
+            adminState.torneoSelezionato
+        );
+
+
+    const {
+        data: iscrizioni,
+        error: erroreCaricamento
+    } =
+        await sb
+        .from("iscrizioni")
+        .select("*")
+        .eq(
+            "torneo_id",
+            torneoId
+        );
+
+
+    if(erroreCaricamento){
+
+        console.error(
+            "❌ ERRORE CARICAMENTO ISCRIZIONI:",
+            erroreCaricamento
+        );
+
+        alert(
+            "Errore caricamento iscrizioni:\n" +
+            erroreCaricamento.message
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !Array.isArray(iscrizioni) ||
+        iscrizioni.length === 0
+    ){
+
+        console.error(
+            "❌ NESSUNA ISCRIZIONE TROVATA"
+        );
+
+        alert(
+            "Nessuna iscrizione trovata."
+        );
+
+        return;
+
+    }
+
+
+    /*
+    ==========================================
+    CERCA IL GIOCATORE MOSTRATO NELLA SCHEDA
+    ==========================================
+    */
+
+    const nome =
+        document
+            .getElementById(
+                "adminNomeGiocatore"
+            )
+            ?.value
+            ?.trim()
+            .toLowerCase();
+
+
+    const email =
+        document
+            .getElementById(
+                "adminEmailGiocatore"
+            )
+            ?.value
+            ?.trim()
+            .toLowerCase();
+
+
+    console.log(
+        "NOME SELEZIONATO:",
+        nome
+    );
+
+    console.log(
+        "EMAIL SELEZIONATA:",
+        email
+    );
+
+
+    /*
+    ==========================================
+    TROVA L'ISCRIZIONE CORRISPONDENTE
+    ==========================================
+    */
+
+    let iscrizione =
+        iscrizioni.find(
+            isc => {
+
+                const nomeDb =
+                    String(
+                        isc.nome_giocatore || ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const emailDb =
+                    String(
+                        isc.email || ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                return(
+                    (email && emailDb === email) ||
+                    (nome && nomeDb === nome)
+                );
+
+            }
+        );
+
+
+    if(!iscrizione){
+
+        console.error(
+            "❌ ISCRIZIONE NON IDENTIFICATA",
+            iscrizioni
+        );
+
+        alert(
+            "Non riesco a identificare l'iscrizione da approvare."
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "✅ ISCRIZIONE IDENTIFICATA:",
+        iscrizione
+    );
+
+
+    /*
+    ==========================================
+    AGGIORNAMENTO SUPABASE
+    ==========================================
+    */
+
+    const {
+        data,
+        error
+    } =
+        await sb
+        .from("iscrizioni")
+        .update({
+
+            stato:"approvato"
+
+        })
+        .eq(
+            "id",
+            iscrizione.id
+        )
+        .select();
+
+
+    if(error){
+
+        console.error(
+            "❌ ERRORE APPROVAZIONE:",
+            error
+        );
+
+        alert(
+            "Errore approvazione:\n" +
+            error.message
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "✅ ISCRIZIONE APPROVATA:",
+        data
+    );
+
+
+    /*
+    ==========================================
+    AGGIORNA LISTE ADMIN
+    ==========================================
+    */
+
+    document
+        .getElementById(
+            "schedaGiocatoreAdmin"
+        )
+        ?.classList
+        .add("hidden");
+
+
+    if(
+        typeof caricaRichiesteIscrizione ===
+        "function"
+    ){
+
+        await caricaRichiesteIscrizione();
+
+    }
+
+
+    if(
+        typeof renderPartecipanti ===
+        "function"
+    ){
+
+        renderPartecipanti();
+
+    }
+
+
+    console.log(
+        "=========================================="
+    );
+
+    console.log(
+        "✅ APPROVAZIONE COMPLETATA"
+    );
+
+    console.log(
+        "=========================================="
+    );
+
+}
+    
 async function rifiutaGiocatore(){let g=window.giocatoreSelezionatoCorrente;if(!g){alert("Nessun giocatore selezionato");return}try{const {error}=await sb.from("iscrizioni").update({stato:"rifiutato"}).eq("id",g.id);if(error)throw error;g.stato="rifiutato";document.getElementById("schedaGiocatoreAdmin")?.classList.add("hidden");caricaRichiesteIscrizione()}catch(e){console.error("Errore rifiuto:",e)}}
 function renderPartecipanti(){let box=document.getElementById("partecipantiAdmin");if(!box)return;let approvati=(window.iscrizioniTorneo||[]).filter(x=>x.stato==="approvato");box.innerHTML=approvati.length?approvati.map(p=>`<div class="lista-item">✅ <b>${p.nome||p.giocatore1||"Partecipante"}</b> - ${p.email||"-"}</div>`).join(""):"<p>Nessun partecipante approvato.</p>"}
 async function renderCoppie(){let box=document.getElementById("creaCoppieBox"),listaBox=document.getElementById("listaCoppieAdmin");if(!box)return;const torneo=getTorneoAdminCorrente();if(!torneo){box.innerHTML="<p>❌ Nessun torneo selezionato.</p>";if(listaBox)listaBox.innerHTML="";return}let iscritti=(window.iscrizioniTorneo||[]).filter(g=>g&&(g.stato==="approvato"||g.approvato===true));if(!iscritti.length){try{const {data,error}=await sb.from("iscrizioni").select("*").eq("torneo_id",torneo.id);if(!error&&Array.isArray(data))iscritti=data.filter(g=>g&&(g.stato==="approvato"||g.approvato===true))}catch(e){console.error(e)}}if(!torneo.configurazione||typeof torneo.configurazione!=="object")torneo.configurazione={};if(!Array.isArray(torneo.coppie))torneo.coppie=Array.isArray(torneo.configurazione.coppie)?torneo.configurazione.coppie:[];if(!Array.isArray(torneo.configurazione.coppie))torneo.configurazione.coppie=torneo.coppie;const coppie=torneo.coppie;const usati=new Set();coppie.forEach(c=>{if(c?.giocatore1?.id!=null)usati.add(String(c.giocatore1.id));if(c?.giocatore2?.id!=null)usati.add(String(c.giocatore2.id))});const disponibili=iscritti.filter(g=>!usati.has(String(g.id)));const nomeGiocatore=g=>g?([g.nome,g.cognome].filter(Boolean).join(" ").trim()||g.nome_giocatore||g.email||"Giocatore"):"Giocatore";box.innerHTML=`<p><b>Giocatori approvati: ${iscritti.length}</b></p><p>Coppie create: <b>${coppie.length}</b></p>${disponibili.length>=2?`<label>Primo giocatore</label><select id="adminCoppiaGiocatore1"><option value="">-- Seleziona giocatore --</option>${disponibili.map(g=>`<option value="${g.id}">${nomeGiocatore(g)}</option>`).join("")}</select><label>Secondo giocatore</label><select id="adminCoppiaGiocatore2"><option value="">-- Seleziona giocatore --</option>${disponibili.map(g=>`<option value="${g.id}">${nomeGiocatore(g)}</option>`).join("")}</select><button id="btnCreaCoppiaAdmin" class="btn-green" type="button">➕ CREA COPPIA</button>`:disponibili.length===1?"<p>⚠️ Rimane un solo giocatore disponibile.</p>":iscritti.length===0?"<p>⚠️ Non ci sono ancora giocatori approvati.</p>":"<p>✅ Tutti i giocatori approvati sono stati assegnati alle coppie.</p>"}`;if(listaBox)listaBox.innerHTML=coppie.length?coppie.map((c,i)=>`<div class="lista-item"><b>Coppia ${i+1}</b><br>👤 ${nomeGiocatore(c.giocatore1)}<br>👤 ${nomeGiocatore(c.giocatore2)}</div>`).join(""):"<p>Nessuna coppia creata.</p>";const btn=document.getElementById("btnCreaCoppiaAdmin");if(!btn)return;btn.addEventListener("click",async()=>{const id1=document.getElementById("adminCoppiaGiocatore1")?.value,id2=document.getElementById("adminCoppiaGiocatore2")?.value;if(!id1||!id2){alert("Seleziona entrambi i giocatori.");return}if(String(id1)===String(id2)){alert("Una coppia deve essere formata da due giocatori diversi.");return}const g1=iscritti.find(g=>String(g.id)===String(id1)),g2=iscritti.find(g=>String(g.id)===String(id2));if(!g1||!g2){alert("Uno dei giocatori selezionati non è più disponibile.");return}if(coppie.some(c=>[c?.giocatore1?.id,c?.giocatore2?.id].some(x=>String(x)===String(id1)||String(x)===String(id2)))){alert("Uno dei due giocatori è già stato assegnato a una coppia.");return}const nuovaCoppia={id:Date.now(),giocatore1:{id:g1.id,nome:g1.nome||"",cognome:g1.cognome||"",nome_giocatore:g1.nome_giocatore||"",email:g1.email||"",user_id:g1.user_id||null},giocatore2:{id:g2.id,nome:g2.nome||"",cognome:g2.cognome||"",nome_giocatore:g2.nome_giocatore||"",email:g2.email||"",user_id:g2.user_id||null}};coppie.push(nuovaCoppia);torneo.configurazione.coppie=coppie;const i=adminState.tornei.findIndex(t=>String(t.id)===String(torneo.id));if(i>=0)adminState.tornei[i]=torneo;salvaAdminState();try{const {error}=await sb.from("tornei").update({configurazione:torneo.configurazione}).eq("id",torneo.id);if(error)throw error;renderCoppie()}catch(e){console.error("Errore salvataggio coppia:",e);alert("Errore durante il salvataggio della coppia.")}})}
