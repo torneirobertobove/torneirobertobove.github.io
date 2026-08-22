@@ -2388,6 +2388,231 @@ if(!document.getElementById("btnArchivioTornei")){
 
 }
 
+function getFinalQualified(){
+
+    /*
+    ==========================================
+    QUALIFICATI ALLA FASE FINALE
+    ==========================================
+    */
+
+    const rules =
+        state.rules ||
+        {};
+
+    const qualificati =
+        [];
+
+    const tags =
+        [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G"
+        ];
+
+    let qPerGirone =
+        Number(
+            rules.qualificatePerGirone
+        ) || 1;
+
+    if(qPerGirone < 1)
+        qPerGirone = 1;
+
+
+    /*
+    ==========================================
+    NUMERO QUALIFICATI FINALI
+    ==========================================
+    */
+
+    let numeroFinali =
+        Number(
+            rules.numeroQualificateFinali
+        ) || 0;
+
+
+    /*
+    ==========================================
+    CALCOLO CLASSIFICHE DEI GIRONI
+    ==========================================
+    */
+
+    tags.forEach(
+        tag => {
+
+            const squadre =
+                Array.isArray(
+                    state[tag]
+                )
+                    ? state[tag]
+                    : [];
+
+
+            if(!squadre.length)
+                return;
+
+
+            const risultati =
+                Array.isArray(
+                    state[tag + "res"]
+                )
+                    ? state[tag + "res"]
+                    : [];
+
+
+            let classifica;
+
+            try{
+
+                classifica =
+                    calc(
+                        squadre,
+                        risultati
+                    );
+
+            }
+            catch(e){
+
+                console.error(
+                    "Errore calcolo classifica girone " +
+                    tag +
+                    ":",
+                    e
+                );
+
+                return;
+
+            }
+
+
+            if(!Array.isArray(classifica))
+                return;
+
+
+            /*
+            ==================================
+            NUMERO QUALIFICATI
+            ==================================
+            */
+
+            let q =
+                qPerGirone;
+
+
+            /*
+            Con 4 squadre e quarti attivi
+            il girone deve fornire 4 qualificate.
+            */
+
+            if(
+                rules.usaQuarti === true &&
+                squadre.length === 4
+            ){
+
+                q = 4;
+
+            }
+
+
+            q =
+                Math.min(
+                    q,
+                    classifica.length
+                );
+
+
+            /*
+            ==================================
+            AGGIUNTA QUALIFICATI
+            ==================================
+            */
+
+            for(
+                let i = 0;
+                i < q;
+                i++
+            ){
+
+                const squadra =
+                    classifica[i];
+
+                if(!squadra)
+                    continue;
+
+
+                /*
+                Manteniamo l'oggetto completo
+                della squadra.
+                */
+
+                qualificati.push(
+                    squadra
+                );
+
+            }
+
+        }
+    );
+
+
+    /*
+    ==========================================
+    LIMITE NUMERO QUALIFICATI FINALI
+    ==========================================
+    */
+
+    if(
+        numeroFinali > 0 &&
+        qualificati.length > numeroFinali
+    ){
+
+        qualificati.splice(
+            numeroFinali
+        );
+
+    }
+
+
+    /*
+    ==========================================
+    QUARTI DI FINALE
+    ==========================================
+    */
+
+    if(
+        rules.usaQuarti === true &&
+        qualificati.length >= 8
+    ){
+
+        qualificati.splice(
+            8
+        );
+
+    }
+
+
+    /*
+    ==========================================
+    DEBUG
+    ==========================================
+    */
+
+    console.log(
+        "QUALIFICATI FASE FINALE:",
+        qualificati
+    );
+
+
+    return qualificati;
+
+}
+
+
+
 function updateTime(g,i,pos,val){
 
     const map = {
