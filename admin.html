@@ -2733,35 +2733,16 @@ function renderGestioneTorneo(){
 
 async function selezionaGiocatoreAdmin(id){
 
-    console.log(
-        "🎯 SELEZIONE GIOCATORE:",
-        id
-    );
+    console.log("🎯 SELEZIONE GIOCATORE:", id);
 
-    if(
-        id === null ||
-        id === undefined ||
-        id === ""
-    ){
-
-        console.error(
-            "❌ ID GIOCATORE MANCANTE"
-        );
-
-        alert(
-            "ID giocatore mancante."
-        );
-
+    if(!id){
+        console.error("❌ ID GIOCATORE MANCANTE");
         return;
-
     }
 
     try{
 
-        const {
-            data,
-            error
-        } =
+        const { data, error } =
             await sb
                 .from("iscrizioni")
                 .select("*")
@@ -2769,7 +2750,6 @@ async function selezionaGiocatoreAdmin(id){
                 .single();
 
         if(error){
-
             console.error(
                 "❌ ERRORE CARICAMENTO GIOCATORE:",
                 error
@@ -2781,26 +2761,20 @@ async function selezionaGiocatoreAdmin(id){
             );
 
             return;
-
         }
 
         if(!data){
-
             console.error(
                 "❌ GIOCATORE NON TROVATO:",
                 id
             );
 
-            alert(
-                "Giocatore non trovato."
-            );
+            alert("Giocatore non trovato.");
 
             return;
-
         }
 
-        window.giocatoreSelezionatoCorrente =
-            data;
+        window.giocatoreSelezionatoCorrente = data;
 
         const scheda =
             document.getElementById(
@@ -2812,9 +2786,7 @@ async function selezionaGiocatoreAdmin(id){
             scheda.dataset.giocatoreId =
                 String(data.id);
 
-            scheda.classList.remove(
-                "hidden"
-            );
+            scheda.classList.remove("hidden");
 
         }
 
@@ -2827,7 +2799,6 @@ async function selezionaGiocatoreAdmin(id){
             nome.value =
                 data.nome_giocatore ||
                 data.nome ||
-                data.giocatore1 ||
                 "";
 
         const email =
@@ -2871,20 +2842,16 @@ async function selezionaGiocatoreAdmin(id){
                 "";
 
         console.log(
-            "✅ SCHEDA GIOCATORE APERTA - ID:",
-            data.id
+            "✅ GIOCATORE SELEZIONATO:",
+            data
         );
 
     }
-    catch(e){
+    catch(error){
 
         console.error(
             "❌ ERRORE GENERALE SELEZIONE:",
-            e
-        );
-
-        alert(
-            "Errore durante il caricamento del giocatore."
+            error
         );
 
     }
@@ -2962,46 +2929,86 @@ function mostraSchedaGiocatoreAdmin(g){
 }
 
 
+
 async function approvaGiocatore(){
+
+    console.log(
+        "✅ APPROVAZIONE GIOCATORE"
+    );
+
+    let giocatore =
+        window.giocatoreSelezionatoCorrente;
 
     const scheda =
         document.getElementById(
             "schedaGiocatoreAdmin"
         );
 
-    const id =
-        scheda?.dataset?.giocatoreId ||
-        window.giocatoreSelezionatoCorrente?.id;
-
     if(
-        id === null ||
-        id === undefined ||
-        id === ""
+        !giocatore &&
+        scheda &&
+        scheda.dataset.giocatoreId
     ){
 
-        console.error(
-            "❌ NESSUN ID GIOCATORE DA APPROVARE"
-        );
+        const { data, error } =
+            await sb
+                .from("iscrizioni")
+                .select("*")
+                .eq(
+                    "id",
+                    scheda.dataset.giocatoreId
+                )
+                .single();
+
+        if(error){
+
+            console.error(
+                "❌ ERRORE RECUPERO GIOCATORE:",
+                error
+            );
+
+            alert(
+                "Errore recupero giocatore:\n" +
+                error.message
+            );
+
+            return;
+        }
+
+        giocatore = data;
+
+    }
+
+    if(!giocatore){
 
         alert(
-            "Nessun giocatore selezionato."
+            "Nessun giocatore selezionato"
+        );
+
+        console.error(
+            "❌ NESSUN GIOCATORE SELEZIONATO"
         );
 
         return;
 
     }
 
+    const id =
+        giocatore.id;
+
+    console.log(
+        "🎯 ID DA APPROVARE:",
+        id
+    );
+
     try{
 
-        const {
-            data,
-            error
-        } =
+        const { data, error } =
             await sb
                 .from("iscrizioni")
                 .update({
-                    stato:"approvato",
-                    approvato:true
+                    stato: "approvato",
+                    approvato: true
                 })
                 .eq(
                     "id",
@@ -3026,27 +3033,17 @@ async function approvaGiocatore(){
 
         }
 
+        console.log(
+            "✅ APPROVAZIONE SALVATA SU SUPABASE:",
+            data
+        );
+
         window.giocatoreSelezionatoCorrente =
             data;
 
-        if(
-            Array.isArray(
-                window.iscrizioniTorneo
-            )
-        ){
-
-            const indice =
-                window.iscrizioniTorneo.findIndex(
-                    giocatore =>
-                        String(giocatore.id) ===
-                        String(data.id)
-                );
-
-            if(indice >= 0)
-                window.iscrizioniTorneo[indice] =
-                    data;
-
-        }
+        alert(
+            "Giocatore approvato!"
+        );
 
         if(scheda){
 
@@ -3058,32 +3055,35 @@ async function approvaGiocatore(){
 
         }
 
-        alert(
-            "✅ Giocatore approvato!"
-        );
+        if(
+            typeof caricaRichiesteIscrizione ===
+            "function"
+        ){
 
-        await caricaRichiesteIscrizione();
+            await caricaRichiesteIscrizione();
+
+        }
+
+        if(
+            typeof renderPartecipanti ===
+            "function"
+        ){
+
+            renderPartecipanti();
+
+        }
 
     }
-    catch(e){
+    catch(error){
 
         console.error(
-            "❌ ERRORE APPROVAZIONE:",
-            e
-        );
-
-        alert(
-            "Errore durante l'approvazione:\n" +
-            (
-                e?.message ||
-                e
-            )
+            "❌ ERRORE GENERALE APPROVAZIONE:",
+            error
         );
 
     }
 
 }
-
 
 async function rifiutaGiocatore(){
 
