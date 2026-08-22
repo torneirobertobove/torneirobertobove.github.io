@@ -2804,11 +2804,252 @@ function mostraSchedaGiocatoreAdmin(g){
 }
 
 
+# Funzione `approvaGiocatore()` corretta
+
+
 async function approvaGiocatore(){
 
-   
-    console.log( "==========================================" ); console.log( "✅ APPROVAZIONE GIOCATORE" ); /* ================================================== RECUPERA L'ID DIRETTAMENTE DALLA SCHEDA ================================================== */ const scheda = document.getElementById( "schedaGiocatoreAdmin" ); const id = scheda?.dataset?.giocatoreId; console.log( "ID DA APPROVARE:", id ); /* ================================================== FALLBACK SULLA VARIABILE GLOBALE ================================================== */ const idFinale = id || window.giocatoreSelezionatoCorrente?.id; if(!idFinale){ console.error( "❌ NESSUN ID GIOCATORE DISPONIBILE" ); alert( "Nessun giocatore selezionato." ); return; } /* ================================================== AGGIORNAMENTO SUPABASE ================================================== */ try{ const { data, error } = await sb .from("iscrizioni") .update({ stato:"approvato", approvato:true }) .eq( "id", idFinale ) .select(); if(error){ console.error( "❌ ERRORE SUPABASE APPROVAZIONE:", error ); alert( "Errore approvazione:\n" + error.message ); return; } console.log( "✅ APPROVAZIONE SALVATA:", data ); /* ================================================== AGGIORNA RECORD IN MEMORIA ================================================== */ if( window.giocatoreSelezionatoCorrente && String( window.giocatoreSelezionatoCorrente.id ) === String(idFinale) ){ window.giocatoreSelezionatoCorrente.stato = "approvato"; window.giocatoreSelezionatoCorrente.approvato = true; } /* ================================================== CHIUDE LA SCHEDA ================================================== */ if(scheda){ scheda.classList.add( "hidden" ); delete scheda.dataset.giocatoreId; } alert( "Giocatore approvato!" ); /* ================================================== RICARICA LA LISTA ================================================== */ if( typeof caricaRichiesteIscrizione === "function" ){ await caricaRichiesteIscrizione(); } console.log( "==========================================" ); } catch(e){ console.error( "❌ ERRORE APPROVAZIONE:", e ); alert( "Errore approvazione:\n" + e.message ); } }
-    
+    console.log("==========================================");
+    console.log("🎯 APPROVAZIONE GIOCATORE");
+    console.log("==========================================");
+
+    const scheda =
+        document.getElementById(
+            "schedaGiocatoreAdmin"
+        );
+
+    /*
+    ==========================================
+    RECUPERO ID GIOCATORE
+    ==========================================
+    */
+
+    const id =
+        scheda?.dataset?.giocatoreId ||
+        window.giocatoreSelezionatoCorrente?.id;
+
+    console.log(
+        "ID GIOCATORE DA APPROVARE:",
+        id
+    );
+
+    if(!id){
+
+        console.error(
+            "❌ NESSUN ID GIOCATORE"
+        );
+
+        alert(
+            "Nessun giocatore selezionato."
+        );
+
+        return;
+
+    }
+
+    try{
+
+        /*
+        ==========================================
+        RECUPERIAMO IL RECORD REALE
+        ==========================================
+        */
+
+        const recupero =
+            await sb
+                .from("iscrizioni")
+                .select("*")
+                .eq(
+                    "id",
+                    id
+                )
+                .single();
+
+        if(recupero.error){
+
+            console.error(
+                "❌ ERRORE RECUPERO ISCRIZIONE:",
+                recupero.error
+            );
+
+            alert(
+                "Errore recupero giocatore:\n" +
+                recupero.error.message
+            );
+
+            return;
+
+        }
+
+        const giocatore =
+            recupero.data;
+
+        if(!giocatore){
+
+            alert(
+                "Giocatore non trovato."
+            );
+
+            return;
+
+        }
+
+        console.log(
+            "✅ RECORD RECUPERATO:",
+            giocatore
+        );
+
+        /*
+        ==========================================
+        APPROVAZIONE REALE SUPABASE
+        ==========================================
+        */
+
+        const aggiornamento =
+            await sb
+                .from("iscrizioni")
+                .update({
+                    stato: "approvato",
+                    approvato: true
+                })
+                .eq(
+                    "id",
+                    giocatore.id
+                )
+                .select("*")
+                .single();
+
+        if(aggiornamento.error){
+
+            console.error(
+                "❌ ERRORE UPDATE APPROVAZIONE:",
+                aggiornamento.error
+            );
+
+            alert(
+                "ERRORE APPROVAZIONE:\n\n" +
+                aggiornamento.error.message
+            );
+
+            return;
+
+        }
+
+        /*
+        ==========================================
+        VERIFICA RISULTATO
+        ==========================================
+        */
+
+        const approvato =
+            aggiornamento.data;
+
+        console.log(
+            "✅ GIOCATORE APPROVATO SU SUPABASE:",
+            approvato
+        );
+
+        console.log(
+            "STATO:",
+            approvato.stato
+        );
+
+        console.log(
+            "APPROVATO:",
+            approvato.approvato
+        );
+
+        /*
+        ==========================================
+        AGGIORNA MEMORIA LOCALE
+        ==========================================
+        */
+
+        window.giocatoreSelezionatoCorrente =
+            approvato;
+
+        if(
+            Array.isArray(
+                window.iscrizioniTorneo
+            )
+        ){
+
+            const indice =
+                window.iscrizioniTorneo.findIndex(
+                    x =>
+                        String(x.id) ===
+                        String(approvato.id)
+                );
+
+            if(indice >= 0){
+
+                window.iscrizioniTorneo[indice] =
+                    approvato;
+
+            }
+
+        }
+
+        /*
+        ==========================================
+        CHIUDE SCHEDA
+        ==========================================
+        */
+
+        if(scheda){
+
+            scheda.classList.add(
+                "hidden"
+            );
+
+            delete scheda.dataset.giocatoreId;
+
+        }
+
+        alert(
+            "✅ Giocatore approvato!"
+        );
+
+        /*
+        ==========================================
+        RICARICA ISCRITTI
+        ==========================================
+        */
+
+        if(
+            typeof caricaRichiesteIscrizione ===
+            "function"
+        ){
+
+            await caricaRichiesteIscrizione();
+
+        }
+
+        console.log(
+            "=========================================="
+        );
+
+    }
+    catch(e){
+
+        console.error(
+            "❌ ERRORE APPROVAZIONE:",
+            e
+        );
+
+        alert(
+            "Errore durante l'approvazione:\n" +
+            (
+                e?.message ||
+                e
+            )
+        );
+
+    }
+
+}
+
+
 
 async function rifiutaGiocatore(){
 
