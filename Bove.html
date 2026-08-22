@@ -9266,12 +9266,10 @@ function generaPartiteGironi(){
     const crea = (girone) => {
         const partite = [];
         
-        // Se non è un array o non ha almeno 2 elementi, non possiamo generare coppie piene
         if(!Array.isArray(girone) || girone.length < 2){
             return partite;
         }
 
-        // Se il girone ha 4 squadre, usa le 6 classiche combinazioni del girone all'italiana
         if(girone.length === 4){
             const coppie = [
                 [0,1],
@@ -9288,7 +9286,6 @@ function generaPartiteGironi(){
                 });
             });
         } else {
-            // Generazione dinamica per un numero diverso di squadre nel girone
             for(let i = 0; i < girone.length; i++){
                 for(let j = i + 1; j < girone.length; j++){
                     partite.push({
@@ -9317,56 +9314,39 @@ function generaPartiteGironi(){
         ============================================
         RIPARAZIONE AUTOMATICA: DISTRIBUZIONE SQUADRE
         ============================================
-        Se abbiamo coppie ma i gironi sono vuoti o disallineati, li popoliamo al volo!
     */
     if(Array.isArray(state.coppie) && state.coppie.length > 0){
         let squadrePerGirone = Math.ceil(state.coppie.length / numeroGironi);
         
         for(let i = 0; i < numeroGironi; i++){
             const tag = lettereGironi[i];
-            if(!Array.isArray(state[tag]) || state[tag].length === 0){
-                let inizio = i * squadrePerGirone;
-                let fine = inizio + squadrePerGirone;
-                state[tag] = state.coppie.slice(inizio, fine);
-                console.log(`RIPARAZIONE: Girone ${tag} popolato con`, state[tag]);
-            }
+            // Forziamo sempre il popolamento se abbiamo le coppie aggiornate
+            let inizio = i * squadrePerGirone;
+            let fine = inizio + squadrePerGirone;
+            state[tag] = state.coppie.slice(inizio, fine);
+            console.log(`RIPARAZIONE: Girone ${tag} popolato con`, state[tag]);
         }
     }
 
     /*
         ============================================
-        GENERAZIONE GIRONI
+        GENERAZIONE GIRONI (FORZATA PER EVITARE CAMPI VUOTI)
         ============================================
     */
     for(let i = 0; i < lettereGironi.length; i++){
         const tag = lettereGironi[i];
 
-        /*
-            Girone non previsto dalle regole
-        */
         if(i >= numeroGironi){
             delete state.partiteGironi[tag];
             continue;
         }
 
-        /*
-            Controllo flessibile sul girone
-        */
         if(!Array.isArray(state[tag]) || state[tag].length === 0){
             console.warn(`ATTENZIONE: Il girone ${tag} non è definito o è vuoto in state[${tag}]`, state[tag]);
             continue;
         }
 
-        /*
-            Mantiene le partite già esistenti se valide
-        */
-        if(
-            Array.isArray(state.partiteGironi[tag]) &&
-            state.partiteGironi[tag].length > 0
-        ){
-            continue;
-        }
-
+        // RIGENERA SEMPRE LE PARTITE PER I 16 ISCRITTI
         state.partiteGironi[tag] = crea(state[tag]);
     }
 
@@ -9414,7 +9394,6 @@ function generaPartiteGironi(){
 
     console.log("PARTITE GENERATE CON SUCCESSO:", state.partiteGironi);
 }
-
 function render(){
 
     ensureRules();
