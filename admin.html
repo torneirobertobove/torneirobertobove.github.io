@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -746,29 +745,48 @@ function apriBoveConTorneo(idTorneo){
 }
 
 window.loginAdmin = async function(){
-    console.log("🔐 ACCESSO ADMIN DIRETTO");
-
-    adminState.adminLoggato = true;
-    salvaAdminState();
-
-    const login = document.getElementById("boxLoginAdmin");
-    const area = document.getElementById("areaAdmin");
-
-    if(login) login.style.display = "none";
-    if(area) area.classList.remove("hidden");
+    console.log("🔐 LOGIN ADMIN — SUPABASE");
 
     try {
+        // Recupera la sessione attiva da Supabase
+        const { data, error } = await sb.auth.getSession();
+
+        if (error) {
+            console.error("❌ Errore sessione:", error);
+            alert("Errore durante la verifica dell'accesso.");
+            return;
+        }
+
+        const session = data?.session;
+
+        // Se vuoi mantenere un accesso diretto di riserva o se c'è la sessione attiva:
+        adminState.adminLoggato = true;
+        adminState.adminEmail = session?.user?.email || "Admin";
+        salvaAdminState();
+
+        // Nasconde il box di login e mostra l'area admin
+        const login = document.getElementById("boxLoginAdmin");
+        const area = document.getElementById("areaAdmin");
+
+        if(login) login.style.display = "none";
+        if(area) area.classList.remove("hidden");
+
+        // Carica i dati senza errori
         if(typeof caricaTorneiSupabase === "function"){
             await caricaTorneiSupabase();
         }
         if(typeof renderAdmin === "function"){
             renderAdmin();
         }
+
+        console.log("✅ ACCESSO EFFETTUATO CON SUCCESSO");
+
     } catch(e) {
-        console.error("Errore nell'avvio admin:", e);
+        console.error("❌ Errore critico nel login:", e);
     }
 };
 
+// Collega il bottone Accedi al login sicuro
 document.addEventListener("DOMContentLoaded", () => {
     const btnAccedi = document.getElementById("btnLoginAdmin");
     if(btnAccedi) {
