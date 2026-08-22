@@ -1,0 +1,108 @@
+name: Standalone sponsor section
+
+on:
+  push:
+    paths:
+      - '.github/workflows/standalone-sponsor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Move sponsor section outside areaAdmin
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          original = s
+
+          start = '<details id="gestioneSponsorAdmin">'
+          if start not in s:
+              raise SystemExit('Sezione gestione sponsor non trovata')
+
+          # Extract the complete sponsor details block by matching HTML details nesting.
+          pos = s.index(start)
+          depth = 0
+          end = None
+          i = pos
+          while i < len(s):
+              o = s.find('<details', i)
+              c = s.find('</details>', i)
+              if c == -1:
+                  break
+              if o != -1 and o < c:
+                  depth += 1
+                  i = o + 8
+              else:
+                  depth -= 1
+                  i = c + len('</details>')
+                  if depth == 0:
+                      end = i
+                      break
+          if end is None:
+              raise SystemExit('Chiusura Gestione Sponsor non trovata')
+
+          sponsor = s[pos:end]
+          before = s[:pos]
+          after = s[end:]
+
+          # It is currently inside areaAdmin. Remove it there, then insert it
+          # immediately after the closing areaAdmin container.
+          before = before.rstrip() + '\n\n'
+          s = before + after
+
+          area_end = s.find('</div>\n\n</div>\n\n<script>')
+          if area_end == -1:
+              # Fallback: locate the final areaAdmin closing sequence by the script marker.
+              marker = '\n\n</div>\n\n<script>'
+              area_end = s.find(marker)
+              if area_end == -1:
+                  raise SystemExit('Chiusura areaAdmin non trovata')
+              insert_at = area_end + len('\n\n</div>')
+          else:
+              insert_at = area_end + len('</div>\n\n</div>')
+
+          standalone = '\n\n<div id="gestioneSponsorStandalone">\n\n' + sponsor + '\n\n</div>'
+          s = s[:insert_at] + standalone + s[insert_at:]
+
+          # The sponsor section is now independent from areaAdmin.
+          p.write_text(s, encoding='utf-8')
+          print('admin.html aggiornato:', s != original)
+
+      - name: Validate HTML structure and JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('admin.html').read_text(encoding='utf-8')
+          if s.count('id="gestioneSponsorAdmin"') != 1:
+              raise SystemExit('Gestione Sponsor non presente esattamente una volta')
+          a=s.find('<div id="areaAdmin"')
+          z=s.find('</div>\n\n<script>', a)
+          sp=s.find('<div id="gestioneSponsorStandalone">')
+          if a == -1 or sp == -1:
+              raise SystemExit('Struttura standalone non trovata')
+          if sp < a:
+              raise SystemExit('Sponsor non spostato fuori areaAdmin')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
+          Path('/tmp/admin-js.js').write_text('\n\n'.join(scripts),encoding='utf-8')
+          print('Script blocks:', len(scripts))
+          PY
+          node --check /tmp/admin-js.js
+
+      - name: Commit and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'Bove Repair'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git rm .github/workflows/standalone-sponsor.yml
+          git commit -m 'Move sponsor management outside admin tournament area'
+          git push
