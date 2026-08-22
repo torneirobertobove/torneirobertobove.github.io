@@ -5970,7 +5970,7 @@ async function loadState(){
 
             /*
             =========================================
-            ISCRITTI APPROVATI E CONVERSIONE AUTOMATICA
+            ISCRITTI APPROVATI E SINCRONIZZAZIONE COPPIE
             =========================================
             */
             try{
@@ -6012,9 +6012,11 @@ async function loadState(){
                         state.iscritti
                     );
 
-                    if((!state.coppie || state.coppie.length === 0) && state.iscritti.length > 0){
+                    // CORRETTO: Se ci sono iscritti approvati su Supabase, le coppie DEVONO rispecchiarli 
+                    // (forzando il ricalcolo se il numero è diverso o se state.coppie è vuoto)
+                    if(state.iscritti.length > 0){
                         state.coppie = state.iscritti.map(item => item.nome_squadra || item.giocatore1 || "Squadra");
-                        console.log("COPPIE GENERATE AUTOMATICAMENTE DAGLI ISCRITTI:", state.coppie);
+                        console.log("COPPIE SINCRONIZZATE CON GLI ISCRITTI DI SUPABASE:", state.coppie);
                     }
 
                 }
@@ -6136,12 +6138,10 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    )
+                    ) && state.iscritti.length === 0
                 ){
-
-                    state.coppie =
-                        cfg.coppie;
-
+                    // Prende le coppie dalla configurazione solo se non ci sono iscritti da Supabase
+                    state.coppie = cfg.coppie;
                 }
 
             }
@@ -6199,7 +6199,7 @@ async function loadState(){
 
         /*
         =========================================
-        GENERAZIONE GIRONI DA COPPIE
+        GENERAZIONE GIRONI DA COPPIE (SEMPRE FORZATA SE CAMBIANO LE COPPIE)
         =========================================
         */
         if(
@@ -6210,77 +6210,53 @@ async function loadState(){
             state.coppie.length > 0
         ){
 
-            let vuoti=true;
+            // Svuotiamo i gironi e redistribuiamo tutte le 16 coppie correttamente nei gironi in base a 'squadrePerGirone'
+            let perGirone =
+                Number(
+                    state.rules
+                    .squadrePerGirone
+                ) || 4;
 
-            for(
-                let g of lettereGironi
-            ){
+            lettereGironi.forEach(
+                g=>{
 
-                if(
-                    state[g] &&
-                    state[g].length > 0
-                ){
-
-                    vuoti=false;
-
-                    break;
+                    state[g]=[];
 
                 }
+            );
 
-            }
+            state.coppie.forEach(
+                (c,i)=>{
 
-            if(vuoti){
+                    let indice =
+                        Math.floor(
+                            i / perGirone
+                        );
 
-                let perGirone =
-                    Number(
-                        state.rules
-                        .squadrePerGirone
-                    ) || 4;
-
-                lettereGironi.forEach(
-                    g=>{
-
-                        state[g]=[];
-
-                    }
-                );
-
-                state.coppie.forEach(
-                    (c,i)=>{
-
-                        let indice =
-                            Math.floor(
-                                i / perGirone
-                            );
-
-                        if(
-                            state[
-                                lettereGironi[
-                                    indice
-                                ]
+                    if(
+                        indice < numeroGironi &&
+                        state[
+                            lettereGironi[
+                                indice
                             ]
-                        ){
+                        ]
+                    ){
 
-                            state[
-                                lettereGironi[
-                                    indice
-                                ]
-                            ].push(c);
-
-                        }
+                        state[
+                            lettereGironi[
+                                indice
+                            ]
+                        ].push(c);
 
                     }
-                );
 
-                console.log(
-                    "GIRONI GENERATI:",
-                    state.A,
-                    state.B,
-                    state.C,
-                    state.D
-                );
+                }
+            );
 
-            }
+            console.log(
+                "GIRONI GENERATI CORRETTAMENTE:",
+                { A: state.A, B: state.B }
+            );
 
         }
 
@@ -6299,7 +6275,7 @@ async function loadState(){
 
         /*
         =========================================
-        STATO LOCALE (CORRETTO idTorneo)
+        STATO LOCALE
         =========================================
         */
         if(
@@ -6473,7 +6449,6 @@ async function loadState(){
     }
 
 }
-
    
 function handleFile(e){
     let r=new FileReader();
