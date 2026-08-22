@@ -8460,134 +8460,113 @@ function getWinner(match,res){
 
    function getFinalQualified(){
 
-    /*
-    ==========================================
-    QUALIFICATI ALLA FASE FINALE
-    ==========================================
-    */
+    ensureRules();
 
-    try{
+    const qualificati = [];
 
-        const rules =
-            state?.rules ||
-            {};
+    const lettere = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+    ];
 
-        const numeroGironi =
-            Number(
-                rules.numeroGironi ||
-                state.numeroGironi ||
-                2
-            );
+    const numeroGironi =
+        Number(
+            state.rules?.numeroGironi ||
+            state.numeroGironi ||
+            2
+        );
 
-        const qualificatePerGirone =
-            Number(
-                rules.qualificatePerGirone ||
-                2
-            );
+    const qualificatePerGirone =
+        Number(
+            state.rules?.qualificatePerGirone ||
+            2
+        );
 
-        const risultato = [];
+    for(let i = 0; i < numeroGironi; i++){
 
-        const lettereGironi = [
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F",
-            "G"
-        ];
+        const girone = lettere[i];
 
-        for(
-            let i = 0;
-            i < numeroGironi;
-            i++
-        ){
+        if(!girone)
+            continue;
 
-            const lettera =
-                lettereGironi[i];
+        const squadre =
+            Array.isArray(state[girone])
+                ? state[girone]
+                : [];
 
-            if(!lettera)
-                continue;
+        if(!squadre.length)
+            continue;
 
-            const squadre =
-                Array.isArray(
-                    state[lettera]
-                )
-                    ? state[lettera]
-                    : [];
+        const risultati =
+            Array.isArray(state[girone + "res"])
+                ? state[girone + "res"]
+                : [];
 
-            if(!squadre.length)
-                continue;
+        let classifica = [];
 
-            const risultati =
-                Array.isArray(
-                    state[
-                        lettera + "res"
-                    ]
-                )
-                    ? state[
-                        lettera + "res"
-                    ]
-                    : [];
+        try{
 
-            const classifica =
-                typeof calc ===
-                "function"
-                    ? calc(
+            if(typeof calc === "function"){
+
+                classifica =
+                    calc(
                         squadre,
                         risultati
-                    )
-                    : [];
+                    );
 
-            if(!Array.isArray(classifica))
-                continue;
+            }
 
-            const qualificati =
-                classifica.slice(
-                    0,
-                    qualificatePerGirone
-                );
+        }
+        catch(e){
 
-            qualificati.forEach(
-                squadra => {
-
-                    if(squadra){
-
-                        risultato.push(
-                            {
-                                ...squadra,
-                                girone:
-                                    lettera
-                            }
-                        );
-
-                    }
-
-                }
+            console.error(
+                "ERRORE CALCOLO CLASSIFICA " +
+                girone,
+                e
             );
+
+            continue;
 
         }
 
-        console.log(
-            "QUALIFICATI FASE FINALE:",
-            risultato
-        );
+        if(!Array.isArray(classifica))
+            continue;
 
-        return risultato;
+        classifica
+            .slice(0, qualificatePerGirone)
+            .forEach(squadra => {
+
+                if(
+                    squadra !== null &&
+                    squadra !== undefined
+                ){
+
+                    qualificati.push({
+                        squadra:squadra,
+                        girone:girone
+                    });
+
+                }
+
+            });
 
     }
-    catch(e){
 
-        console.error(
-            "ERRORE getFinalQualified:",
-            e
-        );
+    console.log(
+        "QUALIFICATI FASE FINALE:",
+        qualificati
+    );
 
-        return [];
-
-    }
+    return qualificati;
 
 }
+
+
    
 function creaFinale(semifinali){
 
