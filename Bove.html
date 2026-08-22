@@ -5653,6 +5653,53 @@ async function updateAndSync(){
 }
 
 
+// Funzione di calcolo classifica (aggiunta per risolvere il ReferenceError)
+function calc(iscritti, risultati) {
+    const stats = {};
+    if (Array.isArray(iscritti)) {
+        iscritti.forEach(nome => {
+            stats[nome] = { n: nome, pt: 0, gf: 0, gs: 0, df: 0, qual: false };
+        });
+    }
+
+    if (Array.isArray(risultati)) {
+        risultati.forEach(p => {
+            if (!p) return;
+            let s1 = p.squadra1 || p.team1 || p.A;
+            let s2 = p.squadra2 || p.team2 || p.B;
+            let g1 = parseInt(p.gol1) || 0;
+            let g2 = parseInt(p.gol2) || 0;
+
+            if (stats[s1] && stats[s2]) {
+                stats[s1].gf += g1;
+                stats[s1].gs += g2;
+                stats[s2].gf += g2;
+                stats[s2].gs += g1;
+
+                if (g1 > g2) {
+                    stats[s1].pt += 3;
+                } else if (g1 < g2) {
+                    stats[s2].pt += 3;
+                } else {
+                    stats[s1].pt += 1;
+                    stats[s2].pt += 1;
+                }
+            }
+        });
+    }
+
+    Object.values(stats).forEach(s => {
+        s.df = s.gf - s.gs;
+    });
+
+    const classifica = Object.values(stats).sort((a, b) => {
+        if (b.pt !== a.pt) return b.pt - a.pt;
+        if (b.df !== a.df) return b.df - a.df;
+        return b.gf - a.gf;
+    });
+
+    return classifica;
+}
 
 async function loadState(){
 
@@ -6138,8 +6185,8 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    ) && state.iscritti.length === 0
-                ){
+                    )
+                ) && state.iscritti.length === 0{
                     // Prende le coppie dalla configurazione solo se non ci sono iscritti da Supabase
                     state.coppie = cfg.coppie;
                 }
@@ -6449,7 +6496,7 @@ async function loadState(){
     }
 
 }
-   
+
 function renderClass(){
 
     ensureRules();
@@ -6628,6 +6675,7 @@ ${
 
 
 }
+
 
    function updateRes(g,i,pos,val){
 
