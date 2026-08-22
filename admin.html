@@ -1492,22 +1492,201 @@ function renderListaTornei(){
 
 function selezionaTorneoAdmin(id){
 
+    /*
+    ==========================================
+    VALIDAZIONE
+    ==========================================
+    */
+
+    if(
+        id === null ||
+        id === undefined ||
+        id === ""
+    ){
+
+        console.error(
+            "ID TORNEO MANCANTE:",
+            id
+        );
+
+        return;
+
+    }
+
+
+    /*
+    ==========================================
+    CERCA IL TORNEO
+    ==========================================
+    */
+
     let torneo =
         adminState.tornei.find(
             t =>
+                t &&
                 String(t.id) ===
                 String(id)
         );
 
-    if(!torneo)
+
+    if(!torneo){
+
+        console.error(
+            "TORNEO NON TROVATO:",
+            {
+                idRichiesto:id,
+                tornei:adminState.tornei
+            }
+        );
+
+        alert(
+            "Torneo non trovato."
+        );
+
         return;
 
+    }
+
+
+    /*
+    ==========================================
+    SALVA IL TORNEO SELEZIONATO
+    ==========================================
+    */
+
     adminState.torneoSelezionato =
-        id;
+        torneo.id;
+
 
     salvaAdminState();
 
-    renderAdmin();
+
+    /*
+    ==========================================
+    MOSTRA IMMEDIATAMENTE
+    LA GESTIONE DEL TORNEO
+    ==========================================
+    */
+
+    const card =
+        document.getElementById(
+            "gestioneTorneoAdmin"
+        );
+
+
+    if(card){
+
+        card.classList.remove(
+            "hidden"
+        );
+
+    }
+    else{
+
+        console.error(
+            "ELEMENTO #gestioneTorneoAdmin NON TROVATO"
+        );
+
+    }
+
+
+    /*
+    ==========================================
+    RENDER DETTAGLIO TORNEO
+    ==========================================
+    */
+
+    if(
+        typeof renderGestioneTorneo ===
+        "function"
+    ){
+
+        renderGestioneTorneo();
+
+    }
+    else{
+
+        console.error(
+            "renderGestioneTorneo NON DISPONIBILE"
+        );
+
+    }
+
+
+    /*
+    ==========================================
+    AGGIORNA IL RESTO DELLA GESTIONE
+    ==========================================
+    */
+
+    if(
+        typeof caricaRichiesteIscrizione ===
+        "function"
+    ){
+
+        caricaRichiesteIscrizione();
+
+    }
+
+
+    if(
+        typeof renderPartecipanti ===
+        "function"
+    ){
+
+        renderPartecipanti();
+
+    }
+
+
+    if(
+        typeof renderCoppie ===
+        "function"
+    ){
+
+        renderCoppie();
+
+    }
+
+
+    /*
+    ==========================================
+    AGGIORNA LA LISTA TORNEI
+    ==========================================
+    */
+
+    if(
+        typeof renderListaTornei ===
+        "function"
+    ){
+
+        renderListaTornei();
+
+    }
+
+
+    /*
+    ==========================================
+    DEBUG
+    ==========================================
+    */
+
+    console.log(
+        "TORNEO ADMIN SELEZIONATO:",
+        torneo
+    );
+
+    console.log(
+        "GESTIONE TORNEO VISIBILE:",
+        !!document.getElementById(
+            "gestioneTorneoAdmin"
+        ) &&
+        !document
+            .getElementById(
+                "gestioneTorneoAdmin"
+            )
+            .classList.contains("hidden")
+    );
 
 }
 
@@ -1710,194 +1889,685 @@ async function chiudiIscrizioniTorneo(){
 
 async function caricaRichiesteIscrizione(){
 
-    if(!adminState.torneoSelezionato){
+```
+if(
+    adminState.torneoSelezionato === null ||
+    adminState.torneoSelezionato === undefined ||
+    adminState.torneoSelezionato === ""
+){
 
-        alert(
-            "Seleziona prima un torneo"
-        );
+    console.error(
+        "❌ NESSUN TORNEO SELEZIONATO:",
+        adminState.torneoSelezionato
+    );
 
-        return;
-
-    }
-
-    try{
-
-        const {
-            data,
-            error
-        } =
-            await sb
-                .from("iscrizioni")
-                .select("*")
-                .eq(
-                    "torneo_id",
-                    adminState.torneoSelezionato
-                );
-
-        if(error){
-
-            throw error;
-
-        }
+    return;
+}
 
 
-        /*
-            SALVIAMO GLI ISCRITTI
-            NEL CONTENITORE CENTRALE.
-
-            NESSUNA AUTENTICAZIONE.
-            NESSUN LOGIN.
-            NESSUN getUser().
-            NESSUN controllo admin.
-        */
-
-        window.iscrizioniTorneo =
-            Array.isArray(data)
-                ? data
-                : [];
+const torneoId =
+    Number(
+        adminState.torneoSelezionato
+    );
 
 
-        console.log(
-            "ISCRIZIONI CARICATE:",
-            window.iscrizioniTorneo
-        );
+if(
+    !Number.isFinite(torneoId) ||
+    torneoId <= 0
+){
+
+    console.error(
+        "❌ ID TORNEO NON VALIDO:",
+        adminState.torneoSelezionato
+    );
+
+    return;
+}
 
 
-        /*
-            CALCOLO PARTECIPANTI APPROVATI
-        */
+try{
 
-        const approvati =
-            window.iscrizioniTorneo.filter(
-                giocatore =>
-                    giocatore &&
-                    giocatore.stato === "approvato"
+    console.log(
+        "🔎 CARICAMENTO ISCRITTI TORNEO:",
+        torneoId
+    );
+
+
+    /*
+    ==========================================
+    1. QUERY NORMALE
+    ==========================================
+    */
+
+    let {
+        data,
+        error
+    } =
+        await sb
+            .from("iscrizioni")
+            .select("*")
+            .eq(
+                "torneo_id",
+                torneoId
             );
 
 
-        console.log(
-            "PARTECIPANTI APPROVATI:",
-            approvati
-        );
-
-
-        /*
-            AGGIORNA SOLO LE SEZIONI
-            CHE VISUALIZZANO I DATI.
-        */
-
-        if(
-            typeof renderPartecipanti ===
-            "function"
-        ){
-
-            renderPartecipanti();
-
-        }
-
-
-        if(
-            typeof renderCoppie ===
-            "function"
-        ){
-
-            renderCoppie();
-
-        }
-
-
-        /*
-            AGGIORNA ANCHE LA LISTA
-            DELLE RICHIESTE.
-        */
-
-        const reqBox =
-            document.getElementById(
-                "richiesteIscrizione"
-            );
-
-
-        if(reqBox){
-
-            if(
-                !window.iscrizioniTorneo.length
-            ){
-
-                reqBox.innerHTML =
-                    "<p>Nessuna richiesta di iscrizione.</p>";
-
-            }
-            else{
-
-                reqBox.innerHTML =
-                    window.iscrizioniTorneo.map(
-                        r =>
-                            `
-                            <div class="lista-item">
-
-                                <b>
-                                    ${
-                                        r.nome ||
-                                        r.giocatore1 ||
-                                        "Giocatore"
-                                    }
-                                </b>
-
-                                (
-                                    ${r.email || "-"}
-                                )
-
-                                <br>
-
-                                Stato:
-                                ${
-                                    r.stato ||
-                                    "in attesa"
-                                }
-
-                                <br>
-
-                                <button
-                                    onclick="selezionaGiocatoreAdmin(${r.id})"
-                                    class="btn-green"
-                                >
-                                    Gestisci
-                                </button>
-
-                            </div>
-                            `
-                    ).join("");
-
-            }
-
-        }
-
-
-        console.log(
-            "AGGIORNAMENTO ISCRITTI COMPLETATO:",
-            {
-                totale:
-                    window.iscrizioniTorneo.length,
-
-                approvati:
-                    approvati.length,
-
-                torneo:
-                    adminState.torneoSelezionato
-            }
-        );
-
-    }
-    catch(e){
+    if(error){
 
         console.error(
-            "Errore caricamento iscrizioni:",
-            e
+            "❌ ERRORE QUERY ISCRIZIONI:",
+            error
         );
+
+        throw error;
 
     }
 
+
+    /*
+    ==========================================
+    2. SE TROVATE DIRETTAMENTE
+       LE UTILIZZIAMO
+    ==========================================
+    */
+
+    if(
+        Array.isArray(data) &&
+        data.length > 0
+    ){
+
+        console.log(
+            "✅ ISCRIZIONI TROVATE CON ID TORNEO:",
+            data
+        );
+
+    }
+    else{
+
+        /*
+        ==========================================
+        3. IL TORNEO ATTUALE PUÒ AVERE ISCRIZIONI
+           SALVATE CON UN ID PRECEDENTE.
+
+           RECUPERIAMO PRIMA IL TORNEO ATTUALE.
+        ==========================================
+        */
+
+        console.warn(
+            "⚠️ NESSUNA ISCRIZIONE TROVATA CON:",
+            torneoId
+        );
+
+
+        const torneoResult =
+            await sb
+                .from("tornei")
+                .select("*")
+                .eq(
+                    "id",
+                    torneoId
+                )
+                .single();
+
+
+        if(torneoResult.error){
+
+            console.error(
+                "❌ IMPOSSIBILE RECUPERARE IL TORNEO:",
+                torneoResult.error
+            );
+
+        }
+
+
+        const torneo =
+            torneoResult.data || null;
+
+
+        console.log(
+            "🔎 TORNEO USATO PER IL RECUPERO ISCRITTI:",
+            torneo
+        );
+
+
+        /*
+        ==========================================
+        4. RECUPERIAMO TUTTE LE ISCRIZIONI
+           SENZA MODIFICARE IL DATABASE
+        ==========================================
+        */
+
+        const fallback =
+            await sb
+                .from("iscrizioni")
+                .select("*");
+
+
+        if(fallback.error){
+
+            console.error(
+                "❌ ERRORE RECUPERO ISCRIZIONI:",
+                fallback.error
+            );
+
+            data = [];
+
+        }
+        else{
+
+            const tutte =
+                Array.isArray(fallback.data)
+                    ? fallback.data
+                    : [];
+
+
+            console.log(
+                "🔎 TUTTE LE ISCRIZIONI DISPONIBILI:",
+                tutte.length
+            );
+
+
+            /*
+            ==========================================
+            5. CERCHIAMO I NOMI DEI GIOCATORI PRESENTI
+               NELLA CONFIGURAZIONE DEL TORNEO
+            ==========================================
+            */
+
+            const nomiTorneo =
+                new Set();
+
+
+            function raccogliNomi(value){
+
+                if(value === null ||
+                   value === undefined){
+
+                    return;
+                }
+
+
+                if(Array.isArray(value)){
+
+                    value.forEach(
+                        item =>
+                            raccogliNomi(item)
+                    );
+
+                    return;
+                }
+
+
+                if(typeof value === "object"){
+
+                    Object.values(value)
+                        .forEach(
+                            item =>
+                                raccogliNomi(item)
+                        );
+
+                    return;
+                }
+
+
+                if(typeof value !== "string"){
+
+                    return;
+                }
+
+
+                const testo =
+                    value.trim();
+
+
+                if(!testo){
+
+                    return;
+                }
+
+
+                /*
+                ------------------------------------------
+                Proviamo anche stringhe del tipo:
+
+                "Josè Rizzi/Simone Rizzi"
+                "genoa genoa/Roberto Bove"
+                ------------------------------------------
+                */
+
+                testo
+                    .split("/")
+                    .forEach(parte => {
+
+                        const nome =
+                            parte
+                                .trim()
+                                .toLowerCase();
+
+
+                        if(nome){
+
+                            nomiTorneo.add(nome);
+
+                        }
+
+                    });
+
+
+                nomiTorneo.add(
+                    testo.toLowerCase()
+                );
+
+            }
+
+
+            if(torneo){
+
+                raccogliNomi(
+                    torneo.configurazione
+                );
+
+
+                raccogliNomi(
+                    torneo.coppie
+                );
+
+
+                raccogliNomi(
+                    torneo.squadre
+                );
+
+
+                raccogliNomi(
+                    torneo.gironi
+                );
+
+
+                raccogliNomi(
+                    torneo.A
+                );
+
+
+                raccogliNomi(
+                    torneo.B
+                );
+
+
+                raccogliNomi(
+                    torneo.C
+                );
+
+
+                raccogliNomi(
+                    torneo.D
+                );
+
+
+                raccogliNomi(
+                    torneo.E
+                );
+
+
+                raccogliNomi(
+                    torneo.F
+                );
+
+            }
+
+
+            console.log(
+                "🔎 NOMI PRESENTI NELLA CONFIGURAZIONE:",
+                [...nomiTorneo]
+            );
+
+
+            /*
+            ==========================================
+            6. MATCH ROBUSTO DELL'ISCRIZIONE
+            ==========================================
+            */
+
+            function iscrizioneAppartieneAlTorneo(
+                iscrizione
+            ){
+
+                if(!iscrizione){
+
+                    return false;
+
+                }
+
+
+                /*
+                ------------------------------------------
+                PRIORITÀ ASSOLUTA:
+                ID ESATTO
+                ------------------------------------------
+                */
+
+                if(
+                    String(
+                        iscrizione.torneo_id
+                    ) === String(
+                        torneoId
+                    )
+                ){
+
+                    return true;
+
+                }
+
+
+                /*
+                ------------------------------------------
+                COSTRUIAMO IL NOME COMPLETO
+                ------------------------------------------
+                */
+
+                const nome =
+                    String(
+                        iscrizione.nome ||
+                        iscrizione.nome_giocatore ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const cognome =
+                    String(
+                        iscrizione.cognome ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const nomeCompleto =
+                    (
+                        nome +
+                        " " +
+                        cognome
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const nomeGiocatore =
+                    String(
+                        iscrizione.nome_giocatore ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                /*
+                ------------------------------------------
+                CONTROLLO CONTRO I NOMI DEL TORNEO
+                ------------------------------------------
+                */
+
+                for(
+                    const nomeTorneo of nomiTorneo
+                ){
+
+                    if(!nomeTorneo){
+
+                        continue;
+
+                    }
+
+
+                    if(
+                        nomeTorneo === nome ||
+                        nomeTorneo === cognome ||
+                        nomeTorneo === nomeCompleto ||
+                        nomeTorneo === nomeGiocatore
+                    ){
+
+                        return true;
+
+                    }
+
+
+                    /*
+                    --------------------------------------
+                    CONTROLLO PARZIALE SOLO SE SICURO
+                    --------------------------------------
+                    */
+
+                    if(
+                        nomeCompleto.length >= 4 &&
+                        nomeTorneo.includes(nomeCompleto)
+                    ){
+
+                        return true;
+
+                    }
+
+
+                    if(
+                        nomeGiocatore.length >= 4 &&
+                        nomeTorneo.includes(nomeGiocatore)
+                    ){
+
+                        return true;
+
+                    }
+
+                }
+
+
+                return false;
+
+            }
+
+
+            /*
+            ==========================================
+            7. RECUPERO ISCRITTI CORRISPONDENTI
+            ==========================================
+            */
+
+            const recuperate =
+                tutte.filter(
+                    iscrizione =>
+                        iscrizioneAppartieneAlTorneo(
+                            iscrizione
+                        )
+                );
+
+
+            console.log(
+                "✅ ISCRIZIONI RECUPERATE DALLE COPPIE/CONFIGURAZIONE:",
+                recuperate
+            );
+
+
+            /*
+            ==========================================
+            8. EVITIAMO DUPLICATI
+            ==========================================
+            */
+
+            const viste =
+                new Set();
+
+
+            data =
+                recuperate.filter(
+                    iscrizione => {
+
+                        const chiave =
+                            String(
+                                iscrizione.id ??
+                                (
+                                    String(
+                                        iscrizione.nome
+                                    ) +
+                                    "|" +
+                                    String(
+                                        iscrizione.cognome
+                                    ) +
+                                    "|" +
+                                    String(
+                                        iscrizione.email
+                                    )
+                                )
+                            );
+
+
+                        if(
+                            viste.has(chiave)
+                        ){
+
+                            return false;
+
+                        }
+
+
+                        viste.add(chiave);
+
+                        return true;
+
+                    }
+                );
+
+        }
+
+    }
+
+
+    /*
+    ==========================================
+    9. CONTENITORE CENTRALE
+    ==========================================
+    */
+
+    window.iscrizioniTorneo =
+        Array.isArray(data)
+            ? data
+            : [];
+
+
+    console.log(
+        "✅ ISCRIZIONI CARICATE:",
+        window.iscrizioniTorneo
+    );
+
+
+    /*
+    ==========================================
+    10. PARTECIPANTI APPROVATI
+    ==========================================
+    */
+
+    const approvati =
+        window.iscrizioniTorneo.filter(
+            giocatore =>
+                giocatore &&
+                (
+                    giocatore.stato === "approvato" ||
+                    giocatore.approvato === true
+                )
+        );
+
+
+    console.log(
+        "✅ PARTECIPANTI APPROVATI:",
+        approvati
+    );
+
+
+    /*
+    ==========================================
+    11. AGGIORNA VISUALIZZAZIONE
+    ==========================================
+    */
+
+    if(
+        typeof renderGestioneTorneo ===
+        "function"
+    ){
+
+        renderGestioneTorneo();
+
+    }
+
+
+    if(
+        typeof renderPartecipanti ===
+        "function"
+    ){
+
+        renderPartecipanti();
+
+    }
+
+
+    if(
+        typeof renderCoppie ===
+        "function"
+    ){
+
+        renderCoppie();
+
+    }
+
+
+    /*
+    ==========================================
+    12. DEBUG FINALE
+    ==========================================
+    */
+
+    console.log(
+        "=========================================="
+    );
+
+    console.log(
+        "✅ AGGIORNAMENTO ISCRITTI COMPLETATO"
+    );
+
+    console.log({
+
+        torneoId:
+            torneoId,
+
+        totaleIscritti:
+            window.iscrizioniTorneo.length,
+
+        approvati:
+            approvati.length,
+
+        rifiutati:
+            window.iscrizioniTorneo.filter(
+                x =>
+                    x &&
+                    x.stato === "rifiutato"
+            ).length
+
+    });
+
+    console.log(
+        "=========================================="
+    );
+
 }
+catch(e){
+
+    console.error(
+        "❌ ERRORE CARICAMENTO ISCRIZIONI:",
+        e
+    );
+
+}
+```
+
+}
+
+
 
 
 function renderGestioneTorneo(){
@@ -2060,7 +2730,6 @@ function renderGestioneTorneo(){
 
 }
 
-
 function selezionaGiocatoreAdmin(id){
 
     let lista =
@@ -2123,7 +2792,6 @@ function selezionaGiocatoreAdmin(id){
 
 }
 
-
 async function approvaGiocatore(){
 
     let g =
@@ -2182,7 +2850,6 @@ async function approvaGiocatore(){
     }
 
 }
-
 
 async function rifiutaGiocatore(){
 
@@ -2243,7 +2910,6 @@ async function rifiutaGiocatore(){
 
 }
 
-
 function renderPartecipanti(){
 
     let box =
@@ -2299,7 +2965,6 @@ function renderPartecipanti(){
 }
 
 
-```javascript
 function renderCoppie(){
 
     const box =
@@ -2424,8 +3089,15 @@ function renderCoppie(){
 
 
     /*
-        INIZIALIZZAZIONE CONFIGURAZIONE
+        INIZIALIZZAZIONE COPPIE
     */
+
+    if(!Array.isArray(torneo.coppie)){
+
+        torneo.coppie = [];
+
+    }
+
 
     if(
         !torneo.configurazione ||
@@ -2436,50 +3108,6 @@ function renderCoppie(){
 
     }
 
-
-    /*
-        RECUPERO COPPIE ESISTENTI
-
-        Le coppie possono essere presenti:
-
-        1. direttamente in torneo.coppie
-        2. nella configurazione del torneo,
-           in torneo.configurazione.coppie
-
-        Se torneo.coppie non esiste ma la configurazione
-        contiene le coppie salvate da Supabase,
-        utilizziamo quelle senza crearne una nuova lista vuota.
-    */
-
-    if(
-        !Array.isArray(
-            torneo.coppie
-        )
-    ){
-
-        if(
-            Array.isArray(
-                torneo.configurazione.coppie
-            )
-        ){
-
-            torneo.coppie =
-                torneo.configurazione.coppie.slice();
-
-        }
-        else{
-
-            torneo.coppie = [];
-
-        }
-
-    }
-
-
-    /*
-        Manteniamo sincronizzata la configurazione
-        con l'array delle coppie.
-    */
 
     if(
         !Array.isArray(
@@ -2495,12 +3123,6 @@ function renderCoppie(){
 
     const coppie =
         torneo.coppie;
-
-
-    console.log(
-        "COPPIE DISPONIBILI PER ADMIN:",
-        coppie
-    );
 
 
     /*
@@ -3067,7 +3689,7 @@ function renderCoppie(){
     );
 
 }
-```
+
 
 function inviaWhatsAppTutti(){
 
@@ -3553,12 +4175,6 @@ function renderAdmin(){
         renderPartecipanti();
 
     if(
-        typeof renderCoppie ===
-        "function"
-    )
-        renderCoppie();
-
-    if(
         typeof caricaSponsorAdmin ===
         "function"
     )
@@ -3693,8 +4309,8 @@ window.addEventListener(
 
             if(area)
                 area.classList.remove(
-                    "hidden"
-                );
+                "hidden"
+            );
 
             if(
                 typeof caricaTorneiSupabase ===
