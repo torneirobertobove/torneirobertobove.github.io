@@ -1,0 +1,109 @@
+name: Restore classification renderer
+
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-classification.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Insert renderClass only
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+
+          if 'function renderClass(' in s:
+              print('renderClass already present; no change')
+              raise SystemExit(0)
+
+          marker = 'function render(){'
+          pos = s.find(marker)
+          if pos == -1:
+              raise SystemExit('function render() non trovata')
+
+          fn = r'''function renderClass(){
+
+    ensureRules();
+
+    ["A","B","C","D","E","F","G"].forEach(tag=>{
+
+        const box = document.getElementById(tag + "class");
+
+        if(!box){
+            state["rank" + tag] = [];
+            return;
+        }
+
+        const squadre = Array.isArray(state[tag]) ? state[tag] : [];
+
+        if(squadre.length === 0){
+            state["rank" + tag] = [];
+            box.innerHTML = "";
+            return;
+        }
+
+        const risultati = Array.isArray(state[tag + "res"])
+            ? state[tag + "res"]
+            : [];
+
+        const classifica = calc(squadre, risultati);
+
+        state["rank" + tag] = Array.isArray(classifica)
+            ? classifica
+            : [];
+
+        box.innerHTML = state["rank" + tag].map(x=>`
+<tr>
+    <td>
+        <span class="${x.qual ? "qual-arrow-up" : "qual-arrow-down"}">${x.qual ? "▲" : "▼"}</span>
+        ${String(x.n || "")}
+    </td>
+    <td>${Number(x.pt) || 0}</td>
+    <td>${Number(x.gf) || 0}</td>
+    <td>${Number(x.gs) || 0}</td>
+    <td>${Number(x.df) || 0}</td>
+</tr>
+`).join("");
+
+    });
+
+}
+
+'''
+
+          s = s[:pos] + fn + s[pos:]
+          p.write_text(s, encoding='utf-8')
+          print('renderClass inserita: SI')
+
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
+          Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
+          print('script blocks:',len(scripts))
+          PY
+          node --check /tmp/bove.js
+
+      - name: Commit Bove and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'Bove Repair'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/repair-classification.yml
+          git commit -m 'Restore renderClass classification function'
+          git push
