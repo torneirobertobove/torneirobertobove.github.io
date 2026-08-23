@@ -5713,8 +5713,6 @@ async function updateAndSync(){
 
 }
 
-
-// Funzione di calcolo classifica (aggiunta per risolvere il ReferenceError)
 function calc(iscritti, risultati) {
 
     const stats = {};
@@ -6204,201 +6202,72 @@ function calc(iscritti, risultati) {
     ==========================================
     */
 
-    return Object.values(stats).sort((a, b) => {
+    const classifica =
+        Object.values(stats).sort((a, b) => {
 
-        if (b.pt !== a.pt) {
-            return b.pt - a.pt;
-        }
+            if (b.pt !== a.pt) {
+                return b.pt - a.pt;
+            }
 
-        if (b.df !== a.df) {
-            return b.df - a.df;
-        }
+            if (b.df !== a.df) {
+                return b.df - a.df;
+            }
 
-        return b.gf - a.gf;
+            return b.gf - a.gf;
 
-    });
-
-}
-
-   
-function renderClass(){
-
-    ensureRules();
+        });
 
 
     /*
-        ============================
-        GIRONI
-        ============================
+    ==========================================
+    QUALIFICAZIONE
+    ==========================================
     */
 
-    [
+    let numeroQualificate = 2;
 
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
+    if (
+        typeof state !== "undefined" &&
+        state.rules
+    ) {
 
-    ].forEach(tag=>{
+        const valore =
+            Number(
+                state.rules.qualificatePerGirone
+            );
 
+        if (
+            Number.isFinite(valore) &&
+            valore >= 1
+        ) {
 
-        /*
-            ============================
-            CONTROLLO GIRONE
-            ============================
-        */
-
-        if(
-            !Array.isArray(state[tag]) ||
-            state[tag].length===0
-        ){
-
-            state["rank"+tag]=[];
-
-            return;
+            numeroQualificate =
+                Math.floor(valore);
 
         }
 
+    }
 
 
-        /*
-            ============================
-            BOX CLASSIFICA
-            ============================
-        */
-
-        let box =
-            document.getElementById(
-                tag+"class"
-            );
+    numeroQualificate =
+        Math.min(
+            numeroQualificate,
+            classifica.length
+        );
 
 
-        if(!box)
+    classifica.forEach((squadra, index) => {
 
-            return;
-
-
-
-        /*
-            ============================
-            CALCOLO CLASSIFICA
-            ============================
-        */
-
-        let risultati =
-            Array.isArray(
-                state[tag+"res"]
-            )
-            ?
-            state[tag+"res"]
-            :
-            [];
-
-
-        let classifica =
-            calc(
-                state[tag],
-                risultati
-            );
-
-
-        /*
-            ============================
-            PROTEZIONE RISULTATO
-            ============================
-        */
-
-        if(
-            !Array.isArray(classifica)
-        ){
-
-            classifica=[];
-
-        }
-
-
-
-        /*
-            ============================
-            SALVATAGGIO RANKING
-            ============================
-        */
-
-        state["rank"+tag] =
-            classifica;
-
-
-
-        /*
-            ============================
-            RENDER CLASSIFICA
-            ============================
-        */
-
-        box.innerHTML =
-
-        classifica.map(x=>`
-
-
-<tr>
-
-
-<td>
-
-
-<span class="${
-    x.qual
-    ?
-    "qual-arrow-up"
-    :
-    "qual-arrow-down"
-}">
-
-
-${
-    x.qual
-    ?
-    "▲"
-    :
-    "▼"
-}
-
-
-</span>
-
-
-${
-    String(
-        x.n || ""
-    )
-}
-
-
-</td>
-
-
-<td>${x.pt}</td>
-
-<td>${x.gf}</td>
-
-<td>${x.gs}</td>
-
-<td>${x.df}</td>
-
-
-</tr>
-
-
-`).join("");
-
+        squadra.qual =
+            index < numeroQualificate;
 
     });
 
 
+    return classifica;
+
 }
+
 
 
    function updateRes(g,i,pos,val){
