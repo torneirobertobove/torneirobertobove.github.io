@@ -5624,6 +5624,7 @@ function saveTeams(){
         )
         .filter(Boolean);
 
+
     /*
     ============================
     CONTROLLO SQUADRE
@@ -5665,6 +5666,7 @@ function saveTeams(){
         }
     }
 
+
     /*
     ============================
     NUMERO SQUADRE RICHIESTE
@@ -5687,22 +5689,18 @@ function saveTeams(){
         return;
     }
 
-    /*
-    ============================
-    SALVATAGGIO DEFINITIVO
-    ============================
-    */
-
-    localStorage.setItem(
-        "savedTeams",
-        JSON.stringify(teams)
-    );
 
     /*
     ============================
-    RESET GIRONI
+    REGOLAMENTO GIRONI
     ============================
     */
+
+    const numeroGironi =
+        Number(state.rules.numeroGironi) || 2;
+
+    const squadrePerGirone =
+        Number(state.rules.squadrePerGirone) || 4;
 
     const lettere = [
         "A",
@@ -5713,20 +5711,6 @@ function saveTeams(){
         "F"
     ];
 
-    lettere.forEach(g => {
-
-        state[g] = [];
-        state[g+"res"] = [];
-        state[g+"time"] = [];
-        state[g+"camp"] = [];
-
-    });
-
-    const numeroGironi =
-        Number(state.rules.numeroGironi) || 2;
-
-    const squadrePerGirone =
-        Number(state.rules.squadrePerGirone) || 4;
 
     /*
     ============================
@@ -5752,6 +5736,35 @@ function saveTeams(){
         return;
     }
 
+
+    /*
+    ============================
+    SALVATAGGIO DEFINITIVO
+    ============================
+    */
+
+    localStorage.setItem(
+        "savedTeams",
+        JSON.stringify(teams)
+    );
+
+
+    /*
+    ============================
+    RESET GIRONI
+    ============================
+    */
+
+    lettere.forEach(g => {
+
+        state[g] = [];
+        state[g+"res"] = [];
+        state[g+"time"] = [];
+        state[g+"camp"] = [];
+
+    });
+
+
     /*
     ============================
     CREAZIONE GIRONI
@@ -5767,16 +5780,23 @@ function saveTeams(){
             inizio + squadrePerGirone;
 
         state[lettere[i]] =
-            teams.slice(inizio,fine);
+            teams.slice(
+                inizio,
+                fine
+            );
     }
+
 
     /*
     ============================
-    CREA ARRAY RISULTATI
+    CREA ARRAY PARTITE
     ============================
     */
 
-    function inizializzaPartiteGirone(nome,girone){
+    function inizializzaPartiteGirone(
+        nome,
+        girone
+    ){
 
         const n =
             Array.isArray(girone)
@@ -5796,6 +5816,7 @@ function saveTeams(){
             Array(totale).fill("");
     }
 
+
     lettere.forEach(g => {
 
         inizializzaPartiteGirone(
@@ -5804,6 +5825,27 @@ function saveTeams(){
         );
 
     });
+
+
+    /*
+    ============================
+    RESET FASE FINALE
+    ============================
+    */
+
+    state.qRes =
+        Array(4).fill("-");
+
+    state.sTopRes =
+        Array(2).fill("-");
+
+    state.fTopRes =
+        "-";
+
+    state.finalTop = [];
+
+    state.campioneTop = null;
+
 
     /*
     ============================
@@ -5814,144 +5856,6 @@ function saveTeams(){
     state.formato =
         richieste;
 
-    /*
-    ============================
-    SINCRONIZZAZIONE
-    ============================
-    */
-
-    updateAndSync();
-
-}
-    function creaPartite(nome){
-
-
-        let n =
-
-            Array.isArray(
-                state[nome]
-            )
-
-            ?
-
-            state[nome].length
-
-            :
-
-            0;
-
-
-
-        let totale=0;
-
-
-
-        for(
-            let i=0;
-            i<n;
-            i++
-        ){
-
-
-            for(
-                let j=i+1;
-                j<n;
-                j++
-            ){
-
-                totale++;
-
-            }
-
-        }
-
-
-
-        state[nome+"res"] =
-
-            Array(totale)
-            .fill("-");
-
-
-
-        state[nome+"time"] =
-
-            Array(totale)
-            .fill("-");
-
-
-
-        state[nome+"camp"] =
-
-            Array(totale)
-            .fill("");
-
-
-
-    }
-
-
-
-
-
-
-
-    lettere.forEach(g=>{
-
-
-        creaPartite(g);
-
-
-    });
-
-
-
-
-
-
-
-
-
-    /*
-    ============================
-    RESET KO
-    ============================
-    */
-
-
-    state.qRes =
-
-        Array(4)
-        .fill("-");
-
-
-
-    state.sTopRes =
-
-        Array(2)
-        .fill("-");
-
-
-
-    state.fTopRes =
-
-        "-";
-
-
-
-    state.finalTop=[];
-
-
-
-    state.campioneTop=null;
-
-
-
-
-
-
-
-
 
     /*
     ============================
@@ -5959,20 +5863,7 @@ function saveTeams(){
     ============================
     */
 
-
-state.rules.locked=false;
-
-
-
-    state.formato =
-        richieste;
-
-
-
-
-
-
-
+    state.rules.locked = false;
 
 
     /*
@@ -5981,36 +5872,29 @@ state.rules.locked=false;
     ============================
     */
 
-
-    let modal =
-
+    const modal =
         document.getElementById(
             "teamModal"
         );
 
-
-
     if(modal)
-
-        modal.style.display="none";
-
-
-
-
-
-
-
+        modal.style.display = "none";
 
 
     /*
     ============================
-    SALVA E RENDER
+    SALVA E SINCRONIZZA
     ============================
     */
 
+    updateAndSync();
 
-       updateAndSync();
 
+    /*
+    ============================
+    RENDER
+    ============================
+    */
 
     render();
 
