@@ -7089,225 +7089,246 @@ function getWinner(match,res){
 
 function getFinalQualified(){
 
-    ensureRules();
+ensureRules();
 
-    const qualificati = [];
+const qualificati = [];
 
-    const lettere = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
-    ];
+const lettere = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+];
 
-    const numeroGironi =
+const numeroGironi =
+    Math.max(
+        1,
         Number(
-            state.rules?.numeroGironi ||
-            state.numeroGironi ||
+            state.rules?.numeroGironi ??
+            state.numeroGironi ??
             2
+        )
+    );
+
+const qualificatePerGirone =
+    Math.max(
+        1,
+        Number(
+            state.rules?.qualificatePerGirone ??
+            state.qualificatePerGirone ??
+            1
+        )
+    );
+
+for(
+    let i = 0;
+    i < numeroGironi;
+    i++
+){
+
+    const girone =
+        lettere[i];
+
+    if(!girone)
+        continue;
+
+    const squadre =
+        Array.isArray(state[girone])
+            ? state[girone]
+            : [];
+
+    if(
+        squadre.length === 0
+    ){
+
+        console.warn(
+            "Girone " +
+            girone +
+            " vuoto: nessun qualificato."
         );
 
-    const qualificatePerGirone =
-        Math.max(
-            1,
-            Number(
-                state.rules?.qualificatePerGirone
-            ) || 2
+        continue;
+    }
+
+    const risultati =
+        Array.isArray(
+            state[girone + "res"]
+        )
+            ? state[girone + "res"]
+            : [];
+
+    let classifica = [];
+
+    try{
+
+        if(
+            typeof calc !== "function"
+        ){
+
+            console.error(
+                "calc() non disponibile."
+            );
+
+            return [];
+        }
+
+        classifica =
+            calc(
+                squadre,
+                risultati
+            );
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore calc() nel girone " +
+            girone +
+            ":",
+            e
+        );
+
+        continue;
+    }
+
+    if(
+        !Array.isArray(classifica) ||
+        classifica.length === 0
+    ){
+
+        console.warn(
+            "Nessuna classifica valida per il girone:",
+            girone
+        );
+
+        continue;
+    }
+
+    const limite =
+        Math.min(
+            qualificatePerGirone,
+            classifica.length
         );
 
     for(
-        let i = 0;
-        i < numeroGironi;
-        i++
+        let posizione = 0;
+        posizione < limite;
+        posizione++
     ){
 
-        const girone =
-            lettere[i];
-
-        if(!girone)
-            continue;
-
-
-        const squadre =
-            Array.isArray(
-                state[girone]
-            )
-                ? state[girone]
-                : [];
-
+        const elemento =
+            classifica[posizione];
 
         if(
-            squadre.length === 0
+            elemento === null ||
+            elemento === undefined
         )
             continue;
 
-
-        const risultati =
-            Array.isArray(
-                state[girone + "res"]
-            )
-                ? state[girone + "res"]
-                : [];
-
-
-        let classifica = [];
-
-
-        try{
-
-            if(
-                typeof calc === "function"
-            ){
-
-                classifica =
-                    calc(
-                        squadre,
-                        risultati
-                    );
-
-            }
-
-        }
-        catch(e){
-
-            console.error(
-                "ERRORE CLASSIFICA GIRONE " +
-                girone,
-                e
-            );
-
-            continue;
-
-        }
-
+        let nome = "";
 
         if(
-            !Array.isArray(classifica) ||
-            classifica.length === 0
-        )
-            continue;
-
-
-        const limite =
-            Math.min(
-                qualificatePerGirone,
-                classifica.length
-            );
-
-
-        for(
-            let posizione = 0;
-            posizione < limite;
-            posizione++
+            typeof elemento === "string"
         ){
 
-            const elemento =
-                classifica[posizione];
-
-
-            if(
-                !elemento
-            )
-                continue;
-
-
-            /*
-                calc() restituisce normalmente:
-
-                {
-                    n,
-                    pt,
-                    gf,
-                    gs,
-                    df,
-                    qual
-                }
-
-                Per la fase KO dobbiamo
-                trasferire SOLO il nome
-                della squadra.
-            */
-
-            let squadra =
-                elemento.n;
-
-
-            /*
-                Protezione nel caso in cui
-                una classifica contenga
-                direttamente una stringa.
-            */
-
-            if(
-                squadra === undefined ||
-                squadra === null
-            ){
-
-                squadra =
-                    elemento.squadra ||
-                    elemento.nome ||
-                    "";
-
-            }
-
-
-            squadra =
-                String(
-                    squadra
-                ).trim();
-
-
-            if(
-                squadra === ""
-            )
-                continue;
-
-
-            /*
-                Evita duplicazioni accidentali
-                dello stesso qualificato.
-            */
-
-            if(
-                !qualificati.includes(
-                    squadra
-                )
-            ){
-
-                qualificati.push(
-                    squadra
-                );
-
-            }
+            nome =
+                elemento;
 
         }
+        else if(
+            typeof elemento === "object"
+        ){
 
+            nome =
+                elemento.n ??
+                elemento.nome ??
+                elemento.squadra ??
+                elemento.name ??
+                "";
+        }
+
+        nome =
+            String(nome)
+            .trim();
+
+        if(
+            nome === ""
+        ){
+
+            console.warn(
+                "Qualificato senza nome:",
+                {
+                    girone,
+                    posizione: posizione + 1,
+                    elemento
+                }
+            );
+
+            continue;
+        }
+
+        if(
+            qualificati.includes(nome)
+        ){
+
+            console.warn(
+                "Qualificato duplicato ignorato:",
+                nome,
+                "girone:",
+                girone
+            );
+
+            continue;
+        }
+
+        qualificati.push(nome);
+
+        console.log(
+            "QUALIFICATO:",
+            {
+                girone,
+                posizione: posizione + 1,
+                squadra: nome,
+                dati: elemento
+            }
+        );
     }
+}
 
+const attesi =
+    numeroGironi *
+    qualificatePerGirone;
 
-    console.log(
-        "===================================="
-    );
+state.finalQualified =
+    [...qualificati];
 
-    console.log(
-        "QUALIFICATI FASE FINALE:",
-        qualificati
-    );
+console.log(
+    "========================================"
+);
 
-    console.log(
-        "NUMERO QUALIFICATI:",
-        qualificati.length
-    );
+console.log(
+    "QUALIFICATI FASE FINALE:",
+    qualificati
+);
 
-    console.log(
-        "===================================="
-    );
+console.log(
+    "NUMERO QUALIFICATI:",
+    qualificati.length
+);
 
+console.log(
+    "ATTESI:",
+    attesi
+);
 
-    return qualificati;
+console.log(
+    "========================================"
+);
+
+return qualificati;
 
 }
    
