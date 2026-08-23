@@ -8016,7 +8016,12 @@ function renderKO(){
     if(!q || !s || !f){
 
         console.error(
-            "renderKO: contenitori fase finale non trovati"
+            "renderKO: contenitori fase finale non trovati",
+            {
+                Q: !!q,
+                S: !!s,
+                finaleBox: !!f
+            }
         );
 
         return;
@@ -8026,7 +8031,6 @@ function renderKO(){
     /*
     ============================================================
     TABELLE REALI
-    IDENTICHE ALLE TABELLE DEI GIRONI
     ============================================================
     */
 
@@ -8035,18 +8039,66 @@ function renderKO(){
     const fTable = f.closest("table");
 
 
+    if(!qTable){
+
+        console.error(
+            "renderKO: tabella QUARTI non trovata"
+        );
+
+    }
+
+
+    if(!sTable){
+
+        console.error(
+            "renderKO: tabella SEMIFINALI non trovata"
+        );
+
+    }
+
+
+    if(!fTable){
+
+        console.error(
+            "renderKO: tabella FINALE non trovata"
+        );
+
+    }
+
+
     /*
     ============================================================
-    CONFIGURAZIONE IDENTICA AI GIRONI
+    MISURE IDENTICHE AI GIRONI
+    ============================================================
+
+    MISURE REALI RILEVATE DAI GIRONI:
+
+    TABLE = 458px
+
+    Campo = 55px
+    Ora   = 65px
+    Match = 248px
+    Ris   = 90px
+
+    TOTALE:
+    55 + 65 + 248 + 90 = 458px
+
     ============================================================
     */
 
-    function configuraTabellaFinale(table){
+    function applicaLayoutGironi(table){
 
         if(!table){
+
             return;
         }
 
+
+        /*
+        --------------------------------------------------------
+        DIMENSIONE TABELLA
+        --------------------------------------------------------
+        */
 
         table.style.width = "458px";
         table.style.minWidth = "458px";
@@ -8058,24 +8110,49 @@ function renderKO(){
         table.style.fontSize = "13px";
         table.style.lineHeight = "normal";
 
+        table.style.boxSizing = "border-box";
+
 
         /*
         --------------------------------------------------------
-        LARGHEZZE COLONNE
+        COLGROUP
         --------------------------------------------------------
         */
 
-        const larghezze = [
-            "55px",
-            "65px",
-            "248px",
-            "90px"
-        ];
+        let colgroup =
+            table.querySelector("colgroup");
 
+
+        if(!colgroup){
+
+            colgroup =
+                document.createElement("colgroup");
+
+            table.insertBefore(
+                colgroup,
+                table.firstChild
+            );
+
+        }
+
+
+        colgroup.innerHTML = `
+            <col style="width:55px">
+            <col style="width:65px">
+            <col style="width:248px">
+            <col style="width:90px">
+        `;
+
+
+        /*
+        --------------------------------------------------------
+        THEAD + TBODY
+        --------------------------------------------------------
+        */
 
         const righe =
             table.querySelectorAll(
-                "tr"
+                "thead tr, tbody tr"
             );
 
 
@@ -8087,77 +8164,144 @@ function renderKO(){
                 );
 
 
-            celle.forEach((cella,index)=>{
+            const larghezze = [
+                "55px",
+                "65px",
+                "248px",
+                "90px"
+            ];
 
-                if(!larghezze[index]){
-                    return;
+
+            for(
+                let i = 0;
+                i < 4;
+                i++
+            ){
+
+                if(!celle[i]){
+
+                    continue;
+
                 }
 
 
-                cella.style.width =
-                    larghezze[index];
+                celle[i].style.width =
+                    larghezze[i];
 
-                cella.style.minWidth =
-                    larghezze[index];
+                celle[i].style.minWidth =
+                    larghezze[i];
 
-                cella.style.maxWidth =
-                    larghezze[index];
+                celle[i].style.maxWidth =
+                    larghezze[i];
 
-                cella.style.boxSizing =
+                celle[i].style.boxSizing =
                     "border-box";
 
-            });
+            }
 
         });
 
 
         /*
         --------------------------------------------------------
-        CONTROLLO CELLE DEL BODY
+        GARANZIA CELLA MATCH
         --------------------------------------------------------
         */
 
-        const celleBody =
-            table.querySelectorAll(
-                "tbody td"
-            );
+        table
+            .querySelectorAll(
+                "td.match-cell, th.match-cell"
+            )
+            .forEach(cell=>{
+
+                cell.style.width = "248px";
+                cell.style.minWidth = "248px";
+                cell.style.maxWidth = "248px";
+                cell.style.boxSizing = "border-box";
+
+            });
 
 
-        celleBody.forEach((cella,index)=>{
+        /*
+        --------------------------------------------------------
+        GARANZIA CELLA RISULTATO
+        --------------------------------------------------------
+        */
 
-            const colonna =
-                index % 4;
+        table
+            .querySelectorAll(
+                "td.db-cell"
+            )
+            .forEach(cell=>{
+
+                cell.style.width = "90px";
+                cell.style.minWidth = "90px";
+                cell.style.maxWidth = "90px";
+                cell.style.boxSizing = "border-box";
+
+            });
 
 
-            const larghezza =
-                larghezze[colonna];
+        /*
+        --------------------------------------------------------
+        MATCH: SQUADRE UNA SOPRA L'ALTRA
+        --------------------------------------------------------
+        */
+
+        table
+            .querySelectorAll(
+                ".match-cell"
+            )
+            .forEach(cell=>{
+
+                cell.style.verticalAlign = "middle";
+                cell.style.textAlign = "center";
+                cell.style.overflow = "hidden";
+
+            });
 
 
-            if(!larghezza){
-                return;
-            }
+        /*
+        --------------------------------------------------------
+        RIGHE MATCH
+        --------------------------------------------------------
+        */
+
+        table
+            .querySelectorAll(
+                ".team-line"
+            )
+            .forEach(el=>{
+
+                el.style.display = "block";
+                el.style.width = "100%";
+                el.style.textAlign = "center";
+                el.style.whiteSpace = "normal";
+                el.style.lineHeight = "normal";
+
+            });
 
 
-            cella.style.width =
-                larghezza;
+        /*
+        --------------------------------------------------------
+        VS AL CENTRO
+        --------------------------------------------------------
+        */
 
-            cella.style.minWidth =
-                larghezza;
+        table
+            .querySelectorAll(
+                ".vs-line"
+            )
+            .forEach(el=>{
 
-            cella.style.maxWidth =
-                larghezza;
+                el.style.display = "block";
+                el.style.width = "100%";
+                el.style.textAlign = "center";
+                el.style.lineHeight = "normal";
 
-            cella.style.boxSizing =
-                "border-box";
-
-        });
+            });
 
     }
-
-
-    configuraTabellaFinale(qTable);
-    configuraTabellaFinale(sTable);
-    configuraTabellaFinale(fTable);
 
 
     /*
@@ -8173,7 +8317,7 @@ function renderKO(){
 
     /*
     ============================================================
-    INIZIALIZZAZIONE STATO
+    STATO QUARTI
     ============================================================
     */
 
@@ -8214,6 +8358,12 @@ function renderKO(){
     }
 
 
+    /*
+    ============================================================
+    STATO SEMIFINALI
+    ============================================================
+    */
+
     if(!Array.isArray(state.sTopRes)){
 
         state.sTopRes =
@@ -8251,6 +8401,12 @@ function renderKO(){
     }
 
 
+    /*
+    ============================================================
+    STATO FINALE
+    ============================================================
+    */
+
     if(
         typeof state.fTopRes !== "string" ||
         state.fTopRes === "" ||
@@ -8273,6 +8429,20 @@ function renderKO(){
     if(!Array.isArray(state.fTime)){
 
         state.fTime = [];
+
+    }
+
+
+    if(state.campioneTop === undefined){
+
+        state.campioneTop = null;
+
+    }
+
+
+    if(!Array.isArray(state.finalTop)){
+
+        state.finalTop = [];
 
     }
 
@@ -8301,13 +8471,17 @@ function renderKO(){
         if(fTable)
             fTable.style.display = "none";
 
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
         return;
     }
 
 
     /*
     ============================================================
-    VISIBILITÀ TABELLE
+    NASCONDI INIZIALMENTE LE FASI
     ============================================================
     */
 
@@ -8319,17 +8493,6 @@ function renderKO(){
 
     if(fTable)
         fTable.style.display = "none";
-
-
-    /*
-    ============================================================
-    RIAPPLICA LE MISURE DOPO IL RESET
-    ============================================================
-    */
-
-    configuraTabellaFinale(qTable);
-    configuraTabellaFinale(sTable);
-    configuraTabellaFinale(fTable);
 
 
     /*
@@ -8350,12 +8513,14 @@ function renderKO(){
 
             qTable.style.display = "";
 
-            configuraTabellaFinale(
-                qTable
-            );
-
         }
 
+
+        /*
+        --------------------------------------------------------
+        ACCOPPIAMENTI QUARTI
+        --------------------------------------------------------
+        */
 
         const quarti = [
 
@@ -8385,6 +8550,12 @@ function renderKO(){
         const vincitori = [];
 
 
+        /*
+        --------------------------------------------------------
+        RENDER QUARTI
+        --------------------------------------------------------
+        */
+
         quarti.forEach(
             (match,index)=>{
 
@@ -8395,13 +8566,20 @@ function renderKO(){
                     !match[1]
                 ){
 
+                    console.error(
+                        "renderKO: quarto non valido",
+                        {
+                            index,
+                            match
+                        }
+                    );
+
                     return;
 
                 }
 
 
-                q.innerHTML +=
-
+                const html =
                     renderMatchCard(
                         "QUARTO " + (index + 1),
                         match,
@@ -8409,6 +8587,24 @@ function renderKO(){
                         index,
                         state.qRes[index]
                     );
+
+
+                if(
+                    typeof html !== "string" ||
+                    html.trim() === ""
+                ){
+
+                    console.error(
+                        "renderKO: renderMatchCard ha restituito HTML vuoto per Q",
+                        index
+                    );
+
+                    return;
+
+                }
+
+
+                q.innerHTML += html;
 
 
                 const vincitore =
@@ -8432,15 +8628,20 @@ function renderKO(){
 
         /*
         --------------------------------------------------------
-        DOPO L'INSERIMENTO DELLE RIGHE
-        RIAPPLICA LE MISURE ESATTE
+        APPLICA MISURE DOPO LA CREAZIONE
         --------------------------------------------------------
         */
 
-        configuraTabellaFinale(
+        applicaLayoutGironi(
             qTable
         );
 
+
+        /*
+        --------------------------------------------------------
+        SEMIFINALI DAI VINCITORI DEI QUARTI
+        --------------------------------------------------------
+        */
 
         if(vincitori.length !== 4){
 
@@ -8448,6 +8649,7 @@ function renderKO(){
             state.campioneTop = null;
 
             return;
+
         }
 
 
@@ -8471,8 +8673,13 @@ function renderKO(){
     /*
     ============================================================
     NIENTE QUARTI
+    ============================================================
+
+    4 QUALIFICATI:
+
     A1 vs B2
     A2 vs B1
+
     ============================================================
     */
 
@@ -8484,6 +8691,7 @@ function renderKO(){
             state.campioneTop = null;
 
             return;
+
         }
 
 
@@ -8506,7 +8714,7 @@ function renderKO(){
 
     /*
     ============================================================
-    SEMIFINALI
+    CONTROLLO SEMIFINALI
     ============================================================
     */
 
@@ -8518,22 +8726,61 @@ function renderKO(){
         state.campioneTop = null;
 
         return;
+
     }
 
+
+    if(
+        !Array.isArray(semifinali) ||
+        semifinali.length !== 2
+    ){
+
+        console.error(
+            "renderKO: semifinali non valide",
+            semifinali
+        );
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+        return;
+
+    }
+
+
+    /*
+    ============================================================
+    MOSTRA TABELLA SEMIFINALI
+    ============================================================
+    */
 
     if(sTable){
 
         sTable.style.display = "";
 
-        configuraTabellaFinale(
-            sTable
+    }
+    else{
+
+        console.error(
+            "renderKO: tabella semifinali non trovata"
         );
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+        return;
 
     }
 
 
     const finalisti = [];
 
+
+    /*
+    ============================================================
+    RENDER SEMIFINALI
+    ============================================================
+    */
 
     semifinali.forEach(
         (match,index)=>{
@@ -8545,20 +8792,20 @@ function renderKO(){
                 !match[1]
             ){
 
+                console.error(
+                    "renderKO: semifinale non valida",
+                    {
+                        index,
+                        match
+                    }
+                );
+
                 return;
 
             }
 
 
-            /*
-            ----------------------------------------------------
-            0 = SEMIFINALE 1
-            1 = SEMIFINALE 2
-            ----------------------------------------------------
-            */
-
-            s.innerHTML +=
-
+            const html =
                 renderMatchCard(
                     "SEMIFINALE " + (index + 1),
                     match,
@@ -8567,6 +8814,31 @@ function renderKO(){
                     state.sTopRes[index]
                 );
 
+
+            if(
+                typeof html !== "string" ||
+                html.trim() === ""
+            ){
+
+                console.error(
+                    "renderKO: renderMatchCard ha restituito HTML vuoto per S",
+                    index
+                );
+
+                return;
+
+            }
+
+
+            s.innerHTML += html;
+
+
+            /*
+            ----------------------------------------------------
+            IL VINCITORE VIENE DETERMINATO DAL RISULTATO
+            DELLA STESSA SEMIFINALE
+            ----------------------------------------------------
+            */
 
             const vincitore =
                 getWinner(
@@ -8588,19 +8860,19 @@ function renderKO(){
 
 
     /*
-    ------------------------------------------------------------
-    RIAPPLICA LE MISURE DOPO AVER CREATO LE RIGHE
-    ------------------------------------------------------------
+    ============================================================
+    APPLICA MISURE IDENTICHE AI GIRONI
+    ============================================================
     */
 
-    configuraTabellaFinale(
+    applicaLayoutGironi(
         sTable
     );
 
 
     /*
     ============================================================
-    FINALE NON ANCORA DISPONIBILE
+    CONTROLLO FINALISTI
     ============================================================
     */
 
@@ -8610,6 +8882,7 @@ function renderKO(){
         state.campioneTop = null;
 
         return;
+
     }
 
 
@@ -8640,28 +8913,39 @@ function renderKO(){
         state.campioneTop = null;
 
         return;
+
     }
 
 
     /*
     ============================================================
-    FINALE
+    MOSTRA TABELLA FINALE
     ============================================================
     */
 
-    if(fTable){
+    if(!fTable){
 
-        fTable.style.display = "";
-
-        configuraTabellaFinale(
-            fTable
+        console.error(
+            "renderKO: tabella finale non trovata"
         );
+
+        state.campioneTop = null;
+
+        return;
 
     }
 
 
-    f.innerHTML =
+    fTable.style.display = "";
 
+
+    /*
+    ============================================================
+    RENDER FINALE
+    ============================================================
+    */
+
+    const finaleHTML =
         renderMatchCard(
             "FINALE",
             state.finalTop,
@@ -8671,13 +8955,33 @@ function renderKO(){
         );
 
 
+    if(
+        typeof finaleHTML !== "string" ||
+        finaleHTML.trim() === ""
+    ){
+
+        console.error(
+            "renderKO: renderMatchCard ha restituito HTML vuoto per FINALE"
+        );
+
+        state.campioneTop = null;
+
+        return;
+
+    }
+
+
+    f.innerHTML =
+        finaleHTML;
+
+
     /*
-    ------------------------------------------------------------
-    RIAPPLICA LE MISURE DOPO AVER CREATO LA RIGA
-    ------------------------------------------------------------
+    ============================================================
+    APPLICA MISURE IDENTICHE AI GIRONI
+    ============================================================
     */
 
-    configuraTabellaFinale(
+    applicaLayoutGironi(
         fTable
     );
 
@@ -8701,27 +9005,59 @@ function renderKO(){
             campione;
 
 
-        if(fTable){
+        /*
+        --------------------------------------------------------
+        EVITA DUPLICAZIONE DEL BOX CAMPIONE
+        --------------------------------------------------------
+        */
 
-            fTable.insertAdjacentHTML(
-                "afterend",
-                `
-                <div class="winner-box top-win">
-                    🏆 CAMPIONE TORNEO:<br>
-                    ${campione}
-                </div>
-                `
+        const vecchioWinner =
+            fTable.parentElement?.querySelector(
+                ".winner-box.top-win"
             );
+
+
+        if(vecchioWinner){
+
+            vecchioWinner.remove();
 
         }
 
-    }
 
+        fTable.insertAdjacentHTML(
+            "afterend",
+            `
+            <div class="winner-box top-win">
+                🏆 CAMPIONE TORNEO:<br>
+                ${campione}
+            </div>
+            `
+        );
+
+    }
     else{
 
         state.campioneTop = null;
 
     }
+
+
+    /*
+    ============================================================
+    CONTROLLO FINALE LAYOUT
+    ============================================================
+    */
+
+    applicaLayoutGironi(qTable);
+    applicaLayoutGironi(sTable);
+    applicaLayoutGironi(fTable);
+
+
+    /*
+    ============================================================
+    FINE renderKO
+    ============================================================
+    */
 
 }
    
