@@ -6889,11 +6889,43 @@ return true;
 }
 
 
-
 function renderKO(){
 
     ensureRules();
 
+
+    /*
+    ============================================================
+    PREPARAZIONE GIRONI A-F
+    ============================================================
+    */
+
+    const lettereGironi = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+    ];
+
+
+    lettereGironi.forEach(g=>{
+
+        if(!Array.isArray(state[g])){
+
+            state[g] = [];
+
+        }
+
+    });
+
+
+    /*
+    ============================================================
+    PREPARAZIONE CONTENITORI
+    ============================================================
+    */
 
     const q =
         document.getElementById("Q");
@@ -6918,6 +6950,12 @@ function renderKO(){
     f.innerHTML = "";
 
 
+    /*
+    ============================================================
+    INIZIALIZZAZIONE STATO FASE FINALE
+    ============================================================
+    */
+
     if(!Array.isArray(state.finalTop)){
 
         state.finalTop = [];
@@ -6940,6 +6978,39 @@ function renderKO(){
     }
 
 
+    /*
+        GARANTIAMO SEMPRE 4 RISULTATI QUARTI
+    */
+
+    while(state.qRes.length < 4){
+
+        state.qRes.push("-");
+
+    }
+
+
+    if(state.qRes.length > 4){
+
+        state.qRes =
+            state.qRes.slice(0,4);
+
+    }
+
+
+    if(!Array.isArray(state.qCamp)){
+
+        state.qCamp = [];
+
+    }
+
+
+    if(!Array.isArray(state.qTime)){
+
+        state.qTime = [];
+
+    }
+
+
     if(!Array.isArray(state.sTopRes)){
 
         state.sTopRes =
@@ -6948,15 +7019,65 @@ function renderKO(){
     }
 
 
+    while(state.sTopRes.length < 2){
+
+        state.sTopRes.push("-");
+
+    }
+
+
+    if(state.sTopRes.length > 2){
+
+        state.sTopRes =
+            state.sTopRes.slice(0,2);
+
+    }
+
+
+    if(!Array.isArray(state.sCamp)){
+
+        state.sCamp = [];
+
+    }
+
+
+    if(!Array.isArray(state.sTime)){
+
+        state.sTime = [];
+
+    }
+
+
     if(
         typeof state.fTopRes !== "string" ||
-        state.fTopRes === "undefined"
+        state.fTopRes === "undefined" ||
+        state.fTopRes === "null"
     ){
 
         state.fTopRes = "-";
 
     }
 
+
+    if(!Array.isArray(state.fCamp)){
+
+        state.fCamp = [];
+
+    }
+
+
+    if(!Array.isArray(state.fTime)){
+
+        state.fTime = [];
+
+    }
+
+
+    /*
+    ============================================================
+    QUALIFICATI
+    ============================================================
+    */
 
     const teams =
         getFinalQualified();
@@ -6972,6 +7093,7 @@ function renderKO(){
 
         q.style.display = "none";
         s.style.display = "none";
+        f.style.display = "none";
 
         return;
 
@@ -6979,45 +7101,135 @@ function renderKO(){
 
 
     /*
-    ==========================================
-    QUARTI
-    ==========================================
+    ============================================================
+    VISIBILITÀ QUARTI
+    ============================================================
+    */
+
+    q.style.display = "none";
+
+
+    /*
+    ============================================================
+    VISIBILITÀ SEMIFINALI
+    ============================================================
+    */
+
+    s.style.display = "none";
+
+
+    /*
+    ============================================================
+    VISIBILITÀ FINALE
+    ============================================================
+    */
+
+    f.style.display = "none";
+
+
+    /*
+    ============================================================
+    DETERMINAZIONE FASE SUCCESSIVA
+    ============================================================
     */
 
     let semifinali = [];
 
 
     /*
-        I QUARTI SONO POSSIBILI SOLO
-        CON 8 QUALIFICATI.
+    ============================================================
+    QUARTI DI FINALE
+    ============================================================
+    */
+
+    const quartiAttivi =
+        state.rules.usaQuarti === true;
+
+
+    /*
+        I QUARTI HANNO SENSO SOLO CON 8 QUALIFICATI.
+
+        Con 4 qualificati:
+        A1/B2
+        A2/B1
+        vanno direttamente alle semifinali.
+
+        NON trasformiamo 4 squadre in 8 artificialmente.
     */
 
     if(
-        state.rules.usaQuarti === true &&
+        quartiAttivi &&
         teams.length >= 8
     ){
 
-        q.style.display = "block";
+        /*
+            MOSTRA QUARTI
+
+            mostraQuarti è solo VISUALIZZAZIONE.
+            usaQuarti è la FORMULA.
+        */
+
+        if(
+            state.rules.mostraQuarti === true ||
+            state.mostraQuarti === true
+        ){
+
+            q.style.display = "block";
+
+        }
 
 
         const quarti = [
 
-            [teams[0], teams[7]],
+            [
+                teams[0],
+                teams[7]
+            ],
 
-            [teams[3], teams[4]],
+            [
+                teams[3],
+                teams[4]
+            ],
 
-            [teams[1], teams[6]],
+            [
+                teams[1],
+                teams[6]
+            ],
 
-            [teams[2], teams[5]]
+            [
+                teams[2],
+                teams[5]
+            ]
 
         ];
 
 
-        const vincitori = [];
+        const vincitoriQuarti = [];
 
 
         quarti.forEach(
             (match,index)=>{
+
+
+                /*
+                    SICUREZZA
+                */
+
+                if(
+                    !Array.isArray(match) ||
+                    match.length !== 2 ||
+                    !match[0] ||
+                    !match[1]
+                ){
+
+                    return;
+
+                }
+
+
+                /*
+                    RENDER QUARTO
+                */
 
                 q.innerHTML +=
 
@@ -7036,6 +7248,10 @@ function renderKO(){
                     );
 
 
+                /*
+                    CALCOLO VINCITORE
+                */
+
                 const vincitore =
 
                     getWinner(
@@ -7049,7 +7265,7 @@ function renderKO(){
 
                 if(vincitore){
 
-                    vincitori.push(
+                    vincitoriQuarti.push(
                         vincitore
                     );
 
@@ -7060,45 +7276,62 @@ function renderKO(){
 
 
         /*
-            SEMIFINALI SOLO QUANDO
-            TUTTI I QUARTI HANNO
-            UN VINCITORE.
+        ========================================================
+        SEMIFINALI DOPO I QUARTI
+        ========================================================
         */
 
-        if(vincitori.length === 4){
+        if(
+            vincitoriQuarti.length === 4
+        ){
 
             semifinali = [
 
                 [
-                    vincitori[0],
-                    vincitori[1]
+                    vincitoriQuarti[0],
+                    vincitoriQuarti[1]
                 ],
 
                 [
-                    vincitori[2],
-                    vincitori[3]
+                    vincitoriQuarti[2],
+                    vincitoriQuarti[3]
                 ]
 
             ];
 
         }
+        else{
+
+            /*
+                I QUARTI NON SONO COMPLETATI.
+
+                Non facciamo avanzare nessuno
+                alle semifinali.
+            */
+
+            state.finalTop = [];
+            state.campioneTop = null;
+
+            return;
+
+        }
 
     }
 
+
     /*
-    ==========================================
-    NIENTE QUARTI
-    ==========================================
+    ============================================================
+    NIENTE QUARTI / QUARTI NON NECESSARI
+    ============================================================
     */
 
     else{
 
-        q.style.display = "none";
-
 
         /*
-            CON 4 QUALIFICATI:
-            ACCESSO DIRETTO ALLE SEMIFINALI.
+            8+ qualificati ma quarti disattivati:
+            servono almeno 4 squadre per costruire
+            direttamente le semifinali.
         */
 
         if(teams.length >= 4){
@@ -7119,9 +7352,10 @@ function renderKO(){
 
         }
 
+
         /*
-            CON 2 QUALIFICATI:
-            FINALE DIRETTA.
+            2 qualificati:
+            nessuna semifinale necessaria.
         */
 
         else if(teams.length === 2){
@@ -7141,17 +7375,47 @@ function renderKO(){
 
 
     /*
-    ==========================================
+    ============================================================
     SEMIFINALI
-    ==========================================
+    ============================================================
     */
 
     const finalisti = [];
 
 
+    /*
+        Se abbiamo esattamente 2 squadre,
+        non forziamo una semifinale inutile.
+    */
+
     if(
+        teams.length === 2
+    ){
+
+        s.style.display = "none";
+
+
+        if(
+            state.rules.usaFinale === true
+        ){
+
+            finalisti.push(
+                teams[0],
+                teams[1]
+            );
+
+        }
+
+    }
+
+
+    /*
+        SEMIFINALI NORMALI
+    */
+
+    else if(
         state.rules.usaSemifinali === true &&
-        semifinali.length > 0
+        semifinali.length === 2
     ){
 
         s.style.display = "block";
@@ -7159,6 +7423,19 @@ function renderKO(){
 
         semifinali.forEach(
             (match,index)=>{
+
+
+                if(
+                    !Array.isArray(match) ||
+                    match.length !== 2 ||
+                    !match[0] ||
+                    !match[1]
+                ){
+
+                    return;
+
+                }
+
 
                 s.innerHTML +=
 
@@ -7201,18 +7478,29 @@ function renderKO(){
 
     }
 
+
     /*
-        SE LE SEMIFINALI SONO DISATTIVATE,
-        I PARTECIPANTI PASSANO ALLA FINALE
-        SOLO SE SONO ESATTAMENTE DUE.
+    ============================================================
+    SEMIFINALI DISATTIVATE
+    ============================================================
     */
 
-    else{
+    else if(
+        state.rules.usaSemifinali !== true
+    ){
 
         s.style.display = "none";
 
 
-        if(semifinali.length === 1){
+        /*
+            Se la fase precedente produce esattamente
+            due squadre, queste diventano finaliste.
+        */
+
+        if(
+            semifinali.length === 1 &&
+            Array.isArray(semifinali[0])
+        ){
 
             semifinali[0].forEach(
                 squadra=>{
@@ -7234,46 +7522,69 @@ function renderKO(){
 
 
     /*
-    ==========================================
-    FINALISTI
-    ==========================================
+    ============================================================
+    CONTROLLO FINALISTI
+    ============================================================
     */
 
-    if(finalisti.length === 2){
+    if(
+        finalisti.length === 2
+    ){
 
         state.finalTop =
             [...finalisti];
 
     }
-
     else{
 
         state.finalTop = [];
+
         state.campioneTop = null;
 
     }
 
 
     /*
-    ==========================================
-    FINALE
-    ==========================================
+    ============================================================
+    FINALE DISATTIVATA
+    ============================================================
     */
 
     if(
         state.rules.usaFinale !== true
     ){
 
+        f.style.display = "none";
+
+        return;
+
+    }
+
+
+    /*
+    ============================================================
+    FINALE NON ANCORA DISPONIBILE
+    ============================================================
+    */
+
+    if(
+        finalisti.length !== 2
+    ){
+
+        f.style.display = "none";
+
         return;
 
     }
 
 
-    if(finalisti.length !== 2){
+    /*
+    ============================================================
+    RENDER FINALE
+    ============================================================
+    */
 
-        return;
-
-    }
+    f.style.display = "block";
 
 
     f.innerHTML =
@@ -7294,9 +7605,9 @@ function renderKO(){
 
 
     /*
-    ==========================================
+    ============================================================
     CAMPIONE
-    ==========================================
+    ============================================================
     */
 
     const campione =
@@ -7326,7 +7637,6 @@ function renderKO(){
             `;
 
     }
-
     else{
 
         state.campioneTop = null;
@@ -7334,6 +7644,7 @@ function renderKO(){
     }
 
 }
+
 
 
 
