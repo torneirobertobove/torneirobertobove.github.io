@@ -1,0 +1,96 @@
+name: Restore missing renderClass
+
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-renderclass.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Insert renderClass without changing other functions
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+
+          if re.search(r'function\s+renderClass\s*\(', s):
+              print('renderClass already present; no change needed')
+          else:
+              fn = r'''\nfunction renderClass(){
+
+    ensureRules();
+
+    ["A","B","C","D","E","F","G"].forEach(tag=>{
+
+        if(!Array.isArray(state[tag]) || state[tag].length===0){
+            state["rank"+tag]=[];
+            return;
+        }
+
+        const box=document.getElementById(tag+"class");
+        if(!box) return;
+
+        const risultati=Array.isArray(state[tag+"res"])
+            ? state[tag+"res"]
+            : [];
+
+        const classifica=calc(state[tag],risultati);
+        state["rank"+tag]=Array.isArray(classifica) ? classifica : [];
+
+        box.innerHTML=state["rank"+tag].map((x,index)=>`
+<tr>
+<td>
+<span class="${x.qual ? "qual-arrow-up" : "qual-arrow-down"}">${x.qual ? "▲" : "▼"}</span>
+${String(x.n || "")}
+</td>
+<td>${x.pt}</td>
+<td>${x.gf}</td>
+<td>${x.gs}</td>
+<td>${x.df}</td>
+</tr>
+`).join("");
+
+    });
+
+}
+'''
+              marker = re.search(r'(?=function\s+render\s*\(\s*\)\s*\{)', s)
+              if not marker:
+                  raise SystemExit('function render() not found; file left unchanged')
+              s = s[:marker.start()] + fn + s[marker.start():]
+              p.write_text(s, encoding='utf-8')
+              print('renderClass inserted')
+
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
+          Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/bove.js
+
+      - name: Commit repair and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'Bove Repair'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/restore-renderclass.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Restore Bove classification renderer'
+          git push
