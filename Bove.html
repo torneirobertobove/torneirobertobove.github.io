@@ -7420,7 +7420,8 @@ function calc(iscritti, risultati) {
     }
 
 }
-  function renderMatchCard(
+  ```javascript
+function renderMatchCard(
     titolo,
     match,
     type,
@@ -7428,372 +7429,408 @@ function calc(iscritti, risultati) {
     risultato
 ){
 
-    /*
-    ==========================================
-    VALIDAZIONE
-    ==========================================
-    */
-
     if(
         !Array.isArray(match) ||
         match.length !== 2
     ){
-
         return "";
-
     }
 
 
     /*
-    ==========================================
+    ==========================================================
     RISULTATO
-    ==========================================
+    ==========================================================
     */
 
     const res =
-
-        (
-            typeof risultato === "string" &&
-            risultato.trim() !== ""
-        )
-
-        ?
-
-        risultato.trim()
-
-        :
-
-        "-";
+        typeof risultato === "string" &&
+        risultato.trim() !== ""
+            ? risultato.trim()
+            : "-";
 
 
     /*
-    ==========================================
+    ==========================================================
+    NOMI SQUADRE
+    ==========================================================
+    */
+
+    const nome1 =
+        typeof match[0] === "object" && match[0] !== null
+            ? String(
+                match[0].n ||
+                match[0].nome ||
+                match[0].nome_giocatore ||
+                ""
+            )
+            : String(match[0] ?? "");
+
+
+    const nome2 =
+        typeof match[1] === "object" && match[1] !== null
+            ? String(
+                match[1].n ||
+                match[1].nome ||
+                match[1].nome_giocatore ||
+                ""
+            )
+            : String(match[1] ?? "");
+
+
+    /*
+    ==========================================================
     VINCITORE
-    ==========================================
+    ==========================================================
     */
 
     const winner =
+        typeof getWinner === "function"
+            ? getWinner(match, res)
+            : null;
 
-        getWinner(
-            match,
-            res
-        );
+
+    const nomeVincitore =
+        winner
+            ? (
+                typeof winner === "object" && winner !== null
+                    ? String(
+                        winner.n ||
+                        winner.nome ||
+                        winner.nome_giocatore ||
+                        ""
+                    )
+                    : String(winner)
+              )
+            : "";
+
+
+    const stato =
+        winner
+            ? "Terminata"
+            : "Da giocare";
 
 
     /*
-    ==========================================
-    NOME SQUADRA / COPPIA
-    ==========================================
+    ==========================================================
+    RISULTATO SEPARATO
+    Esempio:
+    [ 6 ] - [ 4 ]
+    ==========================================================
     */
 
-    function nomeSquadra(squadra){
-
-        if(
-            squadra === null ||
-            squadra === undefined
-        ){
-
-            return "";
-
-        }
+    let risultato1 = "";
+    let risultato2 = "";
 
 
-        if(
-            typeof squadra === "object"
-        ){
+    if(res !== "-"){
 
-            if(
-                squadra.n !== undefined &&
-                squadra.n !== null
-            ){
-
-                return String(
-                    squadra.n
-                );
-
-            }
+        const parti =
+            String(res)
+            .split("-")
+            .map(x => x.trim());
 
 
-            if(
-                squadra.nome !== undefined &&
-                squadra.nome !== null
-            ){
+        if(parti.length >= 2){
 
-                return String(
-                    squadra.nome
-                );
+            risultato1 = parti[0];
+            risultato2 = parti[1];
 
-            }
+        }else{
 
-
-            if(
-                squadra.g1 !== undefined ||
-                squadra.g2 !== undefined
-            ){
-
-                return (
-
-                    String(
-                        squadra.g1 || ""
-                    )
-
-                    +
-
-                    " / "
-
-                    +
-
-                    String(
-                        squadra.g2 || ""
-                    )
-
-                ).trim();
-
-            }
-
-
-            if(
-                squadra.giocatore1 ||
-                squadra.giocatore2
-            ){
-
-                function nomeGiocatore(g){
-
-                    if(!g)
-                        return "";
-
-                    if(
-                        typeof g === "object"
-                    ){
-
-                        return (
-
-                            String(
-                                g.nome || ""
-                            )
-
-                            +
-
-                            " "
-
-                            +
-
-                            String(
-                                g.cognome || ""
-                            )
-
-                        ).trim();
-
-                    }
-
-                    return String(g).trim();
-
-                }
-
-
-                return (
-
-                    nomeGiocatore(
-                        squadra.giocatore1
-                    )
-
-                    +
-
-                    " / "
-
-                    +
-
-                    nomeGiocatore(
-                        squadra.giocatore2
-                    )
-
-                ).trim();
-
-            }
+            risultato1 = parti[0] || "";
 
         }
-
-
-        return String(
-            squadra
-        ).trim();
 
     }
 
 
-    const nome1 =
-        nomeSquadra(
-            match[0]
-        );
-
-
-    const nome2 =
-        nomeSquadra(
-            match[1]
-        );
-
-
     /*
-    ==========================================
-    RISULTATO VISUALIZZATO
-    ==========================================
+    ==========================================================
+    CAMPO E ORA
+    Recuperati dagli array dello stato
+    ==========================================================
     */
 
-    const valore =
-
-        res === "-"
-
-        ?
-
-        ""
-
-        :
-
-        escapeHtml(
-            res
-        );
+    const indice = Number(index) || 0;
 
 
-    /*
-    ==========================================
-    STATO
-    ==========================================
-    */
-
-    const stato =
-
-        winner
-
-        ?
-
-        "Terminata"
-
-        :
-
-        "Da giocare";
+    let campo = "";
+    let ora = "";
 
 
-    /*
-    ==========================================
-    NOME VINCITORE
-    ==========================================
-    */
+    const campKey =
+        type === "q"
+            ? "qCamp"
+            : type === "s"
+                ? "sCamp"
+                : type === "f"
+                    ? "fCamp"
+                    : type + "camp";
 
-    const nomeVincitore =
 
-        winner
+    const timeKey =
+        type === "q"
+            ? "qTime"
+            : type === "s"
+                ? "sTime"
+                : type === "f"
+                    ? "fTime"
+                    : type + "time";
 
-        ?
 
-        nomeSquadra(
-            winner
-        )
+    if(
+        Array.isArray(state[campKey]) &&
+        state[campKey][indice] != null
+    ){
 
-        :
+        campo =
+            String(state[campKey][indice]);
 
-        "";
+    }
+
+
+    if(
+        Array.isArray(state[timeKey]) &&
+        state[timeKey][indice] != null
+    ){
+
+        ora =
+            String(state[timeKey][indice]);
+
+    }
 
 
     /*
-    ==========================================
-    RIGA UNICA
-    STESSA STRUTTURA DEI GIRONI
-    ==========================================
+    ==========================================================
+    HTML
+    ==========================================================
     */
 
     return `
 
+<tr class="ko-title-row">
+
+    <td
+        colspan="4"
+        style="
+            text-align:center;
+            font-weight:bold;
+            padding:8px 6px;
+        "
+    >
+        ${escapeHtml(titolo)}
+    </td>
+
+</tr>
+
+
 <tr class="ko-match-row">
 
-<td class="ko-campo-cell">
 
-    <div class="ko-titolo">
-        ${escapeHtml(titolo)}
-    </div>
+    <!-- CAMPO -->
 
-    <div class="ko-campo">
-        Campo ${index + 1}
-    </div>
-
-</td>
-
-
-<td class="ko-ora-cell">
-
-    <div class="ko-ora">
-        -
-    </div>
-
-</td>
-
-
-<td class="match-cell ko-match-cell">
-
-    <div class="team-line ko-team">
-        ${escapeHtml(nome1)}
-    </div>
-
-    <div class="vs-line">
-        <b>VS</b>
-    </div>
-
-    <div class="team-line ko-team">
-        ${escapeHtml(nome2)}
-    </div>
-
-    <div class="ko-stato">
-
-        ${stato}
-
-        ${
-            winner
-
-            ?
-
-            `
-
-            <span class="ko-passaggio">
-
-                🏆 Passa:
-                ${escapeHtml(nomeVincitore)}
-
-            </span>
-
-            `
-
-            :
-
-            ""
-
-        }
-
-    </div>
-
-</td>
-
-
-<td class="db-cell ko-ris-cell">
-
-    <input
-        type="text"
-        value="${valore}"
-        onchange="
-            updateKOResult(
-                '${type}',
-                ${index},
-                this.value
-            )
+    <td
+        class="ko-campo-cell"
+        style="
+            width:55px;
+            text-align:center;
+            vertical-align:middle;
         "
-        aria-label="${escapeHtml(titolo)} risultato"
     >
 
-</td>
+        <input
+            type="text"
+            value="${escapeHtml(campo)}"
+            placeholder="Campo"
+            onchange="
+                if(typeof updateCamp === 'function'){
+                    updateCamp('${type}',${indice},this.value);
+                }
+            "
+            style="
+                width:50px;
+                height:34px;
+                text-align:center;
+                padding:4px;
+            "
+        >
+
+    </td>
+
+
+    <!-- ORA -->
+
+    <td
+        class="ko-ora-cell"
+        style="
+            width:65px;
+            text-align:center;
+            vertical-align:middle;
+        "
+    >
+
+        <input
+            type="text"
+            value="${escapeHtml(ora)}"
+            placeholder="Ora"
+            onchange="
+                if(typeof updateTime === 'function'){
+                    updateTime('${type}',${indice},this.value);
+                }
+            "
+            style="
+                width:60px;
+                height:34px;
+                text-align:center;
+                padding:4px;
+            "
+        >
+
+    </td>
+
+
+    <!-- MATCH -->
+
+    <td
+        class="ko-match-cell match-cell"
+        style="
+            text-align:center;
+            vertical-align:middle;
+        "
+    >
+
+        <div
+            class="ko-team team-line"
+            title="${escapeHtml(nome1)}"
+        >
+            ${escapeHtml(nome1)}
+        </div>
+
+
+        <div
+            class="vs-line"
+        >
+            <b>VS</b>
+        </div>
+
+
+        <div
+            class="ko-team team-line"
+            title="${escapeHtml(nome2)}"
+        >
+            ${escapeHtml(nome2)}
+        </div>
+
+
+        <div class="ko-stato">
+
+            Stato:
+            ${escapeHtml(stato)}
+
+            ${
+                winner
+                    ? `
+                        <span class="ko-passaggio">
+                            🏆 Passa: ${escapeHtml(nomeVincitore)}
+                        </span>
+                      `
+                    : ""
+            }
+
+        </div>
+
+    </td>
+
+
+    <!-- RISULTATO -->
+
+    <td
+        class="ko-ris-cell db-cell"
+        style="
+            width:90px;
+            text-align:center;
+            vertical-align:middle;
+        "
+    >
+
+        <div
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                gap:5px;
+                width:100%;
+            "
+        >
+
+            <input
+                type="number"
+                min="0"
+                value="${escapeHtml(risultato1)}"
+                onchange="
+                    updateKOResult(
+                        '${type}',
+                        ${indice},
+                        this.value + '-' +
+                        this.parentElement.querySelectorAll('input')[1].value
+                    )
+                "
+                style="
+                    width:38px !important;
+                    height:34px;
+                    text-align:center;
+                    font-weight:bold;
+                    padding:4px;
+                "
+            >
+
+
+            <span
+                style="
+                    display:inline-block;
+                    width:10px;
+                    font-weight:bold;
+                    text-align:center;
+                "
+            >
+                -
+            </span>
+
+
+            <input
+                type="number"
+                min="0"
+                value="${escapeHtml(risultato2)}"
+                onchange="
+                    updateKOResult(
+                        '${type}',
+                        ${indice},
+                        this.parentElement.querySelectorAll('input')[0].value +
+                        '-' +
+                        this.value
+                    )
+                "
+                style="
+                    width:38px !important;
+                    height:34px;
+                    text-align:center;
+                    font-weight:bold;
+                    padding:4px;
+                "
+            >
+
+        </div>
+
+    </td>
 
 </tr>
 
 `;
 
 }
+```
+
    
   function escapeHtml(val){
 
