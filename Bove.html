@@ -11960,9 +11960,9 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 function renderMatchCard(titolo, match, tipo, index, risultato){
 
     /*
-    ==========================================
+    ============================================================
     VALIDAZIONE
-    ==========================================
+    ============================================================
     */
 
     if(
@@ -11971,21 +11971,29 @@ function renderMatchCard(titolo, match, tipo, index, risultato){
     ){
 
         return `
-            <div class="match">
-                <strong>${titolo || ""}</strong>
-                <div style="margin-top:6px;color:#94a3b8;">
-                    Squadre non disponibili
-                </div>
-            </div>
+            <tr>
+                <td>-</td>
+                <td>-</td>
+                <td class="match-cell">
+                    <div class="team-line">Squadre non disponibili</div>
+                </td>
+                <td class="db-cell">
+                    <input
+                        type="text"
+                        value=""
+                        disabled
+                    >
+                </td>
+            </tr>
         `;
 
     }
 
 
     /*
-    ==========================================
+    ============================================================
     SQUADRE
-    ==========================================
+    ============================================================
     */
 
     const squadra1 =
@@ -12005,23 +12013,9 @@ function renderMatchCard(titolo, match, tipo, index, risultato){
 
 
     /*
-    ==========================================
-    RISULTATO
-    ==========================================
-    */
-
-    let valore =
-        risultato !== undefined &&
-        risultato !== null &&
-        String(risultato).trim() !== ""
-            ? String(risultato).trim()
-            : "-";
-
-
-    /*
-    ==========================================
-    TIPO
-    ==========================================
+    ============================================================
+    FASE
+    ============================================================
     */
 
     const fase =
@@ -12032,116 +12026,179 @@ function renderMatchCard(titolo, match, tipo, index, risultato){
             : "F";
 
 
+    const indice =
+        Number.isFinite(Number(index))
+            ? Number(index)
+            : 0;
+
+
     /*
-    ==========================================
+    ============================================================
+    RISULTATO
+    ============================================================
+    */
+
+    const valore =
+        risultato !== undefined &&
+        risultato !== null &&
+        String(risultato).trim() !== "" &&
+        String(risultato).trim() !== "-"
+            ? String(risultato).trim()
+            : "";
+
+
+    /*
+    ============================================================
+    CAMPO / ORA
+    ============================================================
+    */
+
+    let campo = "";
+    let ora = "";
+
+
+    if(fase === "Q"){
+
+        campo =
+            Array.isArray(state.qCamp) &&
+            state.qCamp[indice] !== undefined
+                ? state.qCamp[indice]
+                : "";
+
+        ora =
+            Array.isArray(state.qTime) &&
+            state.qTime[indice] !== undefined
+                ? state.qTime[indice]
+                : "";
+
+    }
+
+
+    else if(fase === "S"){
+
+        campo =
+            Array.isArray(state.sCamp) &&
+            state.sCamp[indice] !== undefined
+                ? state.sCamp[indice]
+                : "";
+
+        ora =
+            Array.isArray(state.sTime) &&
+            state.sTime[indice] !== undefined
+                ? state.sTime[indice]
+                : "";
+
+    }
+
+
+    else if(fase === "F"){
+
+        campo =
+            Array.isArray(state.fCamp) &&
+            state.fCamp[indice] !== undefined
+                ? state.fCamp[indice]
+                : "";
+
+        ora =
+            Array.isArray(state.fTime) &&
+            state.fTime[indice] !== undefined
+                ? state.fTime[indice]
+                : "";
+
+    }
+
+
+    /*
+    ============================================================
     HTML
-    ==========================================
+    IDENTICO ALLA STRUTTURA DEI GIRONI
+    ============================================================
     */
 
     return `
-        <div class="match">
 
-            <div
-                style="
-                    font-weight:bold;
-                    margin-bottom:8px;
-                    color:#e5e7eb;
-                "
-            >
-                ${titolo || ""}
-            </div>
+<tr>
 
+<td>
 
-            <div
-                style="
-                    display:grid;
-                    grid-template-columns:1fr;
-                    gap:6px;
-                    align-items:center;
-                "
-            >
+<input
+    value="${String(campo ?? "")}"
+    style="width:45px"
+    onchange="
+        updateCamp(
+            '${fase}',
+            ${indice},
+            this.value
+        )
+    "
+>
 
-                <div
-                    style="
-                        font-weight:600;
-                        color:#e5e7eb;
-                        white-space:nowrap;
-                        overflow:hidden;
-                        text-overflow:ellipsis;
-                    "
-                    title="${squadra1}"
-                >
-                    ${squadra1}
-                </div>
+</td>
 
 
-                <div
-                    style="
-                        font-size:10px;
-                        color:#64748b;
-                        font-weight:bold;
-                    "
-                >
-                    VS
-                </div>
+<td>
+
+<input
+    type="time"
+    value="${String(ora ?? "")}"
+    onchange="
+        updateTime(
+            '${fase}',
+            ${indice},
+            this.value
+        )
+    "
+>
+
+</td>
 
 
-                <div
-                    style="
-                        font-weight:600;
-                        color:#e5e7eb;
-                        white-space:nowrap;
-                        overflow:hidden;
-                        text-overflow:ellipsis;
-                    "
-                    title="${squadra2}"
-                >
-                    ${squadra2}
-                </div>
+<td class="match-cell">
+
+<div class="team-line">
+
+${squadra1}
+
+</div>
 
 
-                <div
-                    style="
-                        margin-top:6px;
-                        display:flex;
-                        justify-content:center;
-                        align-items:center;
-                        gap:6px;
-                    "
-                >
+<div class="vs-line">
 
-                    <input
-                        type="text"
-                        value="${valore}"
-                        placeholder="Risultato"
-                        style="
-                            width:90px !important;
-                            height:34px;
-                            text-align:center;
-                            font-weight:bold;
-                        "
-                        onchange="
-                            updateKOResult(
-                                '${fase}',
-                                ${Number(index) || 0},
-                                this.value
-                            )
-                        "
-                        onkeydown="
-                            if(event.key === 'Enter'){
-                                this.blur();
-                            }
-                        "
-                    >
+<b>VS</b>
 
-                </div>
+</div>
 
-            </div>
 
-        </div>
-    `;
+<div class="team-line">
+
+${squadra2}
+
+</div>
+
+</td>
+
+
+<td class="db-cell">
+
+<input
+    value="${valore}"
+    placeholder="Ris"
+    oninput="
+        updateKOResult(
+            '${fase}',
+            ${indice},
+            this.value
+        )
+    "
+>
+
+</td>
+
+</tr>
+
+`;
+
 }
-
  
    
 function aggiornaDescrizioneTipoTorneo(){
