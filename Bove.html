@@ -6961,6 +6961,249 @@ function calc(iscritti, risultati) {
     }
 
 }
+   function renderMatchCard(
+    titolo,
+    match,
+    type,
+    index,
+    risultato
+){
+
+    if(
+        !Array.isArray(match) ||
+        match.length!==2
+    )
+
+        return "";
+
+
+    const res =
+
+        (
+            typeof risultato==="string" &&
+            risultato.trim()!==""
+        )
+
+        ?
+
+        risultato
+
+        :
+
+        "-";
+
+
+    const winner =
+        getWinner(
+            match,
+            res
+        );
+
+
+    const stato =
+        winner
+        ?
+        "Terminata"
+        :
+        "Da giocare";
+
+
+    const nome1 =
+
+        typeof match[0]==="object"
+
+        ?
+
+        String(
+            match[0].n ||
+            match[0].nome ||
+            ""
+        )
+
+        :
+
+        String(
+            match[0] ?? ""
+        );
+
+
+    const nome2 =
+
+        typeof match[1]==="object"
+
+        ?
+
+        String(
+            match[1].n ||
+            match[1].nome ||
+            ""
+        )
+
+        :
+
+        String(
+            match[1] ?? ""
+        );
+
+
+    const valore =
+
+        res==="-" 
+        ?
+        ""
+        :
+        escapeHtml(res);
+
+
+    const nomeVincitore =
+
+        winner
+
+        ?
+
+        (
+            typeof winner==="object"
+
+            ?
+
+            String(
+                winner.n ||
+                winner.nome ||
+                ""
+            )
+
+            :
+
+            String(winner)
+        )
+
+        :
+
+        "";
+
+
+    return `
+
+<tr>
+
+<td
+colspan="4"
+style="text-align:center;font-weight:bold"
+>
+
+${escapeHtml(titolo)}
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>
+
+Campo ${index+1}
+
+</td>
+
+
+<td>
+
+-
+
+</td>
+
+
+<td class="match-cell">
+
+<div class="team-line">
+
+${escapeHtml(nome1)}
+
+</div>
+
+
+<div class="vs-line">
+
+<b>VS</b>
+
+</div>
+
+
+<div class="team-line">
+
+${escapeHtml(nome2)}
+
+</div>
+
+</td>
+
+
+<td class="db-cell">
+
+<input
+
+type="text"
+
+value="${valore}"
+
+onchange="updateKOResult(
+'${type}',
+${index},
+this.value
+)"
+
+style="width:70px;text-align:center"
+
+>
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td
+colspan="4"
+style="text-align:center"
+>
+
+Stato:
+
+${stato}
+
+${
+    winner
+    ?
+    `
+    — 🏆 Passa:
+    ${escapeHtml(nomeVincitore)}
+    `
+    :
+    ""
+}
+
+</td>
+
+</tr>
+
+`;
+
+}
+
+  function escapeHtml(val){
+
+    return String(
+        val ?? ""
+    )
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+
+} 
    
 async function salvaTorneoSupabase(){
 
@@ -7214,6 +7457,422 @@ return true;
     }
 
 }
+   function renderKO(){
+
+    ensureRules();
+
+
+    const q =
+        document.getElementById("Q");
+
+    const s =
+        document.getElementById("S");
+
+    const f =
+        document.getElementById("finaleBox");
+
+
+    if(
+        !q ||
+        !s ||
+        !f
+    )
+
+        return;
+
+
+    /*
+    ============================
+    INIZIALIZZAZIONE RISULTATI
+    ============================
+    */
+
+    if(
+        !Array.isArray(state.qRes) ||
+        state.qRes.length!==4
+    ){
+
+        state.qRes =
+            Array(4).fill("-");
+
+    }
+
+
+    if(
+        !Array.isArray(state.sTopRes) ||
+        state.sTopRes.length!==2
+    ){
+
+        state.sTopRes =
+            Array(2).fill("-");
+
+    }
+
+
+    if(
+        typeof state.fTopRes!=="string" ||
+        state.fTopRes===""
+    ){
+
+        state.fTopRes="-";
+
+    }
+
+
+    state.finalTop=[];
+
+    state.campioneTop=null;
+
+
+    q.innerHTML="";
+    s.innerHTML="";
+    f.innerHTML="";
+
+
+    /*
+    ============================
+    SQUADRE QUALIFICATE
+    ============================
+    */
+
+    const teams =
+        getFinalQualified();
+
+
+    /*
+    ============================
+    VISIBILITA' QUARTI
+    ============================
+    */
+
+    if(
+        q.parentElement &&
+        q.parentElement.parentElement
+    ){
+
+        q.parentElement.parentElement.style.display =
+            state.rules.usaQuarti===true
+            ?
+            "block"
+            :
+            "none";
+
+    }
+
+
+    if(
+        !Array.isArray(teams) ||
+        teams.length<2
+    )
+
+        return;
+
+
+    let semifinali=[];
+
+
+    /*
+    ============================
+    QUARTI DI FINALE
+    ============================
+    */
+
+    if(
+        state.rules.usaQuarti===true &&
+        teams.length>=8
+    ){
+
+        const quarti=[
+
+            [
+                teams[0],
+                teams[7]
+            ],
+
+            [
+                teams[3],
+                teams[4]
+            ],
+
+            [
+                teams[1],
+                teams[6]
+            ],
+
+            [
+                teams[2],
+                teams[5]
+            ]
+
+        ];
+
+
+        const vincitoriQuarti=[];
+
+
+        quarti.forEach(
+            (match,index)=>{
+
+                q.insertAdjacentHTML(
+
+                    "beforeend",
+
+                    renderMatchCard(
+
+                        "QUARTO "+(index+1),
+
+                        match,
+
+                        "Q",
+
+                        index,
+
+                        state.qRes[index]
+
+                    )
+
+                );
+
+
+                const vincitore =
+                    getWinner(
+                        match,
+                        state.qRes[index]
+                    );
+
+
+                if(
+                    vincitore!==null &&
+                    vincitore!==undefined
+                ){
+
+                    vincitoriQuarti[index]=
+                        vincitore;
+
+                }
+
+            }
+        );
+
+
+        /*
+        TUTTI I QUARTI DEVONO AVERE
+        UN VINCITORE
+        */
+
+        if(
+            vincitoriQuarti.filter(
+                x=>x!==undefined
+            ).length===4
+        ){
+
+            semifinali=[
+
+                [
+                    vincitoriQuarti[0],
+                    vincitoriQuarti[1]
+                ],
+
+                [
+                    vincitoriQuarti[2],
+                    vincitoriQuarti[3]
+                ]
+
+            ];
+
+        }
+
+    }
+
+    else
+    if(
+        teams.length>=4
+    ){
+
+        semifinali=[
+
+            [
+                teams[0],
+                teams[3]
+            ],
+
+            [
+                teams[1],
+                teams[2]
+            ]
+
+        ];
+
+    }
+
+    else
+    if(
+        teams.length===2
+    ){
+
+        semifinali=[
+
+            [
+                teams[0],
+                teams[1]
+            ]
+
+        ];
+
+    }
+
+
+    /*
+    ============================
+    SEMIFINALI
+    ============================
+    */
+
+    let finalisti=[];
+
+
+    if(
+        state.rules.usaSemifinali===true
+    ){
+
+        semifinali.forEach(
+            (match,index)=>{
+
+                s.insertAdjacentHTML(
+
+                    "beforeend",
+
+                    renderMatchCard(
+
+                        "SEMIFINALE "+(index+1),
+
+                        match,
+
+                        "S",
+
+                        index,
+
+                        state.sTopRes[index]
+
+                    )
+
+                );
+
+
+                const vincitore =
+                    getWinner(
+                        match,
+                        state.sTopRes[index]
+                    );
+
+
+                if(
+                    vincitore!==null &&
+                    vincitore!==undefined
+                ){
+
+                    finalisti[index]=
+                        vincitore;
+
+                }
+
+            }
+        );
+
+
+        if(
+            finalisti.filter(
+                x=>x!==undefined
+            ).length===2
+        ){
+
+            state.finalTop =
+                finalisti.filter(
+                    x=>x!==undefined
+                );
+
+        }
+
+    }
+
+    else{
+
+        finalisti =
+            semifinali.flat();
+
+    }
+
+
+    /*
+    ============================
+    FINALE
+    ============================
+    */
+
+    if(
+        state.rules.usaFinale===true &&
+        finalisti.length===2
+    ){
+
+        f.innerHTML =
+
+            renderMatchCard(
+
+                "🏆 FINALE",
+
+                finalisti,
+
+                "F",
+
+                0,
+
+                state.fTopRes
+
+            );
+
+
+        const campione =
+            getWinner(
+                finalisti,
+                state.fTopRes
+            );
+
+
+        if(
+            campione!==null &&
+            campione!==undefined
+        ){
+
+            state.campioneTop =
+                campione;
+
+
+            f.innerHTML += `
+
+<tr>
+
+<td colspan="4">
+
+<div class="winner-box top-win">
+
+🏆 CAMPIONE TORNEO:<br>
+
+${escapeHtml(campione)}
+
+</div>
+
+</td>
+
+</tr>
+
+`;
+
+        }
+
+    }
+
+}
+   
   function updateKOResult(type,index,valore){
 
     ensureRules();
@@ -7587,51 +8246,66 @@ function getFinalQualified(){
         );
 
     const qualificatePerGirone =
-        Number(
-            state.rules?.qualificatePerGirone ||
-            2
+        Math.max(
+            1,
+            Number(
+                state.rules?.qualificatePerGirone ||
+                2
+            )
         );
 
-    for(let i = 0; i < numeroGironi; i++){
 
-        const girone = lettere[i];
+    for(
+        let i=0;
+        i<numeroGironi &&
+        i<lettere.length;
+        i++
+    ){
 
-        if(!girone)
-            continue;
+        const g =
+            lettere[i];
 
         const squadre =
-            Array.isArray(state[girone])
-                ? state[girone]
-                : [];
+            Array.isArray(state[g])
+            ?
+            state[g]
+            :
+            [];
 
-        if(!squadre.length)
+
+        if(
+            squadre.length===0
+        )
+
             continue;
 
-        const risultati =
-            Array.isArray(state[girone + "res"])
-                ? state[girone + "res"]
-                : [];
 
-        let classifica = [];
+        const risultati =
+            Array.isArray(
+                state[g+"res"]
+            )
+            ?
+            state[g+"res"]
+            :
+            [];
+
+
+        let classifica=[];
+
 
         try{
 
-            if(typeof calc === "function"){
-
-                classifica =
-                    calc(
-                        squadre,
-                        risultati
-                    );
-
-            }
+            classifica =
+                calc(
+                    squadre,
+                    risultati
+                );
 
         }
         catch(e){
 
             console.error(
-                "ERRORE CALCOLO CLASSIFICA " +
-                girone,
+                "Errore classifica girone "+g,
                 e
             );
 
@@ -7639,29 +8313,67 @@ function getFinalQualified(){
 
         }
 
-        if(!Array.isArray(classifica))
+
+        if(
+            !Array.isArray(classifica)
+        )
+
             continue;
 
+
+        let q =
+            qualificatePerGirone;
+
+
+        /*
+        ============================
+        QUARTI
+        ============================
+        */
+
+        if(
+            state.rules.usaQuarti===true &&
+            squadre.length===4
+        ){
+
+            q=4;
+
+        }
+
+
         classifica
-            .slice(
-                0,
-                qualificatePerGirone
-            )
+            .slice(0,q)
             .forEach(
-                squadra => {
+                (x,posizione)=>{
 
                     if(
-                        squadra !== null &&
-                        squadra !== undefined
+                        x &&
+                        x.n!==undefined &&
+                        x.n!==null
                     ){
 
                         qualificati.push({
 
-                            squadra:
-                                squadra,
+                            nome:
+                                String(x.n),
 
                             girone:
-                                girone
+                                g,
+
+                            posizione:
+                                posizione+1,
+
+                            pt:
+                                Number(x.pt)||0,
+
+                            gf:
+                                Number(x.gf)||0,
+
+                            gs:
+                                Number(x.gs)||0,
+
+                            df:
+                                Number(x.df)||0
 
                         });
 
@@ -7672,12 +8384,54 @@ function getFinalQualified(){
 
     }
 
-    console.log(
-        "QUALIFICATI FASE FINALE:",
-        qualificati
-    );
 
-    return qualificati;
+    /*
+    ============================
+    NUMERO QUALIFICATE FINALI
+    ============================
+    */
+
+    let limite =
+        Number(
+            state.rules?.numeroQualificateFinali
+        );
+
+
+    /*
+    ============================
+    QUARTI = 8 SQUADRE
+    ============================
+    */
+
+    if(
+        state.rules.usaQuarti===true &&
+        qualificati.length>=8
+    ){
+
+        limite=8;
+
+    }
+
+
+    if(
+        !Number.isFinite(limite) ||
+        limite<1
+    ){
+
+        limite =
+            qualificati.length;
+
+    }
+
+
+    return qualificati
+        .slice(
+            0,
+            limite
+        )
+        .map(
+            x=>x.nome
+        );
 
 }
 
