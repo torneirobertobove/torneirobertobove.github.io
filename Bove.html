@@ -226,11 +226,10 @@ async function loadState(){
 
     try{
 
-
         /*
-        ==================================================
+        ============================
         TORNEO DA URL
-        ==================================================
+        ============================
         */
 
         if(torneoParam){
@@ -252,13 +251,9 @@ async function loadState(){
                     ...configurazione,
 
                     rules:{
-
                         ...state.rules,
-
                         ...(configurazione.configurazione?.rules || {}),
-
                         ...(configurazione.rules || {})
-
                     }
 
                 };
@@ -336,9 +331,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
+        ============================
         TORNEO DA SUPABASE
-        ==================================================
+        ============================
         */
 
         if(
@@ -351,8 +346,7 @@ async function loadState(){
                 const {
                     data: torneo,
                     error
-                } =
-                    await sb
+                } = await sb
                     .from("tornei")
                     .select("*")
                     .eq(
@@ -375,8 +369,7 @@ async function loadState(){
                 if(torneo){
 
                     configurazione =
-                        torneo.configurazione ||
-                        {};
+                        torneo.configurazione || {};
 
 
                     state = {
@@ -397,11 +390,8 @@ async function loadState(){
                             "",
 
                         rules:{
-
                             ...state.rules,
-
                             ...(configurazione.rules || {})
-
                         }
 
                     };
@@ -492,9 +482,9 @@ async function loadState(){
 
 
             /*
-            ==================================================
+            ============================
             CARICAMENTO ISCRITTI
-            ==================================================
+            ============================
             */
 
             try{
@@ -502,14 +492,17 @@ async function loadState(){
                 const {
                     data: iscritti,
                     error: erroreIscritti
-                } =
-                    await sb
+                } = await sb
+
                     .from("iscrizioni")
+
                     .select("*")
+
                     .eq(
                         "torneo_id",
                         Number(idTorneo)
                     )
+
                     .or(
                         "stato.eq.approvato,approvato.eq.true"
                     );
@@ -536,10 +529,9 @@ async function loadState(){
 
 
                     /*
-                    ==================================================
-                    IMPORTANTE:
-                    2 ISCRITTI = 1 SQUADRA
-                    ==================================================
+                    ============================
+                    16 ISCRITTI = 8 COPPIE
+                    ============================
                     */
 
                     if(
@@ -562,108 +554,102 @@ async function loadState(){
                                 state.iscritti[i+1];
 
 
-                            if(
-                                !giocatore1
-                            ){
+                            if(!giocatore1){
 
                                 continue;
 
                             }
 
 
+                            function nomeGiocatore(
+                                item
+                            ){
+
+                                if(!item){
+
+                                    return "";
+
+                                }
+
+
+                                if(
+                                    item.nome &&
+                                    item.cognome
+                                ){
+
+                                    return (
+
+                                        String(
+                                            item.nome
+                                        ).trim()
+                                        +
+                                        " "
+                                        +
+                                        String(
+                                            item.cognome
+                                        ).trim()
+
+                                    );
+
+                                }
+
+
+                                if(
+                                    item.nome_giocatore
+                                ){
+
+                                    return String(
+                                        item.nome_giocatore
+                                    ).trim();
+
+                                }
+
+
+                                if(
+                                    item.nome
+                                ){
+
+                                    return String(
+                                        item.nome
+                                    ).trim();
+
+                                }
+
+
+                                return "";
+
+                            }
+
+
                             const nome1 =
-                                String(
-                                    giocatore1.nome ||
-                                    giocatore1.nome_giocatore ||
-                                    ""
-                                ).trim();
-
-
-                            const cognome1 =
-                                String(
-                                    giocatore1.cognome ||
-                                    giocatore1.cognome_giocatore ||
-                                    ""
-                                ).trim();
+                                nomeGiocatore(
+                                    giocatore1
+                                );
 
 
                             const nome2 =
-                                giocatore2
-                                ?
-                                String(
-                                    giocatore2.nome ||
-                                    giocatore2.nome_giocatore ||
-                                    ""
-                                ).trim()
-                                :
-                                "";
-
-
-                            const cognome2 =
-                                giocatore2
-                                ?
-                                String(
-                                    giocatore2.cognome ||
-                                    giocatore2.cognome_giocatore ||
-                                    ""
-                                ).trim()
-                                :
-                                "";
-
-
-                            const giocatore1Nome =
-                                (
-                                    nome1 +
-                                    " " +
-                                    cognome1
-                                ).trim();
-
-
-                            const giocatore2Nome =
-                                (
-                                    nome2 +
-                                    " " +
-                                    cognome2
-                                ).trim();
+                                nomeGiocatore(
+                                    giocatore2
+                                );
 
 
                             /*
-                            ==========================================
-                            MANTENIAMO LA STRUTTURA DI COPPIA
-                            ==========================================
+                                LA COPPIA È UN OGGETTO
+                                CON DUE GIOCATORI
                             */
 
                             coppie.push({
 
-                                giocatore1:{
-
-                                    ...giocatore1
-
-                                },
+                                giocatore1:
+                                    giocatore1,
 
                                 giocatore2:
-
-                                    giocatore2
-                                    ?
-                                    {
-
-                                        ...giocatore2
-
-                                    }
-                                    :
-                                    null,
+                                    giocatore2,
 
                                 nome:
-
-                                    giocatore1Nome +
-                                    (
-                                        giocatore2Nome
-                                        ?
-                                        " / " +
-                                        giocatore2Nome
-                                        :
-                                        ""
-                                    )
+                                    nome1 +
+                                    " / " +
+                                    nome2
 
                             });
 
@@ -672,6 +658,13 @@ async function loadState(){
 
                         state.coppie =
                             coppie;
+
+
+                        console.log(
+                            "COPPIE CREATE DA ISCRITTI:",
+                            state.coppie.length,
+                            state.coppie
+                        );
 
                     }
 
@@ -694,14 +687,14 @@ async function loadState(){
 
 
         /*
-        ==================================================
-        RECUPERO ARRAY DEL TORNEO
-        ==================================================
+        ============================
+        RECUPERO ARRAY TORNEO
+        ============================
         */
 
         if(configurazione){
 
-            const arrayDaRecuperare=[
+            const arrayDaRecuperare = [
 
                 "A",
                 "B",
@@ -769,7 +762,7 @@ async function loadState(){
 
                 if(cfg.rules){
 
-                    state.rules={
+                    state.rules = {
 
                         ...state.rules,
 
@@ -792,15 +785,11 @@ async function loadState(){
                 }
 
 
-                /*
-                ==========================================
-                NON SOVRASCRIVERE LE COPPIE CREATE
-                DAGLI ISCRITTI
-                ==========================================
-                */
-
                 if(
-                    Array.isArray(cfg.coppie) &&
+                    Array.isArray(
+                        cfg.coppie
+                    )
+                    &&
                     (
                         !state.iscritti ||
                         state.iscritti.length===0
@@ -819,10 +808,20 @@ async function loadState(){
 
 
         /*
-        ==================================================
-        INIZIALIZZAZIONE GIRONI
-        ==================================================
+        ============================
+        REGOLE
+        ============================
         */
+
+        if(
+            typeof ensureRules === "function"
+        ){
+
+            ensureRules();
+
+        }
+
+
 
         let numeroGironi =
             Number(
@@ -830,7 +829,7 @@ async function loadState(){
             ) || 2;
 
 
-        let lettereGironi=[
+        let lettereGironi = [
 
             "A",
             "B",
@@ -842,6 +841,13 @@ async function loadState(){
 
         ];
 
+
+
+        /*
+        ============================
+        RESET GIRONI
+        ============================
+        */
 
         lettereGironi.forEach(
             (g,index)=>{
@@ -873,9 +879,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
-        DISTRIBUZIONE COPPIE NEI GIRONI
-        ==================================================
+        ============================
+        DISTRIBUZIONE COPPIE
+        ============================
         */
 
         if(
@@ -901,16 +907,12 @@ async function loadState(){
 
                     let indice =
                         Math.floor(
-                            i /
-                            perGirone
+                            i / perGirone
                         );
 
 
                     if(
-                        indice < numeroGironi &&
-                        state[
-                            lettereGironi[indice]
-                        ]
+                        indice < numeroGironi
                     ){
 
                         state[
@@ -927,25 +929,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
-        REGOLE
-        ==================================================
-        */
-
-        if(
-            typeof ensureRules === "function"
-        ){
-
-            ensureRules();
-
-        }
-
-
-
-        /*
-        ==================================================
+        ============================
         STATO LOCALE
-        ==================================================
+        ============================
         */
 
         if(
@@ -964,23 +950,18 @@ async function loadState(){
                 try{
 
                     const salvato =
-                        JSON.parse(
-                            locale
-                        );
+                        JSON.parse(locale);
 
 
-                    state={
+                    state = {
 
                         ...state,
 
                         ...salvato,
 
                         rules:{
-
                             ...state.rules,
-
                             ...(salvato.rules || {})
-
                         }
 
                     };
@@ -1002,9 +983,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
+        ============================
         SALVATAGGIO STATO LOCALE
-        ==================================================
+        ============================
         */
 
         if(
@@ -1023,9 +1004,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
+        ============================
         RENDER
-        ==================================================
+        ============================
         */
 
         if(
@@ -1051,9 +1032,9 @@ async function loadState(){
 
 
         /*
-        ==================================================
-        APERTURA REGOLAMENTO
-        ==================================================
+        ============================
+        APERTURA REGOLE
+        ============================
         */
 
         const apriRegole =
