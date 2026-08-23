@@ -4152,6 +4152,9 @@ function caricaRegolamentoTorneo(tipo){
 
 }
 
+# Funzione `applyRules()` corretta
+
+
 function applyRules(){
 
     ensureRules();
@@ -4395,10 +4398,23 @@ function applyRules(){
     }
 
 
+    /*
+        ============================
+        NUMERO QUALIFICATE
+        ============================
+    */
+
+    const qualificateCalcolate =
+        state.rules.numeroGironi *
+        state.rules.qualificatePerGirone;
+
+
     if(
         !state.rules.numeroQualificateFinali ||
         state.rules.numeroQualificateFinali <
-        state.rules.qualificatePerGirone
+        state.rules.qualificatePerGirone ||
+        state.rules.numeroQualificateFinali >
+        qualificateCalcolate
     ){
 
         alert(
@@ -4438,6 +4454,79 @@ function applyRules(){
     });
 
 
+    /*
+        ============================
+        CONTROLLO QUARTI
+        ============================
+    */
+
+    /*
+        I QUARTI RICHIEDONO 8 QUALIFICATE.
+        Se le qualificate sono 4, i quarti
+        vengono automaticamente disattivati.
+    */
+
+    if(
+        state.rules.usaQuarti === true &&
+        state.rules.numeroQualificateFinali < 8
+    ){
+
+        state.rules.usaQuarti = false;
+
+        const usaQuarti =
+            document.getElementById("usaQuarti");
+
+        if(usaQuarti)
+
+            usaQuarti.checked = false;
+
+    }
+
+
+    /*
+        ============================
+        CONTROLLO SEMIFINALI
+        ============================
+    */
+
+    /*
+        Con 4 qualificate le semifinali
+        sono il primo turno della fase finale.
+    */
+
+    if(
+        state.rules.numeroQualificateFinali === 4
+    ){
+
+        state.rules.usaSemifinali = true;
+
+        const usaSemifinali =
+            document.getElementById(
+                "usaSemifinali"
+            );
+
+        if(usaSemifinali)
+
+            usaSemifinali.checked = true;
+
+    }
+
+
+    /*
+        ============================
+        CONTROLLO FINALE
+        ============================
+    */
+
+    if(
+        state.rules.usaFinale !== true
+    ){
+
+        state.rules.usaFinale = false;
+
+    }
+
+
     let nr =
         document.getElementById(
             "numeroRipescate"
@@ -4448,61 +4537,6 @@ function applyRules(){
 
         state.rules.numeroRipescate =
             Number(nr.value)||0;
-
-
-    /*
-        ============================
-        VALIDAZIONE FASE FINALE
-        ============================
-    */
-
-    const numeroQualificatiFinali =
-        Number(
-            state.rules.numeroQualificateFinali
-        ) || 0;
-
-
-    /*
-        I QUARTI RICHIEDONO
-        ALMENO 8 QUALIFICATI.
-    */
-
-    if(numeroQualificatiFinali < 8){
-
-        state.rules.usaQuarti =
-            false;
-
-        state.rules.mostraQuarti =
-            false;
-
-        state.mostraQuarti =
-            false;
-
-
-        const checkboxQuarti =
-            document.getElementById(
-                "usaQuarti"
-            );
-
-
-        if(checkboxQuarti)
-
-            checkboxQuarti.checked =
-                false;
-
-
-        const mostraQuarti =
-            document.getElementById(
-                "mostraQuartiSelect"
-            );
-
-
-        if(mostraQuarti)
-
-            mostraQuarti.value =
-                "false";
-
-    }
 
 
     /*
@@ -4619,36 +4653,32 @@ function applyRules(){
 
     if(mq){
 
-        /*
-            Se i quarti sono stati
-            resi impossibili dalla
-            struttura del torneo,
-            la visualizzazione deve
-            rimanere disattivata.
-        */
+        state.mostraQuarti =
+            mq.value==="true";
 
-        if(numeroQualificatiFinali < 8){
+        state.rules.mostraQuarti =
+            mq.value==="true";
 
-            mq.value =
-                "false";
+    }
 
-            state.mostraQuarti =
-                false;
 
-            state.rules.mostraQuarti =
-                false;
+    /*
+        ============================
+        COERENZA VISIBILITA' QUARTI
+        ============================
+    */
 
-        }
+    if(
+        state.rules.usaQuarti !== true
+    ){
 
-        else{
+        state.mostraQuarti = false;
 
-            state.mostraQuarti =
-                mq.value==="true";
+        state.rules.mostraQuarti = false;
 
-            state.rules.mostraQuarti =
-                mq.value==="true";
+        if(mq)
 
-        }
+            mq.value = "false";
 
     }
 
@@ -4673,16 +4703,35 @@ function applyRules(){
 
     /*
         ============================
-        RENDER FASE FINALE
+        CHIUSURA MODAL
         ============================
     */
 
-    if(typeof renderKO === "function"){
+    let modal =
+        document.getElementById(
+            "rulesModal"
+        );
+
+
+    if(modal)
+
+        modal.style.display="none";
+
+
+    /*
+        ============================
+        AGGIORNAMENTO VISUALIZZAZIONE
+        ============================
+    */
+
+    if(typeof renderKO === "function")
 
         renderKO();
 
-    }
+}
 
+
+   
 
     /*
         ============================
