@@ -7111,36 +7111,56 @@ function getFinalQualified(){
         );
 
     const qualificatePerGirone =
-        Number(
-            state.rules?.qualificatePerGirone ||
-            2
+        Math.max(
+            1,
+            Number(
+                state.rules?.qualificatePerGirone
+            ) || 2
         );
 
-    for(let i = 0; i < numeroGironi; i++){
+    for(
+        let i = 0;
+        i < numeroGironi;
+        i++
+    ){
 
-        const girone = lettere[i];
+        const girone =
+            lettere[i];
 
         if(!girone)
             continue;
 
+
         const squadre =
-            Array.isArray(state[girone])
+            Array.isArray(
+                state[girone]
+            )
                 ? state[girone]
                 : [];
 
-        if(!squadre.length)
+
+        if(
+            squadre.length === 0
+        )
             continue;
 
+
         const risultati =
-            Array.isArray(state[girone + "res"])
+            Array.isArray(
+                state[girone + "res"]
+            )
                 ? state[girone + "res"]
                 : [];
 
+
         let classifica = [];
+
 
         try{
 
-            if(typeof calc === "function"){
+            if(
+                typeof calc === "function"
+            ){
 
                 classifica =
                     calc(
@@ -7154,7 +7174,7 @@ function getFinalQualified(){
         catch(e){
 
             console.error(
-                "ERRORE CALCOLO CLASSIFICA " +
+                "ERRORE CLASSIFICA GIRONE " +
                 girone,
                 e
             );
@@ -7163,48 +7183,134 @@ function getFinalQualified(){
 
         }
 
-        if(!Array.isArray(classifica))
+
+        if(
+            !Array.isArray(classifica) ||
+            classifica.length === 0
+        )
             continue;
 
-        classifica
-            .slice(
-                0,
-                qualificatePerGirone
-            )
-            .forEach(
-                squadra => {
 
-                    if(
-                        squadra !== null &&
-                        squadra !== undefined
-                    ){
-
-                        qualificati.push({
-
-                            squadra:
-                                squadra,
-
-                            girone:
-                                girone
-
-                        });
-
-                    }
-
-                }
+        const limite =
+            Math.min(
+                qualificatePerGirone,
+                classifica.length
             );
 
+
+        for(
+            let posizione = 0;
+            posizione < limite;
+            posizione++
+        ){
+
+            const elemento =
+                classifica[posizione];
+
+
+            if(
+                !elemento
+            )
+                continue;
+
+
+            /*
+                calc() restituisce normalmente:
+
+                {
+                    n,
+                    pt,
+                    gf,
+                    gs,
+                    df,
+                    qual
+                }
+
+                Per la fase KO dobbiamo
+                trasferire SOLO il nome
+                della squadra.
+            */
+
+            let squadra =
+                elemento.n;
+
+
+            /*
+                Protezione nel caso in cui
+                una classifica contenga
+                direttamente una stringa.
+            */
+
+            if(
+                squadra === undefined ||
+                squadra === null
+            ){
+
+                squadra =
+                    elemento.squadra ||
+                    elemento.nome ||
+                    "";
+
+            }
+
+
+            squadra =
+                String(
+                    squadra
+                ).trim();
+
+
+            if(
+                squadra === ""
+            )
+                continue;
+
+
+            /*
+                Evita duplicazioni accidentali
+                dello stesso qualificato.
+            */
+
+            if(
+                !qualificati.includes(
+                    squadra
+                )
+            ){
+
+                qualificati.push(
+                    squadra
+                );
+
+            }
+
+        }
+
     }
+
+
+    console.log(
+        "===================================="
+    );
 
     console.log(
         "QUALIFICATI FASE FINALE:",
         qualificati
     );
 
+    console.log(
+        "NUMERO QUALIFICATI:",
+        qualificati.length
+    );
+
+    console.log(
+        "===================================="
+    );
+
+
     return qualificati;
 
 }
-
+   
 function creaFinale(semifinali){
 
     ensureRules();
