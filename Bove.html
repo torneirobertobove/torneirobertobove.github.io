@@ -8004,59 +8004,30 @@ function renderKO(){
 
     /*
     ============================================================
-    PREPARAZIONE GIRONI
+    CONTENITORI REALI
     ============================================================
     */
 
-    const lettereGironi = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G"
-    ];
-
-
-    lettereGironi.forEach(g => {
-
-        if(!Array.isArray(state[g])){
-
-            state[g] = [];
-
-        }
-
-    });
-
-
-    /*
-    ============================================================
-    CONTENITORI DOM
-    ============================================================
-    */
-
-    const q =
-        document.getElementById("Q");
-
-    const s =
-        document.getElementById("S");
-
-    const f =
-        document.getElementById("finaleBox") ||
-        document.getElementById("F");
+    const q = document.getElementById("Q");
+    const s = document.getElementById("S");
+    const f = document.getElementById("finaleBox");
 
 
     if(!q || !s || !f){
 
-        console.warn(
-            "renderKO: contenitori fase finale non trovati."
+        console.error(
+            "renderKO: contenitori fase finale non trovati"
         );
 
         return;
-
     }
 
+
+    /*
+    ============================================================
+    RESET SOLO FASE FINALE
+    ============================================================
+    */
 
     q.innerHTML = "";
     s.innerHTML = "";
@@ -8065,115 +8036,42 @@ function renderKO(){
 
     /*
     ============================================================
-    INIZIALIZZAZIONE STATO FASE FINALE
+    INIZIALIZZAZIONE STATO
     ============================================================
     */
 
-    if(!Array.isArray(state.finalTop)){
+    if(!Array.isArray(state.qRes))
+        state.qRes = Array(4).fill("-");
 
-        state.finalTop = [];
-
-    }
-
-
-    if(state.campioneTop === undefined){
-
-        state.campioneTop = null;
-
-    }
-
-
-    if(!Array.isArray(state.qRes)){
-
-        state.qRes = [];
-
-    }
-
-    while(state.qRes.length < 4){
-
-        state.qRes.push("-");
-
-    }
-
-    if(state.qRes.length > 4){
-
-        state.qRes =
-            state.qRes.slice(0,4);
-
-    }
-
-
-    if(!Array.isArray(state.qCamp)){
-
+    if(!Array.isArray(state.qCamp))
         state.qCamp = [];
 
-    }
-
-
-    if(!Array.isArray(state.qTime)){
-
+    if(!Array.isArray(state.qTime))
         state.qTime = [];
 
-    }
 
+    if(!Array.isArray(state.sTopRes))
+        state.sTopRes = Array(2).fill("-");
 
-    if(!Array.isArray(state.sTopRes)){
-
-        state.sTopRes = [];
-
-    }
-
-    while(state.sTopRes.length < 2){
-
-        state.sTopRes.push("-");
-
-    }
-
-    if(state.sTopRes.length > 2){
-
-        state.sTopRes =
-            state.sTopRes.slice(0,2);
-
-    }
-
-
-    if(!Array.isArray(state.sCamp)){
-
+    if(!Array.isArray(state.sCamp))
         state.sCamp = [];
 
-    }
-
-
-    if(!Array.isArray(state.sTime)){
-
+    if(!Array.isArray(state.sTime))
         state.sTime = [];
-
-    }
 
 
     if(
-        state.fTopRes === undefined ||
-        state.fTopRes === null ||
-        typeof state.fTopRes !== "string"
+        typeof state.fTopRes !== "string" ||
+        state.fTopRes === ""
     ){
-
         state.fTopRes = "-";
-
     }
 
-
-    if(!Array.isArray(state.fCamp)){
-
+    if(!Array.isArray(state.fCamp))
         state.fCamp = [];
 
-    }
-
-
-    if(!Array.isArray(state.fTime)){
-
+    if(!Array.isArray(state.fTime))
         state.fTime = [];
-
-    }
 
 
     /*
@@ -8182,78 +8080,119 @@ function renderKO(){
     ============================================================
     */
 
-    const teams =
+    const qualificati =
         getFinalQualified();
 
 
     if(
-        !Array.isArray(teams) ||
-        teams.length < 2
+        !Array.isArray(qualificati) ||
+        qualificati.length < 2
     ){
 
-        state.finalTop = [];
-        state.campioneTop = null;
+        q.closest("table")?.parentElement &&
+            (q.closest("table").style.display = "none");
 
-        q.style.display = "none";
-        s.style.display = "none";
-        f.style.display = "none";
+        s.closest("table")?.parentElement &&
+            (s.closest("table").style.display = "none");
+
+        f.closest("table")?.parentElement &&
+            (f.closest("table").style.display = "none");
 
         return;
-
     }
 
 
     /*
     ============================================================
-    RESET VISIBILITÀ
+    VISIBILITÀ TABELLE
     ============================================================
     */
 
-    q.style.display = "none";
-    s.style.display = "none";
-    f.style.display = "none";
+    const qTable = q.closest("table");
+    const sTable = s.closest("table");
+    const fTable = f.closest("table");
+
+
+    if(qTable)
+        qTable.style.display = "none";
+
+    if(sTable)
+        sTable.style.display = "none";
+
+    if(fTable)
+        fTable.style.display = "none";
 
 
     /*
     ============================================================
-    NORMALIZZAZIONE QUALIFICATI
-    ============================================================
-    */
-
-    const qualificati =
-        teams
-            .filter(Boolean)
-            .map(x => String(x).trim())
-            .filter(Boolean);
-
-
-    /*
-    ============================================================
-    DETERMINAZIONE STRUTTURA FASE KO
+    QUARTI
     ============================================================
     */
 
     let semifinali = [];
 
 
-    /*
-    ============================================================
-    CASO 2 QUALIFICATI
-    ============================================================
+    if(
+        state.rules.usaQuarti === true &&
+        qualificati.length >= 8
+    ){
 
-    Non esistono quarti o semifinali.
+        if(qTable)
+            qTable.style.display = "";
 
-    Le due squadre vanno direttamente
-    alla finale.
-    */
 
-    if(qualificati.length === 2){
+        const quarti = [
+
+            [qualificati[0], qualificati[7]],
+            [qualificati[3], qualificati[4]],
+            [qualificati[1], qualificati[6]],
+            [qualificati[2], qualificati[5]]
+
+        ];
+
+
+        const vincitori = [];
+
+
+        quarti.forEach((match,index)=>{
+
+            q.innerHTML +=
+                renderMatchCard(
+                    "QUARTO " + (index + 1),
+                    match,
+                    "Q",
+                    index,
+                    state.qRes[index]
+                );
+
+
+            const vincitore =
+                getWinner(
+                    match,
+                    state.qRes[index]
+                );
+
+
+            if(vincitore)
+                vincitori.push(vincitore);
+
+        });
+
+
+        if(vincitori.length !== 4){
+
+            state.finalTop = [];
+            state.campioneTop = null;
+
+            return;
+        }
+
 
         semifinali = [
-            [
-                qualificati[0],
-                qualificati[1]
-            ]
+
+            [vincitori[0], vincitori[1]],
+            [vincitori[2], vincitori[3]]
+
         ];
 
     }
@@ -8261,28 +8200,22 @@ function renderKO(){
 
     /*
     ============================================================
-    CASO 4 QUALIFICATI
+    NIENTE QUARTI
+    A1 vs B2
+    A2 vs B1
     ============================================================
-
-    QUESTO È IL CASO ATTUALE:
-
-        A1
-        A2
-        B1
-        B2
-
-    Diventa:
-
-        A1 vs B2
-        A2 vs B1
-
-    I quarti NON vengono creati artificialmente.
-
-    Questo deve avvenire anche se usaQuarti=true,
-    perché con 4 squadre non esistono 4 partite di quarto.
     */
 
-    else if(qualificati.length === 4){
+    else{
+
+        if(qualificati.length < 4){
+
+            state.finalTop = [];
+            state.campioneTop = null;
+
+            return;
+        }
+
 
         semifinali = [
 
@@ -8303,379 +8236,47 @@ function renderKO(){
 
     /*
     ============================================================
-    8 O PIÙ QUALIFICATI
-    ============================================================
-    */
-
-    else if(qualificati.length >= 8){
-
-        /*
-        --------------------------------------------------------
-        QUARTI ATTIVI
-        --------------------------------------------------------
-        */
-
-        if(state.rules.usaQuarti === true){
-
-            const quarti = [
-
-                [
-                    qualificati[0],
-                    qualificati[7]
-                ],
-
-                [
-                    qualificati[3],
-                    qualificati[4]
-                ],
-
-                [
-                    qualificati[1],
-                    qualificati[6]
-                ],
-
-                [
-                    qualificati[2],
-                    qualificati[5]
-                ]
-
-            ];
-
-
-            const vincitoriQuarti = [];
-
-
-            quarti.forEach((match,index) => {
-
-                if(
-                    !Array.isArray(match) ||
-                    match.length !== 2 ||
-                    !match[0] ||
-                    !match[1]
-                ){
-
-                    return;
-
-                }
-
-
-                /*
-                ------------------------------------------------
-                VISUALIZZAZIONE QUARTO
-                ------------------------------------------------
-                */
-
-                if(
-                    state.rules.mostraQuarti === true ||
-                    state.mostraQuarti === true
-                ){
-
-                    q.style.display = "block";
-
-
-                    q.innerHTML +=
-
-                        renderMatchCard(
-
-                            "QUARTO " + (index + 1),
-
-                            match,
-
-                            "Q",
-
-                            index,
-
-                            state.qRes[index]
-
-                        );
-
-                }
-
-
-                /*
-                ------------------------------------------------
-                VINCITORE QUARTO
-                ------------------------------------------------
-                */
-
-                const vincitore =
-                    getWinner(
-                        match,
-                        state.qRes[index]
-                    );
-
-
-                if(vincitore){
-
-                    vincitoriQuarti.push(
-                        vincitore
-                    );
-
-                }
-
-            });
-
-
-            /*
-            ------------------------------------------------
-            SEMIFINALI SOLO QUANDO I 4 QUARTI SONO COMPLETI
-            ------------------------------------------------
-            */
-
-            if(vincitoriQuarti.length === 4){
-
-                semifinali = [
-
-                    [
-                        vincitoriQuarti[0],
-                        vincitoriQuarti[1]
-                    ],
-
-                    [
-                        vincitoriQuarti[2],
-                        vincitoriQuarti[3]
-                    ]
-
-                ];
-
-            }
-            else{
-
-                /*
-                I quarti non sono ancora completati.
-                Non generiamo semifinalisti falsi.
-                */
-
-                state.finalTop = [];
-                state.campioneTop = null;
-
-                return;
-
-            }
-
-        }
-
-
-        /*
-        --------------------------------------------------------
-        QUARTI DISATTIVATI
-        --------------------------------------------------------
-        */
-
-        else{
-
-            /*
-            Con almeno 4 squadre, se i quarti sono disattivati,
-            utilizziamo le prime quattro per le semifinali.
-            */
-
-            semifinali = [
-
-                [
-                    qualificati[0],
-                    qualificati[3]
-                ],
-
-                [
-                    qualificati[1],
-                    qualificati[2]
-                ]
-
-            ];
-
-        }
-
-    }
-
-
-    /*
-    ============================================================
-    SICUREZZA
-    ============================================================
-    */
-
-    if(!Array.isArray(semifinali)){
-
-        semifinali = [];
-
-    }
-
-
-    /*
-    ============================================================
-    CASO 2 SQUADRE
-    ============================================================
-    */
-
-    if(qualificati.length === 2){
-
-        state.finalTop = [];
-
-
-        /*
-        --------------------------------------------------------
-        FINALE DIRETTA
-        --------------------------------------------------------
-        */
-
-        if(state.rules.usaFinale !== true){
-
-            state.campioneTop = null;
-
-            return;
-
-        }
-
-
-        state.finalTop = [
-
-            qualificati[0],
-            qualificati[1]
-
-        ];
-
-        f.style.display = "block";
-
-
-        f.innerHTML =
-
-            renderMatchCard(
-
-                "🏆 FINALE",
-
-                state.finalTop,
-
-                "F",
-
-                0,
-
-                state.fTopRes
-
-            );
-
-
-        const campione =
-            getWinner(
-                state.finalTop,
-                state.fTopRes
-            );
-
-
-        if(campione){
-
-            state.campioneTop =
-                campione;
-
-
-            f.innerHTML +=
-
-                `
-                <div class="winner-box top-win">
-                    🏆 CAMPIONE TORNEO:<br>
-                    ${campione}
-                </div>
-                `;
-
-        }
-        else{
-
-            state.campioneTop = null;
-
-        }
-
-
-        return;
-
-    }
-
-
-    /*
-    ============================================================
-    SEMIFINALI DISATTIVATE
-    ============================================================
-    */
-
-    if(state.rules.usaSemifinali !== true){
-
-        /*
-        Con 4 o più squadre non possiamo trasformare
-        automaticamente 4 squadre in una finale.
-
-        La fase resta quindi in attesa della formula prevista.
-        */
-
-        state.finalTop = [];
-        state.campioneTop = null;
-
-        return;
-
-    }
-
-
-    /*
-    ============================================================
     SEMIFINALI
     ============================================================
     */
 
-    if(semifinali.length !== 2){
+    if(
+        state.rules.usaSemifinali !== true
+    ){
 
         state.finalTop = [];
         state.campioneTop = null;
 
         return;
-
     }
 
 
-    s.style.display = "block";
+    if(sTable)
+        sTable.style.display = "";
 
 
     const finalisti = [];
 
 
-    semifinali.forEach((match,index) => {
-
-        if(
-            !Array.isArray(match) ||
-            match.length !== 2 ||
-            !match[0] ||
-            !match[1]
-        ){
-
-            return;
-
-        }
-
+    semifinali.forEach((match,index)=>{
 
         /*
-        --------------------------------------------------------
-        RENDER SEMIFINALE
-        --------------------------------------------------------
+        IMPORTANTE:
+        index identifica SEMPRE la stessa partita:
+        0 = semifinale 1
+        1 = semifinale 2
         */
 
         s.innerHTML +=
 
             renderMatchCard(
-
                 "SEMIFINALE " + (index + 1),
-
                 match,
-
                 "S",
-
                 index,
-
                 state.sTopRes[index]
-
             );
 
-
-        /*
-        --------------------------------------------------------
-        VINCITORE SEMIFINALE
-        --------------------------------------------------------
-        */
 
         const vincitore =
             getWinner(
@@ -8686,9 +8287,7 @@ function renderKO(){
 
         if(vincitore){
 
-            finalisti.push(
-                vincitore
-            );
+            finalisti.push(vincitore);
 
         }
 
@@ -8697,7 +8296,7 @@ function renderKO(){
 
     /*
     ============================================================
-    SEMIFINALI NON COMPLETE
+    FINALE NON ANCORA DISPONIBILE
     ============================================================
     */
 
@@ -8706,10 +8305,7 @@ function renderKO(){
         state.finalTop = [];
         state.campioneTop = null;
 
-        f.style.display = "none";
-
         return;
-
     }
 
 
@@ -8720,26 +8316,11 @@ function renderKO(){
     */
 
     state.finalTop = [
+
         finalisti[0],
         finalisti[1]
+
     ];
-
-
-    /*
-    ============================================================
-    FINALE DISATTIVATA
-    ============================================================
-    */
-
-    if(state.rules.usaFinale !== true){
-
-        state.campioneTop = null;
-
-        f.style.display = "none";
-
-        return;
-
-    }
 
 
     /*
@@ -8748,23 +8329,28 @@ function renderKO(){
     ============================================================
     */
 
-    f.style.display = "block";
+    if(
+        state.rules.usaFinale !== true
+    ){
+
+        state.campioneTop = null;
+
+        return;
+    }
+
+
+    if(fTable)
+        fTable.style.display = "";
 
 
     f.innerHTML =
 
         renderMatchCard(
-
-            "🏆 FINALE",
-
+            "FINALE",
             state.finalTop,
-
             "F",
-
             0,
-
             state.fTopRes
-
         );
 
 
@@ -8786,17 +8372,18 @@ function renderKO(){
         state.campioneTop =
             campione;
 
-
-        f.innerHTML +=
-
+        f.closest("table")?.insertAdjacentHTML(
+            "afterend",
             `
             <div class="winner-box top-win">
                 🏆 CAMPIONE TORNEO:<br>
                 ${campione}
             </div>
-            `;
+            `
+        );
 
     }
+
     else{
 
         state.campioneTop = null;
@@ -11959,245 +11546,159 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 function renderMatchCard(titolo, match, tipo, index, risultato){
 
-    /*
-    ============================================================
-    VALIDAZIONE
-    ============================================================
-    */
-
     if(
         !Array.isArray(match) ||
         match.length !== 2
     ){
-
-        return `
-            <tr>
-                <td>-</td>
-                <td>-</td>
-                <td class="match-cell">
-                    <div class="team-line">Squadre non disponibili</div>
-                </td>
-                <td class="db-cell">
-                    <input
-                        type="text"
-                        value=""
-                        disabled
-                    >
-                </td>
-            </tr>
-        `;
-
+        return "";
     }
 
-
-    /*
-    ============================================================
-    SQUADRE
-    ============================================================
-    */
+    const fase = String(tipo || "").toUpperCase();
+    const i = Number(index) || 0;
 
     const squadra1 =
         match[0] !== undefined &&
-        match[0] !== null &&
-        String(match[0]).trim() !== ""
-            ? String(match[0]).trim()
-            : "-";
-
+        match[0] !== null
+            ? String(match[0])
+            : "";
 
     const squadra2 =
         match[1] !== undefined &&
-        match[1] !== null &&
-        String(match[1]).trim() !== ""
-            ? String(match[1]).trim()
-            : "-";
-
-
-    /*
-    ============================================================
-    FASE
-    ============================================================
-    */
-
-    const fase =
-        tipo === "Q" ||
-        tipo === "S" ||
-        tipo === "F"
-            ? tipo
-            : "F";
-
-
-    const indice =
-        Number.isFinite(Number(index))
-            ? Number(index)
-            : 0;
-
-
-    /*
-    ============================================================
-    RISULTATO
-    ============================================================
-    */
-
-    const valore =
-        risultato !== undefined &&
-        risultato !== null &&
-        String(risultato).trim() !== "" &&
-        String(risultato).trim() !== "-"
-            ? String(risultato).trim()
+        match[1] !== null
+            ? String(match[1])
             : "";
-
-
-    /*
-    ============================================================
-    CAMPO / ORA
-    ============================================================
-    */
 
     let campo = "";
     let ora = "";
-
 
     if(fase === "Q"){
 
         campo =
             Array.isArray(state.qCamp) &&
-            state.qCamp[indice] !== undefined
-                ? state.qCamp[indice]
+            state.qCamp[i] !== undefined
+                ? state.qCamp[i]
                 : "";
 
         ora =
             Array.isArray(state.qTime) &&
-            state.qTime[indice] !== undefined
-                ? state.qTime[indice]
+            state.qTime[i] !== undefined
+                ? state.qTime[i]
                 : "";
 
     }
-
 
     else if(fase === "S"){
 
         campo =
             Array.isArray(state.sCamp) &&
-            state.sCamp[indice] !== undefined
-                ? state.sCamp[indice]
+            state.sCamp[i] !== undefined
+                ? state.sCamp[i]
                 : "";
 
         ora =
             Array.isArray(state.sTime) &&
-            state.sTime[indice] !== undefined
-                ? state.sTime[indice]
+            state.sTime[i] !== undefined
+                ? state.sTime[i]
                 : "";
 
     }
-
 
     else if(fase === "F"){
 
         campo =
             Array.isArray(state.fCamp) &&
-            state.fCamp[indice] !== undefined
-                ? state.fCamp[indice]
+            state.fCamp[i] !== undefined
+                ? state.fCamp[i]
                 : "";
 
         ora =
             Array.isArray(state.fTime) &&
-            state.fTime[indice] !== undefined
-                ? state.fTime[indice]
+            state.fTime[i] !== undefined
+                ? state.fTime[i]
                 : "";
 
     }
 
-
-    /*
-    ============================================================
-    HTML
-    IDENTICO ALLA STRUTTURA DEI GIRONI
-    ============================================================
-    */
+    const ris =
+        risultato !== undefined &&
+        risultato !== null
+            ? String(risultato)
+            : "-";
 
     return `
 
 <tr>
 
-<td>
+    <td>
 
-<input
-    value="${String(campo ?? "")}"
-    style="width:45px"
-    onchange="
-        updateCamp(
-            '${fase}',
-            ${indice},
-            this.value
-        )
-    "
->
+        <input
+            value="${campo}"
+            style="width:45px"
+            onchange="
+                updateCamp(
+                    '${fase}',
+                    ${i},
+                    this.value
+                )
+            "
+        >
 
-</td>
-
-
-<td>
-
-<input
-    type="time"
-    value="${String(ora ?? "")}"
-    onchange="
-        updateTime(
-            '${fase}',
-            ${indice},
-            this.value
-        )
-    "
->
-
-</td>
+    </td>
 
 
-<td class="match-cell">
+    <td>
 
-<div class="team-line">
+        <input
+            type="time"
+            value="${ora}"
+            onchange="
+                updateTime(
+                    '${fase}',
+                    ${i},
+                    this.value
+                )
+            "
+        >
 
-${squadra1}
-
-</div>
-
-
-<div class="vs-line">
-
-<b>VS</b>
-
-</div>
-
-
-<div class="team-line">
-
-${squadra2}
-
-</div>
-
-</td>
+    </td>
 
 
-<td class="db-cell">
+    <td class="match-cell">
 
-<input
-    value="${valore}"
-    placeholder="Ris"
-    oninput="
-        updateKOResult(
-            '${fase}',
-            ${indice},
-            this.value
-        )
-    "
->
+        <div class="team-line">
+            ${squadra1}
+        </div>
 
-</td>
+        <div class="vs-line">
+            <b>VS</b>
+        </div>
+
+        <div class="team-line">
+            ${squadra2}
+        </div>
+
+    </td>
+
+
+    <td class="db-cell">
+
+        <input
+            value="${ris === "-" ? "" : ris}"
+            placeholder="Ris"
+            oninput="
+                updateKOResult(
+                    '${fase}',
+                    ${i},
+                    this.value
+                )
+            "
+        >
+
+    </td>
 
 </tr>
 
 `;
-
 }
  
    
