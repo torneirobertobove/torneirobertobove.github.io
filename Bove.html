@@ -8002,6 +8002,7 @@ function renderKO(){
 
     ensureRules();
 
+
     /*
     ============================================================
     PREPARAZIONE GIRONI
@@ -8016,6 +8017,7 @@ function renderKO(){
         "E",
         "F"
     ];
+
 
     lettereGironi.forEach(g=>{
 
@@ -8045,15 +8047,18 @@ function renderKO(){
         document.getElementById("F");
 
 
+    /*
+    ============================================================
+    IMPORTANTE
+    Se i contenitori KO non esistono, NON deve essere bloccato
+    il rendering dei gironi.
+    ============================================================
+    */
+
     if(!q || !s || !f){
 
         console.warn(
-            "renderKO: contenitore fase finale mancante",
-            {
-                Q: !!q,
-                S: !!s,
-                F: !!f
-            }
+            "renderKO: contenitori KO non disponibili"
         );
 
         return;
@@ -8063,7 +8068,7 @@ function renderKO(){
 
     /*
     ============================================================
-    RESET
+    RESET SOLO FASE KO
     ============================================================
     */
 
@@ -8099,11 +8104,13 @@ function renderKO(){
 
     }
 
+
     while(state.qRes.length < 4){
 
         state.qRes.push("-");
 
     }
+
 
     if(state.qRes.length > 4){
 
@@ -8134,11 +8141,13 @@ function renderKO(){
 
     }
 
+
     while(state.sTopRes.length < 2){
 
         state.sTopRes.push("-");
 
     }
+
 
     if(state.sTopRes.length > 2){
 
@@ -8216,7 +8225,7 @@ function renderKO(){
 
     /*
     ============================================================
-    FUNZIONE COMPLETA CREAZIONE TABELLA
+    TABELLA FASE
     ============================================================
     */
 
@@ -8226,115 +8235,81 @@ function renderKO(){
         bodyId
     ){
 
-        contenitore.innerHTML = "";
+        contenitore.innerHTML = `
 
-        const titoloDiv =
-            document.createElement("div");
+            <div
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    font-weight:bold;
+                    text-align:center;
+                    padding:8px 0;
+                    color:var(--text);
+                    border-bottom:1px solid rgba(148,163,184,.18);
+                "
+            >
+                ${titolo}
+            </div>
 
-        titoloDiv.style.cssText = `
-            width:100%;
-            box-sizing:border-box;
-            font-weight:bold;
-            text-align:center;
-            padding:8px 0;
-            color:var(--text);
-            border-bottom:1px solid rgba(148,163,184,.18);
+            <table
+                style="
+                    width:100%;
+                    table-layout:fixed;
+                    border-collapse:collapse;
+                "
+            >
+
+                <thead>
+
+                    <tr>
+
+                        <th
+                            style="
+                                width:70px;
+                                text-align:center;
+                            "
+                        >
+                            Campo
+                        </th>
+
+                        <th
+                            style="
+                                width:70px;
+                                text-align:center;
+                            "
+                        >
+                            Ora
+                        </th>
+
+                        <th
+                            style="
+                                width:auto;
+                                text-align:center;
+                            "
+                        >
+                            Match
+                        </th>
+
+                        <th
+                            style="
+                                width:85px;
+                                text-align:center;
+                            "
+                        >
+                            Ris
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="${bodyId}"></tbody>
+
+            </table>
+
         `;
 
-        titoloDiv.textContent =
-            titolo;
-
-
-        const table =
-            document.createElement("table");
-
-        table.style.cssText = `
-            width:100%;
-            table-layout:fixed;
-            border-collapse:collapse;
-        `;
-
-
-        const thead =
-            document.createElement("thead");
-
-
-        const headerRow =
-            document.createElement("tr");
-
-
-        const thCampo =
-            document.createElement("th");
-
-        thCampo.style.cssText = `
-            width:70px;
-            text-align:center;
-        `;
-
-        thCampo.textContent =
-            "Campo";
-
-
-        const thOra =
-            document.createElement("th");
-
-        thOra.style.cssText = `
-            width:70px;
-            text-align:center;
-        `;
-
-        thOra.textContent =
-            "Ora";
-
-
-        const thMatch =
-            document.createElement("th");
-
-        thMatch.style.cssText = `
-            width:auto;
-            text-align:center;
-        `;
-
-        thMatch.textContent =
-            "Match";
-
-
-        const thRis =
-            document.createElement("th");
-
-        thRis.style.cssText = `
-            width:85px;
-            text-align:center;
-        `;
-
-        thRis.textContent =
-            "Ris";
-
-
-        headerRow.appendChild(thCampo);
-        headerRow.appendChild(thOra);
-        headerRow.appendChild(thMatch);
-        headerRow.appendChild(thRis);
-
-        thead.appendChild(headerRow);
-
-
-        const tbody =
-            document.createElement("tbody");
-
-        tbody.id =
-            bodyId;
-
-
-        table.appendChild(thead);
-        table.appendChild(tbody);
-
-
-        contenitore.appendChild(titoloDiv);
-        contenitore.appendChild(table);
-
-
-        return tbody;
+        return document.getElementById(bodyId);
 
     }
 
@@ -8375,6 +8350,17 @@ function renderKO(){
             "block"
             :
             "none";
+
+
+        if(!qRows){
+
+            console.error(
+                "renderKO: qRows non trovato"
+            );
+
+            return;
+
+        }
 
 
         const quarti = [
@@ -8420,16 +8406,15 @@ function renderKO(){
                 }
 
 
-                qRows.insertAdjacentHTML(
-                    "beforeend",
+                qRows.innerHTML +=
+
                     renderMatchCard(
                         "QUARTO " + (index + 1),
                         match,
                         "Q",
                         index,
                         state.qRes[index]
-                    )
-                );
+                    );
 
 
                 const vincitore =
@@ -8511,6 +8496,7 @@ function renderKO(){
 
         }
 
+
         else if(teams.length === 2){
 
             semifinali = [
@@ -8574,6 +8560,17 @@ function renderKO(){
             "block";
 
 
+        if(!sRows){
+
+            console.error(
+                "renderKO: sRows non trovato"
+            );
+
+            return;
+
+        }
+
+
         semifinali.forEach(
             (match,index)=>{
 
@@ -8589,16 +8586,15 @@ function renderKO(){
                 }
 
 
-                sRows.insertAdjacentHTML(
-                    "beforeend",
+                sRows.innerHTML +=
+
                     renderMatchCard(
                         "SEMIFINALE " + (index + 1),
                         match,
                         "S",
                         index,
                         state.sTopRes[index]
-                    )
-                );
+                    );
 
 
                 const vincitore =
@@ -8632,8 +8628,7 @@ function renderKO(){
         state.rules.usaSemifinali !== true
     ){
 
-        s.style.display =
-            "none";
+        s.style.display = "none";
 
 
         if(
@@ -8692,8 +8687,7 @@ function renderKO(){
         state.rules.usaFinale !== true
     ){
 
-        f.style.display =
-            "none";
+        f.style.display = "none";
 
         return;
 
@@ -8710,8 +8704,7 @@ function renderKO(){
         finalisti.length !== 2
     ){
 
-        f.style.display =
-            "none";
+        f.style.display = "none";
 
         return;
 
@@ -8736,16 +8729,26 @@ function renderKO(){
         "block";
 
 
-    fRows.insertAdjacentHTML(
-        "beforeend",
+    if(!fRows){
+
+        console.error(
+            "renderKO: fRows non trovato"
+        );
+
+        return;
+
+    }
+
+
+    fRows.innerHTML =
+
         renderMatchCard(
             "FINALE",
             finalisti,
             "F",
             0,
             state.fTopRes
-        )
-    );
+        );
 
 
     /*
@@ -8767,21 +8770,14 @@ function renderKO(){
             campione;
 
 
-        const winnerBox =
-            document.createElement("div");
+        f.innerHTML +=
 
-        winnerBox.className =
-            "winner-box top-win";
-
-        winnerBox.innerHTML = `
-            🏆 CAMPIONE TORNEO:<br>
-            ${campione}
-        `;
-
-
-        f.appendChild(
-            winnerBox
-        );
+            `
+            <div class="winner-box top-win">
+                🏆 CAMPIONE TORNEO:<br>
+                ${campione}
+            </div>
+            `;
 
     }
     else{
@@ -8791,8 +8787,8 @@ function renderKO(){
 
     }
 
-}  
-
+}
+   
   function updateKOResult(type,index,valore){
 
     ensureRules();
