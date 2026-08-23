@@ -225,8 +225,19 @@ async function loadState(){
 
     let datiCaricati = false;
 
+    let caricamentoRemoto = false;
+
 
     try{
+
+        /*
+        ==========================================================
+        BLOCCO CARICAMENTO
+        ==========================================================
+        */
+
+        window.__BOVE_LOADING__ = true;
+
 
         /*
         ==========================================================
@@ -238,12 +249,16 @@ async function loadState(){
 
             try{
 
-                configurazione =
+                const configurazioneURL =
                     JSON.parse(
                         decodeURIComponent(
                             torneoParam
                         )
                     );
+
+
+                configurazione =
+                    configurazioneURL;
 
 
                 state = {
@@ -294,7 +309,9 @@ async function loadState(){
 
 
                     if(
-                        Array.isArray(cfg.partecipanti)
+                        Array.isArray(
+                            cfg.partecipanti
+                        )
                     ){
 
                         state.partecipanti =
@@ -304,7 +321,9 @@ async function loadState(){
 
 
                     if(
-                        Array.isArray(cfg.coppie)
+                        Array.isArray(
+                            cfg.coppie
+                        )
                     ){
 
                         state.coppie =
@@ -342,6 +361,9 @@ async function loadState(){
             typeof sb !== "undefined"
         ){
 
+            caricamentoRemoto = true;
+
+
             try{
 
                 const {
@@ -374,6 +396,12 @@ async function loadState(){
                         torneo.configurazione ||
                         {};
 
+
+                    /*
+                    ==================================================
+                    DATI PRINCIPALI TORNEO
+                    ==================================================
+                    */
 
                     state = {
 
@@ -409,7 +437,8 @@ async function loadState(){
                     if(
                         Array.isArray(
                             configurazione.partecipanti
-                        )
+                        ) &&
+                        configurazione.partecipanti.length > 0
                     ){
 
                         state.partecipanti =
@@ -421,7 +450,8 @@ async function loadState(){
                     if(
                         Array.isArray(
                             configurazione.coppie
-                        )
+                        ) &&
+                        configurazione.coppie.length > 0
                     ){
 
                         state.coppie =
@@ -429,6 +459,12 @@ async function loadState(){
 
                     }
 
+
+                    /*
+                    ==================================================
+                    CONFIGURAZIONE ANNIDATA
+                    ==================================================
+                    */
 
                     if(
                         configurazione.configurazione
@@ -438,7 +474,10 @@ async function loadState(){
                             configurazione.configurazione;
 
 
-                        if(cfg.rules){
+                        if(
+                            cfg.rules &&
+                            typeof cfg.rules === "object"
+                        ){
 
                             state.rules = {
 
@@ -454,7 +493,8 @@ async function loadState(){
                         if(
                             Array.isArray(
                                 cfg.partecipanti
-                            )
+                            ) &&
+                            cfg.partecipanti.length > 0
                         ){
 
                             state.partecipanti =
@@ -466,7 +506,8 @@ async function loadState(){
                         if(
                             Array.isArray(
                                 cfg.coppie
-                            )
+                            ) &&
+                            cfg.coppie.length > 0
                         ){
 
                             state.coppie =
@@ -536,9 +577,7 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    IMPORTANTE:
-                    USIAMO LE ISCRIZIONI SOLO SE ESISTONO DAVVERO.
-                    NON CANCELLIAMO EVENTUALI COPPIE GIÀ CARICATE.
+                    LE ISCRIZIONI HANNO PRIORITÀ SOLO SE ESISTONO
                     ==================================================
                     */
 
@@ -638,7 +677,14 @@ async function loadState(){
                 "qRes",
                 "sTopRes",
                 "fTopRes",
-                "finalTop"
+                "finalTop",
+
+                "qCamp",
+                "qTime",
+                "sCamp",
+                "sTime",
+                "fCamp",
+                "fTime"
 
             ];
 
@@ -653,9 +699,9 @@ async function loadState(){
                     ){
 
                         /*
-                        NON sovrascriviamo
-                        un array già popolato
-                        con un array vuoto.
+                        ==================================================
+                        MAI SOSTITUIRE DATI GIÀ PRESENTI CON UN ARRAY VUOTO
+                        ==================================================
                         */
 
                         if(
@@ -663,6 +709,23 @@ async function loadState(){
                             !Array.isArray(state[k]) ||
                             state[k].length === 0
                         ){
+
+                            /*
+                            Per i gironi vuoti provenienti da Supabase
+                            non cancelliamo eventuali dati già presenti
+                            nello state.
+                            */
+
+                            if(
+                                configurazione[k].length === 0 &&
+                                Array.isArray(state[k]) &&
+                                state[k].length > 0
+                            ){
+
+                                return;
+
+                            }
+
 
                             state[k] =
                                 configurazione[k];
@@ -675,6 +738,12 @@ async function loadState(){
             );
 
 
+            /*
+            ==========================================================
+            CONFIGURAZIONE ANNIDATA
+            ==========================================================
+            */
+
             if(
                 configurazione.configurazione
             ){
@@ -683,7 +752,10 @@ async function loadState(){
                     configurazione.configurazione;
 
 
-                if(cfg.rules){
+                if(
+                    cfg.rules &&
+                    typeof cfg.rules === "object"
+                ){
 
                     state.rules = {
 
@@ -728,11 +800,174 @@ async function loadState(){
 
         /*
         ==========================================================
-        RECUPERO DI EMERGENZA DA savedTeams
+        RECUPERO STATO LOCALE DELLO STESSO TORNEO
+        ==========================================================
+        
+        IMPORTANTISSIMO:
+        non utilizziamo più torneoState alla cieca.
+
+        Lo utilizziamo solamente se:
+        - stiamo caricando un torneo remoto
+        - l'id locale coincide con l'id richiesto
+        - il remoto non contiene squadre
         ==========================================================
         */
 
         if(
+            caricamentoRemoto &&
+            idTorneo
+        ){
+
+            try{
+
+                const locale =
+                    localStorage.getItem(
+                        "torneoState"
+                    );
+
+
+                if(locale){
+
+                    const salvato =
+                        JSON.parse(locale);
+
+
+                    const stessoTorneo =
+                        String(
+                            salvato?.idTorneo
+                        ) ===
+                        String(
+                            idTorneo
+                        );
+
+
+                    if(stessoTorneo){
+
+                        const lettereGironi = [
+
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E",
+                            "F",
+                            "G"
+
+                        ];
+
+
+                        const remotoHaSquadre =
+                            lettereGironi.some(
+                                g =>
+                                    Array.isArray(
+                                        state[g]
+                                    ) &&
+                                    state[g].length > 0
+                            );
+
+
+                        const localeHaSquadre =
+                            lettereGironi.some(
+                                g =>
+                                    Array.isArray(
+                                        salvato[g]
+                                    ) &&
+                                    salvato[g].length > 0
+                            );
+
+
+                        /*
+                        ==================================================
+                        RECUPERIAMO IL LOCALE SOLO SE IL REMOTO È VUOTO
+                        ==================================================
+                        */
+
+                        if(
+                            !remotoHaSquadre &&
+                            localeHaSquadre
+                        ){
+
+                            console.warn(
+                                "RECUPERO STATO LOCALE DELLO STESSO TORNEO:",
+                                idTorneo
+                            );
+
+
+                            state = {
+
+                                ...state,
+
+                                ...salvato,
+
+                                rules:{
+                                    ...state.rules,
+                                    ...(salvato.rules || {})
+                                }
+
+                            };
+
+
+                            /*
+                            ==================================================
+                            NOME E DATA DEL TORNEO REMOTO HANNO PRIORITÀ
+                            ==================================================
+                            */
+
+                            if(
+                                configurazione?.nomeTorneo
+                            ){
+
+                                state.nomeTorneo =
+                                    configurazione.nomeTorneo;
+
+                            }
+
+
+                            if(
+                                state.idTorneo === undefined ||
+                                state.idTorneo === null
+                            ){
+
+                                state.idTorneo =
+                                    Number(idTorneo);
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+            catch(err){
+
+                console.error(
+                    "Errore recupero stato locale:",
+                    err
+                );
+
+            }
+
+        }
+
+
+        /*
+        ==========================================================
+        RECUPERO savedTeams
+        ==========================================================
+        
+        ATTENZIONE:
+        savedTeams NON viene più usato automaticamente per un torneo
+        remoto, perché è globale e potrebbe appartenere a un altro torneo.
+
+        Lo utilizziamo solamente per un nuovo torneo senza id remoto.
+        ==========================================================
+        */
+
+        if(
+            !caricamentoRemoto &&
+            !torneoParam &&
             (
                 !Array.isArray(state.coppie) ||
                 state.coppie.length === 0
@@ -787,8 +1022,8 @@ async function loadState(){
 
         /*
         ==========================================================
-        LOCAL STORAGE:
-        SOLO SE NON STIAMO CARICANDO UN TORNEO REMOTO
+        LOCAL STORAGE GENERICO
+        SOLO PER NUOVO TORNEO
         ==========================================================
         */
 
@@ -856,8 +1091,7 @@ async function loadState(){
 
         /*
         ==========================================================
-        DISTRIBUZIONE SQUADRE NEI GIRONI
-        SOLO SE ABBIAMO SQUADRE REALI
+        NUMERO GIRONI
         ==========================================================
         */
 
@@ -874,6 +1108,7 @@ async function loadState(){
 
 
         const lettereGironi = [
+
             "A",
             "B",
             "C",
@@ -881,6 +1116,7 @@ async function loadState(){
             "E",
             "F",
             "G"
+
         ];
 
 
@@ -889,68 +1125,76 @@ async function loadState(){
             perGirone;
 
 
+        /*
+        ==========================================================
+        VERIFICA SQUADRE GIÀ PRESENTI
+        ==========================================================
+        */
+
+        const gironiGiaPopolati =
+            lettereGironi
+                .slice(
+                    0,
+                    numeroGironi
+                )
+                .some(
+                    g =>
+                        Array.isArray(
+                            state[g]
+                        ) &&
+                        state[g].length > 0
+                );
+
+
+        /*
+        ==========================================================
+        DISTRIBUZIONE COPPIE
+        ==========================================================
+        */
+
         if(
+            !gironiGiaPopolati &&
             Array.isArray(state.coppie) &&
             state.coppie.length > 0
         ){
 
-            /*
-            Se i gironi sono già popolati
-            e contengono squadre, li preserviamo.
-            */
+            lettereGironi.forEach(
+                g => {
 
-            const gironiGiaPopolati =
-                lettereGironi
-                    .slice(0,numeroGironi)
-                    .some(
-                        g =>
-                            Array.isArray(state[g]) &&
-                            state[g].length > 0
-                    );
+                    state[g] = [];
+
+                }
+            );
 
 
-            /*
-            Se non sono popolati,
-            distribuiamo le coppie.
-            */
+            state.coppie
+                .slice(
+                    0,
+                    totaleNecessario
+                )
+                .forEach(
+                    (c,i) => {
 
-            if(!gironiGiaPopolati){
+                        const indice =
+                            Math.floor(
+                                i /
+                                perGirone
+                            );
 
-                lettereGironi.forEach(
-                    g => {
 
-                        state[g] = [];
+                        if(
+                            indice <
+                            numeroGironi
+                        ){
+
+                            state[
+                                lettereGironi[indice]
+                            ].push(c);
+
+                        }
 
                     }
                 );
-
-
-                state.coppie
-                    .slice(0,totaleNecessario)
-                    .forEach(
-                        (c,i) => {
-
-                            const indice =
-                                Math.floor(
-                                    i / perGirone
-                                );
-
-
-                            if(
-                                indice <
-                                numeroGironi
-                            ){
-
-                                state[
-                                    lettereGironi[indice]
-                                ].push(c);
-
-                            }
-
-                        }
-                    );
-
-            }
 
         }
 
@@ -981,6 +1225,14 @@ async function loadState(){
                 }
                 else{
 
+                    /*
+                    NON tocchiamo qui eventuali dati
+                    di formati speciali non pertinenti.
+
+                    Per i gironi classici fuori formato,
+                    comunque, devono risultare vuoti.
+                    */
+
                     state[g] = [];
 
                 }
@@ -1001,10 +1253,15 @@ async function loadState(){
 
             const presenti =
                 lettereGironi
-                    .slice(0,numeroGironi)
+                    .slice(
+                        0,
+                        numeroGironi
+                    )
                     .some(
                         g =>
-                            Array.isArray(state[g]) &&
+                            Array.isArray(
+                                state[g]
+                            ) &&
                             state[g].length > 0
                     );
 
@@ -1021,14 +1278,21 @@ async function loadState(){
         /*
         ==========================================================
         SALVATAGGIO LOCALE
-        SOLO CON SQUADRE REALI
+        ==========================================================
+        
+        Salviamo soltanto dopo aver completato la ricostruzione.
+
+        Non salviamo mai uno state remoto vuoto sopra uno stato
+        locale valido dello stesso torneo.
         ==========================================================
         */
 
         const haSquadre =
             lettereGironi.some(
                 g =>
-                    Array.isArray(state[g]) &&
+                    Array.isArray(
+                        state[g]
+                    ) &&
                     state[g].length > 0
             );
 
@@ -1037,7 +1301,9 @@ async function loadState(){
 
             localStorage.setItem(
                 "torneoState",
-                JSON.stringify(state)
+                JSON.stringify(
+                    state
+                )
             );
 
         }
@@ -1055,12 +1321,6 @@ async function loadState(){
 
             try{
 
-                /*
-                IMPORTANTE:
-                durante il caricamento NON deve
-                partire un nuovo salvataggio vuoto.
-                */
-
                 window.__BOVE_LOADING__ = true;
 
                 render();
@@ -1072,11 +1332,6 @@ async function loadState(){
                     "Errore render torneo:",
                     err
                 );
-
-            }
-            finally{
-
-                window.__BOVE_LOADING__ = false;
 
             }
 
@@ -1129,6 +1384,17 @@ async function loadState(){
         );
 
         return null;
+
+    }
+    finally{
+
+        /*
+        ==========================================================
+        SBLOCCO CARICAMENTO
+        ==========================================================
+        */
+
+        window.__BOVE_LOADING__ = false;
 
     }
 
@@ -9922,89 +10188,35 @@ function render(){
     ensureRules();
 
 
-
     /*
-        ============================
-        GENERAZIONE PARTITE
-        SOLO SE NECESSARIA
-        ============================
+    ============================================================
+    RENDER = SOLO RENDERING
+    ============================================================
+
+    IMPORTANTE:
+
+    render() NON deve:
+
+    - caricare dati
+    - salvare dati
+    - generare partite
+    - modificare la struttura del torneo
+
+    Queste operazioni appartengono alle rispettive funzioni.
+    ============================================================
     */
 
-    if(
-        typeof generaPartiteGironi==="function" &&
-        state &&
-        state.rules
-    ){
-
-        const numeroGironi =
-            Number(
-                state.rules.numeroGironi
-            )
-            ||
-            2;
-
-
-        const lettereGironi=[
-
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F",
-            "G"
-
-        ];
-
-
-        let presenti=false;
-
-
-        for(
-            let i=0;
-            i<numeroGironi;
-            i++
-        ){
-
-            const tag =
-                lettereGironi[i];
-
-
-            if(
-                Array.isArray(state[tag]) &&
-                state[tag].length>0
-            ){
-
-                presenti=true;
-
-                break;
-
-            }
-
-        }
-
-
-        if(presenti){
-
-            generaPartiteGironi();
-
-        }
-
-    }
-
-
 
     /*
-        ============================
-        TITOLO TORNEO
-        ============================
+    ============================================================
+    TITOLO TORNEO
+    ============================================================
     */
 
     const titolo =
         document.getElementById(
             "titoloTorneo"
         );
-
 
     if(titolo){
 
@@ -10018,18 +10230,16 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        NOME TORNEO
-        ============================
+    ============================================================
+    NOME TORNEO
+    ============================================================
     */
 
     const inputNome =
         document.getElementById(
             "nomeTorneoInput"
         );
-
 
     if(inputNome){
 
@@ -10039,18 +10249,16 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        DATA TORNEO
-        ============================
+    ============================================================
+    DATA TORNEO
+    ============================================================
     */
 
     const inputData =
         document.querySelector(
             "input[type='date']"
         );
-
 
     if(inputData){
 
@@ -10060,15 +10268,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        NOME FORMULA
-        ============================
+    ============================================================
+    NOME FORMULA
+    ============================================================
     */
 
     if(
-        typeof aggiornaNomeFormulaTorneo==="function"
+        typeof aggiornaNomeFormulaTorneo === "function"
     ){
 
         aggiornaNomeFormulaTorneo();
@@ -10076,15 +10283,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        TABELLE
-        ============================
+    ============================================================
+    TABELLE
+    ============================================================
     */
 
     if(
-        typeof renderTables==="function" &&
+        typeof renderTables === "function" &&
         state &&
         state.rules
     ){
@@ -10094,15 +10300,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        CLASSIFICHE
-        ============================
+    ============================================================
+    CLASSIFICHE
+    ============================================================
     */
 
     if(
-        typeof renderClass==="function"
+        typeof renderClass === "function"
     ){
 
         renderClass();
@@ -10110,15 +10315,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        FORMATI SPECIALI
-        ============================
+    ============================================================
+    FORMATI SPECIALI
+    ============================================================
     */
 
     if(
-        typeof renderSvizzero==="function"
+        typeof renderSvizzero === "function"
     ){
 
         renderSvizzero();
@@ -10127,7 +10331,7 @@ function render(){
 
 
     if(
-        typeof renderAmericano==="function"
+        typeof renderAmericano === "function"
     ){
 
         renderAmericano();
@@ -10136,7 +10340,7 @@ function render(){
 
 
     if(
-        typeof renderMexicano==="function"
+        typeof renderMexicano === "function"
     ){
 
         renderMexicano();
@@ -10145,7 +10349,7 @@ function render(){
 
 
     if(
-        typeof renderKing==="function"
+        typeof renderKing === "function"
     ){
 
         renderKing();
@@ -10154,7 +10358,7 @@ function render(){
 
 
     if(
-        typeof renderShort==="function"
+        typeof renderShort === "function"
     ){
 
         renderShort();
@@ -10162,15 +10366,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        FORMATI CLASSICI
-        ============================
+    ============================================================
+    FORMATI CLASSICI
+    ============================================================
     */
 
     if(
-        typeof renderItaliana==="function"
+        typeof renderItaliana === "function"
     ){
 
         renderItaliana();
@@ -10179,7 +10382,7 @@ function render(){
 
 
     if(
-        typeof renderGironiFinale==="function"
+        typeof renderGironiFinale === "function"
     ){
 
         renderGironiFinale();
@@ -10188,7 +10391,7 @@ function render(){
 
 
     if(
-        typeof renderEliminazione==="function"
+        typeof renderEliminazione === "function"
     ){
 
         renderEliminazione();
@@ -10197,7 +10400,7 @@ function render(){
 
 
     if(
-        typeof renderPersonalizzato==="function"
+        typeof renderPersonalizzato === "function"
     ){
 
         renderPersonalizzato();
@@ -10205,15 +10408,14 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        FASE KO
-        ============================
+    ============================================================
+    FASE KO
+    ============================================================
     */
 
     if(
-        typeof renderKO==="function"
+        typeof renderKO === "function"
     ){
 
         renderKO();
@@ -10221,40 +10423,21 @@ function render(){
     }
 
 
-
     /*
-        ============================
-        TORNEO MANUALE
-        ============================
+    ============================================================
+    TORNEO MANUALE
+    ============================================================
     */
 
     if(
-        typeof renderManuale==="function"
+        typeof renderManuale === "function"
     ){
 
         renderManuale();
 
     }
 
-
-
-    /*
-        ============================
-        SALVATAGGIO
-        ============================
-    */
-
-    if(
-        typeof updateAndSync==="function" &&
-        window.__BOVE_LOADING__ !== true
-    ){
-
-        updateAndSync();
-
-    }
-
 }
-
 
 
 function renderManuale(){
