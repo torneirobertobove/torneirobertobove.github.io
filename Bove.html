@@ -208,6 +208,7 @@ function bloccaGestionale(){
     console.warn( "Gestionale bloccato: serve un amministratore" );
 }
 
+
 async function loadState(){
 
     const params =
@@ -276,7 +277,6 @@ async function loadState(){
                             configurazione.configurazione?.rules ||
                             {}
                         )
-
                     }
 
                 };
@@ -548,7 +548,7 @@ async function loadState(){
 
             /*
             ========================================================
-            3. ISCRIZIONI APPROVATE
+            3. RECUPERO ISCRIZIONI APPROVATE
             ========================================================
             */
 
@@ -590,49 +590,175 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    IMPORTANTE:
-                    NON SOVRASCRIVIAMO COPPIE GIÀ PRESENTI.
+                    CONTROLLO FONDAMENTALE
+                    ==================================================
+
+                    Gli iscritti sono GIOCATORI.
+
+                    8 SQUADRE = 16 GIOCATORI.
+
+                    NON trasformiamo più automaticamente ogni
+                    giocatore in una squadra.
                     ==================================================
                     */
 
-                    const coppieEsistenti =
-                        Array.isArray(state.coppie)
-                            ? state.coppie
-                            : [];
+                    console.log(
+                        "=== ISCRITTI TORNEO ===",
+                        {
+                            idTorneo:
+                                Number(idTorneo),
+
+                            iscritti:
+                                state.iscritti.length,
+
+                            attesi:
+                                Number(
+                                    state.rules?.numeroSquadre
+                                ) * 2
+                        }
+                    );
+
+
+                    /*
+                    ==================================================
+                    COSTRUZIONE COPPIE
+                    ==================================================
+
+                    SOLO quando abbiamo il numero corretto
+                    di giocatori.
+
+                    Ogni coppia contiene 2 giocatori.
+                    ==================================================
+                    */
+
+                    const numeroSquadre =
+                        Number(
+                            state.rules?.numeroSquadre
+                        ) || 8;
+
+
+                    const giocatoriAttesi =
+                        numeroSquadre * 2;
 
 
                     if(
-                        coppieEsistenti.length === 0 &&
-                        state.iscritti.length > 0
+                        state.iscritti.length ===
+                        giocatoriAttesi
                     ){
 
-                        state.coppie =
-                            state.iscritti.map(
-                                item => {
-
-                                    if(
-                                        item.nome &&
-                                        item.cognome
-                                    ){
-
-                                        return (
-                                            item.nome +
-                                            " " +
-                                            item.cognome
-                                        );
-
-                                    }
+                        const coppieDaIscritti = [];
 
 
-                                    return (
-                                        item.nome ||
-                                        item.nome_giocatore ||
-                                        item.coppia ||
-                                        "Squadra"
-                                    );
+                        for(
+                            let i = 0;
+                            i < state.iscritti.length;
+                            i += 2
+                        ){
 
+                            const giocatore1 =
+                                state.iscritti[i];
+
+
+                            const giocatore2 =
+                                state.iscritti[i + 1];
+
+
+                            if(
+                                !giocatore1 ||
+                                !giocatore2
+                            ){
+
+                                continue;
+
+                            }
+
+
+                            const nome1 =
+                                (
+                                    `${giocatore1.nome || ""} ${giocatore1.cognome || ""}`
+                                ).trim()
+                                ||
+                                giocatore1.nome_giocatore
+                                ||
+                                "Giocatore 1";
+
+
+                            const nome2 =
+                                (
+                                    `${giocatore2.nome || ""} ${giocatore2.cognome || ""}`
+                                ).trim()
+                                ||
+                                giocatore2.nome_giocatore
+                                ||
+                                "Giocatore 2";
+
+
+                            coppieDaIscritti.push(
+                                [
+                                    nome1,
+                                    nome2
+                                ]
+                            );
+
+                        }
+
+
+                        /*
+                        ==================================================
+                        VERIFICA FINALE COPPIE
+                        ==================================================
+                        */
+
+                        if(
+                            coppieDaIscritti.length ===
+                            numeroSquadre
+                        ){
+
+                            state.coppie =
+                                coppieDaIscritti;
+
+
+                            console.log(
+                                "=== COPPIE CORRETTAMENTE COSTRUITE ===",
+                                {
+                                    giocatori:
+                                        state.iscritti.length,
+
+                                    squadre:
+                                        state.coppie.length,
+
+                                    coppie:
+                                        state.coppie
                                 }
                             );
+
+                        }
+
+                    }
+                    else{
+
+                        /*
+                        ==================================================
+                        NON INVENTIAMO SQUADRE
+                        ==================================================
+                        */
+
+                        console.error(
+                            "=== ERRORE NUMERO ISCRITTI ===",
+                            {
+                                idTorneo:
+                                    Number(idTorneo),
+
+                                iscritti:
+                                    state.iscritti.length,
+
+                                attesi:
+                                    giocatoriAttesi,
+
+                                messaggio:
+                                    "Il numero degli iscritti non corrisponde al numero di giocatori previsto. Nessuna coppia è stata inventata."
+                            }
+                        );
 
                     }
 
@@ -727,12 +853,6 @@ async function loadState(){
                             state[k];
 
 
-                        /*
-                        ==================================================
-                        NON SOSTITUIAMO DATI PRESENTI CON ARRAY VUOTI
-                        ==================================================
-                        */
-
                         if(
                             ricevuto.length > 0
                         ){
@@ -758,12 +878,6 @@ async function loadState(){
             /*
             ========================================================
             4B. RECUPERO VALORI NON ARRAY
-            ========================================================
-            
-            fTopRes     = risultato finale
-            campioneTop = vincitore finale
-            
-            QUESTI DUE DATI ERANO IL PROBLEMA.
             ========================================================
             */
 
@@ -852,12 +966,6 @@ async function loadState(){
                 }
 
 
-                /*
-                ====================================================
-                RECUPERO FASE FINALE NIDIFICATA
-                ====================================================
-                */
-
                 if(
                     Object.prototype.hasOwnProperty.call(
                         cfg,
@@ -919,6 +1027,12 @@ async function loadState(){
         ============================================================
         5. RECUPERO EMERGENZA savedTeams
         ============================================================
+
+        IMPORTANTE:
+        savedTeams NON deve trasformare singoli giocatori
+        in squadre.
+
+        ============================================================
         */
 
         if(
@@ -949,13 +1063,38 @@ async function loadState(){
                         squadreSalvate.length > 0
                     ){
 
-                        state.coppie =
-                            squadreSalvate;
+                        /*
+                        Accettiamo savedTeams solo se contiene
+                        realmente squadre/coppie.
+                        */
 
-                        console.warn(
-                            "RECUPERO SQUADRE DA savedTeams:",
-                            state.coppie
-                        );
+                        const sonoCoppie =
+                            squadreSalvate.every(
+                                squadra =>
+                                    Array.isArray(squadra) &&
+                                    squadra.length === 2
+                            );
+
+
+                        if(sonoCoppie){
+
+                            state.coppie =
+                                squadreSalvate;
+
+
+                            console.warn(
+                                "RECUPERO COPPIE DA savedTeams:",
+                                state.coppie
+                            );
+
+                        }
+                        else{
+
+                            console.warn(
+                                "savedTeams ignorato: contiene singoli elementi e non coppie da 2 giocatori."
+                            );
+
+                        }
 
                     }
 
@@ -1044,7 +1183,6 @@ async function loadState(){
         /*
         ============================================================
         8. DISTRIBUZIONE SQUADRE
-        SOLO SE NECESSARIO
         ============================================================
         */
 
@@ -1100,14 +1238,14 @@ async function loadState(){
 
         /*
         ============================================================
-        DISTRIBUZIONE SOLO SE I GIRONI SONO VUOTI
+        DISTRIBUZIONE SOLO CON COPPIE REALI
         ============================================================
         */
 
         if(
             !gironiGiaPopolati &&
             Array.isArray(state.coppie) &&
-            state.coppie.length > 0
+            state.coppie.length === totaleNecessario
         ){
 
             gironiAttivi.forEach(
@@ -1212,13 +1350,7 @@ async function loadState(){
 
         /*
         ============================================================
-        10B. RIPRISTINO FASE FINALE DOPO GENERAZIONE GIRONE
-        ============================================================
-        
-        IMPORTANTE:
-        la generazione delle partite può modificare il rendering
-        della fase finale. Per questo i valori salvati vengono
-        nuovamente garantiti PRIMA del render finale.
+        10B. RIPRISTINO FASE FINALE
         ============================================================
         */
 
@@ -1390,7 +1522,6 @@ async function loadState(){
     }
 
 }
-
    
 </script>
 </body>
