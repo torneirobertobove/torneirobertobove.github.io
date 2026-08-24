@@ -592,9 +592,6 @@ async function loadState(){
                     ==================================================
                     IMPORTANTE:
                     NON SOVRASCRIVIAMO COPPIE GIÀ PRESENTI.
-                    
-                    Le iscrizioni vengono usate come fallback
-                    soltanto se il torneo non contiene già coppie.
                     ==================================================
                     */
 
@@ -706,7 +703,6 @@ async function loadState(){
                 "sCamp",
                 "sTime",
 
-                "fTopRes",
                 "fCamp",
                 "fTime",
 
@@ -724,18 +720,18 @@ async function loadState(){
                         )
                     ){
 
-                        /*
-                        ==================================================
-                        NON SOSTITUIAMO DATI PRESENTI CON ARRAY VUOTI
-                        ==================================================
-                        */
-
                         const ricevuto =
                             configurazione[k];
 
                         const esistente =
                             state[k];
 
+
+                        /*
+                        ==================================================
+                        NON SOSTITUIAMO DATI PRESENTI CON ARRAY VUOTI
+                        ==================================================
+                        */
 
                         if(
                             ricevuto.length > 0
@@ -757,6 +753,50 @@ async function loadState(){
 
                 }
             );
+
+
+            /*
+            ========================================================
+            4B. RECUPERO VALORI NON ARRAY
+            ========================================================
+            
+            fTopRes     = risultato finale
+            campioneTop = vincitore finale
+            
+            QUESTI DUE DATI ERANO IL PROBLEMA.
+            ========================================================
+            */
+
+            if(
+                Object.prototype.hasOwnProperty.call(
+                    configurazione,
+                    "fTopRes"
+                )
+            ){
+
+                if(
+                    typeof configurazione.fTopRes === "string"
+                ){
+
+                    state.fTopRes =
+                        configurazione.fTopRes;
+
+                }
+
+            }
+
+
+            if(
+                Object.prototype.hasOwnProperty.call(
+                    configurazione,
+                    "campioneTop"
+                )
+            ){
+
+                state.campioneTop =
+                    configurazione.campioneTop;
+
+            }
 
 
             /*
@@ -808,6 +848,65 @@ async function loadState(){
 
                     state.coppie =
                         cfg.coppie;
+
+                }
+
+
+                /*
+                ====================================================
+                RECUPERO FASE FINALE NIDIFICATA
+                ====================================================
+                */
+
+                if(
+                    Object.prototype.hasOwnProperty.call(
+                        cfg,
+                        "fTopRes"
+                    ) &&
+                    typeof cfg.fTopRes === "string"
+                ){
+
+                    state.fTopRes =
+                        cfg.fTopRes;
+
+                }
+
+
+                if(
+                    Object.prototype.hasOwnProperty.call(
+                        cfg,
+                        "campioneTop"
+                    )
+                ){
+
+                    state.campioneTop =
+                        cfg.campioneTop;
+
+                }
+
+
+                if(
+                    Array.isArray(
+                        cfg.finalTop
+                    ) &&
+                    cfg.finalTop.length > 0
+                ){
+
+                    state.finalTop =
+                        cfg.finalTop;
+
+                }
+
+
+                if(
+                    Array.isArray(
+                        cfg.sTopRes
+                    ) &&
+                    cfg.sTopRes.length > 0
+                ){
+
+                    state.sTopRes =
+                        cfg.sTopRes;
 
                 }
 
@@ -901,13 +1000,6 @@ async function loadState(){
                         JSON.parse(locale);
 
 
-                    /*
-                    ==================================================
-                    IL LOCALE VIENE USATO SOLO QUANDO
-                    NON ESISTE UN TORNEO REMOTO.
-                    ==================================================
-                    */
-
                     state = {
 
                         ...state,
@@ -986,12 +1078,6 @@ async function loadState(){
             perGirone;
 
 
-        /*
-        ============================================================
-        CONTROLLIAMO SE I GIRONI ESISTONO GIÀ
-        ============================================================
-        */
-
         const gironiAttivi =
             lettereGironi.slice(
                 0,
@@ -1024,10 +1110,6 @@ async function loadState(){
             state.coppie.length > 0
         ){
 
-            /*
-            Prima puliamo SOLO i gironi attivi.
-            */
-
             gironiAttivi.forEach(
                 g => {
 
@@ -1036,10 +1118,6 @@ async function loadState(){
                 }
             );
 
-
-            /*
-            Distribuzione sequenziale.
-            */
 
             state.coppie
                 .slice(
@@ -1085,11 +1163,6 @@ async function loadState(){
                     index >= numeroGironi
                 ){
 
-                    /*
-                    Solo i gironi NON previsti dal formato
-                    vengono svuotati.
-                    */
-
                     state[g] = [];
 
                 }
@@ -1131,6 +1204,75 @@ async function loadState(){
             if(presenti){
 
                 generaPartiteGironi();
+
+            }
+
+        }
+
+
+        /*
+        ============================================================
+        10B. RIPRISTINO FASE FINALE DOPO GENERAZIONE GIRONE
+        ============================================================
+        
+        IMPORTANTE:
+        la generazione delle partite può modificare il rendering
+        della fase finale. Per questo i valori salvati vengono
+        nuovamente garantiti PRIMA del render finale.
+        ============================================================
+        */
+
+        if(configurazione){
+
+            if(
+                Object.prototype.hasOwnProperty.call(
+                    configurazione,
+                    "fTopRes"
+                ) &&
+                typeof configurazione.fTopRes === "string"
+            ){
+
+                state.fTopRes =
+                    configurazione.fTopRes;
+
+            }
+
+
+            if(
+                Object.prototype.hasOwnProperty.call(
+                    configurazione,
+                    "campioneTop"
+                )
+            ){
+
+                state.campioneTop =
+                    configurazione.campioneTop;
+
+            }
+
+
+            if(
+                Array.isArray(
+                    configurazione.finalTop
+                ) &&
+                configurazione.finalTop.length > 0
+            ){
+
+                state.finalTop =
+                    configurazione.finalTop;
+
+            }
+
+
+            if(
+                Array.isArray(
+                    configurazione.sTopRes
+                ) &&
+                configurazione.sTopRes.length > 0
+            ){
+
+                state.sTopRes =
+                    configurazione.sTopRes;
 
             }
 
@@ -1243,18 +1385,12 @@ async function loadState(){
     }
     finally{
 
-        /*
-        ============================================================
-        IL BLOCCO DI CARICAMENTO RESTA ATTIVO DURANTE TUTTA
-        LA PROCEDURA E VIENE DISATTIVATO SOLO ALLA FINE.
-        ============================================================
-        */
-
         window.__BOVE_LOADING__ = false;
 
     }
 
 }
+
    
 </script>
 </body>
