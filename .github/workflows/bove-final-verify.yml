@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Repair known JavaScript regression
+      - name: Repair known JavaScript and team-flow regressions
         shell: python
         run: |
           from pathlib import Path
@@ -47,6 +47,111 @@ jobs:
               print('RIMOSSO RESET usaQuarti da renderKO')
               s = s2
 
+          # Never fabricate one-player teams from the iscrizioni table.
+          old = '''                    const coppieEsistenti =
+                        Array.isArray(state.coppie)
+                            ? state.coppie
+                            : [];
+
+
+                    if(
+                        coppieEsistenti.length === 0 &&
+                        state.iscritti.length > 0
+                    ){
+
+                        state.coppie =
+                            state.iscritti.map(
+                                item => {
+
+                                    if(
+                                        item.nome &&
+                                        item.cognome
+                                    ){
+
+                                        return (
+                                            item.nome +
+                                            " " +
+                                            item.cognome
+                                        );
+
+                                    }
+
+
+                                    return (
+                                        item.nome ||
+                                        item.nome_giocatore ||
+                                        item.coppia ||
+                                        "Squadra"
+                                    );
+
+                                }
+                            );
+
+                    }
+'''
+          new = '''                    const coppieEsistenti =
+                        Array.isArray(state.coppie)
+                            ? state.coppie
+                            : [];
+
+
+                    if(
+                        coppieEsistenti.length === 0 &&
+                        state.iscritti.length > 0
+                    ){
+
+                        const coppieDaIscritti =
+                            state.iscritti
+                                .filter(item => {
+
+                                    if(!item || typeof item !== "object")
+                                        return false;
+
+                                    return !!(
+                                        (item.giocatore1 && item.giocatore2) ||
+                                        (item.g1 && item.g2) ||
+                                        (
+                                            typeof item.coppia === "string" &&
+                                            item.coppia.split("/").filter(Boolean).length === 2
+                                        )
+                                    );
+
+                                })
+                                .map(item =>
+                                    item.giocatore1 && item.giocatore2
+                                        ? item
+                                        : item.g1 && item.g2
+                                            ? item
+                                            : item.coppia
+                                );
+
+
+                        if(coppieDaIscritti.length > 0){
+
+                            state.coppie =
+                                coppieDaIscritti;
+
+                        }
+                        else{
+
+                            console.warn(
+                                "ISCRITTI PRESENTI MA NESSUNA COPPIA VALIDA: non creo squadre fittizie."
+                            );
+
+                            state.coppie = [];
+
+                        }
+
+                    }
+'''
+          if old in s:
+              s = s.replace(old, new, 1)
+              print('CORRETTO FALLBACK ISCRITTI -> COPPIE')
+          elif 'Nessuna coppia valida: non creo squadre fittizie' in s:
+              print('FALLBACK COPPIE GIÀ CORRETTO')
+          else:
+              print('ATTENZIONE: fallback coppie non trovato')
+
           p.write_text(s, encoding='utf-8')
 
       - name: JavaScript syntax validation
@@ -67,7 +172,7 @@ jobs:
                   raise SystemExit(f'Sintassi JavaScript non valida: script {i}')
           print(f'SINTASSI OK: {len(scripts)} blocchi')
 
-      - name: Critical structure validation
+      - name: Critical structure and team-flow validation
         shell: python
         run: |
           from pathlib import Path
@@ -97,8 +202,9 @@ jobs:
               raise SystemExit('Stato risultati KO incompleto')
           if re.search(r'CONTROLLO QUARTI[\s\S]{0,1200}state\.rules\.usaQuarti\s*=\s*false', s):
               raise SystemExit('usaQuarti viene ancora azzerato automaticamente')
-
-          print('STRUTTURA + FLUSSO QUARTI OK')
+          if '"ISCRITTI PRESENTI MA NESSUNA COPPIA VALIDA: non creo squadre fittizie."' not in s:
+              raise SystemExit('Protezione coppie/iscritti assente')
+          print('STRUTTURA + QUARTI + INTEGRITÀ COPPIE OK')
 
       - name: Commit repaired Bove
         shell: bash
@@ -107,5 +213,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Repair Bove syntax and validate flow'
+          git commit -m 'Repair Bove team integrity and validate flow'
           git push
