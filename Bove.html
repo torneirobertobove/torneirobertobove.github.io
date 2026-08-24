@@ -8007,9 +8007,15 @@ function renderKO(){
     ============================================================
     */
 
-    const q = document.getElementById("Q");
-    const s = document.getElementById("S");
-    const f = document.getElementById("finaleBox");
+    const q =
+        document.getElementById("Q");
+
+    const s =
+        document.getElementById("S");
+
+    const f =
+        document.getElementById("finaleBox");
+
 
     if(!q || !s || !f){
 
@@ -8020,19 +8026,45 @@ function renderKO(){
         return;
     }
 
+
     /*
     ============================================================
     TABELLE REALI
     ============================================================
     */
 
-    const qTable = q.closest("table");
-    const sTable = s.closest("table");
-    const fTable = f.closest("table");
+    const qTable =
+        q.closest("table");
+
+    const sTable =
+        s.closest("table");
+
+    const fTable =
+        f.closest("table");
+
 
     /*
     ============================================================
-    LAYOUT
+    LAYOUT KO
+    ============================================================
+
+    MISURE ORIGINALI CORRETTE:
+
+    Campo = 55px
+    Ora   = 65px
+    Match = 248px
+    Ris1  = 45px
+    Ris2  = 45px
+
+    TOTALE = 458px
+
+    IMPORTANTE:
+    le 5 colonne devono essere REALMENTE
+    contenute nei 458px della tabella.
+
+    NON vengono ridotte.
+    NON viene aggiunta scrollbar.
+    NON viene modificata la logica.
     ============================================================
     */
 
@@ -8041,26 +8073,12 @@ function renderKO(){
         if(!table)
             return;
 
-        const contenitore =
-            table.parentElement;
 
-        if(contenitore){
-
-            contenitore.style.overflowX =
-                "hidden";
-
-            contenitore.style.overflowY =
-                "visible";
-
-            contenitore.style.width =
-                "458px";
-
-            contenitore.style.maxWidth =
-                "458px";
-
-            contenitore.style.boxSizing =
-                "border-box";
-        }
+        /*
+        ========================================================
+        TABELLA
+        ========================================================
+        */
 
         table.style.width =
             "458px";
@@ -8071,9 +8089,6 @@ function renderKO(){
         table.style.maxWidth =
             "458px";
 
-        table.style.boxSizing =
-            "border-box";
-
         table.style.tableLayout =
             "fixed";
 
@@ -8083,27 +8098,21 @@ function renderKO(){
         table.style.borderSpacing =
             "0";
 
-        table.style.fontSize =
-            "13px";
-
-        table.style.lineHeight =
-            "normal";
+        table.style.boxSizing =
+            "border-box";
 
         table.style.overflow =
             "hidden";
 
+        table.style.overflowX =
+            "hidden";
+
+        table.style.overflowY =
+            "visible";
+
         table.style.whiteSpace =
             "normal";
 
-        const colWidths = [
-
-            "55px",
-            "65px",
-            "248px",
-            "45px",
-            "45px"
-
-        ];
 
         /*
         ========================================================
@@ -8113,6 +8122,7 @@ function renderKO(){
 
         let colgroup =
             table.querySelector("colgroup");
+
 
         if(!colgroup){
 
@@ -8125,38 +8135,30 @@ function renderKO(){
                 colgroup,
                 table.firstChild
             );
+
         }
 
-        colgroup.innerHTML = "";
 
-        colWidths.forEach(width => {
+        colgroup.innerHTML = `
 
-            const col =
-                document.createElement("col");
+            <col style="width:55px">
+            <col style="width:65px">
+            <col style="width:248px">
+            <col style="width:45px">
+            <col style="width:45px">
 
-            col.style.width =
-                width;
+        `;
 
-            col.style.minWidth =
-                width;
-
-            col.style.maxWidth =
-                width;
-
-            colgroup.appendChild(col);
-
-        });
 
         /*
         ========================================================
-        RIGHE E CELLE DIRETTE
+        RIGHE
         ========================================================
         */
 
-        table.querySelectorAll("tr").forEach(tr => {
-
-            tr.style.display =
-                "table-row";
+        table.querySelectorAll(
+            "tr"
+        ).forEach(tr=>{
 
             tr.style.width =
                 "458px";
@@ -8167,49 +8169,135 @@ function renderKO(){
             tr.style.maxWidth =
                 "458px";
 
-            const celle =
-                Array.from(
-                    tr.children
-                ).filter(cella =>
-                    cella.matches("th, td")
-                );
-
-            celle.forEach((cella, index) => {
-
-                if(index >= colWidths.length)
-                    return;
-
-                cella.style.display =
-                    "table-cell";
-
-                cella.style.width =
-                    colWidths[index];
-
-                cella.style.minWidth =
-                    colWidths[index];
-
-                cella.style.maxWidth =
-                    colWidths[index];
-
-                cella.style.boxSizing =
-                    "border-box";
-
-                cella.style.verticalAlign =
-                    "middle";
-
-            });
+            tr.style.boxSizing =
+                "border-box";
 
         });
 
+
         /*
         ========================================================
-        CELLE RISULTATO
+        CELLE
+        ========================================================
+        */
+
+        table.querySelectorAll(
+            "th, td"
+        ).forEach(td=>{
+
+            td.style.boxSizing =
+                "border-box";
+
+        });
+
+
+        /*
+        ========================================================
+        FORZA LE 5 COLONNE
+
+        NON usare :nth-child() su elementi diversi:
+        qui la riga KO ha esattamente 5 celle.
+        ========================================================
+        */
+
+        table.querySelectorAll(
+            "tr"
+        ).forEach(tr=>{
+
+            const celle =
+                Array.from(
+                    tr.children
+                ).filter(el =>
+                    el.matches("td, th")
+                );
+
+
+            if(celle.length !== 5)
+                return;
+
+
+            const widths = [
+                "55px",
+                "65px",
+                "248px",
+                "45px",
+                "45px"
+            ];
+
+
+            celle.forEach(
+                (cella,index)=>{
+
+                    const width =
+                        widths[index];
+
+
+                    cella.style.display =
+                        "table-cell";
+
+                    cella.style.width =
+                        width;
+
+                    cella.style.minWidth =
+                        width;
+
+                    cella.style.maxWidth =
+                        width;
+
+                    cella.style.boxSizing =
+                        "border-box";
+
+                    cella.style.verticalAlign =
+                        "middle";
+
+                }
+            );
+
+        });
+
+
+        /*
+        ========================================================
+        MATCH
+        ========================================================
+        */
+
+        table.querySelectorAll(
+            "td.match-cell"
+        ).forEach(td=>{
+
+            td.style.width =
+                "248px";
+
+            td.style.minWidth =
+                "248px";
+
+            td.style.maxWidth =
+                "248px";
+
+            td.style.boxSizing =
+                "border-box";
+
+            td.style.overflow =
+                "hidden";
+
+            td.style.whiteSpace =
+                "normal";
+
+        });
+
+
+        /*
+        ========================================================
+        RISULTATI
+
+        RIS1 E RIS2 SONO DUE TD SEPARATI.
         ========================================================
         */
 
         table.querySelectorAll(
             "td.db-cell"
-        ).forEach(td => {
+        ).forEach(td=>{
 
             td.style.display =
                 "table-cell";
@@ -8243,15 +8331,16 @@ function renderKO(){
 
         });
 
+
         /*
         ========================================================
-        INPUT RISULTATO
+        INPUT RISULTATI
         ========================================================
         */
 
         table.querySelectorAll(
             "td.db-cell input"
-        ).forEach(input => {
+        ).forEach(input=>{
 
             input.style.width =
                 "35px";
@@ -8261,12 +8350,6 @@ function renderKO(){
 
             input.style.maxWidth =
                 "35px";
-
-            input.style.height =
-                "28px";
-
-            input.style.padding =
-                "2px";
 
             input.style.boxSizing =
                 "border-box";
@@ -8282,26 +8365,77 @@ function renderKO(){
 
         });
 
+
         /*
         ========================================================
-        INPUT CAMPO E ORA
+        INPUT CAMPO
         ========================================================
         */
 
         table.querySelectorAll(
-            "td input"
-        ).forEach(input => {
+            "td:first-child input"
+        ).forEach(input=>{
+
+            input.style.width =
+                "45px";
+
+            input.style.maxWidth =
+                "45px";
 
             input.style.boxSizing =
                 "border-box";
 
         });
 
+
+        /*
+        ========================================================
+        INPUT ORA
+        ========================================================
+        */
+
+        table.querySelectorAll(
+            "td:nth-child(2) input"
+        ).forEach(input=>{
+
+            input.style.width =
+                "55px";
+
+            input.style.maxWidth =
+                "55px";
+
+            input.style.boxSizing =
+                "border-box";
+
+        });
+
+
+        /*
+        ========================================================
+        NESSUNO SCORRIMENTO ORIZZONTALE
+        ========================================================
+        */
+
+        const parent =
+            table.parentElement;
+
+
+        if(parent){
+
+            parent.style.overflowX =
+                "hidden";
+
+            parent.style.maxWidth =
+                "458px";
+
+        }
+
     }
+
 
     /*
     ============================================================
-    CREA UNA RIGA KO
+    CREA MATCH KO
     ============================================================
     */
 
@@ -8321,11 +8455,13 @@ function renderKO(){
             return "";
         }
 
+
         const squadra1 =
             match[0] || "-";
 
         const squadra2 =
             match[1] || "-";
+
 
         /*
         ========================================================
@@ -8344,6 +8480,7 @@ function renderKO(){
                 )
                 : "";
 
+
         /*
         ========================================================
         ORA
@@ -8361,6 +8498,7 @@ function renderKO(){
                 )
                 : "";
 
+
         /*
         ========================================================
         RISULTATI
@@ -8370,6 +8508,7 @@ function renderKO(){
         let ris1 = "-";
         let ris2 = "-";
 
+
         if(
             typeof risultato === "string" &&
             risultato.includes("-")
@@ -8377,6 +8516,7 @@ function renderKO(){
 
             const parti =
                 risultato.split("-");
+
 
             if(parti.length >= 2){
 
@@ -8390,33 +8530,32 @@ function renderKO(){
 
         }
 
+
         /*
         ========================================================
         RIGA
+
+        ESATTAMENTE 5 TD:
+        1 Campo
+        2 Ora
+        3 Match
+        4 Ris1
+        5 Ris2
         ========================================================
         */
 
         return `
 
-            <tr
-                style="
-                    display:table-row;
-                    width:458px;
-                    min-width:458px;
-                    max-width:458px;
-                "
-            >
+            <tr>
 
                 <!-- CAMPO -->
 
                 <td
                     style="
-                        display:table-cell;
                         width:55px;
                         min-width:55px;
                         max-width:55px;
                         box-sizing:border-box;
-                        vertical-align:middle;
                     "
                 >
 
@@ -8425,7 +8564,6 @@ function renderKO(){
                         value="${campo}"
                         style="
                             width:45px;
-                            min-width:45px;
                             max-width:45px;
                             box-sizing:border-box;
                         "
@@ -8440,16 +8578,15 @@ function renderKO(){
 
                 </td>
 
+
                 <!-- ORA -->
 
                 <td
                     style="
-                        display:table-cell;
                         width:65px;
                         min-width:65px;
                         max-width:65px;
                         box-sizing:border-box;
-                        vertical-align:middle;
                     "
                 >
 
@@ -8459,7 +8596,6 @@ function renderKO(){
                         placeholder="22:00"
                         style="
                             width:55px;
-                            min-width:55px;
                             max-width:55px;
                             box-sizing:border-box;
                         "
@@ -8474,17 +8610,16 @@ function renderKO(){
 
                 </td>
 
+
                 <!-- MATCH -->
 
                 <td
                     class="match-cell"
                     style="
-                        display:table-cell;
                         width:248px;
                         min-width:248px;
                         max-width:248px;
                         box-sizing:border-box;
-                        vertical-align:middle;
                         overflow:hidden;
                     "
                 >
@@ -8503,12 +8638,12 @@ function renderKO(){
 
                 </td>
 
+
                 <!-- RISULTATO 1 -->
 
                 <td
                     class="db-cell"
                     style="
-                        display:table-cell;
                         width:45px;
                         min-width:45px;
                         max-width:45px;
@@ -8528,7 +8663,6 @@ function renderKO(){
                             width:35px;
                             min-width:35px;
                             max-width:35px;
-                            height:28px;
                             box-sizing:border-box;
                             text-align:center;
                             display:block;
@@ -8546,12 +8680,12 @@ function renderKO(){
 
                 </td>
 
+
                 <!-- RISULTATO 2 -->
 
                 <td
                     class="db-cell"
                     style="
-                        display:table-cell;
                         width:45px;
                         min-width:45px;
                         max-width:45px;
@@ -8571,7 +8705,6 @@ function renderKO(){
                             width:35px;
                             min-width:35px;
                             max-width:35px;
-                            height:28px;
                             box-sizing:border-box;
                             text-align:center;
                             display:block;
@@ -8594,6 +8727,7 @@ function renderKO(){
         `;
     }
 
+
     /*
     ============================================================
     RESET
@@ -8603,6 +8737,7 @@ function renderKO(){
     q.innerHTML = "";
     s.innerHTML = "";
     f.innerHTML = "";
+
 
     /*
     ============================================================
@@ -8617,13 +8752,16 @@ function renderKO(){
         state.qRes.push("-");
 
     if(state.qRes.length > 4)
-        state.qRes = state.qRes.slice(0,4);
+        state.qRes =
+            state.qRes.slice(0,4);
+
 
     if(!Array.isArray(state.qCamp))
         state.qCamp = [];
 
     if(!Array.isArray(state.qTime))
         state.qTime = [];
+
 
     /*
     ============================================================
@@ -8638,13 +8776,16 @@ function renderKO(){
         state.sTopRes.push("-");
 
     if(state.sTopRes.length > 2)
-        state.sTopRes = state.sTopRes.slice(0,2);
+        state.sTopRes =
+            state.sTopRes.slice(0,2);
+
 
     if(!Array.isArray(state.sCamp))
         state.sCamp = [];
 
     if(!Array.isArray(state.sTime))
         state.sTime = [];
+
 
     /*
     ============================================================
@@ -8663,11 +8804,13 @@ function renderKO(){
 
     }
 
+
     if(!Array.isArray(state.fCamp))
         state.fCamp = [];
 
     if(!Array.isArray(state.fTime))
         state.fTime = [];
+
 
     /*
     ============================================================
@@ -8677,6 +8820,7 @@ function renderKO(){
 
     const qualificati =
         getFinalQualified();
+
 
     if(
         !Array.isArray(qualificati) ||
@@ -8695,9 +8839,10 @@ function renderKO(){
         return;
     }
 
+
     /*
     ============================================================
-    NASCONDI TUTTO ALL'INIZIO
+    NASCONDI TUTTO
     ============================================================
     */
 
@@ -8710,6 +8855,7 @@ function renderKO(){
     if(fTable)
         fTable.style.display = "none";
 
+
     /*
     ============================================================
     QUARTI
@@ -8718,6 +8864,7 @@ function renderKO(){
 
     let semifinali = [];
 
+
     if(
         state.rules.usaQuarti === true &&
         qualificati.length >= 8
@@ -8725,6 +8872,7 @@ function renderKO(){
 
         if(qTable)
             qTable.style.display = "";
+
 
         const quarti = [
 
@@ -8750,10 +8898,12 @@ function renderKO(){
 
         ];
 
+
         const vincitori = [];
 
+
         quarti.forEach(
-            (match,index) => {
+            (match,index)=>{
 
                 if(
                     !Array.isArray(match) ||
@@ -8763,7 +8913,9 @@ function renderKO(){
                 ){
 
                     return;
+
                 }
+
 
                 q.innerHTML +=
                     creaMatchKO(
@@ -8774,11 +8926,13 @@ function renderKO(){
                         state.qRes[index]
                     );
 
+
                 const vincitore =
                     getWinner(
                         match,
                         state.qRes[index]
                     );
+
 
                 if(vincitore)
                     vincitori.push(vincitore);
@@ -8786,7 +8940,9 @@ function renderKO(){
             }
         );
 
+
         applicaLayoutGironi(qTable);
+
 
         if(vincitori.length !== 4){
 
@@ -8795,6 +8951,7 @@ function renderKO(){
 
             return;
         }
+
 
         semifinali = [
 
@@ -8812,6 +8969,7 @@ function renderKO(){
 
     }
 
+
     /*
     ============================================================
     NIENTE QUARTI
@@ -8827,6 +8985,7 @@ function renderKO(){
 
             return;
         }
+
 
         semifinali = [
 
@@ -8844,6 +9003,7 @@ function renderKO(){
 
     }
 
+
     /*
     ============================================================
     SEMIFINALI
@@ -8860,13 +9020,16 @@ function renderKO(){
         return;
     }
 
+
     if(sTable)
         sTable.style.display = "";
 
+
     const finalisti = [];
 
+
     semifinali.forEach(
-        (match,index) => {
+        (match,index)=>{
 
             if(
                 !Array.isArray(match) ||
@@ -8876,7 +9039,9 @@ function renderKO(){
             ){
 
                 return;
+
             }
+
 
             s.innerHTML +=
                 creaMatchKO(
@@ -8887,11 +9052,13 @@ function renderKO(){
                     state.sTopRes[index]
                 );
 
+
             const vincitore =
                 getWinner(
                     match,
                     state.sTopRes[index]
                 );
+
 
             if(vincitore)
                 finalisti.push(vincitore);
@@ -8899,7 +9066,9 @@ function renderKO(){
         }
     );
 
+
     applicaLayoutGironi(sTable);
+
 
     /*
     ============================================================
@@ -8915,6 +9084,7 @@ function renderKO(){
         return;
     }
 
+
     /*
     ============================================================
     FINALISTI
@@ -8927,6 +9097,7 @@ function renderKO(){
         finalisti[1]
 
     ];
+
 
     /*
     ============================================================
@@ -8943,6 +9114,7 @@ function renderKO(){
         return;
     }
 
+
     /*
     ============================================================
     FINALE
@@ -8951,6 +9123,7 @@ function renderKO(){
 
     if(fTable)
         fTable.style.display = "";
+
 
     f.innerHTML =
         creaMatchKO(
@@ -8961,7 +9134,9 @@ function renderKO(){
             state.fTopRes
         );
 
+
     applicaLayoutGironi(fTable);
+
 
     /*
     ============================================================
@@ -8975,10 +9150,12 @@ function renderKO(){
             state.fTopRes
         );
 
+
     if(campione){
 
         state.campioneTop =
             campione;
+
 
         if(fTable){
 
@@ -8991,6 +9168,7 @@ function renderKO(){
                 </div>
                 `
             );
+
         }
 
     }
