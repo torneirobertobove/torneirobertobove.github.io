@@ -228,12 +228,6 @@ async function loadState(){
     let datiCaricati = false;
 
 
-    /*
-    ============================================================
-    BLOCCO SALVATAGGIO DURANTE IL CARICAMENTO
-    ============================================================
-    */
-
     window.__BOVE_LOADING__ = true;
 
 
@@ -264,19 +258,9 @@ async function loadState(){
                     ...configurazione,
 
                     rules:{
-                        ...(
-                            state &&
-                            state.rules
-                                ? state.rules
-                                : {}
-                        ),
-
+                        ...(state?.rules || {}),
                         ...(configurazione.rules || {}),
-
-                        ...(
-                            configurazione.configurazione?.rules ||
-                            {}
-                        )
+                        ...(configurazione.configurazione?.rules || {})
                     }
 
                 };
@@ -399,12 +383,6 @@ async function loadState(){
                         {};
 
 
-                    /*
-                    ==================================================
-                    DATI PRINCIPALI TORNEO
-                    ==================================================
-                    */
-
                     state = {
 
                         ...state,
@@ -431,12 +409,8 @@ async function loadState(){
                                 ),
 
                         rules:{
-                            ...(
-                                state.rules || {}
-                            ),
-
+                            ...(state.rules || {}),
                             ...(configurazione.rules || {})
-
                         }
 
                     };
@@ -444,7 +418,7 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    PARTECIPANTI
+                    PARTECIPANTI SALVATI
                     ==================================================
                     */
 
@@ -462,7 +436,7 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    COPPIE
+                    COPPIE SALVATE
                     ==================================================
                     */
 
@@ -588,20 +562,6 @@ async function loadState(){
                             : [];
 
 
-                    /*
-                    ==================================================
-                    CONTROLLO FONDAMENTALE
-                    ==================================================
-
-                    Gli iscritti sono GIOCATORI.
-
-                    8 SQUADRE = 16 GIOCATORI.
-
-                    NON trasformiamo più automaticamente ogni
-                    giocatore in una squadra.
-                    ==================================================
-                    */
-
                     console.log(
                         "=== ISCRITTI TORNEO ===",
                         {
@@ -610,6 +570,11 @@ async function loadState(){
 
                             iscritti:
                                 state.iscritti.length,
+
+                            coppieGiaSalvate:
+                                Array.isArray(state.coppie)
+                                    ? state.coppie.length
+                                    : 0,
 
                             attesi:
                                 Number(
@@ -621,144 +586,148 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    COSTRUZIONE COPPIE
+                    IMPORTANTE
                     ==================================================
 
-                    SOLO quando abbiamo il numero corretto
-                    di giocatori.
+                    SE IL TORNEO HA GIÀ LE COPPIE SALVATE
+                    IN configurazione.coppie, LE MANTENIAMO.
 
-                    Ogni coppia contiene 2 giocatori.
+                    NON vengono sostituite dalle iscrizioni.
+
+                    Questo permette di aprire correttamente
+                    tornei già creati dall'admin.
                     ==================================================
                     */
 
-                    const numeroSquadre =
-                        Number(
-                            state.rules?.numeroSquadre
-                        ) || 8;
-
-
-                    const giocatoriAttesi =
-                        numeroSquadre * 2;
-
-
                     if(
-                        state.iscritti.length ===
-                        giocatoriAttesi
+                        Array.isArray(state.coppie) &&
+                        state.coppie.length > 0
                     ){
 
-                        const coppieDaIscritti = [];
+                        console.log(
+                            "=== COPPIE DEL TORNEO MANTENUTE ===",
+                            state.coppie
+                        );
+
+                    }
 
 
-                        for(
-                            let i = 0;
-                            i < state.iscritti.length;
-                            i += 2
+                    /*
+                    ==================================================
+                    SE NON ESISTONO COPPIE SALVATE,
+                    POSSIAMO CREARLE DALLE ISCRIZIONI.
+                    ==================================================
+                    */
+
+                    else if(
+                        state.iscritti.length > 0
+                    ){
+
+                        const numeroSquadre =
+                            Number(
+                                state.rules?.numeroSquadre
+                            ) || 8;
+
+
+                        const giocatoriAttesi =
+                            numeroSquadre * 2;
+
+
+                        if(
+                            state.iscritti.length ===
+                            giocatoriAttesi
                         ){
 
-                            const giocatore1 =
-                                state.iscritti[i];
+                            const coppieDaIscritti = [];
 
 
-                            const giocatore2 =
-                                state.iscritti[i + 1];
-
-
-                            if(
-                                !giocatore1 ||
-                                !giocatore2
+                            for(
+                                let i = 0;
+                                i < state.iscritti.length;
+                                i += 2
                             ){
 
-                                continue;
+                                const giocatore1 =
+                                    state.iscritti[i];
+
+
+                                const giocatore2 =
+                                    state.iscritti[i + 1];
+
+
+                                if(
+                                    !giocatore1 ||
+                                    !giocatore2
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                const nome1 =
+                                    (
+                                        `${giocatore1.nome || ""} ${giocatore1.cognome || ""}`
+                                    )
+                                    .trim()
+                                    ||
+                                    giocatore1.nome_giocatore
+                                    ||
+                                    "Giocatore 1";
+
+
+                                const nome2 =
+                                    (
+                                        `${giocatore2.nome || ""} ${giocatore2.cognome || ""}`
+                                    )
+                                    .trim()
+                                    ||
+                                    giocatore2.nome_giocatore
+                                    ||
+                                    "Giocatore 2";
+
+
+                                coppieDaIscritti.push(
+                                    [
+                                        nome1,
+                                        nome2
+                                    ]
+                                );
 
                             }
 
 
-                            const nome1 =
-                                (
-                                    `${giocatore1.nome || ""} ${giocatore1.cognome || ""}`
-                                ).trim()
-                                ||
-                                giocatore1.nome_giocatore
-                                ||
-                                "Giocatore 1";
+                            if(
+                                coppieDaIscritti.length ===
+                                numeroSquadre
+                            ){
+
+                                state.coppie =
+                                    coppieDaIscritti;
 
 
-                            const nome2 =
-                                (
-                                    `${giocatore2.nome || ""} ${giocatore2.cognome || ""}`
-                                ).trim()
-                                ||
-                                giocatore2.nome_giocatore
-                                ||
-                                "Giocatore 2";
+                                console.log(
+                                    "=== COPPIE COSTRUITE DA ISCRIZIONI ===",
+                                    state.coppie
+                                );
 
-
-                            coppieDaIscritti.push(
-                                [
-                                    nome1,
-                                    nome2
-                                ]
-                            );
+                            }
 
                         }
+                        else{
 
-
-                        /*
-                        ==================================================
-                        VERIFICA FINALE COPPIE
-                        ==================================================
-                        */
-
-                        if(
-                            coppieDaIscritti.length ===
-                            numeroSquadre
-                        ){
-
-                            state.coppie =
-                                coppieDaIscritti;
-
-
-                            console.log(
-                                "=== COPPIE CORRETTAMENTE COSTRUITE ===",
+                            console.warn(
+                                "Iscrizioni incomplete: nessuna coppia inventata.",
                                 {
-                                    giocatori:
+                                    iscritti:
                                         state.iscritti.length,
 
-                                    squadre:
-                                        state.coppie.length,
-
-                                    coppie:
-                                        state.coppie
+                                    attesi:
+                                        giocatoriAttesi
                                 }
                             );
 
                         }
-
-                    }
-                    else{
-
-                        /*
-                        ==================================================
-                        NON INVENTIAMO SQUADRE
-                        ==================================================
-                        */
-
-                        console.error(
-                            "=== ERRORE NUMERO ISCRITTI ===",
-                            {
-                                idTorneo:
-                                    Number(idTorneo),
-
-                                iscritti:
-                                    state.iscritti.length,
-
-                                attesi:
-                                    giocatoriAttesi,
-
-                                messaggio:
-                                    "Il numero degli iscritti non corrisponde al numero di giocatori previsto. Nessuna coppia è stata inventata."
-                            }
-                        );
 
                     }
 
@@ -1027,12 +996,6 @@ async function loadState(){
         ============================================================
         5. RECUPERO EMERGENZA savedTeams
         ============================================================
-
-        IMPORTANTE:
-        savedTeams NON deve trasformare singoli giocatori
-        in squadre.
-
-        ============================================================
         */
 
         if(
@@ -1063,38 +1026,13 @@ async function loadState(){
                         squadreSalvate.length > 0
                     ){
 
-                        /*
-                        Accettiamo savedTeams solo se contiene
-                        realmente squadre/coppie.
-                        */
+                        state.coppie =
+                            squadreSalvate;
 
-                        const sonoCoppie =
-                            squadreSalvate.every(
-                                squadra =>
-                                    Array.isArray(squadra) &&
-                                    squadra.length === 2
-                            );
-
-
-                        if(sonoCoppie){
-
-                            state.coppie =
-                                squadreSalvate;
-
-
-                            console.warn(
-                                "RECUPERO COPPIE DA savedTeams:",
-                                state.coppie
-                            );
-
-                        }
-                        else{
-
-                            console.warn(
-                                "savedTeams ignorato: contiene singoli elementi e non coppie da 2 giocatori."
-                            );
-
-                        }
+                        console.warn(
+                            "RECUPERO SQUADRE DA savedTeams:",
+                            state.coppie
+                        );
 
                     }
 
@@ -1116,7 +1054,6 @@ async function loadState(){
         /*
         ============================================================
         6. LOCAL STORAGE
-        SOLO PER NUOVO TORNEO LOCALE
         ============================================================
         */
 
@@ -1146,12 +1083,8 @@ async function loadState(){
                         ...salvato,
 
                         rules:{
-                            ...(
-                                state.rules || {}
-                            ),
-
+                            ...(state.rules || {}),
                             ...(salvato.rules || {})
-
                         }
 
                     };
@@ -1236,16 +1169,10 @@ async function loadState(){
             );
 
 
-        /*
-        ============================================================
-        DISTRIBUZIONE SOLO CON COPPIE REALI
-        ============================================================
-        */
-
         if(
             !gironiGiaPopolati &&
             Array.isArray(state.coppie) &&
-            state.coppie.length === totaleNecessario
+            state.coppie.length > 0
         ){
 
             gironiAttivi.forEach(
@@ -1502,7 +1429,6 @@ async function loadState(){
 
 
         return state;
-
 
     }
     catch(e){
