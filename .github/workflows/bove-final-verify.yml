@@ -1,7 +1,5 @@
 name: Bove final verification
 
-# Final repair/validation pass for Bove.html.
-
 on:
   push:
     branches: [main]
@@ -25,6 +23,8 @@ jobs:
           import re
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
+
+          # Repair malformed Array.from callback if present.
           patterns = [
               (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*\)', 'Array.from({length:n}, (_,i)=>i)'),
               (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*;', 'Array.from({length:n}, (_,i)=>i);')
@@ -33,6 +33,28 @@ jobs:
               s, n = re.subn(pattern, replacement, s, count=1)
               if n:
                   print('RIPRISTINO Array.from() applicato')
+
+          # The organizer's usaQuarti choice must NOT be erased by applyRules().
+          bad_apply = re.compile(
+              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI\s*\n\s*=+\s*\*/\s*\n\s*/\*\s*\n\s*I QUARTI RICHIEDONO 8 QUALIFICATE\.[\s\S]*?\n\s*\}\s*\n',
+              re.M
+          )
+          s2, n = bad_apply.subn('\n', s, count=1)
+          if n:
+              print('RIMOSSO AUTO-DISATTIVAZIONE usaQuarti da applyRules')
+              s = s2
+
+          # renderKO must decide whether a quarter-final bracket can be built;
+          # it must never rewrite the saved usaQuarti preference.
+          bad_render = re.compile(
+              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI[\s\S]*?state\.rules\.usaQuarti = false;[\s\S]*?usaQuarti\.checked = false;\s*\n\s*\}\s*\n',
+              re.M
+          )
+          s2, n = bad_render.subn('\n', s, count=1)
+          if n:
+              print('RIMOSSO RESET usaQuarti da renderKO')
+              s = s2
+
           p.write_text(s, encoding='utf-8')
 
       - name: JavaScript syntax validation
@@ -74,15 +96,18 @@ jobs:
               n = len(re.findall(r'id=["\']' + re.escape(ident) + r'["\']', s))
               if n != 1:
                   raise SystemExit(f'ID duplicato/assente: {ident} ({n})')
-          checks = [
-              'state.rules.usaQuarti === true', 'qualificati.length >= 8',
-              'state.rules.usaSemifinali !== true', 'state.rules.usaFinale !== true',
-              'state.qRes', 'state.sTopRes', 'state.fTopRes'
-          ]
-          missing_logic = [x for x in checks if x not in s]
-          if missing_logic:
-              raise SystemExit('Logica KO incompleta: ' + ', '.join(missing_logic))
-          print('STRUTTURA CRITICA OK')
+
+          # Quarter-final flow invariants.
+          if 'state.rules.usaQuarti === true' not in s:
+              raise SystemExit('Logica usaQuarti assente')
+          if 'qualificati.length >= 8' not in s:
+              raise SystemExit('Controllo 8 qualificate assente')
+          if 'state.qRes' not in s or 'state.sTopRes' not in s or 'state.fTopRes' not in s:
+              raise SystemExit('Stato risultati KO incompleto')
+          if re.search(r'CONTROLLO QUARTI[\s\S]{0,1200}state\.rules\.usaQuarti\s*=\s*false', s):
+              raise SystemExit('usaQuarti viene ancora azzerato automaticamente')
+
+          print('STRUTTURA + FLUSSO QUARTI OK')
 
       - name: Commit repaired Bove
         shell: bash
