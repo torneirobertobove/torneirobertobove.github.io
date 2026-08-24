@@ -24,7 +24,6 @@ jobs:
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
 
-          # Repair malformed Array.from callback if present.
           patterns = [
               (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*\)', 'Array.from({length:n}, (_,i)=>i)'),
               (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*;', 'Array.from({length:n}, (_,i)=>i);')
@@ -34,22 +33,16 @@ jobs:
               if n:
                   print('RIPRISTINO Array.from() applicato')
 
-          # The organizer's usaQuarti choice must NOT be erased by applyRules().
+          # usaQuarti is an organizer choice: never erase it in applyRules/renderKO.
           bad_apply = re.compile(
-              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI\s*\n\s*=+\s*\*/\s*\n\s*/\*\s*\n\s*I QUARTI RICHIEDONO 8 QUALIFICATE\.[\s\S]*?\n\s*\}\s*\n',
-              re.M
-          )
+              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI\s*\n\s*=+\s*\*/\s*\n\s*/\*\s*\n\s*I QUARTI RICHIEDONO 8 QUALIFICATE\.[\s\S]*?\n\s*\}\s*\n', re.M)
           s2, n = bad_apply.subn('\n', s, count=1)
           if n:
               print('RIMOSSO AUTO-DISATTIVAZIONE usaQuarti da applyRules')
               s = s2
 
-          # renderKO must decide whether a quarter-final bracket can be built;
-          # it must never rewrite the saved usaQuarti preference.
           bad_render = re.compile(
-              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI[\s\S]*?state\.rules\.usaQuarti = false;[\s\S]*?usaQuarti\.checked = false;\s*\n\s*\}\s*\n',
-              re.M
-          )
+              r'\n\s*/\*\s*=+\s*\n\s*CONTROLLO QUARTI[\s\S]*?state\.rules\.usaQuarti = false;[\s\S]*?usaQuarti\.checked = false;\s*\n\s*\}\s*\n', re.M)
           s2, n = bad_render.subn('\n', s, count=1)
           if n:
               print('RIMOSSO RESET usaQuarti da renderKO')
@@ -97,7 +90,6 @@ jobs:
               if n != 1:
                   raise SystemExit(f'ID duplicato/assente: {ident} ({n})')
 
-          # Quarter-final flow invariants.
           if 'state.rules.usaQuarti === true' not in s:
               raise SystemExit('Logica usaQuarti assente')
           if 'qualificati.length >= 8' not in s:
