@@ -9190,6 +9190,7 @@ function getWinner(match,res){
 }
 
 
+
 function getFinalQualified(){
 
     ensureRules();
@@ -9197,7 +9198,13 @@ function getFinalQualified(){
     const qualificati = [];
 
     const lettere = [
-        "A","B","C","D","E","F","G"
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
     ];
 
     const numeroGironi =
@@ -9220,228 +9227,6 @@ function getFinalQualified(){
             )
         );
 
-
-    /*
-    ============================================================
-    NORMALIZZA LA COPPIA
-    ============================================================
-    */
-
-    function normalizzaCoppia(elemento, squadre){
-
-        if(!elemento)
-            return null;
-
-
-        /*
-        --------------------------------------------------------
-        SE CALC RESTITUISCE INDICE
-        --------------------------------------------------------
-        */
-
-        if(
-            typeof elemento === "number" &&
-            Array.isArray(squadre) &&
-            squadre[elemento]
-        ){
-
-            elemento =
-                squadre[elemento];
-
-        }
-
-
-        /*
-        --------------------------------------------------------
-        SE CALC RESTITUISCE OGGETTO CON RIFERIMENTO
-        --------------------------------------------------------
-        */
-
-        if(typeof elemento === "object"){
-
-            const riferimento =
-                elemento.coppia ??
-                elemento.squadra ??
-                elemento.team ??
-                elemento.pair ??
-                elemento.n ??
-                elemento.nome ??
-                null;
-
-
-            if(
-                riferimento &&
-                typeof riferimento === "object"
-            ){
-
-                elemento =
-                    riferimento;
-
-            }
-
-        }
-
-
-        /*
-        --------------------------------------------------------
-        COPPIA REALE
-        --------------------------------------------------------
-        */
-
-        if(typeof elemento === "object"){
-
-            const g1 =
-                elemento.giocatore1 ??
-                elemento.player1 ??
-                elemento.g1 ??
-                null;
-
-            const g2 =
-                elemento.giocatore2 ??
-                elemento.player2 ??
-                elemento.g2 ??
-                null;
-
-
-            if(g1 && g2){
-
-                return {
-                    ...elemento,
-                    giocatore1: g1,
-                    giocatore2: g2
-                };
-
-            }
-
-        }
-
-
-        /*
-        --------------------------------------------------------
-        SE È UNA STRINGA CERCA LA COPPIA ORIGINALE
-        --------------------------------------------------------
-        */
-
-        if(typeof elemento === "string"){
-
-            const nome =
-                elemento.trim();
-
-            if(!nome)
-                return null;
-
-
-            if(Array.isArray(squadre)){
-
-                const trovata =
-                    squadre.find(s => {
-
-                        if(!s)
-                            return false;
-
-
-                        if(
-                            typeof s === "string"
-                        ){
-
-                            return (
-                                s.trim() === nome
-                            );
-
-                        }
-
-
-                        const nomi = [
-                            s.nome,
-                            s.name,
-                            s.squadra
-                        ];
-
-
-                        if(
-                            nomi.some(n =>
-                                typeof n === "string" &&
-                                n.trim() === nome
-                            )
-                        )
-                            return true;
-
-
-                        /*
-                        ----------------------------------------
-                        CERCA NOME COPPIA
-                        ----------------------------------------
-                        */
-
-                        const g1 =
-                            s.giocatore1 ??
-                            s.player1 ??
-                            null;
-
-                        const g2 =
-                            s.giocatore2 ??
-                            s.player2 ??
-                            null;
-
-
-                        if(g1 && g2){
-
-                            const n1 =
-                                `${g1.nome ?? ""} ${g1.cognome ?? ""}`
-                                    .trim();
-
-                            const n2 =
-                                `${g2.nome ?? ""} ${g2.cognome ?? ""}`
-                                    .trim();
-
-                            return (
-                                `${n1} / ${n2}` === nome
-                            );
-
-                        }
-
-
-                        return false;
-
-                    });
-
-
-                if(trovata){
-
-                    return trovata;
-
-                }
-
-            }
-
-
-            /*
-            ----------------------------------------------------
-            FALLBACK: NON INVENTARE UNA COPPIA
-            ----------------------------------------------------
-            */
-
-            console.warn(
-                "Qualificato senza coppia originale:",
-                nome
-            );
-
-            return null;
-
-        }
-
-
-        return null;
-
-    }
-
-
-    /*
-    ============================================================
-    CICLO GIRONI
-    ============================================================
-    */
-
     for(
         let i = 0;
         i < numeroGironi;
@@ -9454,25 +9239,23 @@ function getFinalQualified(){
         if(!girone)
             continue;
 
-
         const squadre =
             Array.isArray(state[girone])
                 ? state[girone]
                 : [];
 
-
-        if(!squadre.length){
+        if(
+            squadre.length === 0
+        ){
 
             console.warn(
                 "Girone " +
                 girone +
-                " vuoto."
+                " vuoto: nessun qualificato."
             );
 
             continue;
-
         }
-
 
         const risultati =
             Array.isArray(
@@ -9481,22 +9264,20 @@ function getFinalQualified(){
                 ? state[girone + "res"]
                 : [];
 
-
-        if(typeof calc !== "function"){
-
-            console.error(
-                "calc() non disponibile."
-            );
-
-            return [];
-
-        }
-
-
-        let classifica;
-
+        let classifica = [];
 
         try{
+
+            if(
+                typeof calc !== "function"
+            ){
+
+                console.error(
+                    "calc() non disponibile."
+                );
+
+                return [];
+            }
 
             classifica =
                 calc(
@@ -9509,31 +9290,32 @@ function getFinalQualified(){
 
             console.error(
                 "Errore calc() nel girone " +
-                girone,
+                girone +
+                ":",
                 e
             );
 
             continue;
-
         }
 
+        if(
+            !Array.isArray(classifica) ||
+            classifica.length === 0
+        ){
 
-        if(!Array.isArray(classifica))
+            console.warn(
+                "Nessuna classifica valida per il girone:",
+                girone
+            );
+
             continue;
-
-
-        /*
-        ========================================================
-        QUALIFICATI DEL GIRONE
-        ========================================================
-        */
+        }
 
         const limite =
             Math.min(
                 qualificatePerGirone,
                 classifica.length
             );
-
 
         for(
             let posizione = 0;
@@ -9544,127 +9326,95 @@ function getFinalQualified(){
             const elemento =
                 classifica[posizione];
 
+            if(
+                elemento === null ||
+                elemento === undefined
+            )
+                continue;
 
-            const coppia =
-                normalizzaCoppia(
-                    elemento,
-                    squadre
-                );
+            let nome = "";
 
+            if(
+                typeof elemento === "string"
+            ){
 
-            /*
-            ----------------------------------------------------
-            COPPIA NON VALIDA
-            ----------------------------------------------------
-            */
+                nome =
+                    elemento;
 
-            if(!coppia){
+            }
+            else if(
+                typeof elemento === "object"
+            ){
 
-                console.error(
-                    "QUALIFICATO NON VALIDO:",
+                nome =
+                    elemento.n ??
+                    elemento.nome ??
+                    elemento.squadra ??
+                    elemento.name ??
+                    "";
+            }
+
+            nome =
+                String(nome)
+                .trim();
+
+            if(
+                nome === ""
+            ){
+
+                console.warn(
+                    "Qualificato senza nome:",
                     {
                         girone,
-                        posizione:
-                            posizione + 1,
+                        posizione: posizione + 1,
                         elemento
                     }
                 );
 
                 continue;
-
             }
 
-
-            /*
-            ----------------------------------------------------
-            DEVE AVERE DUE GIOCATORI
-            ----------------------------------------------------
-            */
-
-            const g1 =
-                coppia.giocatore1 ??
-                coppia.player1;
-
-            const g2 =
-                coppia.giocatore2 ??
-                coppia.player2;
-
-
-            if(!g1 || !g2){
-
-                console.error(
-                    "COPPIA INCOMPLETA:",
-                    {
-                        girone,
-                        posizione:
-                            posizione + 1,
-                        coppia
-                    }
-                );
-
-                continue;
-
-            }
-
-
-            /*
-            ----------------------------------------------------
-            DUPLICATI
-            ----------------------------------------------------
-            */
-
-            const giaPresente =
-                qualificati.some(q =>
-                    q === coppia
-                );
-
-
-            if(giaPresente){
+            if(
+                qualificati.includes(nome)
+            ){
 
                 console.warn(
-                    "Coppia duplicata ignorata:",
-                    coppia
+                    "Qualificato duplicato ignorato:",
+                    nome,
+                    "girone:",
+                    girone
                 );
 
                 continue;
-
             }
 
-
-            qualificati.push(coppia);
-
+            qualificati.push(nome);
 
             console.log(
-                "QUALIFICATO REALE:",
+                "QUALIFICATO:",
                 {
                     girone,
-                    posizione:
-                        posizione + 1,
-                    coppia
+                    posizione: posizione + 1,
+                    squadra: nome,
+                    dati: elemento
                 }
             );
-
         }
-
     }
 
-
-    /*
-    ============================================================
-    SALVA QUALIFICATI REALI
-    ============================================================
-    */
+    const attesi =
+        numeroGironi *
+        qualificatePerGirone;
 
     state.finalQualified =
         [...qualificati];
-
 
     console.log(
         "========================================"
     );
 
     console.log(
-        "QUALIFICATI REALI:",
+        "QUALIFICATI FASE FINALE:",
         qualificati
     );
 
@@ -9675,14 +9425,12 @@ function getFinalQualified(){
 
     console.log(
         "ATTESI:",
-        numeroGironi *
-        qualificatePerGirone
+        attesi
     );
 
     console.log(
         "========================================"
     );
-
 
     return qualificati;
 
