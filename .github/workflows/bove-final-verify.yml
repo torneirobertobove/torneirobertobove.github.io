@@ -1,5 +1,7 @@
 name: Bove final verification
 
+# Final repair/validation pass for Bove.html.
+
 on:
   push:
     branches: [main]
@@ -21,39 +23,27 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
-
           patterns = [
-              (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*\)',
-               'Array.from({length:n}, (_,i)=>i)'),
-              (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*;',
-               'Array.from({length:n}, (_,i)=>i);')
+              (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*\)', 'Array.from({length:n}, (_,i)=>i)'),
+              (r'Array\.from\(\s*\{\s*length\s*:\s*n\s*\}\s*,\s*\(\s*,\s*i\s*\)\s*=>\s*i\s*;', 'Array.from({length:n}, (_,i)=>i);')
           ]
-
-          changed = False
           for pattern, replacement in patterns:
-              s2, n = re.subn(pattern, replacement, s, count=1)
+              s, n = re.subn(pattern, replacement, s, count=1)
               if n:
-                  s = s2
-                  changed = True
                   print('RIPRISTINO Array.from() applicato')
-
           p.write_text(s, encoding='utf-8')
-          print('File modificato:', changed)
 
       - name: JavaScript syntax validation
         shell: python
         run: |
           from pathlib import Path
           import re, subprocess, tempfile
-
           html = Path('Bove.html').read_text(encoding='utf-8')
           scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
           if not scripts:
               raise SystemExit('Nessun blocco JavaScript trovato')
-
           for i, script in enumerate(scripts, 1):
               f = Path(tempfile.gettempdir()) / f'bove_{i}.js'
               f.write_text(script, encoding='utf-8')
@@ -61,7 +51,6 @@ jobs:
               if r.returncode:
                   print(r.stderr)
                   raise SystemExit(f'Sintassi JavaScript non valida: script {i}')
-
           print(f'SINTASSI OK: {len(scripts)} blocchi')
 
       - name: Critical structure validation
@@ -69,66 +58,36 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           s = Path('Bove.html').read_text(encoding='utf-8')
-
           required = [
-              'function loadState()',
-              'function initDefaults()',
-              'function ensureRules()',
-              'function applyRules()',
-              'function applicaModelloTorneo()',
-              'function renderTables()',
-              'function renderClass()',
-              'function renderKO()',
-              'function getFinalQualified()',
-              'function getWinner(',
-              'function updateRes(',
-              'function updateCamp(',
-              'function updateKOResult(',
-              'function updateTime(',
-              'function updateAndSync()',
-              'function render()',
-              'id="Q"',
-              'id="S"',
-              'id="finaleBox"'
+              'function loadState()', 'function initDefaults()', 'function ensureRules()',
+              'function applyRules()', 'function applicaModelloTorneo()', 'function renderTables()',
+              'function renderClass()', 'function renderKO()', 'function getFinalQualified()',
+              'function getWinner(', 'function updateRes(', 'function updateCamp(',
+              'function updateKOResult(', 'function updateTime(', 'function updateAndSync()',
+              'function render()', 'id="Q"', 'id="S"', 'id="finaleBox"'
           ]
-
           missing = [x for x in required if x not in s]
           if missing:
               raise SystemExit('Funzioni/elementi mancanti: ' + ', '.join(missing))
-
           for ident in ('teamModal','adminMenuButton','adminMenu'):
               n = len(re.findall(r'id=["\']' + re.escape(ident) + r'["\']', s))
               if n != 1:
                   raise SystemExit(f'ID duplicato/assente: {ident} ({n})')
-
-          if 'function renderKO(){' not in s:
-              raise SystemExit('renderKO() non presente')
-
-          # renderKO must contain the actual quarter gate and all three KO stages.
           checks = [
-              'state.rules.usaQuarti === true',
-              'qualificati.length >= 8',
-              'state.rules.usaSemifinali !== true',
-              'state.rules.usaFinale !== true',
-              'state.qRes',
-              'state.sTopRes',
-              'state.fTopRes'
+              'state.rules.usaQuarti === true', 'qualificati.length >= 8',
+              'state.rules.usaSemifinali !== true', 'state.rules.usaFinale !== true',
+              'state.qRes', 'state.sTopRes', 'state.fTopRes'
           ]
           missing_logic = [x for x in checks if x not in s]
           if missing_logic:
               raise SystemExit('Logica KO incompleta: ' + ', '.join(missing_logic))
-
           print('STRUTTURA CRITICA OK')
 
       - name: Commit repaired Bove
         shell: bash
         run: |
-          if git diff --quiet -- Bove.html; then
-            echo 'Nessuna correzione Bove necessaria.'
-            exit 0
-          fi
+          if git diff --quiet -- Bove.html; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
