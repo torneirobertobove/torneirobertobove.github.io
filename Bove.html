@@ -8046,16 +8046,6 @@ function renderKO(){
     ============================================================
     LAYOUT KO
     ============================================================
-    
-    Campo = 55px
-    Ora   = 65px
-    Match = 248px
-    Ris1  = 45px
-    Ris2  = 45px
-
-    TOTALE = 458px
-
-    ============================================================
     */
 
     function applicaLayoutGironi(table){
@@ -8063,12 +8053,6 @@ function renderKO(){
         if(!table)
             return;
 
-
-        /*
-        ========================================================
-        TABELLA
-        ========================================================
-        */
 
         table.style.display =
             "table";
@@ -8235,11 +8219,6 @@ function renderKO(){
 
                 cella.style.boxSizing =
                     "border-box";
-
-                cella.style.padding =
-                    index >= 3
-                        ? "2px"
-                        : cella.style.padding;
 
                 cella.style.verticalAlign =
                     "middle";
@@ -8731,7 +8710,7 @@ function renderKO(){
 
     /*
     ============================================================
-    RESET CONTENITORI
+    RESET
     ============================================================
     */
 
@@ -8739,12 +8718,6 @@ function renderKO(){
     s.innerHTML = "";
     f.innerHTML = "";
 
-
-    /*
-    ============================================================
-    RIMUOVE EVENTUALE CAMPIONE PRECEDENTE
-    ============================================================
-    */
 
     document
         .querySelectorAll(".winner-box.top-win")
@@ -8870,12 +8843,23 @@ function renderKO(){
 
     /*
     ============================================================
-    QUARTI
+    FASE SUCCESSIVA
     ============================================================
     */
 
     let semifinali = [];
 
+
+    /*
+    ============================================================
+    QUARTI
+    ============================================================
+
+    I quarti vengono mostrati SOLO se:
+    - usaQuarti = true
+    - ci sono almeno 8 qualificati
+    ============================================================
+    */
 
     if(
         state.rules.usaQuarti === true &&
@@ -8916,18 +8900,6 @@ function renderKO(){
 
         quarti.forEach((match,index)=>{
 
-            if(
-                !Array.isArray(match) ||
-                match.length !== 2 ||
-                !match[0] ||
-                !match[1]
-            ){
-
-                return;
-
-            }
-
-
             q.innerHTML +=
                 creaMatchKO(
                     "QUARTO " + (index + 1),
@@ -8954,28 +8926,42 @@ function renderKO(){
         applicaLayoutGironi(qTable);
 
 
-        if(vincitori.length !== 4){
+        /*
+        --------------------------------------------------------
+        SE NON SONO TERMINATI TUTTI I QUARTI,
+        LE SEMIFINALI RESTANO VUOTE MA LA FASE NON VIENE
+        DISTRUTTA.
+        --------------------------------------------------------
+        */
 
-            state.finalTop = [];
-            state.campioneTop = null;
+        if(vincitori.length === 4){
 
-            return;
+            semifinali = [
+
+                [
+                    vincitori[0],
+                    vincitori[1]
+                ],
+
+                [
+                    vincitori[2],
+                    vincitori[3]
+                ]
+
+            ];
+
         }
 
+        else{
 
-        semifinali = [
+            semifinali = [
 
-            [
-                vincitori[0],
-                vincitori[1]
-            ],
+                ["-", "-"],
+                ["-", "-"]
 
-            [
-                vincitori[2],
-                vincitori[3]
-            ]
+            ];
 
-        ];
+        }
 
     }
 
@@ -8989,9 +8975,6 @@ function renderKO(){
     else{
 
         if(qualificati.length < 4){
-
-            state.finalTop = [];
-            state.campioneTop = null;
 
             return;
         }
@@ -9021,93 +9004,117 @@ function renderKO(){
     */
 
     if(
-        state.rules.usaSemifinali !== true
+        state.rules.usaSemifinali === true
     ){
 
-        state.finalTop = [];
-        state.campioneTop = null;
-
-        return;
-    }
+        if(sTable)
+            sTable.style.display = "table";
 
 
-    if(sTable)
-        sTable.style.display = "table";
+        const finalisti = [];
 
 
-    const finalisti = [];
+        semifinali.forEach((match,index)=>{
+
+            if(
+                !Array.isArray(match) ||
+                match.length !== 2
+            ){
+
+                return;
+
+            }
 
 
-    semifinali.forEach((match,index)=>{
+            s.innerHTML +=
+                creaMatchKO(
+                    "SEMIFINALE " + (index + 1),
+                    match,
+                    "s",
+                    index,
+                    state.sTopRes[index]
+                );
 
-        if(
-            !Array.isArray(match) ||
-            match.length !== 2 ||
-            !match[0] ||
-            !match[1]
-        ){
 
-            return;
+            const vincitore =
+                getWinner(
+                    match,
+                    state.sTopRes[index]
+                );
+
+
+            if(
+                vincitore &&
+                vincitore !== "-"
+            ){
+
+                finalisti.push(
+                    vincitore
+                );
+
+            }
+
+        });
+
+
+        applicaLayoutGironi(sTable);
+
+
+        /*
+        ========================================================
+        FINALISTI
+        ========================================================
+        */
+
+        if(finalisti.length === 2){
+
+            state.finalTop = [
+                finalisti[0],
+                finalisti[1]
+            ];
 
         }
 
+        else{
 
-        s.innerHTML +=
-            creaMatchKO(
-                "SEMIFINALE " + (index + 1),
-                match,
-                "s",
-                index,
-                state.sTopRes[index]
-            );
+            /*
+            La finale viene comunque preparata.
+            I nomi verranno aggiornati quando le semifinali
+            produrranno i vincitori.
+            */
 
+            state.finalTop = [
+                finalisti[0] || "-",
+                finalisti[1] || "-"
+            ];
 
-        const vincitore =
-            getWinner(
-                match,
-                state.sTopRes[index]
-            );
+        }
 
+    }
 
-        if(vincitore)
-            finalisti.push(vincitore);
-
-    });
-
-
-    applicaLayoutGironi(sTable);
-
-
-    /*
-    ============================================================
-    FINALE NON ANCORA DISPONIBILE
-    ============================================================
-    */
-
-    if(finalisti.length !== 2){
+    else{
 
         state.finalTop = [];
-        state.campioneTop = null;
 
-        return;
     }
 
 
     /*
     ============================================================
-    FINALISTI
+    FINALE
     ============================================================
-    */
 
-    state.finalTop = [
-        finalisti[0],
-        finalisti[1]
-    ];
+    IMPORTANTE:
+    la tabella viene mostrata anche quando i semifinalisti
+    non hanno ancora prodotto i vincitori.
 
+    Prima:
+        finalisti.length !== 2 -> return
 
-    /*
-    ============================================================
-    FINALE DISATTIVATA
+    Questo impediva alla tabella finale di comparire.
+
+    Ora:
+        "-" / "-" fino a quando i vincitori non sono disponibili.
     ============================================================
     */
 
@@ -9121,11 +9128,18 @@ function renderKO(){
     }
 
 
-    /*
-    ============================================================
-    FINALE
-    ============================================================
-    */
+    if(
+        !Array.isArray(state.finalTop) ||
+        state.finalTop.length !== 2
+    ){
+
+        state.finalTop = [
+            "-",
+            "-"
+        ];
+
+    }
+
 
     if(fTable)
         fTable.style.display = "table";
@@ -9157,7 +9171,10 @@ function renderKO(){
         );
 
 
-    if(campione){
+    if(
+        campione &&
+        campione !== "-"
+    ){
 
         state.campioneTop =
             campione;
