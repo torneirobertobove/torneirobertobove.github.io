@@ -10707,6 +10707,1451 @@ window.addEventListener(
     }
 );
 
+   function updateRes(g,i,pos,val){
+
+    const map = {
+
+        A:"Ares",
+        B:"Bres",
+        C:"Cres",
+        D:"Dres",
+        E:"Eres",
+        F:"Fres",
+        G:"Gres",
+
+        q:"qRes",
+        s:"sTopRes",
+        f:"fTopRes"
+
+    };
+
+
+    const chiave = map[g];
+
+    if(!chiave)
+        return;
+
+
+    i = Number(i);
+    pos = Number(pos);
+
+
+    if(
+        !Number.isInteger(i) ||
+        i < 0
+    )
+        return;
+
+
+    if(
+        pos !== 0 &&
+        pos !== 1
+    )
+        return;
+
+
+    /*
+    ============================================================
+    FINALE
+    ============================================================
+    */
+
+    if(g === "f"){
+
+        let risultato =
+            typeof state.fTopRes === "string"
+                ? state.fTopRes
+                : "-";
+
+
+        let p =
+            risultato.split("-");
+
+
+        if(p.length !== 2){
+
+            p = [
+                "",
+                ""
+            ];
+
+        }
+
+
+        p[pos] =
+            String(val ?? "").trim();
+
+
+        const casa =
+            p[0] || "";
+
+
+        const ospite =
+            p[1] || "";
+
+
+        if(
+            casa === "" &&
+            ospite === ""
+        ){
+
+            state.fTopRes = "-";
+
+        }
+        else{
+
+            state.fTopRes =
+                casa +
+                "-" +
+                ospite;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    QUARTI / SEMIFINALI / GIRONI
+    ============================================================
+    */
+
+    else{
+
+        if(
+            !Array.isArray(state[chiave])
+        ){
+
+            state[chiave] = [];
+
+        }
+
+
+        let s =
+            state[chiave];
+
+
+        if(
+            s[i] === undefined ||
+            s[i] === null ||
+            s[i] === ""
+        ){
+
+            s[i] = "-";
+
+        }
+
+
+        let p =
+            String(s[i]).split("-");
+
+
+        if(p.length !== 2){
+
+            p = [
+                "",
+                ""
+            ];
+
+        }
+
+
+        p[pos] =
+            String(val ?? "").trim();
+
+
+        const casa =
+            p[0] || "";
+
+
+        const ospite =
+            p[1] || "";
+
+
+        if(
+            casa === "" &&
+            ospite === ""
+        ){
+
+            s[i] = "-";
+
+        }
+        else{
+
+            s[i] =
+                casa +
+                "-" +
+                ospite;
+
+        }
+
+    }
+
+
+    /*
+    ============================================================
+    AGGIORNA CLASSIFICA
+    ============================================================
+    */
+
+    if(
+        g !== "q" &&
+        g !== "s" &&
+        g !== "f" &&
+        typeof renderClass === "function"
+    ){
+
+        renderClass();
+
+    }
+
+
+    /*
+    ============================================================
+    AGGIORNA TABELLONE
+    ============================================================
+    */
+
+    if(
+        typeof renderKO === "function"
+    ){
+
+        renderKO();
+
+    }
+
+
+    /*
+    ============================================================
+    SINCRONIZZAZIONE
+    ============================================================
+    */
+
+    if(
+        typeof updateAndSync === "function"
+    ){
+
+        updateAndSync();
+
+    }
+
+}
+
+
+
+function updateCamp(g,i,val){
+
+    const map = {
+
+        A:"Acamp",
+        B:"Bcamp",
+        C:"Ccamp",
+        D:"Dcamp",
+        E:"Ecamp",
+        F:"Fcamp",
+        G:"Gcamp"
+
+    };
+
+
+    const chiave =
+        map[g];
+
+
+    if(!chiave)
+        return;
+
+
+    i = Number(i);
+
+
+    if(
+        !Number.isInteger(i) ||
+        i < 0
+    )
+        return;
+
+
+    if(
+        !Array.isArray(state[chiave])
+    ){
+
+        state[chiave] = [];
+
+    }
+
+
+    state[chiave][i] =
+        String(val ?? "").trim();
+
+
+    if(
+        typeof updateAndSync === "function"
+    ){
+
+        updateAndSync();
+
+    }
+
+}
+
+
+
+async function salvaTorneoSupabase(){
+
+    try{
+
+        if(typeof sb === "undefined"){
+
+            alert(
+                "Connessione Supabase non disponibile"
+            );
+
+            return false;
+
+        }
+
+
+        const inputNome =
+            document.getElementById(
+                "nomeTorneoInput"
+            );
+
+
+        if(
+            inputNome &&
+            inputNome.value.trim() !== ""
+        ){
+
+            state.nomeTorneo =
+                inputNome.value.trim();
+
+        }
+
+
+        if(
+            !state.nomeTorneo ||
+            state.nomeTorneo.trim() === ""
+        ){
+
+            alert(
+                "Inserisci prima il nome del torneo"
+            );
+
+            return false;
+
+        }
+
+
+        if(!state.idTorneo){
+
+            state.idTorneo =
+                Date.now();
+
+        }
+
+
+        if(!state.dataTorneo){
+
+            state.dataTorneo =
+                new Date()
+                    .toISOString()
+                    .split("T")[0];
+
+        }
+
+
+        /*
+        ========================================================
+        SALVATAGGIO LOCALE COMPLETO
+        ========================================================
+        */
+
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
+
+
+        /*
+        ========================================================
+        SALVATAGGIO SUPABASE
+        ========================================================
+        */
+
+        const record = {
+
+            id:
+                state.idTorneo,
+
+            nome:
+                state.nomeTorneo,
+
+            data:
+                state.dataTorneo,
+
+            stato:
+                "attivo",
+
+            configurazione:
+                state
+
+        };
+
+
+        const {
+            data,
+            error
+        } = await sb
+            .from("tornei")
+            .upsert(
+                record,
+                {
+                    onConflict:"id"
+                }
+            )
+            .select();
+
+
+        if(error){
+
+            console.error(
+                "Errore salvataggio Supabase:",
+                error
+            );
+
+            alert(
+                "Errore durante il salvataggio torneo"
+            );
+
+            return false;
+
+        }
+
+
+        console.log(
+            "TORNEO SALVATO:",
+            data
+        );
+
+
+        alert(
+            "✅ Torneo salvato correttamente"
+        );
+
+
+        if(
+            typeof render === "function"
+        ){
+
+            render();
+
+        }
+
+
+        return true;
+
+    }
+    catch(e){
+
+        console.error(
+            "Errore salvaTorneoSupabase:",
+            e
+        );
+
+        alert(
+            "Errore inatteso durante il salvataggio"
+        );
+
+        return false;
+
+    }
+
+}
+
+
+
+/*
+============================================================
+NORMALIZZA UNA SQUADRA / COPPIA
+============================================================
+*/
+
+function nomeGiocatore(g){
+
+    if(!g)
+        return "";
+
+
+    if(typeof g === "string")
+        return g.trim();
+
+
+    if(typeof g === "object"){
+
+        const nome =
+            g.nome ||
+            g.name ||
+            "";
+
+
+        const cognome =
+            g.cognome ||
+            g.surname ||
+            "";
+
+
+        return (
+            `${nome} ${cognome}`
+        ).trim();
+
+    }
+
+
+    return "";
+
+}
+
+
+
+function nomeSquadra(squadra){
+
+    if(!squadra)
+        return "";
+
+
+    if(typeof squadra === "string")
+        return squadra.trim();
+
+
+    if(typeof squadra !== "object")
+        return "";
+
+
+    const g1 =
+        squadra.giocatore1 ||
+        squadra.player1 ||
+        squadra.g1;
+
+
+    const g2 =
+        squadra.giocatore2 ||
+        squadra.player2 ||
+        squadra.g2;
+
+
+    if(g1 && g2){
+
+        const n1 =
+            nomeGiocatore(g1);
+
+
+        const n2 =
+            nomeGiocatore(g2);
+
+
+        if(n1 && n2)
+            return `${n1} / ${n2}`;
+
+    }
+
+
+    if(
+        typeof squadra.nome === "string" &&
+        squadra.nome.trim()
+    ){
+
+        return squadra.nome.trim();
+
+    }
+
+
+    if(
+        typeof squadra.name === "string" &&
+        squadra.name.trim()
+    ){
+
+        return squadra.name.trim();
+
+    }
+
+
+    if(
+        typeof squadra.n === "string" &&
+        squadra.n.trim()
+    ){
+
+        return squadra.n.trim();
+
+    }
+
+
+    if(
+        typeof squadra.squadra === "string" &&
+        squadra.squadra.trim()
+    ){
+
+        return squadra.squadra.trim();
+
+    }
+
+
+    return "";
+
+}
+
+
+
+/*
+============================================================
+LAYOUT
+============================================================
+*/
+
+function applicaLayout(table){
+
+    if(!table)
+        return;
+
+
+    table.style.display = "table";
+    table.style.width = "458px";
+    table.style.minWidth = "458px";
+    table.style.maxWidth = "458px";
+    table.style.tableLayout = "fixed";
+    table.style.borderCollapse = "collapse";
+    table.style.borderSpacing = "0";
+    table.style.boxSizing = "border-box";
+    table.style.margin = "0";
+    table.style.padding = "0";
+    table.style.overflow = "hidden";
+
+
+    let colgroup =
+        table.querySelector("colgroup");
+
+
+    if(!colgroup){
+
+        colgroup =
+            document.createElement("colgroup");
+
+
+        table.insertBefore(
+            colgroup,
+            table.firstChild
+        );
+
+    }
+
+
+    colgroup.innerHTML = `
+        <col style="width:55px">
+        <col style="width:65px">
+        <col style="width:248px">
+        <col style="width:45px">
+        <col style="width:45px">
+    `;
+
+
+    table.querySelectorAll("tr").forEach(tr=>{
+
+        tr.style.display = "table-row";
+        tr.style.width = "458px";
+        tr.style.boxSizing = "border-box";
+
+
+        const celle =
+            Array.from(tr.children)
+                .filter(el =>
+                    el.matches("td,th")
+                );
+
+
+        if(celle.length !== 5)
+            return;
+
+
+        const widths = [
+            "55px",
+            "65px",
+            "248px",
+            "45px",
+            "45px"
+        ];
+
+
+        celle.forEach((cella,index)=>{
+
+            cella.style.display =
+                "table-cell";
+
+
+            cella.style.width =
+                widths[index];
+
+
+            cella.style.minWidth =
+                widths[index];
+
+
+            cella.style.maxWidth =
+                widths[index];
+
+
+            cella.style.boxSizing =
+                "border-box";
+
+
+            cella.style.verticalAlign =
+                "middle";
+
+
+            if(index >= 3)
+                cella.style.padding = "2px";
+
+        });
+
+    });
+
+
+    table.querySelectorAll(
+        "td.match-cell"
+    ).forEach(td=>{
+
+        td.style.width = "248px";
+        td.style.minWidth = "248px";
+        td.style.maxWidth = "248px";
+        td.style.overflow = "hidden";
+        td.style.whiteSpace = "normal";
+
+    });
+
+
+    table.querySelectorAll(
+        "td.db-cell"
+    ).forEach(td=>{
+
+        td.style.width = "45px";
+        td.style.minWidth = "45px";
+        td.style.maxWidth = "45px";
+        td.style.padding = "2px";
+        td.style.textAlign = "center";
+        td.style.verticalAlign = "middle";
+        td.style.whiteSpace = "nowrap";
+        td.style.overflow = "hidden";
+
+    });
+
+
+    table.querySelectorAll(
+        "td.db-cell input"
+    ).forEach(input=>{
+
+        input.style.width = "35px";
+        input.style.minWidth = "35px";
+        input.style.maxWidth = "35px";
+        input.style.height = "28px";
+        input.style.boxSizing = "border-box";
+        input.style.display = "block";
+        input.style.margin = "0 auto";
+        input.style.padding = "2px";
+        input.style.textAlign = "center";
+
+    });
+
+}
+
+
+
+/*
+============================================================
+CREA MATCH KO
+============================================================
+*/
+
+function creaMatchKO(
+    match,
+    gruppo,
+    index,
+    risultato
+){
+
+    if(
+        !Array.isArray(match) ||
+        match.length !== 2
+    )
+        return "";
+
+
+    const squadra1 =
+        nomeSquadra(match[0]);
+
+
+    const squadra2 =
+        nomeSquadra(match[1]);
+
+
+    if(!squadra1 || !squadra2)
+        return "";
+
+
+    const campi =
+        Array.isArray(state[gruppo + "Camp"])
+            ? state[gruppo + "Camp"]
+            : [];
+
+
+    const tempi =
+        Array.isArray(state[gruppo + "Time"])
+            ? state[gruppo + "Time"]
+            : [];
+
+
+    const campo =
+        campi[index] ?? "";
+
+
+    const ora =
+        tempi[index] ?? "";
+
+
+    let ris1 = "";
+    let ris2 = "";
+
+
+    if(
+        typeof risultato === "string" &&
+        risultato.includes("-")
+    ){
+
+        const parti =
+            risultato.split("-");
+
+
+        ris1 =
+            (parti[0] || "").trim();
+
+
+        ris2 =
+            (parti[1] || "").trim();
+
+    }
+
+
+    return `
+        <tr>
+
+            <td>
+                <input
+                    type="text"
+                    value="${campo}"
+                    onchange="
+                        updateCamp(
+                            '${gruppo}',
+                            ${index},
+                            this.value
+                        )
+                    "
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    value="${ora}"
+                    placeholder="22:00"
+                    onchange="
+                        updateTime(
+                            '${gruppo}',
+                            ${index},
+                            this.value
+                        )
+                    "
+                >
+            </td>
+
+            <td class="match-cell">
+
+                <div class="team-line">
+                    ${squadra1}
+                </div>
+
+                <div class="vs-line">
+                    <b>VS</b>
+                </div>
+
+                <div class="team-line">
+                    ${squadra2}
+                </div>
+
+            </td>
+
+            <td class="db-cell">
+
+                <input
+                    type="text"
+                    value="${ris1}"
+                    oninput="
+                        updateRes(
+                            '${gruppo}',
+                            ${index},
+                            0,
+                            this.value
+                        )
+                    "
+                >
+
+            </td>
+
+            <td class="db-cell">
+
+                <input
+                    type="text"
+                    value="${ris2}"
+                    oninput="
+                        updateRes(
+                            '${gruppo}',
+                            ${index},
+                            1,
+                            this.value
+                        )
+                    "
+                >
+
+            </td>
+
+        </tr>
+    `;
+
+}
+
+
+
+/*
+============================================================
+RENDER KO
+============================================================
+*/
+
+function renderKO(){
+
+    ensureRules();
+
+
+    const q =
+        document.getElementById("Q");
+
+
+    const s =
+        document.getElementById("S");
+
+
+    const f =
+        document.getElementById("finaleBox");
+
+
+    if(!q || !s || !f){
+
+        console.error(
+            "renderKO: contenitori fase finale non trovati"
+        );
+
+        return;
+
+    }
+
+
+    const qTable =
+        q.closest("table");
+
+
+    const sTable =
+        s.closest("table");
+
+
+    const fTable =
+        f.closest("table");
+
+
+    /*
+    ============================================================
+    RESET CONTENITORI
+    ============================================================
+    */
+
+    q.innerHTML = "";
+    s.innerHTML = "";
+    f.innerHTML = "";
+
+
+    document
+        .querySelectorAll(".winner-box.top-win")
+        .forEach(el => el.remove());
+
+
+    /*
+    ============================================================
+    INIZIALIZZAZIONE STATO
+    ============================================================
+    */
+
+    if(!Array.isArray(state.qRes))
+        state.qRes = [];
+
+
+    while(state.qRes.length < 4)
+        state.qRes.push("-");
+
+
+    state.qRes =
+        state.qRes.slice(0,4);
+
+
+    if(!Array.isArray(state.qCamp))
+        state.qCamp = [];
+
+
+    if(!Array.isArray(state.qTime))
+        state.qTime = [];
+
+
+    if(!Array.isArray(state.sTopRes))
+        state.sTopRes = [];
+
+
+    while(state.sTopRes.length < 2)
+        state.sTopRes.push("-");
+
+
+    state.sTopRes =
+        state.sTopRes.slice(0,2);
+
+
+    if(!Array.isArray(state.sCamp))
+        state.sCamp = [];
+
+
+    if(!Array.isArray(state.sTime))
+        state.sTime = [];
+
+
+    if(
+        typeof state.fTopRes !== "string"
+    )
+        state.fTopRes = "-";
+
+
+    if(!Array.isArray(state.fCamp))
+        state.fCamp = [];
+
+
+    if(!Array.isArray(state.fTime))
+        state.fTime = [];
+
+
+    /*
+    ============================================================
+    QUALIFICATI
+    ============================================================
+    */
+
+    let qualificati =
+        getFinalQualified();
+
+
+    if(!Array.isArray(qualificati))
+        qualificati = [];
+
+
+    /*
+    NON trasformiamo qui le coppie in stringhe.
+    Gli oggetti restano intatti fino a creaMatchKO().
+    */
+
+
+    console.log(
+        "=== RENDER FASE FINALE ===",
+        {
+            qualificati:
+                qualificati.map(nomeSquadra),
+
+            numeroQualificati:
+                qualificati.length,
+
+            usaQuarti:
+                state.rules.usaQuarti,
+
+            usaSemifinali:
+                state.rules.usaSemifinali,
+
+            usaFinale:
+                state.rules.usaFinale
+        }
+    );
+
+
+    /*
+    ============================================================
+    QUARTI SEMPRE VISIBILI
+    ============================================================
+    */
+
+    if(qTable)
+        qTable.style.display = "table";
+
+
+    /*
+    ============================================================
+    MENO DI 2 QUALIFICATI
+    ============================================================
+    */
+
+    if(qualificati.length < 2){
+
+        if(sTable)
+            sTable.style.display = "none";
+
+
+        if(fTable)
+            fTable.style.display = "none";
+
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+
+        applicaLayout(qTable);
+
+
+        return;
+
+    }
+
+
+    /*
+    ============================================================
+    NASCONDI SEMIFINALE E FINALE
+    ============================================================
+    */
+
+    if(sTable)
+        sTable.style.display = "none";
+
+
+    if(fTable)
+        fTable.style.display = "none";
+
+
+    let semifinali = [];
+
+
+    /*
+    ============================================================
+    8 O PIÙ QUALIFICATI
+    ============================================================
+    */
+
+    if(qualificati.length >= 8){
+
+        const quarti = [
+
+            [qualificati[0], qualificati[7]],
+            [qualificati[3], qualificati[4]],
+            [qualificati[1], qualificati[6]],
+            [qualificati[2], qualificati[5]]
+
+        ];
+
+
+        const vincitori = [];
+
+
+        quarti.forEach((match,index)=>{
+
+            q.innerHTML +=
+                creaMatchKO(
+                    match,
+                    "q",
+                    index,
+                    state.qRes[index]
+                );
+
+
+            const vincitore =
+                getWinner(
+                    match,
+                    state.qRes[index]
+                );
+
+
+            if(vincitore){
+
+                vincitori.push(
+                    vincitore
+                );
+
+            }
+
+        });
+
+
+        applicaLayout(qTable);
+
+
+        if(vincitori.length !== 4){
+
+            state.finalTop = [];
+            state.campioneTop = null;
+
+            return;
+
+        }
+
+
+        semifinali = [
+
+            [vincitori[0], vincitori[1]],
+            [vincitori[2], vincitori[3]]
+
+        ];
+
+    }
+
+
+    /*
+    ============================================================
+    4 QUALIFICATI
+    ============================================================
+    */
+
+    else{
+
+        if(qualificati.length !== 4){
+
+            console.error(
+                "renderKO: numero qualificati non gestito:",
+                qualificati.length
+            );
+
+
+            state.finalTop = [];
+            state.campioneTop = null;
+
+
+            applicaLayout(qTable);
+
+
+            return;
+
+        }
+
+
+        /*
+        --------------------------------------------------------
+        CON 4 QUALIFICATI:
+        I QUARTI RESTANO VISIBILI COME FASE,
+        MA NON VENGONO CREATE PARTITE FITTIZIE.
+        --------------------------------------------------------
+        */
+
+        applicaLayout(qTable);
+
+
+        semifinali = [
+
+            [qualificati[0], qualificati[3]],
+            [qualificati[1], qualificati[2]]
+
+        ];
+
+    }
+
+
+    /*
+    ============================================================
+    SEMIFINALI
+    ============================================================
+    */
+
+    if(
+        state.rules.usaSemifinali !== true
+    ){
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+
+        return;
+
+    }
+
+
+    if(sTable)
+        sTable.style.display = "table";
+
+
+    const finalisti = [];
+
+
+    semifinali.forEach((match,index)=>{
+
+        if(
+            !Array.isArray(match) ||
+            match.length !== 2 ||
+            !match[0] ||
+            !match[1]
+        )
+            return;
+
+
+        s.innerHTML +=
+            creaMatchKO(
+                match,
+                "s",
+                index,
+                state.sTopRes[index]
+            );
+
+
+        const vincitore =
+            getWinner(
+                match,
+                state.sTopRes[index]
+            );
+
+
+        if(vincitore){
+
+            finalisti.push(
+                vincitore
+            );
+
+        }
+
+    });
+
+
+    applicaLayout(sTable);
+
+
+    console.log(
+        "=== SEMIFINALI CREATE ===",
+        {
+            semifinali:
+                semifinali.map(match =>
+                    match.map(nomeSquadra)
+                ),
+
+            risultati:
+                state.sTopRes,
+
+            finalisti:
+                finalisti.map(nomeSquadra)
+        }
+    );
+
+
+    /*
+    ============================================================
+    FINALE
+    ============================================================
+    */
+
+    state.finalTop = [];
+
+
+    if(finalisti.length !== 2){
+
+        state.campioneTop = null;
+
+        return;
+
+    }
+
+
+    state.finalTop = [
+        finalisti[0],
+        finalisti[1]
+    ];
+
+
+    if(
+        state.rules.usaFinale !== true
+    ){
+
+        state.campioneTop = null;
+
+        return;
+
+    }
+
+
+    if(fTable)
+        fTable.style.display = "table";
+
+
+    f.innerHTML =
+        creaMatchKO(
+            state.finalTop,
+            "f",
+            0,
+            state.fTopRes
+        );
+
+
+    applicaLayout(fTable);
+
+
+    /*
+    ============================================================
+    CAMPIONE
+    ============================================================
+    */
+
+    const campione =
+        getWinner(
+            state.finalTop,
+            state.fTopRes
+        );
+
+
+    if(campione){
+
+        const nomeCampione =
+            nomeSquadra(campione);
+
+
+        state.campioneTop =
+            nomeCampione || null;
+
+
+        if(
+            fTable &&
+            nomeCampione
+        ){
+
+            fTable.insertAdjacentHTML(
+                "afterend",
+                `
+                <div class="winner-box top-win">
+                    🏆 CAMPIONE TORNEO:<br>
+                    ${nomeCampione}
+                </div>
+                `
+            );
+
+        }
+
+    }
+    else{
+
+        state.campioneTop = null;
+
+    }
+
+}
+
    function updateKOResult(type,index,valore){
 
     ensureRules();
