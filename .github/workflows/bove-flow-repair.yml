@@ -14,53 +14,326 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply safe mobile gironi layout
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          p = Path('Bove.html')
-          text = p.read_text(encoding='utf-8')
-
-          start = '/* BOVE MOBILE GIRONI FINAL START */'
-          end = '/* BOVE MOBILE GIRONI FINAL END */'
-
-          if start not in text:
-              css = f'''\n{start}\n@media (max-width: 599px) {{\n  html, body {{ width:100% !important; max-width:100% !important; overflow-x:hidden !important; }}\n  .groups, .groups .card {{ width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; }}\n  .groups .card table {{ width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }}\n  .groups .card table:first-child th:nth-child(1), .groups .card table:first-child td:nth-child(1) {{ width:48px !important; min-width:48px !important; max-width:48px !important; }}\n  .groups .card table:first-child th:nth-child(2), .groups .card table:first-child td:nth-child(2) {{ width:58px !important; min-width:58px !important; max-width:58px !important; }}\n  .groups .card table:first-child th:nth-child(4), .groups .card table:first-child td:nth-child(4) {{ width:68px !important; min-width:68px !important; max-width:68px !important; }}\n  .groups .card table:first-child th:nth-child(3), .groups .card table:first-child td:nth-child(3) {{ width:auto !important; min-width:0 !important; max-width:none !important; }}\n  .groups .card table:first-child .match-cell, .groups .card table:first-child .team-line {{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; }}\n  .groups .card table:first-child .db-cell input {{ width:27px !important; min-width:27px !important; max-width:27px !important; height:30px !important; }}\n  .groups .card table:nth-of-type(2) {{ font-size:11px !important; }}\n  .groups .card table:nth-of-type(2) th:first-child, .groups .card table:nth-of-type(2) td:first-child {{ width:105px !important; min-width:105px !important; max-width:105px !important; white-space:normal !important; }}\n}}\n{end}\n'''
-              marker = '</style>'
-              if marker not in text:
-                  raise SystemExit('Chiusura </style> non trovata')
-              text = text.replace(marker, css + marker, 1)
-
-          js_start = '/* BOVE MOBILE GIRIONI JS START */'
-          js_end = '/* BOVE MOBILE GIRIONI JS END */'
-
-          if js_start not in text:
-              script = f'''\n<script>\n{js_start}\n(function() {{\n  function fixMobileGironi() {{\n    if (window.innerWidth > 599) return;\n    document.documentElement.style.overflowX = 'hidden';\n    document.body.style.overflowX = 'hidden';\n    document.querySelectorAll('.groups .card').forEach(function(card) {{\n      card.style.width = '100%';\n      card.style.maxWidth = '100%';\n      card.style.minWidth = '0';\n      card.style.overflowX = 'hidden';\n      card.querySelectorAll('table').forEach(function(table, tableIndex) {{\n        table.style.width = '100%';\n        table.style.minWidth = '0';\n        table.style.maxWidth = '100%';\n        table.style.tableLayout = 'fixed';\n        table.querySelectorAll('th,td').forEach(function(cell) {{\n          cell.style.boxSizing = 'border-box';\n          cell.style.minWidth = '0';\n          cell.style.maxWidth = '100%';\n        }});\n        if (tableIndex === 0) {{\n          [48,58,null,68].forEach(function(w,i) {{\n            table.querySelectorAll('tr').forEach(function(tr) {{\n              var cells = tr.children;\n              if (!cells[i]) return;\n              if (w) {{\n                cells[i].style.width = w + 'px';\n                cells[i].style.minWidth = w + 'px';\n                cells[i].style.maxWidth = w + 'px';\n              }}\n            }});\n          }});\n          table.querySelectorAll('.team-line,.match-cell').forEach(function(el) {{\n            el.style.whiteSpace = 'normal';\n            el.style.overflow = 'visible';\n            el.style.textOverflow = 'clip';\n            el.style.overflowWrap = 'anywhere';\n          }});\n          table.querySelectorAll('.db-cell input').forEach(function(input) {{\n            input.style.width = '27px';\n            input.style.minWidth = '27px';\n            input.style.maxWidth = '27px';\n          }});\n        }}\n      }});\n    }});\n  }}\n  document.addEventListener('DOMContentLoaded', fixMobileGironi);\n  window.addEventListener('resize', fixMobileGironi);\n  new MutationObserver(fixMobileGironi).observe(document.body, {{childList:true, subtree:true}});\n  setTimeout(fixMobileGironi, 250);\n  setTimeout(fixMobileGironi, 1000);\n}})();\n{js_end}\n</script>\n'''
-              body_marker = '</body>'
-              if body_marker not in text:
-                  raise SystemExit('Chiusura </body> non trovata')
-              text = text.replace(body_marker, script + body_marker, 1)
-
-          p.write_text(text, encoding='utf-8')
-          print('SAFE MOBILE GIRONE PATCH APPLIED')
-
-      - name: Validate JavaScript syntax
+      - name: Apply verified final-phase repair
         shell: python
         run: |
           from pathlib import Path
           import re, subprocess, tempfile
-          html = Path('Bove.html').read_text(encoding='utf-8')
-          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
-          for i, script in enumerate(scripts, 1):
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # ---------------------------------------------------------
+          # MOBILE: permanently remove horizontal scrolling.
+          # Keep the working Gironi A-F layout untouched.
+          # ---------------------------------------------------------
+          mobile_css = r'''
+/* BOVE FINAL NO HORIZONTAL SCROLL */
+html, body { overflow-x:hidden !important; }
+.finalContainer,
+.finalContainer .groups,
+.finalContainer .card,
+.finalContainer table {
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  overflow-x:hidden !important;
+}
+.finalContainer table { table-layout:fixed !important; }
+.finalContainer table th,
+.finalContainer table td { min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
+.finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1) { width:13% !important; }
+.finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2) { width:15% !important; }
+.finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3) { width:48% !important; }
+.finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
+.finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5) { width:12% !important; }
+.finalContainer .team-line,
+.finalContainer .match-cell {
+  white-space:normal !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  overflow-wrap:anywhere !important;
+}
+.finalContainer input {
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+}
+@media(max-width:599px){
+  .finalContainer { padding:8px !important; }
+  .finalContainer table { font-size:12px !important; }
+  .finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1) { width:14% !important; }
+  .finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2) { width:16% !important; }
+  .finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3) { width:44% !important; }
+  .finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
+  .finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5) { width:13% !important; }
+  .finalContainer table input { height:30px !important; font-size:12px !important; }
+}
+'''
+          if '/* BOVE FINAL NO HORIZONTAL SCROLL */' not in text:
+              if '</style>' not in text:
+                  raise SystemExit('style closing tag missing')
+              text = text.replace('</style>', mobile_css + '\n</style>', 1)
+
+          # ---------------------------------------------------------
+          # Replace getFinalPhaseType with the verified implementation.
+          # ---------------------------------------------------------
+          get_phase = r'''function getFinalPhaseType(qualificati){
+    const n = Array.isArray(qualificati) ? qualificati.length : 0;
+    if(n >= 8 && state?.rules?.usaQuarti === true) return "QUARTI";
+    if(n >= 4) return "SEMIFINALI";
+    if(n === 2) return "FINALE";
+    return "NESSUNA";
+}
+'''
+          if re.search(r'function getFinalPhaseType\s*\(', text):
+              text = re.sub(r'function getFinalPhaseType\s*\([^)]*\)\s*\{.*?\n\}\s*', get_phase, text, count=1, flags=re.S)
+          else:
+              pos = text.find('function renderKO(')
+              if pos < 0:
+                  raise SystemExit('renderKO not found')
+              text = text[:pos] + get_phase + '\n' + text[pos:]
+
+          # ---------------------------------------------------------
+          # Replace renderMatchCard with the verified 5-column version.
+          # ---------------------------------------------------------
+          match_card = r'''function renderMatchCard(titolo, match, tipo, index, risultato){
+    if(!Array.isArray(match) || match.length !== 2) return "";
+
+    const fase = String(tipo || "").toUpperCase();
+    const i = Number(index) || 0;
+
+    const squadra1 =
+        typeof nomeSquadra === "function" ? nomeSquadra(match[0]) : String(match[0] ?? "");
+    const squadra2 =
+        typeof nomeSquadra === "function" ? nomeSquadra(match[1]) : String(match[1] ?? "");
+
+    let campo = "";
+    let ora = "";
+    let res = "-";
+
+    if(fase === "Q"){
+        campo = Array.isArray(state.qCamp) ? (state.qCamp[i] ?? "") : "";
+        ora = Array.isArray(state.qTime) ? (state.qTime[i] ?? "") : "";
+        res = Array.isArray(state.qRes) ? (state.qRes[i] ?? "-") : "-";
+    } else if(fase === "S"){
+        campo = Array.isArray(state.sCamp) ? (state.sCamp[i] ?? "") : "";
+        ora = Array.isArray(state.sTime) ? (state.sTime[i] ?? "") : "";
+        res = Array.isArray(state.sTopRes) ? (state.sTopRes[i] ?? "-") : "-";
+    } else if(fase === "F"){
+        campo = Array.isArray(state.fCamp) ? (state.fCamp[i] ?? "") : "";
+        ora = Array.isArray(state.fTime) ? (state.fTime[i] ?? "") : "";
+        res = state.fTopRes ?? "-";
+    }
+
+    const parti = String(res || "-").split("-");
+    const ris1 = parti[0] === "-" ? "" : (parti[0] || "").trim();
+    const ris2 = (parti[1] || "").trim();
+
+    return `
+<tr>
+  <td><input type="text" value="${campo}" style="width:100%" onchange="updateCamp('${fase}',${i},this.value)"></td>
+  <td><input type="time" value="${ora}" style="width:100%" onchange="updateTime('${fase}',${i},this.value)"></td>
+  <td class="match-cell">
+    <div class="team-line">${squadra1}</div>
+    <div class="vs-line"><b>VS</b></div>
+    <div class="team-line">${squadra2}</div>
+  </td>
+  <td class="db-cell"><input inputmode="numeric" value="${ris1}" id="${fase}_score1_${i}" onchange="updateKOResult('${fase}',${i},this.value,document.getElementById('${fase}_score2_${i}').value)"></td>
+  <td class="db-cell"><input inputmode="numeric" value="${ris2}" id="${fase}_score2_${i}" onchange="updateKOResult('${fase}',${i},document.getElementById('${fase}_score1_${i}').value,this.value)"></td>
+</tr>`;
+}
+'''
+          pattern = re.compile(r'function renderMatchCard\s*\([^)]*\)\s*\{.*?\n\}\s*', re.S)
+          if pattern.search(text):
+              text = pattern.sub(match_card, text, count=1)
+          else:
+              raise SystemExit('renderMatchCard missing')
+
+          # ---------------------------------------------------------
+          # Add two-score KO updater without replacing group updateRes.
+          # ---------------------------------------------------------
+          updater = r'''function updateKOScore(type,index,pos,valore){
+    ensureRules();
+    const fase = String(type || "").toUpperCase();
+    const i = Number(index) || 0;
+    const p = Number(pos) || 0;
+    if(fase === "F"){
+        let x = String(state.fTopRes || "-").split("-");
+        while(x.length < 2) x.push("");
+        x[p] = String(valore ?? "").trim();
+        state.fTopRes = `${x[0] || ""}-${x[1] || ""}`;
+    } else {
+        const key = fase === "Q" ? "qRes" : fase === "S" ? "sTopRes" : null;
+        if(!key) return;
+        if(!Array.isArray(state[key])) state[key] = [];
+        let x = String(state[key][i] || "-").split("-");
+        while(x.length < 2) x.push("");
+        x[p] = String(valore ?? "").trim();
+        state[key][i] = `${x[0] || ""}-${x[1] || ""}`;
+    }
+    renderKO();
+    if(typeof updateAndSync === "function") updateAndSync();
+}
+'''
+          if 'function updateKOScore(' not in text:
+              pos = text.find('function renderKO(')
+              text = text[:pos] + updater + '\n' + text[pos:]
+
+          # ---------------------------------------------------------
+          # Replace updateKOResult with verified two-score behavior.
+          # ---------------------------------------------------------
+          ko_updater = r'''function updateKOResult(type,index,valore,secondo){
+    ensureRules();
+    const fase = String(type || "").toUpperCase();
+    const i = Number(index);
+    const a = String(valore ?? "").trim();
+    const b = secondo === undefined ? "" : String(secondo ?? "").trim();
+    const result = (a === "" && b === "") ? "-" : `${a}-${b}`;
+    if(fase === "Q"){
+        if(!Array.isArray(state.qRes)) state.qRes = [];
+        state.qRes[i] = result;
+    } else if(fase === "S"){
+        if(!Array.isArray(state.sTopRes)) state.sTopRes = [];
+        state.sTopRes[i] = result;
+    } else if(fase === "F"){
+        state.fTopRes = result;
+    }
+    renderKO();
+    if(typeof updateAndSync === "function") updateAndSync();
+}
+'''
+          text = re.sub(r'function updateKOResult\s*\([^)]*\)\s*\{.*?\n\}\s*', ko_updater, text, count=1, flags=re.S)
+
+          # ---------------------------------------------------------
+          # Replace renderKO with the exact Console-proven flow.
+          # ---------------------------------------------------------
+          render_ko = r'''function renderKO(){
+    ensureRules();
+
+    const q = document.getElementById("Q");
+    const s = document.getElementById("S");
+    const f = document.getElementById("finaleBox");
+    if(!q || !s || !f) return;
+
+    const qTable = q.closest("table");
+    const sTable = s.closest("table");
+    const fTable = f.closest("table");
+
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.overflowX = "hidden";
+
+    [qTable,sTable,fTable].filter(Boolean).forEach(table=>{
+        table.style.display = "table";
+        table.style.width = "100%";
+        table.style.minWidth = "0";
+        table.style.maxWidth = "100%";
+        table.style.tableLayout = "fixed";
+        table.style.overflow = "hidden";
+    });
+
+    if(!Array.isArray(state.qRes)) state.qRes = [];
+    while(state.qRes.length < 4) state.qRes.push("-");
+    if(!Array.isArray(state.qCamp)) state.qCamp = [];
+    if(!Array.isArray(state.qTime)) state.qTime = [];
+    if(!Array.isArray(state.sTopRes)) state.sTopRes = [];
+    while(state.sTopRes.length < 2) state.sTopRes.push("-");
+    if(!Array.isArray(state.sCamp)) state.sCamp = [];
+    if(!Array.isArray(state.sTime)) state.sTime = [];
+    if(!Array.isArray(state.fCamp)) state.fCamp = [];
+    if(!Array.isArray(state.fTime)) state.fTime = [];
+    if(typeof state.fTopRes !== "string") state.fTopRes = "-";
+
+    const qualificati = Array.isArray(state.finalQualified) ? state.finalQualified : getFinalQualified();
+    const n = Array.isArray(qualificati) ? qualificati.length : 0;
+
+    function winner(match,res){
+        if(!Array.isArray(match) || match.length !== 2) return null;
+        const p = String(res || "").split("-");
+        if(p.length !== 2) return null;
+        const a = Number(p[0]), b = Number(p[1]);
+        if(!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null;
+        return a > b ? match[0] : match[1];
+    }
+
+    function normalize(match){
+        return [String(match?.[0] ?? ""), String(match?.[1] ?? "")];
+    }
+
+    // Always show the three final-phase containers.
+    qTable.style.display = "table";
+    sTable.style.display = "table";
+    fTable.style.display = "table";
+
+    let quarti = [];
+    let semifinali = [];
+    let finalisti = [];
+
+    if(n >= 8 && state.rules?.usaQuarti === true){
+        quarti = [
+            [qualificati[0], qualificati[7]],
+            [qualificati[3], qualificati[4]],
+            [qualificati[1], qualificati[6]],
+            [qualificati[2], qualificati[5]]
+        ].map(normalize);
+        state.quarti = quarti;
+        q.innerHTML = quarti.map((m,i)=>renderMatchCard("QUARTI",m,"Q",i,state.qRes[i])).join("");
+        const w = quarti.map((m,i)=>winner(m,state.qRes[i]));
+        semifinali = [
+            [w[0] || "Vincitore Q1", w[1] || "Vincitore Q2"],
+            [w[2] || "Vincitore Q3", w[3] || "Vincitore Q4"]
+        ];
+    } else {
+        state.quarti = [];
+        q.innerHTML = `
+<tr><th colspan="5">⚔️ QUARTI DI FINALE</th></tr>
+<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">4 squadre qualificate: accesso diretto alle semifinali.</td></tr>`;
+        if(n >= 4){
+            semifinali = [
+                [qualificati[0], qualificati[3]],
+                [qualificati[1], qualificati[2]]
+            ].map(normalize);
+        }
+    }
+
+    state.semifinali = semifinali;
+    s.innerHTML = semifinali.length
+        ? semifinali.map((m,i)=>renderMatchCard("SEMIFINALE",m,"S",i,state.sTopRes[i])).join("")
+        : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">In attesa delle squadre qualificate</td></tr>`;
+
+    finalisti = semifinali.length === 2
+        ? [winner(semifinali[0],state.sTopRes[0]) || "Vincitore S1", winner(semifinali[1],state.sTopRes[1]) || "Vincitore S2"]
+        : [];
+
+    state.finalTop = finalisti;
+    f.innerHTML = finalisti.length === 2
+        ? renderMatchCard("FINALE",finalisti,"F",0,state.fTopRes)
+        : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">In attesa dei finalisti</td></tr>`;
+
+    const champ = winner(finalisti,state.fTopRes);
+    state.campioneTop = champ || null;
+
+    console.log("Q/S/F PERMANENTE",{qualificati:qualificati,quarti:state.quarti,semifinali:state.semifinali,finalTop:state.finalTop});
+}
+'''
+          text = re.sub(r'function renderKO\s*\(\)\s*\{.*?\n\}\s*(?=function |</script>)', render_ko + '\n', text, count=1, flags=re.S)
+
+          # ---------------------------------------------------------
+          # Validate every inline script before commit.
+          # ---------------------------------------------------------
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', text, re.S|re.I)
+          for i, script in enumerate(scripts,1):
               f = Path(tempfile.gettempdir()) / f'bove_{i}.js'
               f.write_text(script, encoding='utf-8')
               r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
               if r.returncode:
                   print(r.stderr)
-                  raise SystemExit(f'Errore sintassi JavaScript nello script {i}')
-          print(f'SINTASSI OK: {len(scripts)} SCRIPT')
+                  raise SystemExit(f'JS syntax error script {i}')
+
+          p.write_text(text,encoding='utf-8')
+          print('VERIFIED QSF PATCH APPLIED')
 
       - name: Commit repaired Bove
         shell: bash
@@ -68,9 +341,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if git diff --quiet -- Bove.html; then
-            echo 'Nessuna modifica a Bove.html'
+            echo 'No Bove.html changes'
             exit 0
           fi
           git add Bove.html
-          git commit -m 'Fix mobile gironi layout'
+          git commit -m 'Install verified QSF final phase'
           git push
