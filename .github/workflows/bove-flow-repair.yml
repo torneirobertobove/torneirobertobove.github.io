@@ -14,146 +14,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch Bove flow
+      - name: Apply safe mobile gironi layout
         shell: python
         run: |
           from pathlib import Path
-          import re, subprocess, tempfile
+          import re
 
           p = Path('Bove.html')
           text = p.read_text(encoding='utf-8')
 
-          # 1) NEVER preserve an incomplete saved coppie array.
-          #    When approved players are complete, rebuild 2 players -> 1 team.
-          marker = re.compile(
-              r'\s*/\*\s*=+\s*\n\s*IMPORTANTE\s*\n\s*=+\s*\n\s*SE IL TORNEO HA GIÀ LE COPPIE SALVATE.*?\n\s*/\*\s*=+\s*\n\s*SE NON ESISTONO COPPIE SALVATE,\s*\n\s*POSSIAMO CREARLE DALLE ISCRIZIONI\.\s*\n\s*=+\s*\n\s*\*/\s*\n',
-              re.S
-          )
-          replacement = '''
-                    /*
-                    ==================================================
-                    COPPIE: 2 GIOCATORI = 1 SQUADRA
-                    ==================================================
-                    */
+          start = '/* BOVE MOBILE GIRONI FINAL START */'
+          end = '/* BOVE MOBILE GIRONI FINAL END */'
 
-                    const numeroSquadre =
-                        Number(state.rules?.numeroSquadre) || 8;
+          if start not in text:
+              css = f'''\n{start}\n@media (max-width: 599px) {{\n  html, body {{ width:100% !important; max-width:100% !important; overflow-x:hidden !important; }}\n  .groups, .groups .card {{ width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; }}\n  .groups .card table {{ width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }}\n  .groups .card table:first-child th:nth-child(1), .groups .card table:first-child td:nth-child(1) {{ width:48px !important; min-width:48px !important; max-width:48px !important; }}\n  .groups .card table:first-child th:nth-child(2), .groups .card table:first-child td:nth-child(2) {{ width:58px !important; min-width:58px !important; max-width:58px !important; }}\n  .groups .card table:first-child th:nth-child(4), .groups .card table:first-child td:nth-child(4) {{ width:68px !important; min-width:68px !important; max-width:68px !important; }}\n  .groups .card table:first-child th:nth-child(3), .groups .card table:first-child td:nth-child(3) {{ width:auto !important; min-width:0 !important; max-width:none !important; }}\n  .groups .card table:first-child .match-cell, .groups .card table:first-child .team-line {{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; }}\n  .groups .card table:first-child .db-cell input {{ width:27px !important; min-width:27px !important; max-width:27px !important; height:30px !important; }}\n  .groups .card table:nth-of-type(2) {{ font-size:11px !important; }}\n  .groups .card table:nth-of-type(2) th:first-child, .groups .card table:nth-of-type(2) td:first-child {{ width:105px !important; min-width:105px !important; max-width:105px !important; white-space:normal !important; }}\n}}\n{end}\n'''
+              marker = '</style>'
+              if marker not in text:
+                  raise SystemExit('Chiusura </style> non trovata')
+              text = text.replace(marker, css + marker, 1)
 
-                    const giocatoriAttesi =
-                        numeroSquadre * 2;
+          js_start = '/* BOVE MOBILE GIRIONI JS START */'
+          js_end = '/* BOVE MOBILE GIRIONI JS END */'
 
-                    const coppieSalvateValide =
-                        Array.isArray(state.coppie) &&
-                        state.coppie.length === numeroSquadre;
+          if js_start not in text:
+              script = f'''\n<script>\n{js_start}\n(function() {{\n  function fixMobileGironi() {{\n    if (window.innerWidth > 599) return;\n    document.documentElement.style.overflowX = 'hidden';\n    document.body.style.overflowX = 'hidden';\n    document.querySelectorAll('.groups .card').forEach(function(card) {{\n      card.style.width = '100%';\n      card.style.maxWidth = '100%';\n      card.style.minWidth = '0';\n      card.style.overflowX = 'hidden';\n      card.querySelectorAll('table').forEach(function(table, tableIndex) {{\n        table.style.width = '100%';\n        table.style.minWidth = '0';\n        table.style.maxWidth = '100%';\n        table.style.tableLayout = 'fixed';\n        table.querySelectorAll('th,td').forEach(function(cell) {{\n          cell.style.boxSizing = 'border-box';\n          cell.style.minWidth = '0';\n          cell.style.maxWidth = '100%';\n        }});\n        if (tableIndex === 0) {{\n          [48,58,null,68].forEach(function(w,i) {{\n            table.querySelectorAll('tr').forEach(function(tr) {{\n              var cells = tr.children;\n              if (!cells[i]) return;\n              if (w) {{\n                cells[i].style.width = w + 'px';\n                cells[i].style.minWidth = w + 'px';\n                cells[i].style.maxWidth = w + 'px';\n              }}\n            }});\n          }});\n          table.querySelectorAll('.team-line,.match-cell').forEach(function(el) {{\n            el.style.whiteSpace = 'normal';\n            el.style.overflow = 'visible';\n            el.style.textOverflow = 'clip';\n            el.style.overflowWrap = 'anywhere';\n          }});\n          table.querySelectorAll('.db-cell input').forEach(function(input) {{\n            input.style.width = '27px';\n            input.style.minWidth = '27px';\n            input.style.maxWidth = '27px';\n          }});\n        }}\n      }});\n    }});\n  }}\n  document.addEventListener('DOMContentLoaded', fixMobileGironi);\n  window.addEventListener('resize', fixMobileGironi);\n  new MutationObserver(fixMobileGironi).observe(document.body, {{childList:true, subtree:true}});\n  setTimeout(fixMobileGironi, 250);\n  setTimeout(fixMobileGironi, 1000);\n}})();\n{js_end}\n</script>\n'''
+              body_marker = '</body>'
+              if body_marker not in text:
+                  raise SystemExit('Chiusura </body> non trovata')
+              text = text.replace(body_marker, script + body_marker, 1)
 
-                    if(coppieSalvateValide){
+          p.write_text(text, encoding='utf-8')
+          print('SAFE MOBILE GIRONE PATCH APPLIED')
 
-                        console.log(
-                            "=== COPPIE DEL TORNEO MANTENUTE ===",
-                            state.coppie
-                        );
-
-                    }
-                    else if(state.iscritti.length === giocatoriAttesi){
-
-                        const coppieDaIscritti = [];
-
-                        for(let i = 0; i < state.iscritti.length; i += 2){
-
-                            const giocatore1 = state.iscritti[i];
-                            const giocatore2 = state.iscritti[i + 1];
-
-                            if(!giocatore1 || !giocatore2)
-                                continue;
-
-                            const nome1 =
-                                (`${giocatore1.nome || ""} ${giocatore1.cognome || ""}`).trim()
-                                || giocatore1.nome_giocatore
-                                || "Giocatore 1";
-
-                            const nome2 =
-                                (`${giocatore2.nome || ""} ${giocatore2.cognome || ""}`).trim()
-                                || giocatore2.nome_giocatore
-                                || "Giocatore 2";
-
-                            coppieDaIscritti.push([nome1, nome2]);
-                        }
-
-                        if(coppieDaIscritti.length === numeroSquadre){
-
-                            state.coppie = coppieDaIscritti;
-
-                            console.log(
-                                "=== COPPIE RICOSTRUITE DA ISCRITTI ===",
-                                state.coppie
-                            );
-                        }
-                    }
-                    else if(Array.isArray(state.coppie) && state.coppie.length > 0){
-
-                        console.warn(
-                            "COPPIE SALVATE INCOMPLETE: non vengono usate per popolare i gironi.",
-                            {
-                                coppieSalvate: state.coppie.length,
-                                squadreRichieste: numeroSquadre,
-                                iscritti: state.iscritti.length,
-                                iscrittiAttesi: giocatoriAttesi
-                            }
-                        );
-                    }
-
-'''
-          text2, n = marker.subn('\n' + replacement, text, count=1)
-          if n != 1:
-              raise SystemExit('Blocco formazione coppie non trovato')
-          text = text2
-
-          # 2) Populate groups only with a complete set of teams.
-          text, n = re.subn(
-              r'Array\.isArray\(state\.coppie\)\s*&&\s*state\.coppie\.length\s*>\s*0',
-              'Array.isArray(state.coppie) && state.coppie.length === totaleNecessario',
-              text,
-              count=1
-          )
-          if n != 1:
-              raise SystemExit('Condizione popolamento gironi non trovata')
-
-          # 3) loadSavedTeams must support every supported group A-G.
-          text = text.replace(
-              '[\n        "A",\n        "B",\n        "C",\n        "D"\n\n    ].forEach((g,i)=>{',
-              '[\n        "A",\n        "B",\n        "C",\n        "D",\n        "E",\n        "F",\n        "G"\n\n    ].forEach((g,i)=>{'
-          )
-          text = text.replace(
-              '''\n    if(numeroGironi < 3)\n\n        state.C=[];\n\n\n    if(numeroGironi < 4)\n\n        state.D=[];\n''',
-              ''
-          )
-          text = text.replace(
-              '''[\n        "A",\n        "B",\n        "C",\n        "D"\n\n    ].forEach(g=>{''',
-              '''[\n        "A",\n        "B",\n        "C",\n        "D",\n        "E",\n        "F",\n        "G"\n\n    ].forEach(g=>{'''
-          )
-
-          # 4) Add the globally visible phase-type helper only if absent.
-          if 'function getFinalPhaseType()' not in text:
-              helper = '''\nfunction getFinalPhaseType(){\n\n    ensureRules();\n\n    const n = Number(state.rules.numeroQualificateFinali) || 0;\n\n    if(n >= 8 && state.rules.usaQuarti === true)\n        return "quarti";\n\n    if(n >= 4 && state.rules.usaSemifinali === true)\n        return "semifinali";\n\n    if(n >= 2 && state.rules.usaFinale === true)\n        return "finale";\n\n    return null;\n}\n\n'''
-              pos = text.find('function renderKO(){')
-              if pos < 0:
-                  raise SystemExit('renderKO non trovato per inserire getFinalPhaseType')
-              text = text[:pos] + helper + text[pos:]
-
-          # 5) Validate JavaScript blocks before committing.
-          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', text, re.S | re.I)
-          if not scripts:
-              raise SystemExit('Nessun blocco script')
+      - name: Validate JavaScript syntax
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
           for i, script in enumerate(scripts, 1):
               f = Path(tempfile.gettempdir()) / f'bove_{i}.js'
               f.write_text(script, encoding='utf-8')
               r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
               if r.returncode:
                   print(r.stderr)
-                  raise SystemExit(f'Syntax error nello script {i}')
-
-          p.write_text(text, encoding='utf-8')
-          print('PATCH BOVE COMPLETATA')
+                  raise SystemExit(f'Errore sintassi JavaScript nello script {i}')
+          print(f'SINTASSI OK: {len(scripts)} SCRIPT')
 
       - name: Commit repaired Bove
         shell: bash
@@ -165,5 +72,5 @@ jobs:
             exit 0
           fi
           git add Bove.html
-          git commit -m 'Fix complete team pairing and group population flow'
+          git commit -m 'Fix mobile gironi layout'
           git push
