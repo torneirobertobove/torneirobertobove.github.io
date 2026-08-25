@@ -1,0 +1,139 @@
+name: Bove QSF repair
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install verified QSF override
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+          marker = '/* BOVE VERIFIED QSF OVERRIDE START */'
+
+          if marker not in text:
+              script = r'''<script>
+/* BOVE VERIFIED QSF OVERRIDE START */
+(function(){
+  function winner(match,res){
+    if(!Array.isArray(match)||match.length!==2)return null;
+    const p=String(res||'').split('-');
+    if(p.length!==2)return null;
+    const a=Number(p[0]),b=Number(p[1]);
+    if(!Number.isFinite(a)||!Number.isFinite(b)||a===b)return null;
+    return a>b?match[0]:match[1];
+  }
+
+  window.getFinalPhaseType=function(q){
+    const n=Array.isArray(q)?q.length:0;
+    if(n>=8&&state?.rules?.usaQuarti===true)return 'QUARTI';
+    if(n>=4)return 'SEMIFINALI';
+    if(n===2)return 'FINALE';
+    return 'NESSUNA';
+  };
+
+  window.renderMatchCard=function(titolo,match,tipo,index,risultato){
+    if(!Array.isArray(match)||match.length!==2)return '';
+    const fase=String(tipo||'').toUpperCase(),i=Number(index)||0;
+    const n1=typeof nomeSquadra==='function'?nomeSquadra(match[0]):String(match[0]??'');
+    const n2=typeof nomeSquadra==='function'?nomeSquadra(match[1]):String(match[1]??'');
+    let campo='',ora='',res='-';
+    if(fase==='Q'){campo=Array.isArray(state.qCamp)?state.qCamp[i]??'':'';ora=Array.isArray(state.qTime)?state.qTime[i]??'':'';res=Array.isArray(state.qRes)?state.qRes[i]??'-':'-';}
+    if(fase==='S'){campo=Array.isArray(state.sCamp)?state.sCamp[i]??'':'';ora=Array.isArray(state.sTime)?state.sTime[i]??'':'';res=Array.isArray(state.sTopRes)?state.sTopRes[i]??'-':'-';}
+    if(fase==='F'){campo=Array.isArray(state.fCamp)?state.fCamp[i]??'':'';ora=Array.isArray(state.fTime)?state.fTime[i]??'':'';res=state.fTopRes??'-';}
+    const p=String(res||'-').split('-'),r1=p[0]==='-'?'':(p[0]||'').trim(),r2=(p[1]||'').trim();
+    return `<tr><td><input type="text" value="${campo}" style="width:100%;min-width:0" onchange="updateCamp('${fase}',${i},this.value)"></td><td><input type="time" value="${ora}" style="width:100%;min-width:0" onchange="updateTime('${fase}',${i},this.value)"></td><td class="match-cell"><div class="team-line">${n1}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${n2}</div></td><td class="db-cell"><input inputmode="numeric" value="${r1}" id="${fase}_qsf_a_${i}" onchange="updateKOResult('${fase}',${i},this.value,document.getElementById('${fase}_qsf_b_${i}').value)"></td><td class="db-cell"><input inputmode="numeric" value="${r2}" id="${fase}_qsf_b_${i}" onchange="updateKOResult('${fase}',${i},document.getElementById('${fase}_qsf_a_${i}').value,this.value)"></td></tr>`;
+  };
+
+  window.updateKOResult=function(type,index,a,b){
+    ensureRules();
+    const fase=String(type||'').toUpperCase(),i=Number(index),x=String(a??'').trim(),y=String(b??'').trim(),v=(x===''&&y==='')?'-':`${x}-${y}`;
+    if(fase==='Q'){if(!Array.isArray(state.qRes))state.qRes=[];state.qRes[i]=v;}
+    else if(fase==='S'){if(!Array.isArray(state.sTopRes))state.sTopRes=[];state.sTopRes[i]=v;}
+    else if(fase==='F'){state.fTopRes=v;}
+    window.renderKO();
+    if(typeof updateAndSync==='function')updateAndSync();
+  };
+
+  window.renderKO=function(){
+    ensureRules();
+    const q=document.getElementById('Q'),s=document.getElementById('S'),f=document.getElementById('finaleBox');
+    if(!q||!s||!f)return;
+    const qt=q.closest('table'),st=s.closest('table'),ft=f.closest('table');
+    document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';
+    [qt,st,ft].filter(Boolean).forEach(t=>{t.style.display='table';t.style.width='100%';t.style.minWidth='0';t.style.maxWidth='100%';t.style.tableLayout='fixed';t.style.overflow='hidden';});
+    if(!Array.isArray(state.qRes))state.qRes=[];while(state.qRes.length<4)state.qRes.push('-');
+    if(!Array.isArray(state.qCamp))state.qCamp=[];if(!Array.isArray(state.qTime))state.qTime=[];
+    if(!Array.isArray(state.sTopRes))state.sTopRes=[];while(state.sTopRes.length<2)state.sTopRes.push('-');
+    if(!Array.isArray(state.sCamp))state.sCamp=[];if(!Array.isArray(state.sTime))state.sTime=[];
+    if(!Array.isArray(state.fCamp))state.fCamp=[];if(!Array.isArray(state.fTime))state.fTime=[];
+    if(typeof state.fTopRes!=='string')state.fTopRes='-';
+    const qf=Array.isArray(state.finalQualified)?state.finalQualified:getFinalQualified(),n=Array.isArray(qf)?qf.length:0;
+    qt.style.display='table';st.style.display='table';ft.style.display='table';
+    let qfMatches=[],semi=[],finalisti=[];
+    if(n>=8&&state.rules?.usaQuarti===true){
+      qfMatches=[[qf[0],qf[7]],[qf[3],qf[4]],[qf[1],qf[6]],[qf[2],qf[5]]];
+      state.quarti=qfMatches;
+      q.innerHTML=qfMatches.map((m,i)=>renderMatchCard('QUARTI',m,'Q',i,state.qRes[i])).join('');
+      const w=qfMatches.map((m,i)=>winner(m,state.qRes[i]));
+      semi=[[w[0]||'Vincitore Q1',w[1]||'Vincitore Q2'],[w[2]||'Vincitore Q3',w[3]||'Vincitore Q4']];
+    }else{
+      state.quarti=[];
+      q.innerHTML=`<tr><th colspan="5">⚔️ QUARTI DI FINALE</th></tr><tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px">4 squadre qualificate: accesso diretto alle semifinali.</td></tr>`;
+      if(n>=4)semi=[[qf[0],qf[3]],[qf[1],qf[2]]];
+    }
+    state.semifinali=semi;
+    s.innerHTML=semi.length?semi.map((m,i)=>renderMatchCard('SEMIFINALE',m,'S',i,state.sTopRes[i])).join(''):`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px">In attesa delle squadre qualificate</td></tr>`;
+    finalisti=semi.length===2?[winner(semi[0],state.sTopRes[0])||'Vincitore S1',winner(semi[1],state.sTopRes[1])||'Vincitore S2']:[];
+    state.finalTop=finalisti;
+    f.innerHTML=finalisti.length===2?renderMatchCard('FINALE',finalisti,'F',0,state.fTopRes):`<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px">In attesa dei finalisti</td></tr>`;
+    state.campioneTop=winner(finalisti,state.fTopRes)||null;
+    console.log('Q/S/F PERMANENTE',{qualificati:qf,quarti:state.quarti,semifinali:state.semifinali,finalTop:state.finalTop});
+  };
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>window.renderKO());
+  else window.renderKO();
+  setTimeout(()=>window.renderKO(),300);
+  setTimeout(()=>window.renderKO(),1000);
+})();
+/* BOVE VERIFIED QSF OVERRIDE END */
+</script>
+'''
+              if '</body>' not in text:
+                  raise SystemExit('body closing tag missing')
+              text=text.replace('</body>',script+'\n</body>',1)
+              p.write_text(text,encoding='utf-8')
+
+          html=p.read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S|re.I)
+          for i,s in enumerate(scripts,1):
+              f=Path(tempfile.gettempdir())/f'bove_{i}.js';f.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr);raise SystemExit(f'JS syntax error in script {i}')
+          print(f'QSF OVERRIDE SYNTAX OK: {len(scripts)} scripts')
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet -- Bove.html; then
+            echo 'No Bove.html changes'
+            exit 0
+          fi
+          git add Bove.html
+          git commit -m 'Install verified QSF final phase override'
+          git push
