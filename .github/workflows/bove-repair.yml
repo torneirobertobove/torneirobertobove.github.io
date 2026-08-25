@@ -175,6 +175,59 @@ jobs:
           p.write_text(text, encoding='utf-8')
           print('PATCH APPLICATA: helper temporanei rimossi e renderClass corretto')
 
+      - name: Fix mobile gironi layout
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          mobile = r'''@media(max-width:599px){
+    body{overflow-x:hidden;}
+    .groups{display:block;width:100%;min-width:0!important;}
+    .groups .card{width:100%!important;max-width:100%!important;overflow-x:hidden!important;padding:8px;}
+    .groups .card table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;}
+    .groups .card table th,
+    .groups .card table td{min-width:0!important;}
+    .groups .card table:first-of-type th:nth-child(1),
+    .groups .card table:first-of-type td:nth-child(1){width:48px!important;}
+    .groups .card table:first-of-type th:nth-child(2),
+    .groups .card table:first-of-type td:nth-child(2){width:58px!important;}
+    .groups .card table:first-of-type th:nth-child(4),
+    .groups .card table:first-of-type td:nth-child(4){width:72px!important;}
+    .groups .card table:first-of-type th:nth-child(3),
+    .groups .card table:first-of-type td:nth-child(3){width:auto!important;}
+    .groups .card table:first-of-type .team-line{font-size:12px;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word;}
+    .groups .card table:first-of-type .match-cell{white-space:normal!important;overflow:visible!important;}
+    .groups .card table:first-of-type .db-cell{gap:2px;}
+    .groups .card table:first-of-type .db-cell input{width:28px!important;min-width:28px!important;max-width:28px!important;height:30px!important;}
+    .groups .card table:nth-of-type(2){font-size:11px;}
+    .groups .card table:nth-of-type(2) th:first-child,
+    .groups .card table:nth-of-type(2) td:first-child{width:110px!important;max-width:110px!important;white-space:normal!important;}
+}
+'''
+
+          # Remove any existing mobile block that was added for this fix, then append a single authoritative block.
+          text = re.sub(
+              r'\n@media\(max-width:599px\)\{\s*/\* BOVE MOBILE GIRONI FIX START \*/.*?/\* BOVE MOBILE GIRONI FIX END \*/\s*\}\s*',
+              '\n',
+              text,
+              count=1,
+              flags=re.S
+          )
+
+          marker = '</style>'
+          if marker not in text:
+              raise SystemExit('Chiusura </style> non trovata')
+
+          wrapped = '\n/* BOVE MOBILE GIRONI FIX START */\n' + mobile + '/* BOVE MOBILE GIRONI FIX END */\n'
+          text = text.replace(marker, wrapped + marker, 1)
+
+          p.write_text(text, encoding='utf-8')
+          print('PATCH APPLICATA: gironi mobile senza scroll orizzontale')
+
       - name: JavaScript syntax test
         shell: python
         run: |
@@ -255,5 +308,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Clean surname display helpers and fix renderClass'
+          git commit -m 'Fix mobile gironi layout without horizontal scroll'
           git push
