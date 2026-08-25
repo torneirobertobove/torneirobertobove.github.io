@@ -1,0 +1,322 @@
+name: Fix Bove finale full layout
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch final phase only
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # ---------------------------------------------------------
+          # 1. Mobile: Campo fully visible; KO tables responsive.
+          # ---------------------------------------------------------
+          css = r'''
+/* BOVE QSF FINAL LAYOUT */
+@media(max-width:599px){
+  .groups .card table:first-child th:nth-child(1),
+  .groups .card table:first-child td:nth-child(1){
+    width:60px !important;
+    min-width:60px !important;
+    max-width:60px !important;
+    white-space:nowrap !important;
+  }
+  .groups .card table:first-child td:nth-child(1) input{
+    width:54px !important;
+    min-width:54px !important;
+    max-width:54px !important;
+  }
+  #Q, #S, #finaleBox{
+    width:100% !important;
+  }
+  #Q.closest('table'), #S.closest('table'), #finaleBox.closest('table'){
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+}
+'''
+          if '/* BOVE QSF FINAL LAYOUT */' not in text:
+              text = text.replace('</style>', css + '\n</style>', 1)
+
+          # ---------------------------------------------------------
+          # 2. Add a two-score helper for KO, mirroring group scores.
+          # ---------------------------------------------------------
+          if 'function updateKOScore(' not in text:
+              helper = r'''
+function updateKOScore(type,index,pos,valore){
+
+    ensureRules();
+
+    const fase = String(type || "").toUpperCase();
+    const i = Number(index) || 0;
+    const pos2 = Number(pos) || 0;
+    const valorePulito = String(valore ?? "").trim();
+
+    let arr;
+
+    if(fase === "Q"){
+        if(!Array.isArray(state.qRes)) state.qRes=[];
+        arr=state.qRes;
+    }
+    else if(fase === "S"){
+        if(!Array.isArray(state.sTopRes)) state.sTopRes=[];
+        arr=state.sTopRes;
+    }
+    else if(fase === "F"){
+        arr=null;
+    }
+    else{
+        return;
+    }
+
+    if(fase === "F"){
+        let parti=String(state.fTopRes || "-").split("-");
+        while(parti.length<2) parti.push("");
+        parti[pos2]=valorePulito;
+        state.fTopRes = (parti[0] || "") + "-" + (parti[1] || "");
+    }
+    else{
+        let parti=String(arr[i] || "-").split("-");
+        while(parti.length<2) parti.push("");
+        parti[pos2]=valorePulito;
+        arr[i]=(parti[0] || "") + "-" + (parti[1] || "");
+    }
+
+    renderKO();
+    updateAndSync();
+}
+
+'''
+              marker = 'function renderKO(){'
+              idx = text.find(marker)
+              if idx < 0:
+                  raise SystemExit('renderKO non trovato')
+              text = text[:idx] + helper + text[idx:]
+
+          # ---------------------------------------------------------
+          # 3. Replace the fixed KO layout with responsive layout.
+          # ---------------------------------------------------------
+          old = '''        table.style.display = "table";
+        table.style.width = "458px";
+        table.style.minWidth = "458px";
+        table.style.maxWidth = "458px";'''
+          new = '''        table.style.display = "table";
+
+        const mobileKO =
+            window.matchMedia("(max-width:599px)").matches;
+
+        table.style.width = mobileKO ? "100%" : "458px";
+        table.style.minWidth = mobileKO ? "0" : "458px";
+        table.style.maxWidth = mobileKO ? "100%" : "458px";'''
+          if old not in text:
+              raise SystemExit('layout KO fixed non trovato')
+          text=text.replace(old,new,1)
+
+          old='''            <col style="width:55px">
+            <col style="width:65px">
+            <col style="width:248px">
+            <col style="width:45px">
+            <col style="width:45px">
+        `;'''
+          new='''            ${mobileKO ? '<col style="width:60px"><col style="width:58px"><col><col style="width:42px"><col style="width:42px">' : '<col style="width:55px"><col style="width:65px"><col style="width:248px"><col style="width:45px"><col style="width:45px">'}
+        `;'''
+          if old not in text:
+              raise SystemExit('colgroup KO non trovato')
+          text=text.replace(old,new,1)
+
+          old='''            const widths = [
+                "55px",
+                "65px",
+                "248px",
+                "45px",
+                "45px"
+            ];'''
+          new='''            const widths = mobileKO
+                ? ["60px","58px","auto","42px","42px"]
+                : ["55px","65px","248px","45px","45px"];'''
+          if old not in text:
+              raise SystemExit('widths KO non trovato')
+          text=text.replace(old,new,1)
+
+          old='''            td.style.width = "248px";
+            td.style.minWidth = "248px";
+            td.style.maxWidth = "248px";'''
+          new='''            td.style.width = mobileKO ? "auto" : "248px";
+            td.style.minWidth = mobileKO ? "0" : "248px";
+            td.style.maxWidth = mobileKO ? "none" : "248px";'''
+          if old in text:
+              text=text.replace(old,new,1)
+
+          # ---------------------------------------------------------
+          # 4. Replace renderMatchCard with the same 2-score control
+          #    pattern used by group tables.
+          # ---------------------------------------------------------
+          pattern = re.compile(r'function renderMatchCard\(titolo, match, tipo, index, risultato\)\{.*?\n\}\n\s*\nfunction aggiornaDescrizioneTipoTorneo', re.S)
+          m = pattern.search(text)
+          if not m:
+              raise SystemExit('renderMatchCard non trovato')
+
+          replacement = r'''function renderMatchCard(titolo, match, tipo, index, risultato){
+
+    if(!Array.isArray(match) || match.length !== 2)
+        return "";
+
+    const fase = String(tipo || "").toUpperCase();
+    const i = Number(index) || 0;
+
+    const squadra1 =
+        typeof nomeSquadra === "function"
+            ? nomeSquadra(match[0])
+            : String(match[0] ?? "");
+
+    const squadra2 =
+        typeof nomeSquadra === "function"
+            ? nomeSquadra(match[1])
+            : String(match[1] ?? "");
+
+    let campo = "";
+    let ora = "";
+    let res = "-";
+
+    if(fase === "Q"){
+        campo = Array.isArray(state.qCamp) ? (state.qCamp[i] ?? "") : "";
+        ora   = Array.isArray(state.qTime) ? (state.qTime[i] ?? "") : "";
+        res   = Array.isArray(state.qRes) ? (state.qRes[i] ?? "-") : "-";
+    }
+    else if(fase === "S"){
+        campo = Array.isArray(state.sCamp) ? (state.sCamp[i] ?? "") : "";
+        ora   = Array.isArray(state.sTime) ? (state.sTime[i] ?? "") : "";
+        res   = Array.isArray(state.sTopRes) ? (state.sTopRes[i] ?? "-") : "-";
+    }
+    else if(fase === "F"){
+        campo = Array.isArray(state.fCamp) ? (state.fCamp[i] ?? "") : "";
+        ora   = Array.isArray(state.fTime) ? (state.fTime[i] ?? "") : "";
+        res   = state.fTopRes ?? "-";
+    }
+
+    const parti = String(res || "-").split("-");
+    const ris1 = parti[0] === "-" ? "" : (parti[0] || "").trim();
+    const ris2 = (parti[1] || "").trim();
+
+    return `
+<tr>
+    <td>
+        <input
+            value="${campo}"
+            style="width:100%"
+            onchange="updateCamp('${fase}',${i},this.value)"
+        >
+    </td>
+
+    <td>
+        <input
+            type="time"
+            value="${ora}"
+            onchange="updateTime('${fase}',${i},this.value)"
+        >
+    </td>
+
+    <td class="match-cell">
+        <div class="team-line">${squadra1}</div>
+        <div class="vs-line"><b>VS</b></div>
+        <div class="team-line">${squadra2}</div>
+    </td>
+
+    <td class="db-cell">
+        <input
+            value="${ris1}"
+            oninput="updateKOScore('${fase}',${i},0,this.value)"
+        >
+    </td>
+
+    <td class="db-cell">
+        <input
+            value="${ris2}"
+            oninput="updateKOScore('${fase}',${i},1,this.value)"
+        >
+    </td>
+</tr>
+`;
+}
+ 
+function aggiornaDescrizioneTipoTorneo'''
+          text = text[:m.start()] + replacement + text[m.end():]
+
+          # ---------------------------------------------------------
+          # 5. Make 4-qualified flow visibly show the quarter stage as
+          #    an explicit non-played stage while keeping semifinals.
+          # ---------------------------------------------------------
+          marker='''    else{
+
+        if(qualificati.length !== 4){'''
+          insert='''    else{
+
+        if(
+            qualificati.length === 4 &&
+            qTable
+        ){
+            qTable.style.display = "table";
+            q.innerHTML = `
+                <tr>
+                    <th colspan="5" style="text-align:center; padding:10px;">
+                        ⚔️ QUARTI DI FINALE — NON PREVISTI
+                    </th>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align:center; padding:10px; color:#94a3b8;">
+                        4 squadre qualificate: accesso diretto alle semifinali.
+                    </td>
+                </tr>
+            `;
+            applicaLayout(qTable);
+        }
+
+        if(qualificati.length !== 4){'''
+          if marker not in text:
+              raise SystemExit('ramo 4 qualificati non trovato')
+          text=text.replace(marker,insert,1)
+
+          # ---------------------------------------------------------
+          # 6. Validate all inline JS blocks.
+          # ---------------------------------------------------------
+          html = text
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          for i,script in enumerate(scripts,1):
+              f=Path(tempfile.gettempdir())/f'bove_{i}.js'
+              f.write_text(script,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(f'JS syntax error block {i}')
+
+          p.write_text(text,encoding='utf-8')
+          print('FINAL QSF PATCH OK')
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then
+            echo 'No Bove changes'
+            exit 0
+          fi
+          git commit -m 'Fix complete quarter semifinal final controls and mobile layout'
+          git push
