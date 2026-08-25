@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply safe mobile gironi layout
+      - name: Apply safe mobile and final layout repair
         shell: python
         run: |
           from pathlib import Path
@@ -23,54 +23,109 @@ jobs:
           p = Path('Bove.html')
           text = p.read_text(encoding='utf-8')
 
-          start = '/* BOVE MOBILE GIRONI FINAL START */'
-          end = '/* BOVE MOBILE GIRONI FINAL END */'
+          css = r'''
+          /* BOVE FINAL QSF MOBILE START */
+          @media (max-width: 599px) {
+            html, body { width:100% !important; max-width:100% !important; overflow-x:hidden !important; }
+            .ko, .koBox, .finalContainer, #Q, #S, #finaleBox { width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; box-sizing:border-box !important; }
+            #Q table, #S table, #finaleBox table { width:100% !important; max-width:100% !important; min-width:0 !important; table-layout:fixed !important; }
+            #Q table th:nth-child(1), #Q table td:nth-child(1), #S table th:nth-child(1), #S table td:nth-child(1), #finaleBox table th:nth-child(1), #finaleBox table td:nth-child(1) { width:58px !important; min-width:58px !important; max-width:58px !important; }
+            #Q table th:nth-child(2), #Q table td:nth-child(2), #S table th:nth-child(2), #S table td:nth-child(2), #finaleBox table th:nth-child(2), #finaleBox table td:nth-child(2) { width:62px !important; min-width:62px !important; max-width:62px !important; }
+            #Q table th:nth-child(4), #Q table td:nth-child(4), #Q table th:nth-child(5), #Q table td:nth-child(5), #S table th:nth-child(4), #S table td:nth-child(4), #S table th:nth-child(5), #S table td:nth-child(5), #finaleBox table th:nth-child(4), #finaleBox table td:nth-child(4), #finaleBox table th:nth-child(5), #finaleBox table td:nth-child(5) { width:42px !important; min-width:42px !important; max-width:42px !important; }
+            #Q table th:nth-child(3), #Q table td:nth-child(3), #S table th:nth-child(3), #S table td:nth-child(3), #finaleBox table th:nth-child(3), #finaleBox table td:nth-child(3) { width:auto !important; min-width:0 !important; max-width:none !important; }
+            #Q .team-line, #S .team-line, #finaleBox .team-line { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; }
+            #Q input, #S input, #finaleBox input { max-width:100% !important; box-sizing:border-box !important; }
+          }
+          /* BOVE FINAL QSF MOBILE END */
+          '''
+          if 'BOVE FINAL QSF MOBILE START' not in text:
+              text = text.replace('</style>', css + '\n</style>', 1)
 
-          if start not in text:
-              css = f'''\n{start}\n@media (max-width: 599px) {{\n  html, body {{ width:100% !important; max-width:100% !important; overflow-x:hidden !important; }}\n  .groups, .groups .card {{ width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; }}\n  .groups .card table {{ width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }}\n  .groups .card table:first-child th:nth-child(1), .groups .card table:first-child td:nth-child(1) {{ width:48px !important; min-width:48px !important; max-width:48px !important; }}\n  .groups .card table:first-child th:nth-child(2), .groups .card table:first-child td:nth-child(2) {{ width:58px !important; min-width:58px !important; max-width:58px !important; }}\n  .groups .card table:first-child th:nth-child(4), .groups .card table:first-child td:nth-child(4) {{ width:68px !important; min-width:68px !important; max-width:68px !important; }}\n  .groups .card table:first-child th:nth-child(3), .groups .card table:first-child td:nth-child(3) {{ width:auto !important; min-width:0 !important; max-width:none !important; }}\n  .groups .card table:first-child .match-cell, .groups .card table:first-child .team-line {{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; }}\n  .groups .card table:first-child .db-cell input {{ width:27px !important; min-width:27px !important; max-width:27px !important; height:30px !important; }}\n  .groups .card table:nth-of-type(2) {{ font-size:11px !important; }}\n  .groups .card table:nth-of-type(2) th:first-child, .groups .card table:nth-of-type(2) td:first-child {{ width:105px !important; min-width:105px !important; max-width:105px !important; white-space:normal !important; }}\n}}\n{end}\n'''
-              marker = '</style>'
-              if marker not in text:
-                  raise SystemExit('Chiusura </style> non trovata')
-              text = text.replace(marker, css + marker, 1)
+          new_render = r'''function renderKO(){
+              ensureRules();
+              const q=document.getElementById("Q");
+              const s=document.getElementById("S");
+              const f=document.getElementById("finaleBox");
+              if(!q||!s||!f){console.error("renderKO: contenitori Q/S/F non trovati");return;}
+              const qTable=q.closest("table"),sTable=s.closest("table"),fTable=f.closest("table");
+              function squadraNome(v){
+                  if(v==null)return "";
+                  if(typeof v==='string')return v.trim();
+                  if(typeof v==='object'){
+                      const g1=v.giocatore1||v.player1||v.g1, g2=v.giocatore2||v.player2||v.g2;
+                      const ng=g=>!g?"":typeof g==='string'?g.trim():`${g.nome||g.name||""} ${g.cognome||g.surname||""}`.trim();
+                      if(g1||g2)return [ng(g1),ng(g2)].filter(Boolean).join(' / ');
+                      return String(v.nome||v.name||"").trim();
+                  }
+                  return "";
+              }
+              function partiRis(r){if(typeof r!=='string'||!r||r==='-')return['',''];const p=r.split('-');return[p[0]||'',p[1]||''];}
+              function row(match,tipo,index,ris,disabled=false,label=''){
+                  const a=squadraNome(match&&match[0])||label||'—', b=squadraNome(match&&match[1])||(label?'':'—');
+                  const ck=tipo==='Q'?'qCamp':tipo==='S'?'sCamp':'fCamp', tk=tipo==='Q'?'qTime':tipo==='S'?'sTime':'fTime';
+                  const campo=Array.isArray(state[ck])?(state[ck][index]??''):''; const ora=Array.isArray(state[tk])?(state[tk][index]??''):'';
+                  const [r1,r2]=partiRis(ris), dis=disabled?' disabled aria-disabled="true"':'';
+                  return `<tr style="${disabled?'opacity:.55;':''}"><td><input type="text" value="${campo}" onchange="updateCamp('${tipo.toLowerCase()}',${index},this.value)"${dis}></td><td><input type="text" value="${ora}" placeholder="22:00" onchange="updateTime('${tipo.toLowerCase()}',${index},this.value)"${dis}></td><td class="match-cell"><div class="team-line">${a}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${b}</div></td><td class="db-cell"><input type="text" value="${r1}" oninput="updateRes('${tipo.toLowerCase()}',${index},0,this.value)"${dis}></td><td class="db-cell"><input type="text" value="${r2}" oninput="updateRes('${tipo.toLowerCase()}',${index},1,this.value)"${dis}></td></tr>`;
+              }
+              function layout(table){if(!table)return;table.style.width='100%';table.style.minWidth='0';table.style.maxWidth='100%';table.style.tableLayout='fixed';table.style.overflow='hidden';table.querySelectorAll('tr').forEach(tr=>{tr.style.width='100%';const c=tr.querySelectorAll('td,th');if(c.length===5)['58px','62px','auto','42px','42px'].forEach((w,i)=>{c[i].style.width=w;c[i].style.minWidth=w==='auto'?'0':w;c[i].style.maxWidth=w==='auto'?'none':w;c[i].style.boxSizing='border-box';});});}
+              if(!Array.isArray(state.qRes))state.qRes=Array(4).fill('-');while(state.qRes.length<4)state.qRes.push('-');
+              if(!Array.isArray(state.sTopRes))state.sTopRes=Array(2).fill('-');while(state.sTopRes.length<2)state.sTopRes.push('-');
+              if(typeof state.fTopRes!=='string')state.fTopRes='-';
+              ['qCamp','qTime','sCamp','sTime','fCamp','fTime'].forEach(k=>{if(!Array.isArray(state[k]))state[k]=[];});
+              const qualificati=(Array.isArray(state.finalQualified)&&state.finalQualified.length?state.finalQualified:getFinalQualified()).map(squadraNome).filter(Boolean);
+              state.finalQualified=[...qualificati];
+              q.innerHTML='';s.innerHTML='';f.innerHTML='';
+              const qAttivi=state.rules.usaQuarti===true&&qualificati.length>=8;
+              const quarti=qualificati.length>=8?[[qualificati[0],qualificati[7]],[qualificati[3],qualificati[4]],[qualificati[1],qualificati[6]],[qualificati[2],qualificati[5]]]:[['—','—'],['—','—'],['—','—'],['—','—']];
+              if(qTable)qTable.style.display='table'; q.innerHTML=quarti.map((m,i)=>row(m,'Q',i,state.qRes[i],!qAttivi,'Quarti non attivi')).join(''); layout(qTable);
+              let semifinali;
+              if(qAttivi){const v=quarti.map((m,i)=>{const w=getWinner(m,state.qRes[i]);return w?squadraNome(w):`Vincitore Q${i+1}`});semifinali=[[v[0],v[1]],[v[2],v[3]]];}
+              else semifinali=qualificati.length>=4?[[qualificati[0],qualificati[3]],[qualificati[1],qualificati[2]]]:[['Vincitore Q1','Vincitore Q2'],['Vincitore Q3','Vincitore Q4']];
+              if(sTable)sTable.style.display='table';s.innerHTML=semifinali.map((m,i)=>row(m,'S',i,state.sTopRes[i],state.rules.usaSemifinali===false,'Semifinale')).join('');layout(sTable);
+              const finalisti=semifinali.map((m,i)=>{const w=getWinner(m,state.sTopRes[i]);return w?squadraNome(w):`Vincitore S${i+1}`});
+              state.finalTop=[...finalisti];
+              if(fTable)fTable.style.display='table';f.innerHTML=row(finalisti,'F',0,state.fTopRes,state.rules.usaFinale===false,'Finale');layout(fTable);
+              const camp=getWinner(finalisti,state.fTopRes);state.campioneTop=camp?squadraNome(camp):null;
+              document.querySelectorAll('.winner-box.top-win').forEach(el=>el.remove());
+              if(state.campioneTop&&fTable)fTable.insertAdjacentHTML('afterend',`<div class="winner-box top-win">🏆 CAMPIONE TORNEO:<br>${state.campioneTop}</div>`);
+          }
+          '''
+          text,n=re.subn(r'function renderKO\(\)\{[\s\S]*?\n\}\n\s*function updateKOResult',new_render+'\nfunction updateKOResult',text,count=1)
+          if n != 1:
+              raise SystemExit('renderKO replacement failed')
 
-          js_start = '/* BOVE MOBILE GIRIONI JS START */'
-          js_end = '/* BOVE MOBILE GIRIONI JS END */'
-
-          if js_start not in text:
-              script = f'''\n<script>\n{js_start}\n(function() {{\n  function fixMobileGironi() {{\n    if (window.innerWidth > 599) return;\n    document.documentElement.style.overflowX = 'hidden';\n    document.body.style.overflowX = 'hidden';\n    document.querySelectorAll('.groups .card').forEach(function(card) {{\n      card.style.width = '100%';\n      card.style.maxWidth = '100%';\n      card.style.minWidth = '0';\n      card.style.overflowX = 'hidden';\n      card.querySelectorAll('table').forEach(function(table, tableIndex) {{\n        table.style.width = '100%';\n        table.style.minWidth = '0';\n        table.style.maxWidth = '100%';\n        table.style.tableLayout = 'fixed';\n        table.querySelectorAll('th,td').forEach(function(cell) {{\n          cell.style.boxSizing = 'border-box';\n          cell.style.minWidth = '0';\n          cell.style.maxWidth = '100%';\n        }});\n        if (tableIndex === 0) {{\n          [48,58,null,68].forEach(function(w,i) {{\n            table.querySelectorAll('tr').forEach(function(tr) {{\n              var cells = tr.children;\n              if (!cells[i]) return;\n              if (w) {{\n                cells[i].style.width = w + 'px';\n                cells[i].style.minWidth = w + 'px';\n                cells[i].style.maxWidth = w + 'px';\n              }}\n            }});\n          }});\n          table.querySelectorAll('.team-line,.match-cell').forEach(function(el) {{\n            el.style.whiteSpace = 'normal';\n            el.style.overflow = 'visible';\n            el.style.textOverflow = 'clip';\n            el.style.overflowWrap = 'anywhere';\n          }});\n          table.querySelectorAll('.db-cell input').forEach(function(input) {{\n            input.style.width = '27px';\n            input.style.minWidth = '27px';\n            input.style.maxWidth = '27px';\n          }});\n        }}\n      }});\n    }});\n  }}\n  document.addEventListener('DOMContentLoaded', fixMobileGironi);\n  window.addEventListener('resize', fixMobileGironi);\n  new MutationObserver(fixMobileGironi).observe(document.body, {{childList:true, subtree:true}});\n  setTimeout(fixMobileGironi, 250);\n  setTimeout(fixMobileGironi, 1000);\n}})();\n{js_end}\n</script>\n'''
-              body_marker = '</body>'
-              if body_marker not in text:
-                  raise SystemExit('Chiusura </body> non trovata')
-              text = text.replace(body_marker, script + body_marker, 1)
-
-          p.write_text(text, encoding='utf-8')
-          print('SAFE MOBILE GIRONE PATCH APPLIED')
+          # Enable field/time controls for Q/S/F; preserve A-G maps.
+          text=text.replace('        G:"Gcamp"\n\n    };','        G:"Gcamp",\n        q:"qCamp",\n        s:"sCamp",\n        f:"fCamp"\n\n    };',1)
+          text=text.replace('        G:"Gtime"\n\n    };','        G:"Gtime",\n        q:"qTime",\n        s:"sTime",\n        f:"fTime"\n\n    };',1)
+          p.write_text(text,encoding='utf-8')
+          print('FINAL QSF REPAIR APPLIED')
 
       - name: Validate JavaScript syntax
         shell: python
         run: |
           from pathlib import Path
           import re, subprocess, tempfile
-          html = Path('Bove.html').read_text(encoding='utf-8')
-          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
-          for i, script in enumerate(scripts, 1):
-              f = Path(tempfile.gettempdir()) / f'bove_{i}.js'
-              f.write_text(script, encoding='utf-8')
-              r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
+          html=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S|re.I)
+          for i,script in enumerate(scripts,1):
+              f=Path(tempfile.gettempdir())/f'bove_{i}.js'
+              f.write_text(script,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
               if r.returncode:
                   print(r.stderr)
-                  raise SystemExit(f'Errore sintassi JavaScript nello script {i}')
-          print(f'SINTASSI OK: {len(scripts)} SCRIPT')
+                  raise SystemExit(f'JS syntax error script {i}')
+          assert 'BOVE FINAL QSF MOBILE START' in html
+          assert 'Quarti non attivi' in html
+          assert 'Vincitore S1' in html
+          print(f'VALIDATION OK: {len(scripts)} scripts')
 
       - name: Commit repaired Bove
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet -- Bove.html; then
-            echo 'Nessuna modifica a Bove.html'
-            exit 0
-          fi
-          git add Bove.html
-          git commit -m 'Fix mobile gironi layout'
+          rm -f .bove-final-repair-trigger
+          rm -f .github/workflows/bove-final-complete-repair.yml
+          git add Bove.html .github/workflows/bove-flow-repair.yml .github/workflows/bove-final-complete-repair.yml .bove-final-repair-trigger
+          git commit -m 'Repair complete final flow and mobile layout [auto-final-repair]'
           git push
