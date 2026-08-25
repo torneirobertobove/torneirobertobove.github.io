@@ -8553,519 +8553,538 @@ return true;
 
 }
 
-function renderKO(){
+ensureRules();
 
-    ensureRules();
+const q = document.getElementById("Q");
+const s = document.getElementById("S");
+const f = document.getElementById("finaleBox");
 
-    const q = document.getElementById("Q");
-    const s = document.getElementById("S");
-    const f = document.getElementById("finaleBox");
+if(!q || !s || !f){
+    console.error(
+        "renderKO: contenitori fase finale non trovati"
+    );
+    return;
+}
 
-    if(!q || !s || !f){
-        console.error(
-            "renderKO: contenitori fase finale non trovati"
-        );
-        return;
-    }
-
-    const qTable = q.closest("table");
-    const sTable = s.closest("table");
-    const fTable = f.closest("table");
+const qTable = q.closest("table");
+const sTable = s.closest("table");
+const fTable = f.closest("table");
 
 
-    function nomeGiocatore(g){
+/*
+============================================================
+NORMALIZZA UNA SQUADRA / COPPIA
+============================================================
+*/
 
-        if(!g)
-            return "";
+function nomeGiocatore(g){
 
-        if(typeof g === "string")
-            return g.trim();
-
-        if(typeof g === "object"){
-
-            const nome =
-                g.nome ||
-                g.name ||
-                "";
-
-            const cognome =
-                g.cognome ||
-                g.surname ||
-                "";
-
-            return (
-                `${nome} ${cognome}`
-            ).trim();
-
-        }
-
+    if(!g)
         return "";
+
+    if(typeof g === "string")
+        return g.trim();
+
+    if(typeof g === "object"){
+
+        const nome =
+            g.nome ||
+            g.name ||
+            "";
+
+        const cognome =
+            g.cognome ||
+            g.surname ||
+            "";
+
+        return (
+            `${nome} ${cognome}`
+        ).trim();
+
     }
 
+    return "";
+}
 
-    function nomeSquadra(squadra){
 
-        if(!squadra)
-            return "";
+function nomeSquadra(squadra){
 
-        if(typeof squadra === "string")
-            return squadra.trim();
-
-        if(typeof squadra !== "object")
-            return "";
-
-        const g1 =
-            squadra.giocatore1 ||
-            squadra.player1 ||
-            squadra.g1;
-
-        const g2 =
-            squadra.giocatore2 ||
-            squadra.player2 ||
-            squadra.g2;
-
-        if(g1 && g2){
-
-            const n1 = nomeGiocatore(g1);
-            const n2 = nomeGiocatore(g2);
-
-            if(n1 && n2)
-                return `${n1} / ${n2}`;
-
-        }
-
-        if(
-            typeof squadra.nome === "string" &&
-            squadra.nome.trim()
-        ){
-
-            return squadra.nome.trim();
-
-        }
-
-        if(
-            typeof squadra.name === "string" &&
-            squadra.name.trim()
-        ){
-
-            return squadra.name.trim();
-
-        }
-
+    if(!squadra)
         return "";
-    }
 
+    if(typeof squadra === "string")
+        return squadra.trim();
 
-    function applicaLayout(table){
+    if(typeof squadra !== "object")
+        return "";
 
-        if(!table)
-            return;
+    const g1 =
+        squadra.giocatore1 ||
+        squadra.player1 ||
+        squadra.g1;
 
-        table.style.display = "table";
-        table.style.width = "458px";
-        table.style.minWidth = "458px";
-        table.style.maxWidth = "458px";
-        table.style.tableLayout = "fixed";
-        table.style.borderCollapse = "collapse";
-        table.style.borderSpacing = "0";
-        table.style.boxSizing = "border-box";
-        table.style.margin = "0";
-        table.style.padding = "0";
-        table.style.overflow = "hidden";
+    const g2 =
+        squadra.giocatore2 ||
+        squadra.player2 ||
+        squadra.g2;
 
+    if(g1 && g2){
 
-        let colgroup =
-            table.querySelector("colgroup");
+        const n1 = nomeGiocatore(g1);
+        const n2 = nomeGiocatore(g2);
 
-        if(!colgroup){
-
-            colgroup =
-                document.createElement("colgroup");
-
-            table.insertBefore(
-                colgroup,
-                table.firstChild
-            );
-
-        }
-
-
-        colgroup.innerHTML = `
-            <col style="width:55px">
-            <col style="width:65px">
-            <col style="width:248px">
-            <col style="width:45px">
-            <col style="width:45px">
-        `;
-
-
-        table.querySelectorAll("tr").forEach(tr=>{
-
-            tr.style.display = "table-row";
-            tr.style.width = "458px";
-            tr.style.boxSizing = "border-box";
-
-            const celle =
-                Array.from(tr.children)
-                    .filter(el =>
-                        el.matches("td,th")
-                    );
-
-            if(celle.length !== 5)
-                return;
-
-            const widths = [
-                "55px",
-                "65px",
-                "248px",
-                "45px",
-                "45px"
-            ];
-
-            celle.forEach((cella,index)=>{
-
-                cella.style.display =
-                    "table-cell";
-
-                cella.style.width =
-                    widths[index];
-
-                cella.style.minWidth =
-                    widths[index];
-
-                cella.style.maxWidth =
-                    widths[index];
-
-                cella.style.boxSizing =
-                    "border-box";
-
-                cella.style.verticalAlign =
-                    "middle";
-
-                if(index >= 3)
-                    cella.style.padding = "2px";
-
-            });
-
-        });
-
-
-        table.querySelectorAll(
-            "td.match-cell"
-        ).forEach(td=>{
-
-            td.style.width = "248px";
-            td.style.minWidth = "248px";
-            td.style.maxWidth = "248px";
-            td.style.overflow = "hidden";
-            td.style.whiteSpace = "normal";
-
-        });
-
-
-        table.querySelectorAll(
-            "td.db-cell"
-        ).forEach(td=>{
-
-            td.style.width = "45px";
-            td.style.minWidth = "45px";
-            td.style.maxWidth = "45px";
-            td.style.padding = "2px";
-            td.style.textAlign = "center";
-            td.style.verticalAlign = "middle";
-            td.style.whiteSpace = "nowrap";
-            td.style.overflow = "hidden";
-
-        });
-
-
-        table.querySelectorAll(
-            "td.db-cell input"
-        ).forEach(input=>{
-
-            input.style.width = "35px";
-            input.style.minWidth = "35px";
-            input.style.maxWidth = "35px";
-            input.style.height = "28px";
-            input.style.boxSizing = "border-box";
-            input.style.display = "block";
-            input.style.margin = "0 auto";
-            input.style.padding = "2px";
-            input.style.textAlign = "center";
-
-        });
+        if(n1 && n2)
+            return `${n1} / ${n2}`;
 
     }
 
-
-    function creaMatchKO(
-        match,
-        gruppo,
-        index,
-        risultato
+    if(
+        typeof squadra.nome === "string" &&
+        squadra.nome.trim()
     ){
 
-        if(
-            !Array.isArray(match) ||
-            match.length !== 2
-        )
-            return "";
+        return squadra.nome.trim();
 
-        const squadra1 =
-            nomeSquadra(match[0]);
+    }
 
-        const squadra2 =
-            nomeSquadra(match[1]);
+    if(
+        typeof squadra.name === "string" &&
+        squadra.name.trim()
+    ){
 
-        if(!squadra1 || !squadra2)
-            return "";
+        return squadra.name.trim();
 
+    }
 
-        const campi =
-            Array.isArray(state[gruppo + "Camp"])
-                ? state[gruppo + "Camp"]
-                : [];
-
-        const tempi =
-            Array.isArray(state[gruppo + "Time"])
-                ? state[gruppo + "Time"]
-                : [];
+    return "";
+}
 
 
-        const campo =
-            campi[index] ?? "";
+/*
+============================================================
+LAYOUT
+============================================================
+*/
 
-        const ora =
-            tempi[index] ?? "";
+function applicaLayout(table){
 
+    if(!table)
+        return;
 
-        let ris1 = "";
-        let ris2 = "";
-
-
-        if(
-            typeof risultato === "string" &&
-            risultato.includes("-")
-        ){
-
-            const parti =
-                risultato.split("-");
-
-            ris1 =
-                (parti[0] || "").trim();
-
-            ris2 =
-                (parti[1] || "").trim();
-
-        }
+    table.style.display = "table";
+    table.style.width = "458px";
+    table.style.minWidth = "458px";
+    table.style.maxWidth = "458px";
+    table.style.tableLayout = "fixed";
+    table.style.borderCollapse = "collapse";
+    table.style.borderSpacing = "0";
+    table.style.boxSizing = "border-box";
+    table.style.margin = "0";
+    table.style.padding = "0";
+    table.style.overflow = "hidden";
 
 
-        return `
-            <tr>
+    let colgroup =
+        table.querySelector("colgroup");
 
-                <td>
-                    <input
-                        type="text"
-                        value="${campo}"
-                        onchange="
-                            updateCamp(
-                                '${gruppo}',
-                                ${index},
-                                this.value
-                            )
-                        "
-                    >
-                </td>
+    if(!colgroup){
 
-                <td>
-                    <input
-                        type="text"
-                        value="${ora}"
-                        placeholder="22:00"
-                        onchange="
-                            updateTime(
-                                '${gruppo}',
-                                ${index},
-                                this.value
-                            )
-                        "
-                    >
-                </td>
+        colgroup =
+            document.createElement("colgroup");
 
-                <td class="match-cell">
+        table.insertBefore(
+            colgroup,
+            table.firstChild
+        );
 
-                    <div class="team-line">
-                        ${squadra1}
-                    </div>
-
-                    <div class="vs-line">
-                        <b>VS</b>
-                    </div>
-
-                    <div class="team-line">
-                        ${squadra2}
-                    </div>
-
-                </td>
-
-                <td class="db-cell">
-
-                    <input
-                        type="text"
-                        value="${ris1}"
-                        oninput="
-                            updateRes(
-                                '${gruppo}',
-                                ${index},
-                                0,
-                                this.value
-                            )
-                        "
-                    >
-
-                </td>
-
-                <td class="db-cell">
-
-                    <input
-                        type="text"
-                        value="${ris2}"
-                        oninput="
-                            updateRes(
-                                '${gruppo}',
-                                ${index},
-                                1,
-                                this.value
-                            )
-                        "
-                    >
-
-                </td>
-
-            </tr>
-        `;
     }
 
 
-    q.innerHTML = "";
-    s.innerHTML = "";
-    f.innerHTML = "";
+    colgroup.innerHTML = `
+        <col style="width:55px">
+        <col style="width:65px">
+        <col style="width:248px">
+        <col style="width:45px">
+        <col style="width:45px">
+    `;
 
 
-    document
-        .querySelectorAll(".winner-box.top-win")
-        .forEach(el => el.remove());
+    table.querySelectorAll("tr").forEach(tr=>{
+
+        tr.style.display = "table-row";
+        tr.style.width = "458px";
+        tr.style.boxSizing = "border-box";
+
+        const celle =
+            Array.from(tr.children)
+                .filter(el =>
+                    el.matches("td,th")
+                );
+
+        if(celle.length !== 5)
+            return;
+
+        const widths = [
+            "55px",
+            "65px",
+            "248px",
+            "45px",
+            "45px"
+        ];
+
+        celle.forEach((cella,index)=>{
+
+            cella.style.display =
+                "table-cell";
+
+            cella.style.width =
+                widths[index];
+
+            cella.style.minWidth =
+                widths[index];
+
+            cella.style.maxWidth =
+                widths[index];
+
+            cella.style.boxSizing =
+                "border-box";
+
+            cella.style.verticalAlign =
+                "middle";
+
+            if(index >= 3)
+                cella.style.padding = "2px";
+
+        });
+
+    });
 
 
-    if(!Array.isArray(state.qRes))
-        state.qRes = [];
+    table.querySelectorAll(
+        "td.match-cell"
+    ).forEach(td=>{
 
-    while(state.qRes.length < 4)
-        state.qRes.push("-");
+        td.style.width = "248px";
+        td.style.minWidth = "248px";
+        td.style.maxWidth = "248px";
+        td.style.overflow = "hidden";
+        td.style.whiteSpace = "normal";
 
-    state.qRes =
-        state.qRes.slice(0,4);
-
-
-    if(!Array.isArray(state.qCamp))
-        state.qCamp = [];
-
-    if(!Array.isArray(state.qTime))
-        state.qTime = [];
+    });
 
 
-    if(!Array.isArray(state.sTopRes))
-        state.sTopRes = [];
+    table.querySelectorAll(
+        "td.db-cell"
+    ).forEach(td=>{
 
-    while(state.sTopRes.length < 2)
-        state.sTopRes.push("-");
+        td.style.width = "45px";
+        td.style.minWidth = "45px";
+        td.style.maxWidth = "45px";
+        td.style.padding = "2px";
+        td.style.textAlign = "center";
+        td.style.verticalAlign = "middle";
+        td.style.whiteSpace = "nowrap";
+        td.style.overflow = "hidden";
 
-    state.sTopRes =
-        state.sTopRes.slice(0,2);
+    });
 
 
-    if(!Array.isArray(state.sCamp))
-        state.sCamp = [];
+    table.querySelectorAll(
+        "td.db-cell input"
+    ).forEach(input=>{
 
-    if(!Array.isArray(state.sTime))
-        state.sTime = [];
+        input.style.width = "35px";
+        input.style.minWidth = "35px";
+        input.style.maxWidth = "35px";
+        input.style.height = "28px";
+        input.style.boxSizing = "border-box";
+        input.style.display = "block";
+        input.style.margin = "0 auto";
+        input.style.padding = "2px";
+        input.style.textAlign = "center";
+
+    });
+
+}
+
+
+/*
+============================================================
+CREA MATCH
+============================================================
+*/
+
+function creaMatchKO(
+    match,
+    gruppo,
+    index,
+    risultato
+){
+
+    if(
+        !Array.isArray(match) ||
+        match.length !== 2
+    )
+        return "";
+
+    const squadra1 =
+        nomeSquadra(match[0]);
+
+    const squadra2 =
+        nomeSquadra(match[1]);
+
+    if(!squadra1 || !squadra2)
+        return "";
+
+
+    const campi =
+        Array.isArray(state[gruppo + "Camp"])
+            ? state[gruppo + "Camp"]
+            : [];
+
+    const tempi =
+        Array.isArray(state[gruppo + "Time"])
+            ? state[gruppo + "Time"]
+            : [];
+
+
+    const campo =
+        campi[index] ?? "";
+
+    const ora =
+        tempi[index] ?? "";
+
+
+    let ris1 = "";
+    let ris2 = "";
 
 
     if(
-        typeof state.fTopRes !== "string"
-    )
-        state.fTopRes = "-";
+        typeof risultato === "string" &&
+        risultato.includes("-")
+    ){
 
+        const parti =
+            risultato.split("-");
 
-    if(!Array.isArray(state.fCamp))
-        state.fCamp = [];
+        ris1 =
+            (parti[0] || "").trim();
 
-    if(!Array.isArray(state.fTime))
-        state.fTime = [];
+        ris2 =
+            (parti[1] || "").trim();
 
-
-    let qualificati =
-        getFinalQualified();
-
-
-    if(!Array.isArray(qualificati))
-        qualificati = [];
-
-
-    qualificati =
-        qualificati
-            .map(nomeSquadra)
-            .filter(Boolean);
-
-
-    console.log(
-        "=== RENDER FASE FINALE ===",
-        {
-            qualificati,
-            numeroQualificati:
-                qualificati.length,
-            usaQuarti:
-                state.rules.usaQuarti,
-            usaSemifinali:
-                state.rules.usaSemifinali,
-            usaFinale:
-                state.rules.usaFinale
-        }
-    );
-
-
-    /*
-    ============================================================
-    QUARTI SEMPRE VISIBILI
-    ============================================================
-    */
-
-    if(qTable)
-        qTable.style.display = "table";
-
-
-    /*
-    ============================================================
-    NESSUNA FASE FINALE
-    ============================================================
-    */
-
-    if(qualificati.length < 2){
-
-        if(sTable)
-            sTable.style.display = "none";
-
-        if(fTable)
-            fTable.style.display = "none";
-
-        state.finalTop = [];
-        state.campioneTop = null;
-
-        applicaLayout(qTable);
-
-        return;
     }
 
+
+    return `
+        <tr>
+
+            <td>
+                <input
+                    type="text"
+                    value="${campo}"
+                    onchange="
+                        updateCamp(
+                            '${gruppo}',
+                            ${index},
+                            this.value
+                        )
+                    "
+                >
+            </td>
+
+            <td>
+                <input
+                    type="text"
+                    value="${ora}"
+                    placeholder="22:00"
+                    onchange="
+                        updateTime(
+                            '${gruppo}',
+                            ${index},
+                            this.value
+                        )
+                    "
+                >
+            </td>
+
+            <td class="match-cell">
+
+                <div class="team-line">
+                    ${squadra1}
+                </div>
+
+                <div class="vs-line">
+                    <b>VS</b>
+                </div>
+
+                <div class="team-line">
+                    ${squadra2}
+                </div>
+
+            </td>
+
+            <td class="db-cell">
+
+                <input
+                    type="text"
+                    value="${ris1}"
+                    oninput="
+                        updateRes(
+                            '${gruppo}',
+                            ${index},
+                            0,
+                            this.value
+                        )
+                    "
+                >
+
+            </td>
+
+            <td class="db-cell">
+
+                <input
+                    type="text"
+                    value="${ris2}"
+                    oninput="
+                        updateRes(
+                            '${gruppo}',
+                            ${index},
+                            1,
+                            this.value
+                        )
+                    "
+                >
+
+            </td>
+
+        </tr>
+    `;
+}
+
+
+/*
+============================================================
+RESET CONTENITORI
+============================================================
+*/
+
+q.innerHTML = "";
+s.innerHTML = "";
+f.innerHTML = "";
+
+
+document
+    .querySelectorAll(".winner-box.top-win")
+    .forEach(el => el.remove());
+
+
+/*
+============================================================
+INIZIALIZZAZIONE STATO
+============================================================
+*/
+
+if(!Array.isArray(state.qRes))
+    state.qRes = [];
+
+while(state.qRes.length < 4)
+    state.qRes.push("-");
+
+state.qRes =
+    state.qRes.slice(0,4);
+
+
+if(!Array.isArray(state.qCamp))
+    state.qCamp = [];
+
+if(!Array.isArray(state.qTime))
+    state.qTime = [];
+
+
+if(!Array.isArray(state.sTopRes))
+    state.sTopRes = [];
+
+while(state.sTopRes.length < 2)
+    state.sTopRes.push("-");
+
+state.sTopRes =
+    state.sTopRes.slice(0,2);
+
+
+if(!Array.isArray(state.sCamp))
+    state.sCamp = [];
+
+if(!Array.isArray(state.sTime))
+    state.sTime = [];
+
+
+if(
+    typeof state.fTopRes !== "string"
+)
+    state.fTopRes = "-";
+
+
+if(!Array.isArray(state.fCamp))
+    state.fCamp = [];
+
+if(!Array.isArray(state.fTime))
+    state.fTime = [];
+
+
+/*
+============================================================
+QUALIFICATI
+============================================================
+*/
+
+let qualificati =
+    getFinalQualified();
+
+
+if(!Array.isArray(qualificati))
+    qualificati = [];
+
+
+qualificati =
+    qualificati
+        .map(nomeSquadra)
+        .filter(Boolean);
+
+
+console.log(
+    "=== RENDER FASE FINALE ===",
+    {
+        qualificati,
+        numeroQualificati:
+            qualificati.length,
+        usaQuarti:
+            state.rules.usaQuarti,
+        usaSemifinali:
+            state.rules.usaSemifinali,
+        usaFinale:
+            state.rules.usaFinale
+    }
+);
+
+
+/*
+============================================================
+QUARTI SEMPRE VISIBILI
+============================================================
+*/
+
+if(qTable)
+    qTable.style.display = "table";
+
+
+/*
+============================================================
+NESSUNA FASE FINALE
+============================================================
+*/
+
+if(qualificati.length < 2){
 
     if(sTable)
         sTable.style.display = "none";
@@ -9073,174 +9092,67 @@ function renderKO(){
     if(fTable)
         fTable.style.display = "none";
 
+    state.finalTop = [];
+    state.campioneTop = null;
 
-    let semifinali = [];
+    applicaLayout(qTable);
 
-
-    /*
-    ============================================================
-    QUARTI
-    ============================================================
-    */
-
-    if(
-        qualificati.length >= 8
-    ){
-
-        const quarti = [
-
-            [qualificati[0], qualificati[7]],
-            [qualificati[3], qualificati[4]],
-            [qualificati[1], qualificati[6]],
-            [qualificati[2], qualificati[5]]
-
-        ];
+    return;
+}
 
 
-        const vincitori = [];
+/*
+============================================================
+NASCONDI SOLO SEMIFINALE E FINALE
+============================================================
+*/
+
+if(sTable)
+    sTable.style.display = "none";
+
+if(fTable)
+    fTable.style.display = "none";
 
 
-        quarti.forEach((match,index)=>{
-
-            q.innerHTML +=
-                creaMatchKO(
-                    match,
-                    "q",
-                    index,
-                    state.qRes[index]
-                );
+let semifinali = [];
 
 
-            const vincitore =
-                getWinner(
-                    match,
-                    state.qRes[index]
-                );
+/*
+============================================================
+QUARTI
+============================================================
+*/
+
+if(qualificati.length >= 8){
+
+    const quarti = [
+
+        [qualificati[0], qualificati[7]],
+        [qualificati[3], qualificati[4]],
+        [qualificati[1], qualificati[6]],
+        [qualificati[2], qualificati[5]]
+
+    ];
 
 
-            if(vincitore){
-
-                const nome =
-                    nomeSquadra(vincitore);
-
-                if(nome)
-                    vincitori.push(nome);
-
-            }
-
-        });
+    const vincitori = [];
 
 
-        applicaLayout(qTable);
+    quarti.forEach((match,index)=>{
 
-
-        if(vincitori.length !== 4){
-
-            state.finalTop = [];
-            state.campioneTop = null;
-
-            return;
-        }
-
-
-        semifinali = [
-
-            [vincitori[0], vincitori[1]],
-            [vincitori[2], vincitori[3]]
-
-        ];
-
-    }
-
-
-    /*
-    ============================================================
-    4 QUALIFICATI
-    ============================================================
-    */
-
-    else{
-
-        /*
-        --------------------------------------------------------
-        I QUARTI RESTANO VISIBILI.
-        Con 4 qualificati non vengono create squadre fittizie.
-        La competizione passa direttamente alle semifinali.
-        --------------------------------------------------------
-        */
-
-        if(qualificati.length !== 4){
-
-            console.error(
-                "renderKO: numero qualificati non gestito:",
-                qualificati.length
-            );
-
-            state.finalTop = [];
-            state.campioneTop = null;
-
-            return;
-        }
-
-
-        semifinali = [
-
-            [qualificati[0], qualificati[3]],
-            [qualificati[1], qualificati[2]]
-
-        ];
-
-    }
-
-
-    /*
-    ============================================================
-    SEMIFINALI
-    ============================================================
-    */
-
-    if(
-        state.rules.usaSemifinali !== true
-    ){
-
-        state.finalTop = [];
-        state.campioneTop = null;
-
-        return;
-    }
-
-
-    if(sTable)
-        sTable.style.display = "table";
-
-
-    const finalisti = [];
-
-
-    semifinali.forEach((match,index)=>{
-
-        if(
-            !Array.isArray(match) ||
-            match.length !== 2 ||
-            !match[0] ||
-            !match[1]
-        )
-            return;
-
-
-        s.innerHTML +=
+        q.innerHTML +=
             creaMatchKO(
                 match,
-                "s",
+                "q",
                 index,
-                state.sTopRes[index]
+                state.qRes[index]
             );
 
 
         const vincitore =
             getWinner(
                 match,
-                state.sTopRes[index]
+                state.qRes[index]
             );
 
 
@@ -9250,115 +9162,250 @@ function renderKO(){
                 nomeSquadra(vincitore);
 
             if(nome)
-                finalisti.push(nome);
+                vincitori.push(nome);
 
         }
 
     });
 
 
-    applicaLayout(sTable);
+    applicaLayout(qTable);
 
 
-    console.log(
-        "=== SEMIFINALI CREATE ===",
-        {
-            semifinali,
-            risultati:
-                state.sTopRes,
-            finalisti
-        }
-    );
+    if(vincitori.length !== 4){
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+        return;
+    }
+
+
+    semifinali = [
+
+        [vincitori[0], vincitori[1]],
+        [vincitori[2], vincitori[3]]
+
+    ];
+
+}
+
+
+/*
+============================================================
+4 QUALIFICATI
+============================================================
+*/
+
+else{
+
+    if(qualificati.length !== 4){
+
+        console.error(
+            "renderKO: numero qualificati non gestito:",
+            qualificati.length
+        );
+
+        state.finalTop = [];
+        state.campioneTop = null;
+
+        return;
+    }
 
 
     /*
-    ============================================================
-    FINALE
-    ============================================================
+    --------------------------------------------------------
+    CON 4 QUALIFICATI:
+    I QUARTI RESTANO VISIBILI COME FASE,
+    MA NON VENGONO CREATE PARTITE FITTIZIE.
+
+    LA COMPETIZIONE REALE PROSEGUE CON LE SEMIFINALI.
+    --------------------------------------------------------
     */
 
+    applicaLayout(qTable);
+
+
+    semifinali = [
+
+        [qualificati[0], qualificati[3]],
+        [qualificati[1], qualificati[2]]
+
+    ];
+
+}
+
+
+/*
+============================================================
+SEMIFINALI
+============================================================
+*/
+
+if(
+    state.rules.usaSemifinali !== true
+){
+
     state.finalTop = [];
+    state.campioneTop = null;
+
+    return;
+}
 
 
-    if(finalisti.length !== 2){
+if(sTable)
+    sTable.style.display = "table";
 
-        state.campioneTop = null;
 
+const finalisti = [];
+
+
+semifinali.forEach((match,index)=>{
+
+    if(
+        !Array.isArray(match) ||
+        match.length !== 2 ||
+        !match[0] ||
+        !match[1]
+    )
         return;
+
+
+    s.innerHTML +=
+        creaMatchKO(
+            match,
+            "s",
+            index,
+            state.sTopRes[index]
+        );
+
+
+    const vincitore =
+        getWinner(
+            match,
+            state.sTopRes[index]
+        );
+
+
+    if(vincitore){
+
+        const nome =
+            nomeSquadra(vincitore);
+
+        if(nome)
+            finalisti.push(nome);
+
     }
 
+});
 
-    state.finalTop = [
-        finalisti[0],
-        finalisti[1]
-    ];
+
+applicaLayout(sTable);
+
+
+console.log(
+    "=== SEMIFINALI CREATE ===",
+    {
+        semifinali,
+        risultati:
+            state.sTopRes,
+        finalisti
+    }
+);
+
+
+/*
+============================================================
+FINALE
+============================================================
+*/
+
+state.finalTop = [];
+
+
+if(finalisti.length !== 2){
+
+    state.campioneTop = null;
+
+    return;
+}
+
+
+state.finalTop = [
+    finalisti[0],
+    finalisti[1]
+];
+
+
+if(
+    state.rules.usaFinale !== true
+){
+
+    state.campioneTop = null;
+
+    return;
+}
+
+
+if(fTable)
+    fTable.style.display = "table";
+
+
+f.innerHTML =
+    creaMatchKO(
+        state.finalTop,
+        "f",
+        0,
+        state.fTopRes
+    );
+
+
+applicaLayout(fTable);
+
+
+/*
+============================================================
+CAMPIONE
+============================================================
+*/
+
+const campione =
+    getWinner(
+        state.finalTop,
+        state.fTopRes
+    );
+
+
+if(campione){
+
+    const nomeCampione =
+        nomeSquadra(campione);
+
+    state.campioneTop =
+        nomeCampione || null;
 
 
     if(
-        state.rules.usaFinale !== true
+        fTable &&
+        nomeCampione
     ){
 
-        state.campioneTop = null;
-
-        return;
-    }
-
-
-    if(fTable)
-        fTable.style.display = "table";
-
-
-    f.innerHTML =
-        creaMatchKO(
-            state.finalTop,
-            "f",
-            0,
-            state.fTopRes
+        fTable.insertAdjacentHTML(
+            "afterend",
+            `
+            <div class="winner-box top-win">
+                🏆 CAMPIONE TORNEO:<br>
+                ${nomeCampione}
+            </div>
+            `
         );
 
-
-    applicaLayout(fTable);
-
-
-    const campione =
-        getWinner(
-            state.finalTop,
-            state.fTopRes
-        );
-
-
-    if(campione){
-
-        const nomeCampione =
-            nomeSquadra(campione);
-
-        state.campioneTop =
-            nomeCampione || null;
-
-
-        if(
-            fTable &&
-            nomeCampione
-        ){
-
-            fTable.insertAdjacentHTML(
-                "afterend",
-                `
-                <div class="winner-box top-win">
-                    🏆 CAMPIONE TORNEO:<br>
-                    ${nomeCampione}
-                </div>
-                `
-            );
-
-        }
-
     }
-    else{
 
-        state.campioneTop = null;
+}
+else{
 
-    }
+    state.campioneTop = null;
 
 }
    
