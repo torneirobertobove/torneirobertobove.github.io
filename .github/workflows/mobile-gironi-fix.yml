@@ -1,0 +1,53 @@
+name: Mobile gironi layout fix
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply mobile CSS fix
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('Bove.html')
+          text = path.read_text(encoding='utf-8')
+
+          start = '/* MOBILE GIRONI FIX V2 START */'
+          end = '/* MOBILE GIRONI FIX V2 END */'
+
+          if start in text:
+              print('Mobile fix already present')
+              raise SystemExit(0)
+
+          css = f'''\n{start}\n@media (max-width: 599px) {{\n  html, body {{\n    width: 100%;\n    max-width: 100%;\n    overflow-x: hidden !important;\n  }}\n\n  .container,\n  .groups,\n  .groups .card {{\n    width: 100% !important;\n    max-width: 100% !important;\n    min-width: 0 !important;\n    overflow-x: hidden !important;\n  }}\n\n  .groups .card table {{\n    width: 100% !important;\n    min-width: 0 !important;\n    max-width: 100% !important;\n    table-layout: fixed !important;\n  }}\n\n  .groups .card table:first-child th:nth-child(1),\n  .groups .card table:first-child td:nth-child(1) {{\n    width: 48px !important;\n  }}\n\n  .groups .card table:first-child th:nth-child(2),\n  .groups .card table:first-child td:nth-child(2) {{\n    width: 58px !important;\n  }}\n\n  .groups .card table:first-child th:nth-child(4),\n  .groups .card table:first-child td:nth-child(4) {{\n    width: 68px !important;\n  }}\n\n  .groups .card table:first-child th:nth-child(3),\n  .groups .card table:first-child td:nth-child(3) {{\n    width: auto !important;\n  }}\n\n  .groups .card table:first-child .match-cell {{\n    white-space: normal !important;\n    overflow: hidden !important;\n  }}\n\n  .groups .card table:first-child .team-line {{\n    white-space: normal !important;\n    overflow: visible !important;\n    text-overflow: clip !important;\n    overflow-wrap: anywhere !important;\n  }}\n\n  .groups .card table:first-child .db-cell {{\n    gap: 1px !important;\n  }}\n\n  .groups .card table:first-child .db-cell input {{\n    width: 27px !important;\n    min-width: 27px !important;\n    max-width: 27px !important;\n  }}\n\n  .groups .card table:nth-child(2) {{\n    font-size: 11px !important;\n  }}\n\n  .groups .card table:nth-child(2) th:first-child,\n  .groups .card table:nth-child(2) td:first-child {{\n    width: 105px !important;\n    max-width: 105px !important;\n    white-space: normal !important;\n  }}\n}}\n{end}\n'''
+
+          marker = '</style>'
+          if marker not in text:
+              raise SystemExit('Missing </style>')
+
+          text = text.replace(marker, css + marker, 1)
+          path.write_text(text, encoding='utf-8')
+          print('Mobile CSS fix applied')
+          PY
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- Bove.html; then
+            echo 'No Bove.html changes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git commit -m 'Fix mobile gironi horizontal overflow'
+          git push
