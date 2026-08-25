@@ -1,0 +1,89 @@
+name: Fix Bove KO mobile
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Bove
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          css = '''\n/* BOVE FINAL MOBILE TABLE + KO FIX */\n@media(max-width:599px){\n  .groups .card table:first-child th:nth-child(1),\n  .groups .card table:first-child td:nth-child(1){\n    width:60px !important; min-width:60px !important; max-width:60px !important; white-space:nowrap !important;\n  }\n  .groups .card table:first-child td:nth-child(1) input{\n    width:54px !important; min-width:54px !important; max-width:54px !important; box-sizing:border-box !important;\n  }\n  #Q, #S, #finaleBox{ width:100% !important; }\n  #Q.closest('table'), #S.closest('table'), #finaleBox.closest('table'){\n    width:100% !important; min-width:0 !important; max-width:100% !important;\n  }\n}\n'''
+          if '/* BOVE FINAL MOBILE TABLE + KO FIX */' not in text:
+              text = text.replace('</style>', css + '\n</style>', 1)
+
+          text = text.replace(
+              'table.style.width = "458px";\n        table.style.minWidth = "458px";\n        table.style.maxWidth = "458px";',
+              'const mobileKO = window.matchMedia("(max-width:599px)").matches;\n\n        table.style.width = mobileKO ? "100%" : "458px";\n        table.style.minWidth = mobileKO ? "0" : "458px";\n        table.style.maxWidth = mobileKO ? "100%" : "458px";'
+          )
+          text = text.replace('tr.style.width = "458px";','tr.style.width = mobileKO ? "100%" : "458px";')
+          text = text.replace(
+              '''colgroup.innerHTML = `
+            <col style="width:55px">
+            <col style="width:65px">
+            <col style="width:248px">
+            <col style="width:45px">
+            <col style="width:45px">
+        `;''',
+              '''colgroup.innerHTML = mobileKO ? `
+            <col style="width:60px">
+            <col style="width:58px">
+            <col>
+            <col style="width:42px">
+            <col style="width:42px">
+        ` : `
+            <col style="width:55px">
+            <col style="width:65px">
+            <col style="width:248px">
+            <col style="width:45px">
+            <col style="width:45px">
+        `;'''
+          )
+          text = text.replace(
+              '''const widths = [
+                "55px",
+                "65px",
+                "248px",
+                "45px",
+                "45px"
+            ];''',
+              '''const widths = mobileKO
+                ? ["60px","58px","auto","42px","42px"]
+                : ["55px","65px","248px","45px","45px"];'''
+          )
+          text = text.replace(
+              'td.style.width = "248px";\n            td.style.minWidth = "248px";\n            td.style.maxWidth = "248px";',
+              'td.style.width = mobileKO ? "auto" : "248px";\n            td.style.minWidth = mobileKO ? "0" : "248px";\n            td.style.maxWidth = mobileKO ? "none" : "248px";'
+          )
+
+          marker = '/* BOVE QUARTER STATUS VISIBLE */'
+          if marker not in text:
+              insertion = '''\n\n        /* BOVE QUARTER STATUS VISIBLE */\n        if(qualificati.length >= 2 && state.rules.usaQuarti !== true && qTable){\n\n            qTable.style.display = "table";\n\n            q.innerHTML = `\n                <tr>\n                    <th colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">\n                        ⚔️ QUARTI DI FINALE — NON PREVISTI\n                    </th>\n                </tr>\n                <tr>\n                    <td colspan="5" style="text-align:center;color:#64748b;padding:12px;">\n                        ${qualificati.length} squadre qualificate: passaggio diretto alle semifinali.\n                    </td>\n                </tr>\n            `;\n        }\n\n'''
+              needle = '    /*\n    ============================================================\n    NESSUNA FASE FINALE'
+              if needle in text:
+                  text = text.replace(needle, insertion + needle, 1)
+
+          p.write_text(text, encoding='utf-8')
+          print('PATCH OK')
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Fix mobile field label and make quarter stage visible'
+          git push
