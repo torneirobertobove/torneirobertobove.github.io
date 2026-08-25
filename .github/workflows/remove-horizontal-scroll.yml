@@ -1,0 +1,64 @@
+name: Remove horizontal scroll from Bove final board
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-scroll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch only final-board overflow
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          marker_start = '/* BOVE FINAL NO HORIZONTAL SCROLL START */'
+          marker_end = '/* BOVE FINAL NO HORIZONTAL SCROLL END */'
+
+          if marker_start not in text:
+              css = f'''\n{marker_start}\n.finalContainer,\n.finalContainer .groups,\n.finalContainer .card {{\n  width:100% !important;\n  max-width:100% !important;\n  min-width:0 !important;\n  overflow-x:hidden !important;\n  box-sizing:border-box !important;\n}}\n\n.finalContainer table {{\n  width:100% !important;\n  max-width:100% !important;\n  min-width:0 !important;\n  table-layout:fixed !important;\n  box-sizing:border-box !important;\n  overflow:hidden !important;\n}}\n\n.finalContainer table tr,\n.finalContainer table td,\n.finalContainer table th {{\n  box-sizing:border-box !important;\n  min-width:0 !important;\n  max-width:100% !important;\n  overflow:hidden !important;\n}}\n\n.finalContainer table th:nth-child(1),\n.finalContainer table td:nth-child(1) {{ width:13% !important; min-width:13% !important; max-width:13% !important; }}\n.finalContainer table th:nth-child(2),\n.finalContainer table td:nth-child(2) {{ width:15% !important; min-width:15% !important; max-width:15% !important; }}\n.finalContainer table th:nth-child(3),\n.finalContainer table td:nth-child(3) {{ width:50% !important; min-width:50% !important; max-width:50% !important; }}\n.finalContainer table th:nth-child(4),\n.finalContainer table td:nth-child(4),\n.finalContainer table td:nth-child(5) {{ width:11% !important; min-width:11% !important; max-width:11% !important; }}\n\n.finalContainer .team-line,\n.finalContainer .match-cell {{\n  white-space:normal !important;\n  overflow:hidden !important;\n  text-overflow:clip !important;\n  overflow-wrap:anywhere !important;\n}}\n\n.finalContainer input {{\n  max-width:100% !important;\n  min-width:0 !important;\n  width:100% !important;\n  box-sizing:border-box !important;\n}}\n\n@media (max-width:599px) {{\n  html, body {{ overflow-x:hidden !important; }}\n  .finalContainer {{ margin-left:0 !important; margin-right:0 !important; padding:8px !important; }}\n  .finalContainer .groups {{ display:block !important; }}\n  .finalContainer .card {{ margin:0 0 12px 0 !important; padding:6px !important; }}\n  .finalContainer table {{ font-size:11px !important; }}\n  .finalContainer table th:nth-child(1),\n  .finalContainer table td:nth-child(1) {{ width:14% !important; min-width:14% !important; max-width:14% !important; }}\n  .finalContainer table th:nth-child(2),\n  .finalContainer table td:nth-child(2) {{ width:14% !important; min-width:14% !important; max-width:14% !important; }}\n  .finalContainer table th:nth-child(3),\n  .finalContainer table td:nth-child(3) {{ width:50% !important; min-width:50% !important; max-width:50% !important; }}\n  .finalContainer table th:nth-child(4),\n  .finalContainer table td:nth-child(4),\n  .finalContainer table td:nth-child(5) {{ width:11% !important; min-width:11% !important; max-width:11% !important; }}\n  .finalContainer table td.db-cell {{ padding:2px !important; }}\n}}\n{marker_end}\n'''
+              close = '</style>'
+              if close not in text:
+                  raise SystemExit('Missing </style> in Bove.html')
+              text = text.replace(close, css + close, 1)
+
+          p.write_text(text, encoding='utf-8')
+          print('FINAL BOARD NO-SCROLL CSS APPLIED')
+
+      - name: Validate JavaScript syntax
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          for i, script in enumerate(scripts, 1):
+              f = Path(tempfile.gettempdir()) / f'bove_{i}.js'
+              f.write_text(script, encoding='utf-8')
+              r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(f'JavaScript syntax error in script {i}')
+          print(f'JS SYNTAX OK: {len(scripts)} scripts')
+
+      - name: Commit Bove.html
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then
+            echo 'No Bove.html changes'
+            exit 0
+          fi
+          git commit -m 'Remove horizontal scroll from final board'
+          git push
