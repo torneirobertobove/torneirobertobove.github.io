@@ -1,209 +1,40 @@
 name: Bove direct QSF repair
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-qsf:
+  validate-qsf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install verified QSF runtime override
+      - name: Validate Bove.html without modifying it
         shell: python
         run: |
           from pathlib import Path
-          import re, subprocess, tempfile
+          import re
+          import subprocess
+          import tempfile
 
           p = Path('Bove.html')
+          if not p.exists():
+              raise SystemExit('Bove.html non trovato')
+
           text = p.read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', text, flags=re.S | re.I)
 
-          start = '/* BOVE VERIFIED QSF RUNTIME START */'
-          end = '/* BOVE VERIFIED QSF RUNTIME END */'
+          print(f'Script inline trovati: {len(scripts)}')
 
-          if start in text:
-              print('QSF runtime override already present')
-          else:
-              script = r'''<style>
-/* BOVE VERIFIED QSF MOBILE */
-html, body { overflow-x:hidden !important; }
-.finalContainer, .finalContainer .groups, .finalContainer .card, .finalContainer table {
-  width:100% !important; max-width:100% !important; min-width:0 !important;
-  box-sizing:border-box !important; overflow-x:hidden !important;
-}
-.finalContainer table { table-layout:fixed !important; }
-.finalContainer table th, .finalContainer table td {
-  min-width:0 !important; max-width:100% !important; box-sizing:border-box !important;
-}
-.finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1) { width:14% !important; }
-.finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2) { width:16% !important; }
-.finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3) { width:44% !important; }
-.finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
-.finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5) { width:13% !important; }
-.finalContainer .team-line, .finalContainer .match-cell {
-  white-space:normal !important; overflow-wrap:anywhere !important;
-  overflow:hidden !important; text-overflow:clip !important;
-}
-.finalContainer input { width:100% !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
-@media(max-width:599px){ .finalContainer { padding:8px !important; } .finalContainer table { font-size:12px !important; } }
-</style>
-<script>
-/* BOVE VERIFIED QSF RUNTIME START */
-(function(){
-
-  function qsfResult(type, index, a, b){
-    var fase = String(type || '').toUpperCase();
-    var i = Number(index) || 0;
-    var aa = String(a == null ? '' : a).trim();
-    var bb = String(b == null ? '' : b).trim();
-    var res = (aa === '' && bb === '') ? '-' : aa + '-' + bb;
-    if (fase === 'Q') { if (!Array.isArray(state.qRes)) state.qRes=[]; state.qRes[i]=res; }
-    else if (fase === 'S') { if (!Array.isArray(state.sTopRes)) state.sTopRes=[]; state.sTopRes[i]=res; }
-    else if (fase === 'F') state.fTopRes=res;
-  }
-
-  function qsfWinner(match, result){
-    if (!Array.isArray(match) || match.length !== 2) return null;
-    var p = String(result || '').trim().split(/[-:\/]/);
-    if (p.length !== 2) return null;
-    var a = Number(p[0]), b = Number(p[1]);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null;
-    return a > b ? match[0] : match[1];
-  }
-
-  function qsfTeam(x){
-    if (x == null) return '';
-    if (typeof x === 'string') return x;
-    if (Array.isArray(x)) return x.map(qsfTeam).filter(Boolean).join(' / ');
-    if (typeof x === 'object') {
-      if (x.giocatore1 || x.player1 || x.g1 || x.giocatore2 || x.player2 || x.g2) {
-        var a = x.giocatore1 || x.player1 || x.g1;
-        var b = x.giocatore2 || x.player2 || x.g2;
-        return [qsfTeam(a), qsfTeam(b)].filter(Boolean).join(' / ');
-      }
-      var nome = x.nome || x.name || '';
-      var cognome = x.cognome || x.surname || '';
-      return (String(nome) + ' ' + String(cognome)).trim() || String(x.squadra || x.n || '');
-    }
-    return String(x);
-  }
-
-  window.getFinalPhaseType = function(qualificati){
-    var n = Array.isArray(qualificati) ? qualificati.length : 0;
-    if (n >= 8 && state && state.rules && state.rules.usaQuarti === true) return 'QUARTI';
-    if (n >= 4) return 'SEMIFINALI';
-    if (n === 2) return 'FINALE';
-    return 'NESSUNA';
-  };
-
-  window.renderMatchCard = function(titolo, match, tipo, index, risultato){
-    if (!Array.isArray(match) || match.length !== 2) return '';
-    var fase = String(tipo || '').toUpperCase();
-    var i = Number(index) || 0;
-    var campo='', ora='', res='-';
-    if (fase==='Q') { campo=Array.isArray(state.qCamp)?(state.qCamp[i]||''):''; ora=Array.isArray(state.qTime)?(state.qTime[i]||''):''; res=Array.isArray(state.qRes)?(state.qRes[i]||'-'):'-'; }
-    if (fase==='S') { campo=Array.isArray(state.sCamp)?(state.sCamp[i]||''):''; ora=Array.isArray(state.sTime)?(state.sTime[i]||''):''; res=Array.isArray(state.sTopRes)?(state.sTopRes[i]||'-'):'-'; }
-    if (fase==='F') { campo=Array.isArray(state.fCamp)?(state.fCamp[i]||''):''; ora=Array.isArray(state.fTime)?(state.fTime[i]||''):''; res=state.fTopRes||'-'; }
-    var p=String(res||'-').split('-'); var r1=p[0]==='-'?'':(p[0]||'').trim(); var r2=(p[1]||'').trim();
-    return '<tr>'+
-      '<td><input type="text" value="'+String(campo).replace(/"/g,'&quot;')+'" onchange="updateFinalField(\''+fase+'\','+i+',\'camp\',this.value)"></td>'+
-      '<td><input type="time" value="'+String(ora).replace(/"/g,'&quot;')+'" onchange="updateFinalField(\''+fase+'\','+i+',\'time\',this.value)"></td>'+
-      '<td class="match-cell"><div class="team-line">'+qsfTeam(match[0])+'</div><div class="vs-line"><b>VS</b></div><div class="team-line">'+qsfTeam(match[1])+'</div></td>'+
-      '<td class="db-cell"><input inputmode="numeric" id="'+fase+'_score1_'+i+'" value="'+r1+'" onchange="updateKOResult(\''+fase+'\','+i+',this.value,document.getElementById(\''+fase+'_score2_'+i+'\').value)"></td>'+
-      '<td class="db-cell"><input inputmode="numeric" id="'+fase+'_score2_'+i+'" value="'+r2+'" onchange="updateKOResult(\''+fase+'\','+i+',document.getElementById(\''+fase+'_score1_'+i+'\').value,this.value)"></td>'+
-      '</tr>';
-  };
-
-  window.updateFinalField = function(type,index,field,value){
-    var fase=String(type||'').toUpperCase(), i=Number(index)||0;
-    var map={Q:{camp:'qCamp',time:'qTime'},S:{camp:'sCamp',time:'sTime'},F:{camp:'fCamp',time:'fTime'}};
-    var key=map[fase] && map[fase][field]; if(!key) return;
-    if(!Array.isArray(state[key])) state[key]=[];
-    state[key][i]=String(value||'');
-    if(typeof updateAndSync==='function') updateAndSync();
-  };
-
-  window.updateKOResult = function(type,index,a,b){
-    qsfResult(type,index,a,b);
-    if (typeof window.renderKO === 'function') window.renderKO();
-    if (typeof updateAndSync === 'function') updateAndSync();
-  };
-
-  window.renderKO = function(){
-    if (typeof ensureRules === 'function') ensureRules();
-    var q=document.getElementById('Q'), s=document.getElementById('S'), f=document.getElementById('finaleBox');
-    if(!q || !s || !f) return;
-    var qt=q.closest('table'), st=s.closest('table'), ft=f.closest('table');
-    [qt,st,ft].filter(Boolean).forEach(function(t){t.style.display='table';t.style.width='100%';t.style.minWidth='0';t.style.maxWidth='100%';t.style.tableLayout='fixed';t.style.overflow='hidden';});
-    document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden';
-    if(!Array.isArray(state.qRes)) state.qRes=[]; while(state.qRes.length<4) state.qRes.push('-');
-    if(!Array.isArray(state.qCamp)) state.qCamp=[]; if(!Array.isArray(state.qTime)) state.qTime=[];
-    if(!Array.isArray(state.sTopRes)) state.sTopRes=[]; while(state.sTopRes.length<2) state.sTopRes.push('-');
-    if(!Array.isArray(state.sCamp)) state.sCamp=[]; if(!Array.isArray(state.sTime)) state.sTime=[];
-    if(!Array.isArray(state.fCamp)) state.fCamp=[]; if(!Array.isArray(state.fTime)) state.fTime=[];
-    if(typeof state.fTopRes!=='string') state.fTopRes='-';
-
-    var qual = Array.isArray(state.finalQualified) ? state.finalQualified : (typeof getFinalQualified==='function' ? getFinalQualified() : []);
-    var n=Array.isArray(qual)?qual.length:0;
-    var semifinali=[], finalisti=[], quarti=[];
-
-    if(n>=8 && state.rules && state.rules.usaQuarti===true){
-      quarti=[[qual[0],qual[7]],[qual[3],qual[4]],[qual[1],qual[6]],[qual[2],qual[5]]];
-      state.quarti=quarti;
-      q.innerHTML='<tr><th colspan="5">⚔️ QUARTI DI FINALE</th></tr>'+quarti.map(function(m,i){return window.renderMatchCard('QUARTI',m,'Q',i,state.qRes[i]);}).join('');
-      var w=quarti.map(function(m,i){return qsfWinner(m,state.qRes[i]);});
-      semifinali=[[w[0]||'Vincitore Q1',w[1]||'Vincitore Q2'],[w[2]||'Vincitore Q3',w[3]||'Vincitore Q4']];
-    } else {
-      state.quarti=[];
-      q.innerHTML='<tr><th colspan="5">⚔️ QUARTI DI FINALE</th></tr><tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">Quarti non attivi: accesso diretto alle semifinali.</td></tr>';
-      if(n>=4) semifinali=[[qual[0],qual[3]],[qual[1],qual[2]]];
-    }
-
-    state.semifinali=semifinali;
-    s.innerHTML='<tr><th colspan="5">🥇 SEMIFINALI</th></tr>'+(semifinali.length?semifinali.map(function(m,i){return window.renderMatchCard('SEMIFINALE',m,'S',i,state.sTopRes[i]);}).join(''):'<tr><td colspan="5">In attesa delle qualificate</td></tr>');
-    finalisti=semifinali.length===2?[qsfWinner(semifinali[0],state.sTopRes[0])||'Vincitore S1',qsfWinner(semifinali[1],state.sTopRes[1])||'Vincitore S2']:[];
-    state.finalTop=finalisti;
-    f.innerHTML='<tr><th colspan="5">🏆 FINALE</th></tr>'+(finalisti.length===2?window.renderMatchCard('FINALE',finalisti,'F',0,state.fTopRes):'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:12px;">In attesa dei finalisti</td></tr>');
-
-    var camp=qsfWinner(finalisti,state.fTopRes); state.campioneTop=camp||null;
-    var host=ft && ft.parentElement; if(host){host.querySelectorAll('[data-bove-qsf-winner]').forEach(function(e){e.remove();}); if(camp){var d=document.createElement('div');d.className='winner-box top-win';d.dataset.boveQsfWinner='1';d.innerHTML='🏆 CAMPIONE TORNEO:<br>'+qsfTeam(camp);host.appendChild(d);}}
-    console.log('BOVE QSF LIVE', {qualificati:qual,quarti:state.quarti,semifinali:state.semifinali,finalTop:state.finalTop});
-  };
-
-  window.creaFinale=function(){ window.renderKO(); };
-  setTimeout(function(){ if(typeof window.renderKO==='function') window.renderKO(); }, 300);
-
-})();
-/* BOVE VERIFIED QSF RUNTIME END */
-</script>
-'''
-              text = text.replace('</body>', script + '</body>', 1)
-
-          html_scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', text, flags=re.S|re.I)
-          for i, code in enumerate(html_scripts, 1):
-              f = Path(tempfile.gettempdir()) / f'bove_qsf_{i}.js'
+          for i, code in enumerate(scripts, 1):
+              f = Path(tempfile.gettempdir()) / f'bove_qsf_validate_{i}.js'
               f.write_text(code, encoding='utf-8')
-              r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
+              r = subprocess.run(['node', '--check', str(f)], capture_output=True, text=True)
               if r.returncode:
                   print(r.stderr)
-                  raise SystemExit('JavaScript syntax error in script %d' % i)
-          p.write_text(text, encoding='utf-8')
-          print('QSF VERIFIED RUNTIME INSTALLED')
+                  raise SystemExit(f'Errore JavaScript nello script {i}')
 
-      - name: Commit QSF repair
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet -- Bove.html; then
-            echo 'No Bove.html changes'
-            exit 0
-          fi
-          git add Bove.html
-          git commit -m 'Install verified QSF final flow'
-          git push
+          print('BOVE.html: verifica sintattica completata senza modifiche')
