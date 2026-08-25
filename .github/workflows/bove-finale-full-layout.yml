@@ -1,322 +1,61 @@
 name: Fix Bove finale full layout
-
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Patch final phase only
+      - name: Patch QSF only
         shell: python
         run: |
           from pathlib import Path
           import re, subprocess, tempfile
-
-          p = Path('Bove.html')
-          text = p.read_text(encoding='utf-8')
-
-          # ---------------------------------------------------------
-          # 1. Mobile: Campo fully visible; KO tables responsive.
-          # ---------------------------------------------------------
-          css = r'''
-/* BOVE QSF FINAL LAYOUT */
-@media(max-width:599px){
-  .groups .card table:first-child th:nth-child(1),
-  .groups .card table:first-child td:nth-child(1){
-    width:60px !important;
-    min-width:60px !important;
-    max-width:60px !important;
-    white-space:nowrap !important;
-  }
-  .groups .card table:first-child td:nth-child(1) input{
-    width:54px !important;
-    min-width:54px !important;
-    max-width:54px !important;
-  }
-  #Q, #S, #finaleBox{
-    width:100% !important;
-  }
-  #Q.closest('table'), #S.closest('table'), #finaleBox.closest('table'){
-    width:100% !important;
-    min-width:0 !important;
-    max-width:100% !important;
-  }
-}
-'''
-          if '/* BOVE QSF FINAL LAYOUT */' not in text:
-              text = text.replace('</style>', css + '\n</style>', 1)
-
-          # ---------------------------------------------------------
-          # 2. Add a two-score helper for KO, mirroring group scores.
-          # ---------------------------------------------------------
+          p=Path('Bove.html'); text=p.read_text(encoding='utf-8')
+          css='''\n/* BOVE QSF PERMANENT */\n.finalContainer,.finalContainer .groups,.finalContainer .card,.finalContainer table{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow-x:hidden!important}.finalContainer table{table-layout:fixed!important}.finalContainer th,.finalContainer td{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}.finalContainer .team-line,.finalContainer .match-cell{white-space:normal!important;overflow-wrap:anywhere!important;overflow:hidden!important;text-overflow:clip!important}.finalContainer input{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}@media(max-width:599px){html,body{overflow-x:hidden!important}.finalContainer table th:nth-child(1),.finalContainer table td:nth-child(1){width:13%!important}.finalContainer table th:nth-child(2),.finalContainer table td:nth-child(2){width:15%!important}.finalContainer table th:nth-child(3),.finalContainer table td:nth-child(3){width:49%!important}.finalContainer table th:nth-child(4),.finalContainer table td:nth-child(4),.finalContainer table th:nth-child(5),.finalContainer table td:nth-child(5){width:11.5%!important}}\n'''
+          if '/* BOVE QSF PERMANENT */' not in text: text=text.replace('</style>',css+'</style>',1)
+          helper='''\nfunction updateKOScore(type,index,pos,valore){ensureRules();const fase=String(type||'').toUpperCase(),i=Number(index)||0,p=Number(pos)||0,v=String(valore??'').trim();let a;if(fase==='Q'){if(!Array.isArray(state.qRes))state.qRes=[];a=state.qRes}else if(fase==='S'){if(!Array.isArray(state.sTopRes))state.sTopRes=[];a=state.sTopRes}else if(fase==='F'){a=null}else return;if(fase==='F'){let x=String(state.fTopRes||'-').split('-');while(x.length<2)x.push('');x[p]=v;state.fTopRes=(x[0]||'')+'-'+(x[1]||'')}else{let x=String(a[i]||'-').split('-');while(x.length<2)x.push('');x[p]=v;a[i]=(x[0]||'')+'-'+(x[1]||'')}if(typeof renderKO==='function')renderKO();if(typeof updateAndSync==='function')updateAndSync()}\n'''
           if 'function updateKOScore(' not in text:
-              helper = r'''
-function updateKOScore(type,index,pos,valore){
-
-    ensureRules();
-
-    const fase = String(type || "").toUpperCase();
-    const i = Number(index) || 0;
-    const pos2 = Number(pos) || 0;
-    const valorePulito = String(valore ?? "").trim();
-
-    let arr;
-
-    if(fase === "Q"){
-        if(!Array.isArray(state.qRes)) state.qRes=[];
-        arr=state.qRes;
-    }
-    else if(fase === "S"){
-        if(!Array.isArray(state.sTopRes)) state.sTopRes=[];
-        arr=state.sTopRes;
-    }
-    else if(fase === "F"){
-        arr=null;
-    }
-    else{
-        return;
-    }
-
-    if(fase === "F"){
-        let parti=String(state.fTopRes || "-").split("-");
-        while(parti.length<2) parti.push("");
-        parti[pos2]=valorePulito;
-        state.fTopRes = (parti[0] || "") + "-" + (parti[1] || "");
-    }
-    else{
-        let parti=String(arr[i] || "-").split("-");
-        while(parti.length<2) parti.push("");
-        parti[pos2]=valorePulito;
-        arr[i]=(parti[0] || "") + "-" + (parti[1] || "");
-    }
-
-    renderKO();
-    updateAndSync();
+            i=text.find('function renderKO(){')
+            if i<0: raise SystemExit('renderKO missing')
+            text=text[:i]+helper+text[i:]
+          new=r'''function renderKO(){
+ensureRules();
+const q=document.getElementById('Q'),s=document.getElementById('S'),f=document.getElementById('finaleBox');
+if(!q||!s||!f)return;
+const qt=q.closest('table'),st=s.closest('table'),ft=f.closest('table');
+[qt,st,ft].filter(Boolean).forEach(t=>{t.style.display='table';t.style.width='100%';t.style.minWidth='0';t.style.maxWidth='100%';t.style.overflowX='hidden'});
+document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';
+if(!Array.isArray(state.qRes))state.qRes=[];if(!Array.isArray(state.qCamp))state.qCamp=[];if(!Array.isArray(state.qTime))state.qTime=[];if(!Array.isArray(state.sTopRes))state.sTopRes=[];if(!Array.isArray(state.sCamp))state.sCamp=[];if(!Array.isArray(state.sTime))state.sTime=[];if(!Array.isArray(state.fCamp))state.fCamp=[];if(!Array.isArray(state.fTime))state.fTime=[];if(typeof state.fTopRes!=='string')state.fTopRes='-';
+function head(t,title){if(!t)return;let h=t.querySelector('thead');if(!h){h=document.createElement('thead');t.insertBefore(h,t.firstChild)}h.innerHTML='<tr><th colspan="5">'+title+'</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris 1</th><th>Ris 2</th></tr>'}
+head(qt,'⚔️ QUARTI DI FINALE');head(st,'🥇 SEMIFINALI');head(ft,'🏆 FINALE');
+function parts(r){const x=String(r||'-').split('-');return [x[0]==='-'?'':(x[0]||''),(x[1]||'')]}
+function win(m,r){if(!Array.isArray(m)||m.length!==2)return null;const x=String(r||'').split('-');if(x.length!==2)return null;const a=Number(x[0]),b=Number(x[1]);if(!Number.isFinite(a)||!Number.isFinite(b)||a===b)return null;return a>b?m[0]:m[1]}
+function row(m,fase,i,r,disabled=false){let c='',o='';if(fase==='Q'){c=state.qCamp[i]||'';o=state.qTime[i]||''}if(fase==='S'){c=state.sCamp[i]||'';o=state.sTime[i]||''}if(fase==='F'){c=state.fCamp[i]||'';o=state.fTime[i]||''}const z=parts(r),d=disabled?' disabled':'';const a=String(m?.[0]??'—'),b=String(m?.[1]??'—');return `<tr><td><input value="${c}"${d} onchange="updateCamp('${fase}',${i},this.value)"></td><td><input type="time" value="${o}"${d} onchange="updateTime('${fase}',${i},this.value)"></td><td class="match-cell"><div class="team-line">${a}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${b}</div></td><td class="db-cell"><input value="${z[0]}"${d} oninput="updateKOScore('${fase}',${i},0,this.value)"></td><td class="db-cell"><input value="${z[1]}"${d} oninput="updateKOScore('${fase}',${i},1,this.value)"></td></tr>`}
+let qlf=[];try{qlf=getFinalQualified()||[]}catch(e){console.error(e)}qlf=Array.isArray(qlf)?qlf.map(nomeSquadra).filter(Boolean):[];state.finalQualified=[...qlf];q.innerHTML='';s.innerHTML='';f.innerHTML='';
+let quarti=[],semifinali=[],finalisti=[];
+if(qlf.length>=8&&state.rules?.usaQuarti===true){quarti=[[qlf[0],qlf[7]],[qlf[3],qlf[4]],[qlf[1],qlf[6]],[qlf[2],qlf[5]]];state.quarti=quarti;q.innerHTML=quarti.map((m,i)=>row(m,'Q',i,state.qRes[i])).join('');const w=quarti.map((m,i)=>win(m,state.qRes[i]));semifinali=[[w[0]||'Vincitore Q1',w[1]||'Vincitore Q2'],[w[2]||'Vincitore Q3',w[3]||'Vincitore Q4']]}else{state.quarti=[];q.innerHTML=Array.from({length:4},(_,i)=>row(['',''],'Q',i,'-',true)).join('')}
+if(qlf.length===4)semifinali=[[qlf[0],qlf[3]],[qlf[1],qlf[2]]];
+state.semifinali=semifinali;if(semifinali.length===2&&state.rules?.usaSemifinali===true){s.innerHTML=semifinali.map((m,i)=>row(m,'S',i,state.sTopRes[i])).join('');finalisti=[win(semifinali[0],state.sTopRes[0])||'Vincitore S1',win(semifinali[1],state.sTopRes[1])||'Vincitore S2']}
+state.finalTop=finalisti;if(finalisti.length===2&&state.rules?.usaFinale===true){f.innerHTML=row(finalisti,'F',0,state.fTopRes);const c=win(finalisti,state.fTopRes);state.campioneTop=c?nomeSquadra(c):null}else{f.innerHTML='<tr><td colspan="5" style="text-align:center;padding:15px;color:#94a3b8">In attesa dei finalisti</td></tr>';state.campioneTop=null}
+console.log('Q/S/F PERMANENTE:',{qualificati:qlf,quarti,semifinali,finalisti});
 }
-
 '''
-              marker = 'function renderKO(){'
-              idx = text.find(marker)
-              if idx < 0:
-                  raise SystemExit('renderKO non trovato')
-              text = text[:idx] + helper + text[idx:]
-
-          # ---------------------------------------------------------
-          # 3. Replace the fixed KO layout with responsive layout.
-          # ---------------------------------------------------------
-          old = '''        table.style.display = "table";
-        table.style.width = "458px";
-        table.style.minWidth = "458px";
-        table.style.maxWidth = "458px";'''
-          new = '''        table.style.display = "table";
-
-        const mobileKO =
-            window.matchMedia("(max-width:599px)").matches;
-
-        table.style.width = mobileKO ? "100%" : "458px";
-        table.style.minWidth = mobileKO ? "0" : "458px";
-        table.style.maxWidth = mobileKO ? "100%" : "458px";'''
-          if old not in text:
-              raise SystemExit('layout KO fixed non trovato')
-          text=text.replace(old,new,1)
-
-          old='''            <col style="width:55px">
-            <col style="width:65px">
-            <col style="width:248px">
-            <col style="width:45px">
-            <col style="width:45px">
-        `;'''
-          new='''            ${mobileKO ? '<col style="width:60px"><col style="width:58px"><col><col style="width:42px"><col style="width:42px">' : '<col style="width:55px"><col style="width:65px"><col style="width:248px"><col style="width:45px"><col style="width:45px">'}
-        `;'''
-          if old not in text:
-              raise SystemExit('colgroup KO non trovato')
-          text=text.replace(old,new,1)
-
-          old='''            const widths = [
-                "55px",
-                "65px",
-                "248px",
-                "45px",
-                "45px"
-            ];'''
-          new='''            const widths = mobileKO
-                ? ["60px","58px","auto","42px","42px"]
-                : ["55px","65px","248px","45px","45px"];'''
-          if old not in text:
-              raise SystemExit('widths KO non trovato')
-          text=text.replace(old,new,1)
-
-          old='''            td.style.width = "248px";
-            td.style.minWidth = "248px";
-            td.style.maxWidth = "248px";'''
-          new='''            td.style.width = mobileKO ? "auto" : "248px";
-            td.style.minWidth = mobileKO ? "0" : "248px";
-            td.style.maxWidth = mobileKO ? "none" : "248px";'''
-          if old in text:
-              text=text.replace(old,new,1)
-
-          # ---------------------------------------------------------
-          # 4. Replace renderMatchCard with the same 2-score control
-          #    pattern used by group tables.
-          # ---------------------------------------------------------
-          pattern = re.compile(r'function renderMatchCard\(titolo, match, tipo, index, risultato\)\{.*?\n\}\n\s*\nfunction aggiornaDescrizioneTipoTorneo', re.S)
-          m = pattern.search(text)
-          if not m:
-              raise SystemExit('renderMatchCard non trovato')
-
-          replacement = r'''function renderMatchCard(titolo, match, tipo, index, risultato){
-
-    if(!Array.isArray(match) || match.length !== 2)
-        return "";
-
-    const fase = String(tipo || "").toUpperCase();
-    const i = Number(index) || 0;
-
-    const squadra1 =
-        typeof nomeSquadra === "function"
-            ? nomeSquadra(match[0])
-            : String(match[0] ?? "");
-
-    const squadra2 =
-        typeof nomeSquadra === "function"
-            ? nomeSquadra(match[1])
-            : String(match[1] ?? "");
-
-    let campo = "";
-    let ora = "";
-    let res = "-";
-
-    if(fase === "Q"){
-        campo = Array.isArray(state.qCamp) ? (state.qCamp[i] ?? "") : "";
-        ora   = Array.isArray(state.qTime) ? (state.qTime[i] ?? "") : "";
-        res   = Array.isArray(state.qRes) ? (state.qRes[i] ?? "-") : "-";
-    }
-    else if(fase === "S"){
-        campo = Array.isArray(state.sCamp) ? (state.sCamp[i] ?? "") : "";
-        ora   = Array.isArray(state.sTime) ? (state.sTime[i] ?? "") : "";
-        res   = Array.isArray(state.sTopRes) ? (state.sTopRes[i] ?? "-") : "-";
-    }
-    else if(fase === "F"){
-        campo = Array.isArray(state.fCamp) ? (state.fCamp[i] ?? "") : "";
-        ora   = Array.isArray(state.fTime) ? (state.fTime[i] ?? "") : "";
-        res   = state.fTopRes ?? "-";
-    }
-
-    const parti = String(res || "-").split("-");
-    const ris1 = parti[0] === "-" ? "" : (parti[0] || "").trim();
-    const ris2 = (parti[1] || "").trim();
-
-    return `
-<tr>
-    <td>
-        <input
-            value="${campo}"
-            style="width:100%"
-            onchange="updateCamp('${fase}',${i},this.value)"
-        >
-    </td>
-
-    <td>
-        <input
-            type="time"
-            value="${ora}"
-            onchange="updateTime('${fase}',${i},this.value)"
-        >
-    </td>
-
-    <td class="match-cell">
-        <div class="team-line">${squadra1}</div>
-        <div class="vs-line"><b>VS</b></div>
-        <div class="team-line">${squadra2}</div>
-    </td>
-
-    <td class="db-cell">
-        <input
-            value="${ris1}"
-            oninput="updateKOScore('${fase}',${i},0,this.value)"
-        >
-    </td>
-
-    <td class="db-cell">
-        <input
-            value="${ris2}"
-            oninput="updateKOScore('${fase}',${i},1,this.value)"
-        >
-    </td>
-</tr>
-`;
-}
- 
-function aggiornaDescrizioneTipoTorneo'''
-          text = text[:m.start()] + replacement + text[m.end():]
-
-          # ---------------------------------------------------------
-          # 5. Make 4-qualified flow visibly show the quarter stage as
-          #    an explicit non-played stage while keeping semifinals.
-          # ---------------------------------------------------------
-          marker='''    else{
-
-        if(qualificati.length !== 4){'''
-          insert='''    else{
-
-        if(
-            qualificati.length === 4 &&
-            qTable
-        ){
-            qTable.style.display = "table";
-            q.innerHTML = `
-                <tr>
-                    <th colspan="5" style="text-align:center; padding:10px;">
-                        ⚔️ QUARTI DI FINALE — NON PREVISTI
-                    </th>
-                </tr>
-                <tr>
-                    <td colspan="5" style="text-align:center; padding:10px; color:#94a3b8;">
-                        4 squadre qualificate: accesso diretto alle semifinali.
-                    </td>
-                </tr>
-            `;
-            applicaLayout(qTable);
-        }
-
-        if(qualificati.length !== 4){'''
-          if marker not in text:
-              raise SystemExit('ramo 4 qualificati non trovato')
-          text=text.replace(marker,insert,1)
-
-          # ---------------------------------------------------------
-          # 6. Validate all inline JS blocks.
-          # ---------------------------------------------------------
-          html = text
-          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
-          for i,script in enumerate(scripts,1):
-              f=Path(tempfile.gettempdir())/f'bove_{i}.js'
-              f.write_text(script,encoding='utf-8')
-              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
-              if r.returncode:
-                  print(r.stderr)
-                  raise SystemExit(f'JS syntax error block {i}')
-
+          m=re.search(r'function renderKO\(\)\{.*?\n\}\n\s*\nfunction updateKOResult',text,re.S)
+          if not m: raise SystemExit('renderKO block not found')
+          text=text[:m.start()]+new+'\nfunction updateKOResult'+text[m.end():]
+          for i,sc in enumerate(re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',text,re.S|re.I),1):
+            fn=Path(tempfile.gettempdir())/f'bove{i}.js';fn.write_text(sc,encoding='utf-8');r=subprocess.run(['node','--check',str(fn)],capture_output=True,text=True)
+            if r.returncode: raise SystemExit(r.stderr)
           p.write_text(text,encoding='utf-8')
-          print('FINAL QSF PATCH OK')
-
+          print('QSF PATCH APPLIED')
       - name: Commit
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          if git diff --cached --quiet; then
-            echo 'No Bove changes'
-            exit 0
-          fi
-          git commit -m 'Fix complete quarter semifinal final controls and mobile layout'
+          git commit -m 'Fix permanent QSF flow and responsive final layout'
           git push
