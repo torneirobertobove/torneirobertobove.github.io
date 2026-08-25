@@ -1,0 +1,459 @@
+name: Fix Bove KO progression
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch qualified pairs and full KO flow
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # ------------------------------------------------------------
+          # 1) Preserve the complete pair objects when qualifying.
+          # ------------------------------------------------------------
+          new_get_final = r'''function getFinalQualified(){
+
+    ensureRules();
+
+    const qualificatiNomi = [];
+    const qualificatiCoppie = [];
+
+    const lettere = ["A","B","C","D","E","F","G"];
+
+    const numeroGironi = Math.max(
+        1,
+        Number(state.rules?.numeroGironi ?? state.numeroGironi ?? 2)
+    );
+
+    const qualificatePerGirone = Math.max(
+        1,
+        Number(state.rules?.qualificatePerGirone ?? state.qualificatePerGirone ?? 1)
+    );
+
+    const nomeSquadra = (squadra) => {
+        if (!squadra) return "";
+        if (typeof squadra === "string") return squadra.trim();
+        if (typeof squadra !== "object") return "";
+
+        const g1 = squadra.giocatore1 ?? squadra.player1 ?? squadra.g1;
+        const g2 = squadra.giocatore2 ?? squadra.player2 ?? squadra.g2;
+
+        const nomeGiocatore = (g) => {
+            if (!g) return "";
+            if (typeof g === "string") return g.trim();
+            if (typeof g !== "object") return "";
+            return `${g.nome || g.name || ""} ${g.cognome || g.surname || ""}`.trim();
+        };
+
+        if (g1 && g2) {
+            const n1 = nomeGiocatore(g1);
+            const n2 = nomeGiocatore(g2);
+            if (n1 && n2) return `${n1} / ${n2}`;
+        }
+
+        return String(
+            squadra.nome ?? squadra.name ?? ""
+        ).trim();
+    };
+
+    for(let i = 0; i < numeroGironi; i++){
+
+        const girone = lettere[i];
+        if(!girone) continue;
+
+        const squadre = Array.isArray(state[girone]) ? state[girone] : [];
+        if(!squadre.length) continue;
+
+        const risultati = Array.isArray(state[girone + "res"])
+            ? state[girone + "res"]
+            : [];
+
+        const classifica = typeof calc === "function"
+            ? calc(squadre, risultati)
+            : [];
+
+        if(!Array.isArray(classifica) || !classifica.length) continue;
+
+        const limite = Math.min(qualificatePerGirone, classifica.length);
+
+        for(let posizione = 0; posizione < limite; posizione++){
+
+            const elemento = classifica[posizione];
+            const nome = String(
+                elemento?.n ?? elemento?.nome ?? elemento?.squadra ?? elemento?.name ?? ""
+            ).trim();
+
+            if(!nome || qualificatiNomi.includes(nome)) continue;
+
+            const coppiaOriginale = squadre.find(
+                squadra => nomeSquadra(squadra) === nome
+            );
+
+            qualificatiNomi.push(nome);
+            qualificatiCoppie.push(
+                coppiaOriginale !== undefined ? coppiaOriginale : nome
+            );
+
+            console.log("QUALIFICATO FASE FINALE:", {
+                girone,
+                posizione: posizione + 1,
+                nome,
+                coppia: coppiaOriginale
+            });
+        }
+    }
+
+    state.finalQualified = [...qualificatiNomi];
+    state.finalQualifiedTeams = [...qualificatiCoppie];
+
+    console.log("QUALIFICATI FASE FINALE:", qualificatiNomi);
+    console.log("COPPIE FASE FINALE:", qualificatiCoppie);
+
+    return qualificatiNomi;
+}
+'''
+
+          pattern = re.compile(r'function getFinalQualified\(\)\{.*?\n\}\s*\n\s*function creaFinale\(', re.S)
+          if not pattern.search(text):
+              raise SystemExit('getFinalQualified non trovato')
+          text = pattern.sub(new_get_final + '\nfunction creaFinale(', text, count=1)
+
+          # ------------------------------------------------------------
+          # 2) Make Campo/Ora work for Q/S/F exactly like A-F.
+          # ------------------------------------------------------------
+          new_time_camp = r'''function updateTime(g,i,val){
+
+    const map = {
+        A:"Atime", B:"Btime", C:"Ctime", D:"Dtime", E:"Etime", F:"Ftime", G:"Gtime",
+        q:"qTime", Q:"qTime", s:"sTime", S:"sTime", f:"fTime", FINALE:"fTime"
+    };
+
+    const chiave = map[g];
+    if(!chiave) return;
+
+    i = Number(i);
+    if(!Number.isInteger(i) || i < 0) return;
+
+    if(!Array.isArray(state[chiave])) state[chiave] = [];
+    state[chiave][i] = String(val ?? "").trim();
+
+    if(typeof renderKO === "function" && ["q","Q","s","S","f","FINALE"].includes(String(g)))
+        renderKO();
+
+    if(typeof updateAndSync === "function") updateAndSync();
+}
+
+function updateCamp(g,i,val){
+
+    const map = {
+        A:"Acamp", B:"Bcamp", C:"Ccamp", D:"Dcamp", E:"Ecamp", F:"Fcamp", G:"Gcamp",
+        q:"qCamp", Q:"qCamp", s:"sCamp", S:"sCamp", f:"fCamp", FINALE:"fCamp"
+    };
+
+    const chiave = map[g];
+    if(!chiave) return;
+
+    i = Number(i);
+    if(!Number.isInteger(i) || i < 0) return;
+
+    if(!Array.isArray(state[chiave])) state[chiave] = [];
+    state[chiave][i] = String(val ?? "").trim();
+
+    if(typeof renderKO === "function" && ["q","Q","s","S","f","FINALE"].includes(String(g)))
+        renderKO();
+
+    if(typeof updateAndSync === "function") updateAndSync();
+}
+
+async function salvaTorneoSupabase('''
+
+          start_candidates = [m.start() for m in re.finditer(r'function updateCamp\(', text)]
+          time_matches = list(re.finditer(r'function updateTime\(', text))
+          if not start_candidates:
+              raise SystemExit('updateCamp non trovato')
+
+          start = min(
+              [start_candidates[0]] + [m.start() for m in time_matches]
+          )
+          end_match = re.search(r'\n\s*async function salvaTorneoSupabase\(', text[start:])
+          if not end_match:
+              raise SystemExit('fine updateTime/updateCamp non trovata')
+          end = start + end_match.start()
+          text = text[:start] + new_time_camp + text[end + 1:]
+
+          # ------------------------------------------------------------
+          # 3) Full visible and progressive Q/S/F bracket.
+          # ------------------------------------------------------------
+          new_render_ko = r'''function renderKO(){
+
+    ensureRules();
+
+    const q = document.getElementById("Q");
+    const s = document.getElementById("S");
+    const f = document.getElementById("finaleBox");
+
+    if(!q || !s || !f){
+        console.error("renderKO: contenitori Q/S/F non trovati");
+        return;
+    }
+
+    const qTable = q.closest("table");
+    const sTable = s.closest("table");
+    const fTable = f.closest("table");
+
+    const nomeSquadra = (squadra) => {
+        if(!squadra) return "";
+        if(typeof squadra === "string") return squadra.trim();
+        if(typeof squadra !== "object") return "";
+
+        const nomeGiocatore = (g) => {
+            if(!g) return "";
+            if(typeof g === "string") return g.trim();
+            return `${g.nome || g.name || ""} ${g.cognome || g.surname || ""}`.trim();
+        };
+
+        const g1 = squadra.giocatore1 ?? squadra.player1 ?? squadra.g1;
+        const g2 = squadra.giocatore2 ?? squadra.player2 ?? squadra.g2;
+
+        if(g1 && g2){
+            const n1 = nomeGiocatore(g1);
+            const n2 = nomeGiocatore(g2);
+            if(n1 && n2) return `${n1} / ${n2}`;
+        }
+
+        return String(squadra.nome ?? squadra.name ?? "").trim();
+    };
+
+    const coppieFinali = Array.isArray(state.finalQualifiedTeams)
+        ? state.finalQualifiedTeams
+        : [];
+
+    const nomi = typeof getFinalQualified === "function"
+        ? getFinalQualified()
+        : [];
+
+    const qualificati = coppieFinali.length
+        ? coppieFinali
+        : nomi;
+
+    q.innerHTML = "";
+    s.innerHTML = "";
+    f.innerHTML = "";
+
+    document.querySelectorAll(".winner-box.top-win").forEach(el => el.remove());
+
+    if(!Array.isArray(state.qRes)) state.qRes = [];
+    while(state.qRes.length < 4) state.qRes.push("-");
+    state.qRes = state.qRes.slice(0,4);
+
+    if(!Array.isArray(state.sTopRes)) state.sTopRes = [];
+    while(state.sTopRes.length < 2) state.sTopRes.push("-");
+    state.sTopRes = state.sTopRes.slice(0,2);
+
+    if(typeof state.fTopRes !== "string") state.fTopRes = "-";
+
+    if(!Array.isArray(state.qCamp)) state.qCamp = [];
+    if(!Array.isArray(state.qTime)) state.qTime = [];
+    if(!Array.isArray(state.sCamp)) state.sCamp = [];
+    if(!Array.isArray(state.sTime)) state.sTime = [];
+    if(!Array.isArray(state.fCamp)) state.fCamp = [];
+    if(!Array.isArray(state.fTime)) state.fTime = [];
+
+    const inputRow = (match, fase, index, risultato) => {
+        const a = nomeSquadra(match?.[0]);
+        const b = nomeSquadra(match?.[1]);
+        const ready = !!a && !!b && !a.startsWith("Vincitore ") && !b.startsWith("Vincitore ");
+
+        let r1 = "", r2 = "";
+        if(typeof risultato === "string" && risultato.includes("-")){
+            const p = risultato.split("-");
+            r1 = (p[0] || "").trim();
+            r2 = (p[1] || "").trim();
+        }
+
+        const campKey = fase === "Q" ? "qCamp" : fase === "S" ? "sCamp" : "fCamp";
+        const timeKey = fase === "Q" ? "qTime" : fase === "S" ? "sTime" : "fTime";
+
+        const campi = Array.isArray(state[campKey]) ? state[campKey] : [];
+        const tempi = Array.isArray(state[timeKey]) ? state[timeKey] : [];
+
+        const campo = campi[index] ?? "";
+        const ora = tempi[index] ?? "";
+
+        return `
+            <tr>
+                <td><input type="text" value="${campo}" onchange="updateCamp('${fase}',${index},this.value)"></td>
+                <td><input type="time" value="${ora}" onchange="updateTime('${fase}',${index},this.value)"></td>
+                <td class="match-cell">
+                    <div class="team-line">${a || "TBD"}</div>
+                    <div class="vs-line"><b>VS</b></div>
+                    <div class="team-line">${b || "TBD"}</div>
+                </td>
+                <td class="db-cell">
+                    <input type="text" value="${r1}" ${ready ? "" : "disabled"} oninput="updateKOResult('${fase}',${index}, this.value + '-' + this.parentElement.nextElementSibling.querySelector('input').value)">
+                </td>
+                <td class="db-cell">
+                    <input type="text" value="${r2}" ${ready ? "" : "disabled"} oninput="updateKOResult('${fase}',${index}, this.parentElement.previousElementSibling.querySelector('input').value + '-' + this.value)">
+                </td>
+            </tr>
+        `;
+    };
+
+    const renderTable = (table, title, rowsHtml, fallback) => {
+        if(!table) return;
+        table.style.display = "table";
+        table.style.width = "100%";
+        table.style.minWidth = "0";
+        table.style.maxWidth = "100%";
+        const head = `<tr><th colspan="5" style="text-align:center;color:#60a5fa;font-size:15px;padding:10px;">${title}</th></tr>`;
+        table.querySelector("tbody")?.remove();
+        const target = table.querySelector("#Q,#S,#finaleBox");
+        if(target) target.innerHTML = head + (rowsHtml || fallback || "");
+    };
+
+    const resetDisplay = (table) => {
+        if(table){
+            table.style.display = "table";
+            table.style.width = "100%";
+            table.style.minWidth = "0";
+            table.style.maxWidth = "100%";
+        }
+    };
+
+    if(!Array.isArray(qualificati) || qualificati.length < 2){
+        qTable.style.display = "none";
+        sTable.style.display = "none";
+        fTable.style.display = "none";
+        return;
+    }
+
+    resetDisplay(qTable);
+    resetDisplay(sTable);
+    resetDisplay(fTable);
+
+    let semifinali = [];
+
+    if(qualificati.length >= 8 && state.rules.usaQuarti === true){
+        const quarti = [
+            [qualificati[0], qualificati[7]],
+            [qualificati[3], qualificati[4]],
+            [qualificati[1], qualificati[6]],
+            [qualificati[2], qualificati[5]]
+        ];
+
+        state.quarti = quarti;
+
+        q.innerHTML = quarti.map((m,i) => inputRow(m,"Q",i,state.qRes[i])).join("");
+
+        const winners = quarti.map((m,i) => getWinner(m,state.qRes[i]));
+
+        semifinali = [
+            [winners[0] || "Vincitore Q1", winners[1] || "Vincitore Q2"],
+            [winners[2] || "Vincitore Q3", winners[3] || "Vincitore Q4"]
+        ];
+    } else {
+        q.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:12px;color:#94a3b8;">Quarti di Finale non previsti: ${qualificati.length} squadre qualificate.</td></tr>`;
+        state.quarti = [];
+
+        if(qualificati.length >= 4){
+            semifinali = [
+                [qualificati[0], qualificati[3]],
+                [qualificati[1], qualificati[2]]
+            ];
+        }
+    }
+
+    state.semifinali = semifinali;
+    s.innerHTML = semifinali.map((m,i) => inputRow(m,"S",i,state.sTopRes[i])).join("");
+
+    const finalisti = semifinali.map((m,i) => getWinner(m,state.sTopRes[i]));
+    const finale = [
+        finalisti[0] || "Vincitore S1",
+        finalisti[1] || "Vincitore S2"
+    ];
+
+    state.finalTop = finale;
+    f.innerHTML = inputRow(finale,"F",0,state.fTopRes);
+
+    const campione = getWinner(finale,state.fTopRes);
+    state.campioneTop = campione ? nomeSquadra(campione) : null;
+
+    if(state.campioneTop && fTable){
+        fTable.insertAdjacentHTML("afterend", `<div class="winner-box top-win">🏆 CAMPIONE TORNEO:<br>${state.campioneTop}</div>`);
+    }
+
+    console.log("=== FLUSSO FASE FINALE ===", {
+        qualificati,
+        quarti: state.quarti,
+        semifinali: state.semifinali,
+        finale: state.finalTop,
+        campione: state.campioneTop
+    });
+}
+
+function updateKOResult'''
+
+          pattern = re.compile(r'function renderKO\(\)\{.*?\n\}\s*\n\s*function updateKOResult', re.S)
+          if not pattern.search(text):
+              raise SystemExit('renderKO non trovato')
+          text = pattern.sub(new_render_ko + '(type,index,valore)', text, count=1)
+
+          # Ensure each KO table is naturally mobile-width even though older inline styles may exist.
+          mobile_css = r'''
+/* BOVE KO PROGRESSION MOBILE */
+@media(max-width:599px){
+  #Q,#S,#finaleBox{width:100% !important;min-width:0 !important;max-width:100% !important;}
+  #Q.closest('table'),#S.closest('table'),#finaleBox.closest('table'){
+    width:100% !important;min-width:0 !important;max-width:100% !important;table-layout:fixed !important;
+  }
+}
+'''
+          if '/* BOVE KO PROGRESSION MOBILE */' not in text:
+              text = text.replace('</style>', mobile_css + '\n</style>', 1)
+
+          p.write_text(text, encoding='utf-8')
+          print('PATCH KO PROGRESSION APPLIED')
+
+      - name: Validate syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S|re.I)
+          for i,s in enumerate(scripts,1):
+              f=Path(tempfile.gettempdir())/f'bove_{i}.js'
+              f.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(1)
+          print('JS SYNTAX OK')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Fix qualified pair transfer and full KO progression'
+          git push
