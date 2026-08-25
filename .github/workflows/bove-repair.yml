@@ -1,7 +1,5 @@
 name: Bove repair and validation
 
-# Trigger repair after the verified applyRules() syntax regression.
-
 on:
   push:
     branches: [main]
@@ -175,6 +173,34 @@ jobs:
           p.write_text(text, encoding='utf-8')
           print('PATCH APPLICATA: helper temporanei rimossi e renderClass corretto')
 
+      - name: Repair getFinalQualified function structure
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # Caso corrotto: il corpo di getFinalQualified() è presente,
+          # ma la riga function getFinalQualified(){ è stata cancellata.
+          if 'function getFinalQualified()' not in text:
+              start = re.search(r'\n\s*ensureRules\(\);\s*\n\s*const qualificati\s*=\s*\[\];', text)
+              end = re.search(r'\n\s*function nomeGiocatore\s*\(', text)
+
+              if start and end and start.start() < end.start():
+                  body_start = start.start()
+                  body = text[body_start:end.start()]
+                  replacement = '\n\nfunction getFinalQualified(){' + body + '\n}\n\n'
+                  text = text[:body_start] + replacement + text[end.start():]
+                  print('PATCH APPLICATA: ripristinata function getFinalQualified()')
+              else:
+                  raise SystemExit('Impossibile individuare il corpo corrotto di getFinalQualified()')
+          else:
+              print('getFinalQualified() già presente: nessuna modifica')
+
+          p.write_text(text, encoding='utf-8')
+
       - name: Fix mobile gironi layout
         shell: python
         run: |
@@ -209,7 +235,6 @@ jobs:
 }
 '''
 
-          # Remove any existing mobile block that was added for this fix, then append a single authoritative block.
           text = re.sub(
               r'\n@media\(max-width:599px\)\{\s*/\* BOVE MOBILE GIRONI FIX START \*/.*?/\* BOVE MOBILE GIRONI FIX END \*/\s*\}\s*',
               '\n',
@@ -308,5 +333,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Fix mobile gironi layout without horizontal scroll'
+          git commit -m 'Repair getFinalQualified syntax and validate Bove'
           git push
