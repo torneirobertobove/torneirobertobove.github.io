@@ -1,0 +1,147 @@
+name: Fix Bove mobile gironi layout
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mobile-layout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fix mobile tables without horizontal scroll
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          marker = '/* BOVE MOBILE GIRONE WIDTH FIX */'
+
+          if marker in text:
+              print('Patch mobile gia presente')
+              raise SystemExit(0)
+
+          css = r'''
+
+/* BOVE MOBILE GIRONE WIDTH FIX */
+@media(max-width:599px){
+
+    .groups .card{
+        width:100% !important;
+        max-width:100% !important;
+        overflow-x:hidden !important;
+        padding:8px !important;
+    }
+
+    .groups .card table{
+        width:100% !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        table-layout:fixed !important;
+    }
+
+    .groups .card table th,
+    .groups .card table td{
+        box-sizing:border-box !important;
+        padding:5px 3px !important;
+    }
+
+    .groups .card table:first-of-type th:nth-child(1),
+    .groups .card table:first-of-type td:nth-child(1){
+        width:42px !important;
+    }
+
+    .groups .card table:first-of-type th:nth-child(2),
+    .groups .card table:first-of-type td:nth-child(2){
+        width:52px !important;
+    }
+
+    .groups .card table:first-of-type th:nth-child(3),
+    .groups .card table:first-of-type td:nth-child(3){
+        width:auto !important;
+    }
+
+    .groups .card table:first-of-type th:nth-child(4),
+    .groups .card table:first-of-type td:nth-child(4){
+        width:64px !important;
+    }
+
+    .groups .card .match-cell{
+        width:auto !important;
+        max-width:none !important;
+        overflow:visible !important;
+        white-space:normal !important;
+        word-break:normal !important;
+    }
+
+    .groups .card .team-line{
+        white-space:normal !important;
+        overflow:visible !important;
+        text-overflow:clip !important;
+        word-break:break-word !important;
+        font-size:11px !important;
+        line-height:1.15 !important;
+    }
+
+    .groups .card table:not(:first-of-type){
+        width:100% !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        table-layout:fixed !important;
+    }
+
+    .groups .card table:not(:first-of-type) th:first-child,
+    .groups .card table:not(:first-of-type) td:first-child{
+        width:auto !important;
+        max-width:none !important;
+        white-space:normal !important;
+    }
+}
+'''
+
+          if '</style>' not in text:
+              raise SystemExit('Tag style non trovato')
+
+          text = text.replace('</style>', css + '\n</style>', 1)
+          p.write_text(text, encoding='utf-8')
+
+      - name: Validate JavaScript syntax
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+
+          html = Path('Bove.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+
+          for i, script in enumerate(scripts, 1):
+              f = Path(tempfile.gettempdir()) / f'bove_script_{i}.js'
+              f.write_text(script, encoding='utf-8')
+              r = subprocess.run(['node', '--check', str(f)], text=True, capture_output=True)
+              if r.returncode != 0:
+                  print(r.stderr)
+                  raise SystemExit(f'Sintassi non valida nello script {i}')
+
+          print('SINTASSI JS OK')
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then
+            echo 'Nessuna modifica.'
+            exit 0
+          fi
+          git commit -m 'Fix mobile gironi horizontal overflow'
+          git push
