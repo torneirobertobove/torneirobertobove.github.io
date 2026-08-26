@@ -4,8 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Torneo 8 Squadre</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@Supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{--bg:#0f172a;--card:#111827;--line:#243041;--text:#e5e7eb;}
@@ -294,13 +295,10 @@ table td:nth-child(2) input {
 
 .finalContainer table th:nth-child(1),
 .finalContainer table td:nth-child(1) { width:13% !important; min-width:13% !important; max-width:13% !important; }
-
 .finalContainer table th:nth-child(2),
 .finalContainer table td:nth-child(2) { width:15% !important; min-width:15% !important; max-width:15% !important; }
-
 .finalContainer table th:nth-child(3),
 .finalContainer table td:nth-child(3) { width:50% !important; min-width:50% !important; max-width:50% !important; }
-
 .finalContainer table th:nth-child(4),
 .finalContainer table td:nth-child(4),
 .finalContainer table td:nth-child(5) { width:11% !important; min-width:11% !important; max-width:11% !important; }
@@ -337,113 +335,98 @@ table td:nth-child(2) input {
   .finalContainer table td:nth-child(5) { width:11% !important; min-width:11% !important; max-width:11% !important; }
   .finalContainer table td.db-cell { padding:2px !important; }
 }
-
-/* MOBILE GIRONI FIX V2 START */
-@media (max-width: 599px) {
-  html, body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden !important;
-  }
-
-  .container,
-  .groups,
-  .groups .card {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  .groups .card table {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
-  }
-
-  .groups .card table:first-child th:nth-child(1),
-  .groups .card table:first-child td:nth-child(1) {
-    width: 48px !important;
-  }
-
-  .groups .card table:first-child th:nth-child(2),
-  .groups .card table:first-child td:nth-child(2) {
-    width: 58px !important;
-  }
-
-  .groups .card table:first-child th:nth-child(4),
-  .groups .card table:first-child td:nth-child(4) {
-    width: 68px !important;
-  }
-
-  .groups .card table:first-child th:nth-child(3),
-  .groups .card table:first-child td:nth-child(3) {
-    width: auto !important;
-  }
-
-  .groups .card table:first-child .match-cell {
-    white-space: normal !important;
-    overflow: hidden !important;
-  }
-
-  .groups .card table:first-child .team-line {
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    overflow-wrap: anywhere !important;
-  }
-
-  .groups .card table:first-child .db-cell {
-    gap: 1px !important;
-  }
-
-  .groups .card table:first-child .db-cell input {
-    width: 27px !important;
-    min-width: 27px !important;
-    max-width: 27px !important;
-  }
-
-  .groups .card table:nth-child(2) {
-    font-size: 11px !important;
-  }
-
-  .groups .card table:nth-child(2) th:first-child,
-  .groups .card table:nth-child(2) td:first-child {
-    width: 105px !important;
-    max-width: 105px !important;
-    white-space: normal !important;
-  }
-}
-/* MOBILE GIRONI FIX V2 END */
 </style>
 </head>
 
 <body>
 
 <script>
-const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
-const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
-const sb = supabase.createClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-        auth:{
-            persistSession:true,
-            autoRefreshToken:true,
-            detectSessionInUrl:true
-        }
-    }
-);
+/*
+============================================================
+SUPABASE
+============================================================
+NON usiamo una dichiarazione globale "const sb":
+evitiamo il conflitto con eventuali dichiarazioni presenti
+nel resto di Bove.html.
+============================================================
+*/
+
+window.__BOVE_SB__ =
+    window.__BOVE_SB__ ||
+    (
+        window.supabase &&
+        typeof window.supabase.createClient === "function"
+            ? window.supabase.createClient(
+                'https://iybjvtmfaupgthqqsngd.supabase.co',
+                'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl',
+                {
+                    auth:{
+                        persistSession:true,
+                        autoRefreshToken:true,
+                        detectSessionInUrl:true
+                    }
+                }
+            )
+            : null
+    );
+
+/*
+Compatibilità con il resto del file.
+*/
+
+if(!window.__BOVE_SB__){
+
+    console.error(
+        "ERRORE: libreria Supabase non caricata."
+    );
+
+}
+else{
+
+    console.log(
+        "SUPABASE INIZIALIZZATO CORRETTAMENTE"
+    );
+
+}
+
+
+/*
+============================================================
+ACCESSO AL CLIENT SUPABASE
+============================================================
+*/
+
+function getBoveSupabase(){
+
+    return window.__BOVE_SB__;
+
+}
+
 
 function bloccaGestionale(){
-    document.querySelectorAll('input, button, textarea, select').forEach(el => {
-        if(!el.classList.contains("back") && el.innerText !== "Stampa"){
-            el.disabled = true;
-            el.style.opacity = "0.6";
+
+    document.querySelectorAll(
+        'input, button, textarea, select'
+    ).forEach(
+        el => {
+
+            if(
+                !el.classList.contains("back") &&
+                el.innerText !== "Stampa"
+            ){
+
+                el.disabled = true;
+                el.style.opacity = "0.6";
+
+            }
+
         }
-    });
-    console.warn("Gestionale bloccato: serve un amministratore");
+    );
+
+    console.warn(
+        "Gestionale bloccato: serve un amministratore"
+    );
+
 }
 
 
@@ -460,13 +443,22 @@ async function loadState(){
     const torneoParam =
         params.get("torneo");
 
+
     let configurazione = null;
 
     let datiCaricati = false;
 
+
     window.__BOVE_LOADING__ = true;
 
+
     try{
+
+        /*
+        ============================================================
+        1. TORNEO PASSATO VIA URL
+        ============================================================
+        */
 
         if(torneoParam){
 
@@ -478,6 +470,7 @@ async function loadState(){
                             torneoParam
                         )
                     );
+
 
                 state = {
 
@@ -493,6 +486,7 @@ async function loadState(){
 
                 };
 
+
                 if(
                     Array.isArray(
                         configurazione.partecipanti
@@ -503,6 +497,7 @@ async function loadState(){
                         configurazione.partecipanti;
 
                 }
+
 
                 if(
                     Array.isArray(
@@ -515,12 +510,14 @@ async function loadState(){
 
                 }
 
+
                 if(
                     configurazione.configurazione
                 ){
 
                     const cfg =
                         configurazione.configurazione;
+
 
                     if(
                         Array.isArray(
@@ -532,6 +529,7 @@ async function loadState(){
                             cfg.partecipanti;
 
                     }
+
 
                     if(
                         Array.isArray(
@@ -545,6 +543,7 @@ async function loadState(){
                     }
 
                 }
+
 
                 datiCaricati = true;
 
@@ -561,9 +560,15 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        2. SUPABASE
+        ============================================================
+        */
+
         if(
             idTorneo &&
-            typeof sb !== "undefined"
+            getBoveSupabase()
         ){
 
             try{
@@ -572,7 +577,7 @@ async function loadState(){
                     data: torneo,
                     error
                 } =
-                    await sb
+                    await getBoveSupabase()
                         .from("tornei")
                         .select("*")
                         .eq(
@@ -580,6 +585,7 @@ async function loadState(){
                             Number(idTorneo)
                         )
                         .single();
+
 
                 if(error){
 
@@ -590,11 +596,13 @@ async function loadState(){
 
                 }
 
+
                 if(torneo){
 
                     configurazione =
                         torneo.configurazione ||
                         {};
+
 
                     state = {
 
@@ -628,6 +636,7 @@ async function loadState(){
 
                     };
 
+
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -638,6 +647,7 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
+
 
                     if(
                         Array.isArray(
@@ -650,12 +660,14 @@ async function loadState(){
 
                     }
 
+
                     if(
                         configurazione.configurazione
                     ){
 
                         const cfg =
                             configurazione.configurazione;
+
 
                         if(cfg.rules){
 
@@ -669,6 +681,7 @@ async function loadState(){
 
                         }
 
+
                         if(
                             Array.isArray(
                                 cfg.partecipanti
@@ -679,6 +692,7 @@ async function loadState(){
                                 cfg.partecipanti;
 
                         }
+
 
                         if(
                             Array.isArray(
@@ -692,6 +706,7 @@ async function loadState(){
                         }
 
                     }
+
 
                     datiCaricati = true;
 
@@ -708,13 +723,19 @@ async function loadState(){
             }
 
 
+            /*
+            ========================================================
+            3. RECUPERO ISCRIZIONI APPROVATE
+            ========================================================
+            */
+
             try{
 
                 const {
                     data: iscritti,
                     error: erroreIscritti
                 } =
-                    await sb
+                    await getBoveSupabase()
                         .from("iscrizioni")
                         .select("*")
                         .eq(
@@ -724,6 +745,7 @@ async function loadState(){
                         .or(
                             "stato.eq.approvato,approvato.eq.true"
                         );
+
 
                 if(erroreIscritti){
 
@@ -741,6 +763,7 @@ async function loadState(){
                         Array.isArray(iscritti)
                             ? iscritti
                             : [];
+
 
                     console.log(
                         "=== ISCRITTI TORNEO ===",
@@ -763,6 +786,7 @@ async function loadState(){
                         }
                     );
 
+
                     if(
                         Array.isArray(state.coppie) &&
                         state.coppie.length > 0
@@ -775,6 +799,7 @@ async function loadState(){
 
                     }
 
+
                     else if(
                         state.iscritti.length > 0
                     ){
@@ -784,8 +809,10 @@ async function loadState(){
                                 state.rules?.numeroSquadre
                             ) || 8;
 
+
                         const giocatoriAttesi =
                             numeroSquadre * 2;
+
 
                         if(
                             state.iscritti.length ===
@@ -793,6 +820,7 @@ async function loadState(){
                         ){
 
                             const coppieDaIscritti = [];
+
 
                             for(
                                 let i = 0;
@@ -803,8 +831,10 @@ async function loadState(){
                                 const giocatore1 =
                                     state.iscritti[i];
 
+
                                 const giocatore2 =
                                     state.iscritti[i + 1];
+
 
                                 if(
                                     !giocatore1 ||
@@ -814,6 +844,7 @@ async function loadState(){
                                     continue;
 
                                 }
+
 
                                 const nome1 =
                                     (
@@ -825,6 +856,7 @@ async function loadState(){
                                     ||
                                     "Giocatore 1";
 
+
                                 const nome2 =
                                     (
                                         `${giocatore2.nome || ""} ${giocatore2.cognome || ""}`
@@ -835,6 +867,7 @@ async function loadState(){
                                     ||
                                     "Giocatore 2";
 
+
                                 coppieDaIscritti.push(
                                     [
                                         nome1,
@@ -844,6 +877,7 @@ async function loadState(){
 
                             }
 
+
                             if(
                                 coppieDaIscritti.length ===
                                 numeroSquadre
@@ -851,6 +885,7 @@ async function loadState(){
 
                                 state.coppie =
                                     coppieDaIscritti;
+
 
                                 console.log(
                                     "=== COPPIE COSTRUITE DA ISCRIZIONI ===",
@@ -894,41 +929,23 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        4. RECUPERO ARRAY DEL TORNEO
+        ============================================================
+        */
+
         if(configurazione){
 
             const arrayDaRecuperare = [
 
-                "A",
-                "B",
-                "C",
-                "D",
-                "E",
-                "F",
-                "G",
+                "A","B","C","D","E","F","G",
 
-                "Ares",
-                "Bres",
-                "Cres",
-                "Dres",
-                "Eres",
-                "Fres",
-                "Gres",
+                "Ares","Bres","Cres","Dres","Eres","Fres","Gres",
 
-                "Atime",
-                "Btime",
-                "Ctime",
-                "Dtime",
-                "Etime",
-                "Ftime",
-                "Gtime",
+                "Atime","Btime","Ctime","Dtime","Etime","Ftime","Gtime",
 
-                "Acamp",
-                "Bcamp",
-                "Ccamp",
-                "Dcamp",
-                "Ecamp",
-                "Fcamp",
-                "Gcamp",
+                "Acamp","Bcamp","Ccamp","Dcamp","Ecamp","Fcamp","Gcamp",
 
                 "qRes",
                 "qCamp",
@@ -945,6 +962,7 @@ async function loadState(){
 
             ];
 
+
             arrayDaRecuperare.forEach(
                 k => {
 
@@ -959,6 +977,7 @@ async function loadState(){
 
                         const esistente =
                             state[k];
+
 
                         if(
                             ricevuto.length > 0
@@ -1021,6 +1040,7 @@ async function loadState(){
                 const cfg =
                     configurazione.configurazione;
 
+
                 if(cfg.rules){
 
                     state.rules = {
@@ -1032,6 +1052,7 @@ async function loadState(){
                     };
 
                 }
+
 
                 if(
                     Array.isArray(
@@ -1045,6 +1066,7 @@ async function loadState(){
 
                 }
 
+
                 if(
                     Array.isArray(
                         cfg.coppie
@@ -1056,6 +1078,7 @@ async function loadState(){
                         cfg.coppie;
 
                 }
+
 
                 if(
                     Object.prototype.hasOwnProperty.call(
@@ -1070,6 +1093,7 @@ async function loadState(){
 
                 }
 
+
                 if(
                     Object.prototype.hasOwnProperty.call(
                         cfg,
@@ -1082,6 +1106,7 @@ async function loadState(){
 
                 }
 
+
                 if(
                     Array.isArray(
                         cfg.finalTop
@@ -1093,6 +1118,7 @@ async function loadState(){
                         cfg.finalTop;
 
                 }
+
 
                 if(
                     Array.isArray(
@@ -1111,9 +1137,17 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        5. RECUPERO EMERGENZA savedTeams
+        ============================================================
+        */
+
         if(
-            !Array.isArray(state.coppie) ||
-            state.coppie.length === 0
+            (
+                !Array.isArray(state.coppie) ||
+                state.coppie.length === 0
+            )
         ){
 
             try{
@@ -1123,10 +1157,12 @@ async function loadState(){
                         "savedTeams"
                     );
 
+
                 if(saved){
 
                     const squadreSalvate =
                         JSON.parse(saved);
+
 
                     if(
                         Array.isArray(
@@ -1160,6 +1196,12 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        6. LOCAL STORAGE
+        ============================================================
+        */
+
         if(
             !torneoParam &&
             !idTorneo
@@ -1170,12 +1212,14 @@ async function loadState(){
                     "torneoState"
                 );
 
+
             if(locale){
 
                 try{
 
                     const salvato =
                         JSON.parse(locale);
+
 
                     state = {
 
@@ -1205,40 +1249,49 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        7. NORMALIZZAZIONE REGOLE
+        ============================================================
+        */
+
         ensureRules();
 
+
+        /*
+        ============================================================
+        8. DISTRIBUZIONE SQUADRE
+        ============================================================
+        */
 
         const numeroGironi =
             Number(
                 state.rules.numeroGironi
             ) || 2;
 
+
         const perGirone =
             Number(
                 state.rules.squadrePerGirone
             ) || 4;
 
+
         const lettereGironi = [
-
-            "A",
-            "B",
-            "C",
-            "D",
-            "E",
-            "F",
-            "G"
-
+            "A","B","C","D","E","F","G"
         ];
+
 
         const totaleNecessario =
             numeroGironi *
             perGirone;
+
 
         const gironiAttivi =
             lettereGironi.slice(
                 0,
                 numeroGironi
             );
+
 
         const gironiGiaPopolati =
             gironiAttivi.some(
@@ -1252,6 +1305,7 @@ async function loadState(){
                     )
             );
 
+
         if(
             !gironiGiaPopolati &&
             Array.isArray(state.coppie) &&
@@ -1260,11 +1314,10 @@ async function loadState(){
 
             gironiAttivi.forEach(
                 g => {
-
                     state[g] = [];
-
                 }
             );
+
 
             state.coppie
                 .slice(
@@ -1278,6 +1331,7 @@ async function loadState(){
                             Math.floor(
                                 i / perGirone
                             );
+
 
                         if(
                             indice <
@@ -1295,6 +1349,12 @@ async function loadState(){
 
         }
 
+
+        /*
+        ============================================================
+        9. GARANTIAMO SOLO I GIRONI ATTIVI
+        ============================================================
+        */
 
         lettereGironi.forEach(
             (g,index) => {
@@ -1318,6 +1378,12 @@ async function loadState(){
         );
 
 
+        /*
+        ============================================================
+        10. GENERAZIONE PARTITE
+        ============================================================
+        */
+
         if(
             typeof generaPartiteGironi === "function"
         ){
@@ -1334,6 +1400,7 @@ async function loadState(){
                         )
                 );
 
+
             if(presenti){
 
                 generaPartiteGironi();
@@ -1342,6 +1409,12 @@ async function loadState(){
 
         }
 
+
+        /*
+        ============================================================
+        10B. RIPRISTINO FASE FINALE
+        ============================================================
+        */
 
         if(configurazione){
 
@@ -1358,6 +1431,7 @@ async function loadState(){
 
             }
 
+
             if(
                 Object.prototype.hasOwnProperty.call(
                     configurazione,
@@ -1370,6 +1444,7 @@ async function loadState(){
 
             }
 
+
             if(
                 Array.isArray(
                     configurazione.finalTop
@@ -1381,6 +1456,7 @@ async function loadState(){
                     configurazione.finalTop;
 
             }
+
 
             if(
                 Array.isArray(
@@ -1397,6 +1473,12 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        11. SALVATAGGIO LOCALE DI SICUREZZA
+        ============================================================
+        */
+
         const haSquadre =
             gironiAttivi.some(
                 g =>
@@ -1409,6 +1491,7 @@ async function loadState(){
                     )
             );
 
+
         if(haSquadre){
 
             localStorage.setItem(
@@ -1418,6 +1501,12 @@ async function loadState(){
 
         }
 
+
+        /*
+        ============================================================
+        12. RENDER
+        ============================================================
+        */
 
         if(
             typeof render === "function"
@@ -1440,10 +1529,17 @@ async function loadState(){
         }
 
 
+        /*
+        ============================================================
+        13. APERTURA REGOLE
+        ============================================================
+        */
+
         const apriRegole =
             params.get(
                 "apriRegole"
             );
+
 
         if(
             apriRegole === "true"
@@ -1465,6 +1561,7 @@ async function loadState(){
             );
 
         }
+
 
         return state;
 
@@ -1488,181 +1585,85 @@ async function loadState(){
 }
 </script>
 
-
 <script>
 /* BOVE MOBILE GIRIONI JS START */
-
 (function() {
-
   function fixMobileGironi() {
-
     if (window.innerWidth > 599) return;
-
     document.documentElement.style.overflowX = 'hidden';
     document.body.style.overflowX = 'hidden';
-
     document.querySelectorAll('.groups .card').forEach(function(card) {
-
       card.style.width = '100%';
       card.style.maxWidth = '100%';
       card.style.minWidth = '0';
       card.style.overflowX = 'hidden';
-
       card.querySelectorAll('table').forEach(function(table, tableIndex) {
-
         table.style.width = '100%';
         table.style.minWidth = '0';
         table.style.maxWidth = '100%';
         table.style.tableLayout = 'fixed';
-
         table.querySelectorAll('th,td').forEach(function(cell) {
-
           cell.style.boxSizing = 'border-box';
           cell.style.minWidth = '0';
           cell.style.maxWidth = '100%';
-
         });
-
         if (tableIndex === 0) {
-
           [48,58,null,68].forEach(function(w,i) {
-
             table.querySelectorAll('tr').forEach(function(tr) {
-
               var cells = tr.children;
-
               if (!cells[i]) return;
-
               if (w) {
-
-                cells[i].style.width =
-                  w + 'px';
-
-                cells[i].style.minWidth =
-                  w + 'px';
-
-                cells[i].style.maxWidth =
-                  w + 'px';
-
+                cells[i].style.width = w + 'px';
+                cells[i].style.minWidth = w + 'px';
+                cells[i].style.maxWidth = w + 'px';
               }
-
             });
-
           });
-
           table.querySelectorAll('.team-line,.match-cell').forEach(function(el) {
-
             el.style.whiteSpace = 'normal';
             el.style.overflow = 'visible';
             el.style.textOverflow = 'clip';
             el.style.overflowWrap = 'anywhere';
-
           });
-
           table.querySelectorAll('.db-cell input').forEach(function(input) {
-
             input.style.width = '27px';
             input.style.minWidth = '27px';
             input.style.maxWidth = '27px';
-
           });
-
         }
-
       });
-
     });
-
   }
-
-  document.addEventListener(
-    'DOMContentLoaded',
-    fixMobileGironi
-  );
-
-  window.addEventListener(
-    'resize',
-    fixMobileGironi
-  );
-
-  new MutationObserver(
-    fixMobileGironi
-  ).observe(
-    document.body,
-    {
-      childList:true,
-      subtree:true
-    }
-  );
-
-  setTimeout(
-    fixMobileGironi,
-    250
-  );
-
-  setTimeout(
-    fixMobileGironi,
-    1000
-  );
-
+  document.addEventListener('DOMContentLoaded', fixMobileGironi);
+  window.addEventListener('resize', fixMobileGironi);
+  new MutationObserver(fixMobileGironi).observe(document.body, {childList:true, subtree:true});
+  setTimeout(fixMobileGironi, 250);
+  setTimeout(fixMobileGironi, 1000);
 })();
-
-/* BOVE MOBILE GIRIONI JS END */
 </script>
 
+</body>
+</html>
 
-<!-- ============================================================
-     MODALE SQUADRE
-     ============================================================ -->
 
 <div id="teamModal" class="modal">
-
   <div class="modal-content">
-
     <h3>Inserisci Squadre</h3>
-
-    <textarea
-      id="teamInput"
-      placeholder="Inserisci i nomi delle squadre, uno per riga">
-    </textarea>
-
-    <button
-      onclick="saveTeams()"
-      style="width:100%; margin-top:10px;">
-      💾 Salva Squadre
-    </button>
-
-    <button
-      class="back"
-      onclick="document.getElementById('teamModal').style.display='none'"
-      style="width:100%; margin-top:5px;">
-      Chiudi
-    </button>
-
+    <textarea id="teamInput" placeholder="Inserisci i nomi delle squadre, uno per riga"></textarea>
+    <button onclick="saveTeams()" style="width:100%; margin-top:10px;">💾 Salva Squadre</button>
+    <button class="back" onclick="document.getElementById('teamModal').style.display='none'" style="width:100%; margin-top:5px;">Chiudi</button>
   </div>
-
 </div>
 
-
-<!-- ============================================================
-     MODALE REGOLE
-     ============================================================ -->
-
 <div id="rulesModal" class="modal">
-
   <div class="modal-content">
 
     <h3>
-
       ⚙️ Regolamento e Criteri
-
-      <button
+      <button 
         onclick="
           let m=document.getElementById('manualeRegole');
-          m.style.display =
-            m.style.display==='none'
-              ? 'block'
-              : 'none';
+          m.style.display = m.style.display==='none' ? 'block' : 'none';
         "
         style="
           background:none;
@@ -1674,11 +1675,9 @@ async function loadState(){
         ">
         💡
       </button>
-
     </h3>
 
-    <div
-      id="manualeRegole"
+    <div id="manualeRegole"
       style="
         display:none;
         margin:15px 0;
@@ -1694,23 +1693,18 @@ async function loadState(){
 
       <p>
         <b>Configurazione automatica:</b><br>
-        Il sistema crea automaticamente gironi, calendario,
-        classifiche e fase finale in base al formato scelto
-        (8, 12 o 16 squadre).
+        Il sistema crea automaticamente gironi, calendario, classifiche e fase finale in base al formato scelto (8, 12 o 16 squadre).
       </p>
 
       <p>
         <b>Inserimento squadre:</b><br>
-        Aprire il pulsante 📝 Squadre e inserire una squadra
-        per ogni riga.
-        Il programma distribuirà automaticamente le squadre
-        nei gironi.
+        Aprire il pulsante 📝 Squadre e inserire una squadra per ogni riga.
+        Il programma distribuirà automaticamente le squadre nei gironi.
       </p>
 
       <p>
         <b>Gestione risultati:</b><br>
-        Inserendo i risultati delle partite il sistema aggiorna
-        automaticamente:
+        Inserendo i risultati delle partite il sistema aggiorna automaticamente:
       </p>
 
       <ul>
@@ -1723,8 +1717,7 @@ async function loadState(){
 
       <p>
         <b>Regole manuali organizzatore:</b><br>
-        L'organizzatore può modificare completamente la formula
-        del torneo:
+        L'organizzatore può modificare completamente la formula del torneo:
       </p>
 
       <ul>
@@ -1747,8 +1740,7 @@ async function loadState(){
       </p>
 
       <p style="color:#60a5fa;">
-        💡 Consiglio: impostare tutte le regole prima dell'inizio
-        delle partite.
+        💡 Consiglio: impostare tutte le regole prima dell'inizio delle partite.
       </p>
 
       <h4>📌 Esempi configurazione torneo</h4>
@@ -1843,13 +1835,11 @@ async function loadState(){
       </ul>
 
       <p>
-        e verificare che il tabellone venga aggiornato
-        automaticamente.
+        e verificare che il tabellone venga aggiornato automaticamente.
       </p>
 
       <p style="color:#60a5fa;">
-        💡 Suggerimento: prima di iniziare il torneo effettuare
-        sempre un torneo di prova per verificare la formula scelta.
+        💡 Suggerimento: prima di iniziare il torneo effettuare sempre un torneo di prova per verificare la formula scelta.
       </p>
 
     </div>
@@ -1858,11 +1848,9 @@ async function loadState(){
 
     <h4>🏟️ Struttura Torneo</h4>
 
-    <label>
-      Scegli formula preimpostata:
-    </label>
+    <label>Scegli formula preimpostata:</label>
 
-    <select
+    <select 
       id="tipoTorneo"
       onchange="applicaModelloTorneo(); aggiornaDescrizioneTipoTorneo()"
       style="
@@ -1873,49 +1861,20 @@ async function loadState(){
         border:1px solid #334155;
       ">
 
-      <option value="">
-        Seleziona formato torneo
-      </option>
-
-      <option value="italiana">
-        🇮🇹 Torneo all'italiana
-      </option>
-
-      <option value="gironiFinale">
-        🏆 Gironi + Fase Finale
-      </option>
-
-      <option value="eliminazione">
-        ⚔️ Eliminazione Diretta
-      </option>
-
-      <option value="svizzero">
-        🇨🇭 Torneo Svizzero
-      </option>
-
-      <option value="americano">
-        🎾 Americano Padel
-      </option>
-
-      <option value="mexicano">
-        🇲🇽 Mexicano Padel
-      </option>
-
-      <option value="king">
-        👑 King of the Court
-      </option>
-
-      <option value="short">
-        ⏱ Short Format
-      </option>
-
-      <option value="manuale">
-        ⚙️ Torneo Personalizzato
-      </option>
+      <option value="">Seleziona formato torneo</option>
+      <option value="italiana">🇮🇹 Torneo all'italiana</option>
+      <option value="gironiFinale">🏆 Gironi + Fase Finale</option>
+      <option value="eliminazione">⚔️ Eliminazione Diretta</option>
+      <option value="svizzero">🇨🇭 Torneo Svizzero</option>
+      <option value="americano">🎾 Americano Padel</option>
+      <option value="mexicano">🇲🇽 Mexicano Padel</option>
+      <option value="king">👑 King of the Court</option>
+      <option value="short">⏱ Short Format</option>
+      <option value="manuale">⚙️ Torneo Personalizzato</option>
 
     </select>
 
-    <div
+    <div 
       id="descrizioneTipoTorneo"
       style="
         margin-top:15px;
@@ -1929,11 +1888,9 @@ async function loadState(){
       Seleziona una formula per visualizzare la descrizione.
     </div>
 
-    <label>
-      Formato torneo:
-    </label>
+    <label>Formato torneo:</label>
 
-    <select
+    <select 
       id="formatoTorneo"
       onchange="setFormat(this.value)"
       style="
@@ -1952,183 +1909,80 @@ async function loadState(){
 
     </select>
 
-    <label style="display:block;margin-top:10px;">
-      Numero gironi:
-    </label>
+    <label style="display:block;margin-top:10px;">Numero gironi:</label>
 
-    <input
-      id="numeroGironi"
-      type="number"
-      min="1"
-      value="2">
+    <input id="numeroGironi" type="number" min="1" value="2">
 
-    <label style="display:block;margin-top:10px;">
-      Squadre per girone:
-    </label>
+    <label style="display:block;margin-top:10px;">Squadre per girone:</label>
 
-    <input
-      id="squadrePerGirone"
-      type="number"
-      min="1"
-      value="4">
+    <input id="squadrePerGirone" type="number" min="1" value="4">
 
     <hr style="margin:15px 0;">
 
     <h4>📋 Formula Torneo</h4>
 
-    <label>
-      Formula gironi:
-    </label>
+    <label>Formula gironi:</label>
 
-    <select
-      id="formulaGironi"
-      style="
-        width:100%;
-        padding:8px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      ">
-
-      <option value="tuttiControTutti">
-        Tutti contro tutti
-      </option>
-
-      <option value="andataRitorno">
-        Andata e ritorno
-      </option>
-
+    <select id="formulaGironi" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
+      <option value="tuttiControTutti">Tutti contro tutti</option>
+      <option value="andataRitorno">Andata e ritorno</option>
     </select>
 
-    <label style="display:block;margin-top:10px;">
-      Formula fase finale:
-    </label>
+    <label style="display:block;margin-top:10px;">Formula fase finale:</label>
 
-    <select
-      id="formulaFinale"
-      style="
-        width:100%;
-        padding:8px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      ">
-
-      <option value="eliminazioneDiretta">
-        Eliminazione diretta
-      </option>
-
-      <option value="gironeFinale">
-        Girone finale
-      </option>
-
+    <select id="formulaFinale" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
+      <option value="eliminazioneDiretta">Eliminazione diretta</option>
+      <option value="gironeFinale">Girone finale</option>
     </select>
 
-    <label>
-      Criterio Classifica Principale:
-    </label>
+    <label>Criterio Classifica Principale:</label>
 
-    <select
-      id="crit1"
-      style="
-        width:100%;
-        padding:8px;
-        margin-bottom:10px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      ">
-
+    <select id="crit1" style="width:100%;padding:8px;margin-bottom:10px;background:#0b1220;color:#fff;border:1px solid #334155;">
       <option value="df">Differenza Giochi</option>
       <option value="gf">Maggiori Giochi Vinti</option>
       <option value="gs">Minor Giochi Persi</option>
-
     </select>
 
     <div style="margin-top:10px;">
       <label>Punti Vittoria</label>
-
-      <input
-        id="wP"
-        type="number"
-        value="3">
+      <input id="wP" type="number" value="3">
     </div>
 
     <div style="margin-top:10px;">
       <label>Punti Pareggio</label>
-
-      <input
-        id="dP"
-        type="number"
-        value="1">
+      <input id="dP" type="number" value="1">
     </div>
 
     <hr style="margin:15px 0;">
 
     <h4>🏆 Qualificazioni</h4>
 
-    <label>
-      Squadre qualificate per ogni girone:
-    </label>
+    <label>Squadre qualificate per ogni girone:</label>
 
-    <input
-      id="qualificatePerGirone"
-      type="number"
-      min="1"
-      value="2">
+    <input id="qualificatePerGirone" type="number" min="1" value="2">
 
-    <label style="display:block;margin-top:10px;">
-      Numero totale squadre fase finale:
-    </label>
+    <label style="display:block;margin-top:10px;">Numero totale squadre fase finale:</label>
 
-    <input
-      id="numeroQualificateFinali"
-      type="number"
-      min="2"
-      value="8">
+    <input id="numeroQualificateFinali" type="number" min="2" value="8">
 
     <hr style="margin:15px 0;">
 
     <h4>📊 Criteri Classifica</h4>
 
-    <label>
-      Criterio Classifica Secondario:
-    </label>
+    <label>Criterio Classifica Secondario:</label>
 
-    <select
-      id="crit2"
-      style="
-        width:100%;
-        padding:8px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      ">
-
+    <select id="crit2" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
       <option value="gf">Maggiori Giochi Vinti</option>
       <option value="gs">Minor Giochi Persi</option>
       <option value="df">Differenza Giochi</option>
-
     </select>
 
-    <label style="display:block;margin-top:10px;">
-      Criterio Classifica Terziario:
-    </label>
+    <label style="display:block;margin-top:10px;">Criterio Classifica Terziario:</label>
 
-    <select
-      id="crit3"
-      style="
-        width:100%;
-        padding:8px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      ">
-
+    <select id="crit3" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
       <option value="gs">Minor Giochi Persi</option>
       <option value="gf">Maggiori Giochi Vinti</option>
       <option value="df">Differenza Giochi</option>
-
     </select>
 
     <hr style="margin:15px 0;">
@@ -2138,26 +1992,17 @@ async function loadState(){
       <h4>⚔️ Fase Eliminazione Diretta</h4>
 
       <label style="display:block;">
-        <input
-          id="usaQuarti"
-          type="checkbox"
-          checked>
+        <input id="usaQuarti" type="checkbox" checked>
         Usa Quarti di Finale
       </label>
 
       <label style="display:block;margin-top:8px;">
-        <input
-          id="usaSemifinali"
-          type="checkbox"
-          checked>
+        <input id="usaSemifinali" type="checkbox" checked>
         Usa Semifinali
       </label>
 
       <label style="display:block;margin-top:8px;">
-        <input
-          id="usaFinale"
-          type="checkbox"
-          checked>
+        <input id="usaFinale" type="checkbox" checked>
         Usa Finale
       </label>
 
@@ -2170,9 +2015,7 @@ async function loadState(){
       <h4>🔄 Ripescaggi</h4>
 
       <label style="display:block;">
-        <input
-          id="ripescaggio"
-          type="checkbox">
+        <input id="ripescaggio" type="checkbox">
         Attiva ripescaggio
       </label>
 
@@ -2180,11 +2023,7 @@ async function loadState(){
         Numero squadre ripescate:
       </label>
 
-      <input
-        id="numeroRipescate"
-        type="number"
-        min="0"
-        value="0">
+      <input id="numeroRipescate" type="number" min="0" value="0">
 
     </div>
 
@@ -2194,63 +2033,27 @@ async function loadState(){
 
       <h4>🏓 Spareggio</h4>
 
-      <select
-        id="killerPointSelect"
-        style="
-          width:100%;
-          padding:8px;
-          background:#0b1220;
-          color:#fff;
-          border:1px solid #334155;
-        ">
-
+      <select id="killerPointSelect" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
         <option value="true">Attiva Killer Point</option>
         <option value="false">Disattiva Killer Point</option>
-
       </select>
 
-      <label style="display:block;margin-top:10px;">
-        Rigori:
-      </label>
+      <label style="display:block;margin-top:10px;">Rigori:</label>
 
-      <select
-        id="rigoriSelect"
-        style="
-          width:100%;
-          padding:8px;
-          background:#0b1220;
-          color:#fff;
-          border:1px solid #334155;
-        ">
-
+      <select id="rigoriSelect" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
         <option value="true">Attivi</option>
         <option value="false">Disattivi</option>
-
       </select>
 
-      <label style="display:block;margin-top:10px;">
-        Supplementari:
-      </label>
+      <label style="display:block;margin-top:10px;">Supplementari:</label>
 
-      <select
-        id="supplementariSelect"
-        style="
-          width:100%;
-          padding:8px;
-          background:#0b1220;
-          color:#fff;
-          border:1px solid #334155;
-        ">
-
+      <select id="supplementariSelect" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
         <option value="true">Attivi</option>
         <option value="false">Disattivi</option>
-
       </select>
 
       <label style="display:block;margin-top:10px;">
-        <input
-          id="garaAndataRitorno"
-          type="checkbox">
+        <input id="garaAndataRitorno" type="checkbox">
         Gara Andata/Ritorno
       </label>
 
@@ -2258,39 +2061,17 @@ async function loadState(){
         Criterio extra parità:
       </label>
 
-      <select
-        id="criterioParitaExtra"
-        style="
-          width:100%;
-          padding:8px;
-          background:#0b1220;
-          color:#fff;
-          border:1px solid #334155;
-        ">
-
+      <select id="criterioParitaExtra" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
         <option value="scontroDiretto">Scontro diretto</option>
         <option value="differenzaGiochi">Differenza giochi</option>
         <option value="sorteggio">Sorteggio</option>
-
       </select>
 
-      <label style="display:block;margin-top:15px;">
-        Quarti visibili:
-      </label>
+      <label style="display:block;margin-top:15px;">Quarti visibili:</label>
 
-      <select
-        id="mostraQuartiSelect"
-        style="
-          width:100%;
-          padding:8px;
-          background:#0b1220;
-          color:#fff;
-          border:1px solid #334155;
-        ">
-
+      <select id="mostraQuartiSelect" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
         <option value="true">Mostra Quarti</option>
         <option value="false">Nascondi Quarti</option>
-
       </select>
 
     </div>
@@ -2299,119 +2080,40 @@ async function loadState(){
 
     <h4>⏱️ Programmazione</h4>
 
-    <label>
-      Ora inizio:
-    </label>
+    <label>Ora inizio:</label>
 
-    <input
-      id="startTime"
-      type="time"
-      value="20:00">
+    <input id="startTime" type="time" value="20:00">
 
-    <label style="display:block;margin-top:10px;">
-      Durata partita:
-    </label>
+    <label style="display:block;margin-top:10px;">Durata partita:</label>
 
-    <input
-      id="duration"
-      type="number"
-      min="1"
-      value="30">
+    <input id="duration" type="number" min="1" value="30">
 
-    <label style="display:block;margin-top:15px;">
-      Note Regolamento:
-    </label>
+    <label style="display:block;margin-top:15px;">Note Regolamento:</label>
 
-    <textarea
-      id="noteRegole"
-      style="
-        width:100%;
-        height:80px;
-        background:#0b1220;
-        color:#fff;
-        border:1px solid #334155;
-      "></textarea>
+    <textarea id="noteRegole" style="width:100%;height:80px;background:#0b1220;color:#fff;border:1px solid #334155;"></textarea>
 
-    <button
-      onclick="applyRules(); salvaTorneoSupabase()"
-      style="
-        width:100%;
-        margin-top:15px;
-        background:#2563eb;
-      ">
+    <button onclick="applyRules(); salvaTorneoSupabase()" style="width:100%;margin-top:15px;background:#2563eb;">
       💾 Salva Regole
     </button>
 
-    <button
-      class="back"
-      onclick="closeRules()"
-      style="
-        width:100%;
-        margin-top:5px;
-      ">
+    <button class="back" onclick="closeRules()" style="width:100%;margin-top:5px;">
       Chiudi
     </button>
 
   </div>
-
 </div>
-
-
-<!-- ============================================================
-     MODAL FORMATO
-     ============================================================ -->
 
 <div id="formatModal" class="modal">
-
-  <div class="modal-content">
-
-    <h3>Seleziona Formato</h3>
-
-    <button
-      onclick="setFormat(8)"
-      style="width:100%;margin:5px 0;">
-      8 Squadre
-    </button>
-
-    <button
-      onclick="setFormat(12)"
-      style="width:100%;margin:5px 0;">
-      12 Squadre
-    </button>
-
-    <button
-      onclick="setFormat(16)"
-      style="width:100%;margin:5px 0;">
-      16 Squadre
-    </button>
-
-    <button
-      onclick="setFormat(20)"
-      style="width:100%;margin:5px 0;">
-      20 Squadre
-    </button>
-
-    <button
-      onclick="setFormat(24)"
-      style="width:100%;margin:5px 0;">
-      24 Squadre
-    </button>
-
-    <button
-      class="back"
-      onclick="document.getElementById('formatModal').style.display='none'"
-      style="width:100%;margin:5px 0;">
-      Chiudi
-    </button>
-
-  </div>
-
+<div class="modal-content">
+<h3>Seleziona Formato</h3>
+<button onclick="setFormat(8)" style="width:100%;margin:5px 0;">8 Squadre</button>
+<button onclick="setFormat(12)" style="width:100%;margin:5px 0;">12 Squadre</button>
+<button onclick="setFormat(16)" style="width:100%;margin:5px 0;">16 Squadre</button>
+<button onclick="setFormat(20)" style="width:100%;margin:5px 0;">20 Squadre</button>
+<button onclick="setFormat(24)" style="width:100%;margin:5px 0;">24 Squadre</button>
+<button class="back" onclick="document.getElementById('formatModal').style.display='none'" style="width:100%;margin:5px 0;">Chiudi</button>
 </div>
-
-
-<!-- ============================================================
-     CONTENUTO PRINCIPALE
-     ============================================================ -->
+</div>
 
 <div class="container">
 
@@ -2419,16 +2121,7 @@ async function loadState(){
 
 <div style="text-align:center;">
 
-<img
-src="logo.jpg"
-alt="Logo"
-style="
-width:60px;
-height:60px;
-border-radius:50%;
-object-fit:cover;
-border:2px solid #2563eb;
-">
+<img src="logo.jpg" alt="Logo" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #2563eb;">
 
 <div class="subtitle">
 Roberto Bove<br>
@@ -2437,583 +2130,287 @@ Director & Event Organizer
 
 </div>
 
-
 <div style="text-align:center;">
 
-<div style="
-position:relative;
-width:100%;
-">
+<div style="position:relative;width:100%;">
 
-<h1
-id="titoloTorneo"
-style="margin:0;font-size:1.4rem;">
+<h1 id="titoloTorneo" style="margin:0;font-size:1.4rem;">
 🏆 Torneo Amatoriale Padel
 </h1>
 
-<div
-id="nomeFormulaTorneo"
-style="
-position:fixed;
-right:15px;
-top:15px;
-font-size:12px;
-color:#60a5fa;
-font-weight:bold;
-z-index:10;
-">
+<div id="nomeFormulaTorneo"
+style="position:fixed;right:15px;top:15px;font-size:12px;color:#60a5fa;font-weight:bold;z-index:10;">
 </div>
 
 </div>
 
-<input
+<input 
 type="text"
 id="nomeTorneoInput"
 placeholder="Nome Torneo"
 onblur="state.nomeTorneo=this.value"
 class="date-input-field"
-style="
-width:200px;
-margin:10px auto 0;
-display:block;
-">
+style="width:200px;margin:10px auto 0;display:block;">
 
-<div
-style="
-display:flex;
-justify-content:center;
-gap:15px;
-margin-top:5px;
-">
+<div style="display:flex;justify-content:center;gap:15px;margin-top:5px;">
 
 <div style="text-align:center;">
 
-<div
-style="
-font-size:0.7rem;
-color:#94a3b8;
-margin-bottom:2px;
-">
+<div style="font-size:0.7rem;color:#94a3b8;margin-bottom:2px;">
 Data prevista:
 </div>
 
-<input
-type="date"
-class="date-input-field">
+<input type="date" class="date-input-field">
 
 </div>
-
 
 <div style="text-align:center;">
 
-<div
-style="
-font-size:0.7rem;
-color:#94a3b8;
-margin-bottom:2px;
-">
+<div style="font-size:0.7rem;color:#94a3b8;margin-bottom:2px;">
 Start ore:
 </div>
 
-<input
-type="time"
-class="date-input-field"
-value="20:00"
-style="width:80px">
+<input type="time" class="date-input-field" value="20:00" style="width:80px">
 
 </div>
 
 </div>
 
 </div>
-
 </div>
-
 
 <div class="menu-container">
 
-<button
-class="menu-button"
-onclick="toggleMenu()">
-☰
+<button class="menu-button" onclick="toggleMenu()">
+    ☰
 </button>
 
-<div
-id="menuComandi"
-class="menu-dropdown">
+<div id="menuComandi" class="menu-dropdown">
 
-<button
-onclick="document.getElementById('formatModal').style.display='block'">
-⚙️ Formato
-</button>
+    <button onclick="document.getElementById('formatModal').style.display='block'">
+        ⚙️ Formato
+    </button>
 
-<button onclick="openRules()">
-📖 Regole
-</button>
+    <button onclick="openRules()">
+        📖 Regole
+    </button>
 
-<button
-onclick="document.getElementById('teamModal').style.display='block'">
-📝 Squadre
-</button>
+    <button onclick="document.getElementById('teamModal').style.display='block'">
+        📝 Squadre
+    </button>
 
-<button onclick="window.print()">
-🖨️ Stampa
-</button>
+    <button onclick="window.print()">
+        🖨️ Stampa
+    </button>
 
-<button onclick="window.location.href='admin.html'">
-⬅️ Torna ad Admin
-</button>
+    <button onclick="window.location.href='admin.html'">
+        ⬅️ Torna ad Admin
+    </button>
 
 </div>
 
 </div>
 
+  <div class="groups">
+
+    <div class="card" id="cardA">
+      <table id="A"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Arows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone A</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Aclass"></tbody></table>
+    </div>
+
+    <div class="card" id="cardB">
+      <table id="B"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Brows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone B</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Bclass"></tbody></table>
+    </div>
+
+    <div class="card" id="cardC" style="display:none;">
+      <table id="C"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Crows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone C</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Cclass"></tbody></table>
+    </div>
+
+    <div class="card" id="cardD" style="display:none;">
+      <table id="D"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Drows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone D</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Dclass"></tbody></table>
+    </div>
+
+    <div class="card" id="cardE" style="display:none;">
+      <table id="E"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Erows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone E</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Eclass"></tbody></table>
+    </div>
+
+    <div class="card" id="cardF" style="display:none;">
+      <table id="F">
+        <thead>
+          <tr>
+            <th>Campo</th>
+            <th>Ora</th>
+            <th>Match</th>
+            <th>Ris</th>
+          </tr>
+        </thead>
+        <tbody id="Frows"></tbody>
+      </table>
+
+      <table style="margin-top:20px;">
+        <thead>
+          <tr>
+            <th>Girone F</th>
+            <th>PT</th>
+            <th>GF</th>
+            <th>GS</th>
+            <th>DR</th>
+          </tr>
+        </thead>
+        <tbody id="Fclass"></tbody>
+      </table>
+
+    </div>
+
+  </div>
+
+  <div class="card" id="svizzeroBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">
+      🇨🇭 Torneo Svizzero
+    </h2>
+    <div id="svizzeroContenuto"></div>
+  </div>
+
+  <div class="card" id="americanoBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">
+      🎾 Americano Padel
+    </h2>
+    <div id="americanoContenuto"></div>
+  </div>
+
+  <div class="card" id="mexicanoBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">
+      🇲🇽 Mexicano Padel
+    </h2>
+    <div id="mexicanoContenuto"></div>
+  </div>
 
-<div class="groups">
+  <div class="card" id="kingBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">
+      👑 King of the Court
+    </h2>
+    <div id="kingContenuto"></div>
+  </div>
 
-<div class="card" id="cardA">
+  <div class="card" id="shortBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">
+      ⏱ Short Format
+    </h2>
+    <div id="shortContenuto"></div>
+  </div>
 
-<table id="A">
+  <div class="card" id="formulaTorneoBox" style="display:none;margin-top:20px;">
 
-<thead>
+    <details id="formulaTorneoDropdown">
 
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
+        <summary id="formulaTorneoTitolo">
+        </summary>
 
-</thead>
+        <div id="formulaTorneoContenuto"></div>
 
-<tbody id="Arows"></tbody>
+    </details>
 
-</table>
+  </div>
 
-<table style="margin-top:20px;">
+  <div class="finalContainer">
 
-<thead>
+    <h2 style="text-align:center;margin-top:0;">
+        🏆 Fase Finale
+    </h2>
 
-<tr>
-<th>Girone A</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
+    <div class="groups">
 
-</thead>
+        <div class="card">
 
-<tbody id="Aclass"></tbody>
+            <table>
 
-</table>
+                <thead>
 
-</div>
+                    <tr>
+                        <th colspan="4">
+                            QUARTI DI FINALE
+                        </th>
+                    </tr>
 
+                    <tr>
+                        <th>Campo</th>
+                        <th>Ora</th>
+                        <th>Match</th>
+                        <th>Ris</th>
+                    </tr>
 
-<div class="card" id="cardB">
+                </thead>
 
-<table id="B">
+                <tbody id="Q">
+                </tbody>
 
-<thead>
+            </table>
 
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
+        </div>
 
-</thead>
+        <div class="card">
 
-<tbody id="Brows"></tbody>
+            <table>
 
-</table>
+                <thead>
 
-<table style="margin-top:20px;">
+                    <tr>
+                        <th colspan="4">
+                            SEMIFINALI
+                        </th>
+                    </tr>
 
-<thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Ora</th>
+                        <th>Match</th>
+                        <th>Ris</th>
+                    </tr>
 
-<tr>
-<th>Girone B</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
+                </thead>
 
-</thead>
+                <tbody id="S">
+                </tbody>
 
-<tbody id="Bclass"></tbody>
+            </table>
 
-</table>
+        </div>
 
-</div>
+        <div class="card">
 
+            <table>
 
-<div
-class="card"
-id="cardC"
-style="display:none;">
+                <thead>
 
-<table id="C">
+                    <tr>
+                        <th colspan="4">
+                            FINALE
+                        </th>
+                    </tr>
 
-<thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>Ora</th>
+                        <th>Match</th>
+                        <th>Ris</th>
+                    </tr>
 
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
+                </thead>
 
-</thead>
+                <tbody id="finaleBox">
+                </tbody>
 
-<tbody id="Crows"></tbody>
+            </table>
 
-</table>
+        </div>
 
-<table style="margin-top:20px;">
+    </div>
 
-<thead>
-
-<tr>
-<th>Girone C</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
-
-</thead>
-
-<tbody id="Cclass"></tbody>
-
-</table>
-
-</div>
-
-
-<div
-class="card"
-id="cardD"
-style="display:none;">
-
-<table id="D">
-
-<thead>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="Drows"></tbody>
-
-</table>
-
-<table style="margin-top:20px;">
-
-<thead>
-
-<tr>
-<th>Girone D</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
-
-</thead>
-
-<tbody id="Dclass"></tbody>
-
-</table>
-
-</div>
-
-
-<div
-class="card"
-id="cardE"
-style="display:none;">
-
-<table id="E">
-
-<thead>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="Erows"></tbody>
-
-</table>
-
-<table style="margin-top:20px;">
-
-<thead>
-
-<tr>
-<th>Girone E</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
-
-</thead>
-
-<tbody id="Eclass"></tbody>
-
-</table>
-
-</div>
-
-
-<div
-class="card"
-id="cardF"
-style="display:none;">
-
-<table id="F">
-
-<thead>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="Frows"></tbody>
-
-</table>
-
-<table style="margin-top:20px;">
-
-<thead>
-
-<tr>
-<th>Girone F</th>
-<th>PT</th>
-<th>GF</th>
-<th>GS</th>
-<th>DR</th>
-</tr>
-
-</thead>
-
-<tbody id="Fclass"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
-
-<div
-class="card"
-id="svizzeroBox"
-style="display:none;margin-top:20px;">
-
-<h2 style="text-align:center;">
-🇨🇭 Torneo Svizzero
-</h2>
-
-<div id="svizzeroContenuto"></div>
-
-</div>
-
-
-<div
-class="card"
-id="americanoBox"
-style="display:none;margin-top:20px;">
-
-<h2 style="text-align:center;">
-🎾 Americano Padel
-</h2>
-
-<div id="americanoContenuto"></div>
-
-</div>
-
-
-<div
-class="card"
-id="mexicanoBox"
-style="display:none;margin-top:20px;">
-
-<h2 style="text-align:center;">
-🇲🇽 Mexicano Padel
-</h2>
-
-<div id="mexicanoContenuto"></div>
-
-</div>
-
-
-<div
-class="card"
-id="kingBox"
-style="display:none;margin-top:20px;">
-
-<h2 style="text-align:center;">
-👑 King of the Court
-</h2>
-
-<div id="kingContenuto"></div>
-
-</div>
-
-
-<div
-class="card"
-id="shortBox"
-style="display:none;margin-top:20px;">
-
-<h2 style="text-align:center;">
-⏱ Short Format
-</h2>
-
-<div id="shortContenuto"></div>
-
-</div>
-
-
-<div
-class="card"
-id="formulaTorneoBox"
-style="display:none;margin-top:20px;">
-
-<details id="formulaTorneoDropdown">
-
-<summary id="formulaTorneoTitolo"></summary>
-
-<div id="formulaTorneoContenuto"></div>
-
-</details>
-
-</div>
-
-
-<div class="finalContainer">
-
-<h2 style="text-align:center;margin-top:0;">
-🏆 Fase Finale
-</h2>
-
-<div class="groups">
-
-
-<div class="card">
-
-<table>
-
-<thead>
-
-<tr>
-<th colspan="4">
-QUARTI DI FINALE
-</th>
-</tr>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="Q">
-</tbody>
-
-</table>
-
-</div>
-
-
-<div class="card">
-
-<table>
-
-<thead>
-
-<tr>
-<th colspan="4">
-SEMIFINALI
-</th>
-</tr>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="S">
-</tbody>
-
-</table>
-
-</div>
-
-
-<div class="card">
-
-<table>
-
-<thead>
-
-<tr>
-<th colspan="4">
-FINALE
-</th>
-</tr>
-
-<tr>
-<th>Campo</th>
-<th>Ora</th>
-<th>Match</th>
-<th>Ris</th>
-</tr>
-
-</thead>
-
-<tbody id="finaleBox">
-</tbody>
-
-</table>
-
-</div>
-
-
-</div>
-
-</div>
-
-
-</div>
-
+  </div>
 
 <script>
 let state = {
