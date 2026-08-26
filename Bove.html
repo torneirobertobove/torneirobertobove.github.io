@@ -4312,6 +4312,433 @@ function aggiornaPannelloRegole(){
 
 }
 
+
+function creaMatchKO(
+    match,
+    gruppo,
+    index,
+    risultato
+){
+
+    if(
+        !Array.isArray(match) ||
+        match.length !== 2
+    ){
+        return "";
+    }
+
+    const squadra1 =
+        nomeSquadra(match[0]);
+
+    const squadra2 =
+        nomeSquadra(match[1]);
+
+    /*
+    ------------------------------------------------------------
+    NON CREARE MAI UNA SQUADRA FITTIZIA
+    ------------------------------------------------------------
+    */
+
+    if(!squadra1 || !squadra2)
+        return "";
+
+    const campiKey =
+        gruppo + "Camp";
+
+    const timeKey =
+        gruppo + "Time";
+
+    let campi =
+        Array.isArray(state[campiKey])
+            ? state[campiKey]
+            : [];
+
+    let tempi =
+        Array.isArray(state[timeKey])
+            ? state[timeKey]
+            : [];
+
+    const campo =
+        campi[index] ?? "";
+
+    const ora =
+        tempi[index] ?? "";
+
+    let ris1 = "";
+    let ris2 = "";
+
+    if(
+        typeof risultato === "string" &&
+        risultato.includes("-")
+    ){
+
+        const parti =
+            risultato.split("-");
+
+        ris1 =
+            (parti[0] || "").trim();
+
+        ris2 =
+            (parti[1] || "").trim();
+
+    }
+
+    return `
+<tr>
+
+    <td>
+        <input
+            type="text"
+            value="${campo}"
+            placeholder="Campo"
+            onchange="
+                updateCamp(
+                    '${gruppo}',
+                    ${index},
+                    this.value
+                )
+            "
+            style="width:70px"
+        >
+    </td>
+
+    <td>
+        <input
+            type="text"
+            value="${ora}"
+            placeholder="Ora"
+            onchange="
+                updateTime(
+                    '${gruppo}',
+                    ${index},
+                    this.value
+                )
+            "
+            style="width:80px"
+        >
+    </td>
+
+    <td>
+
+        <div>
+            <strong>
+                ${squadra1}
+            </strong>
+        </div>
+
+        <div style="margin:4px 0;">
+            VS
+        </div>
+
+        <div>
+            <strong>
+                ${squadra2}
+            </strong>
+        </div>
+
+    </td>
+
+    <td>
+
+        <input
+            type="text"
+            value="${risultato || "-"}"
+            placeholder="Risultato"
+            onchange="
+                updateRes(
+                    '${gruppo}',
+                    ${index},
+                    this.value
+                )
+            "
+            style="width:70px"
+        >
+
+    </td>
+
+</tr>
+`;
+}
+
+
+   
+function applicaModelloTorneo(){
+
+    ensureRules();
+
+    const select =
+        document.getElementById("tipoTorneo");
+
+    if(!select)
+        return;
+
+    const tipo =
+        select.value;
+
+    if(!tipo)
+        return;
+
+    if(
+        typeof aggiornaDescrizioneTipoTorneo === "function"
+    ){
+        aggiornaDescrizioneTipoTorneo();
+    }
+
+    state.rules.tipoTorneo = tipo;
+
+    state.rules.usaQuarti = false;
+    state.rules.usaSemifinali = false;
+    state.rules.usaFinale = false;
+
+    state.rules.formulaGironi = "";
+    state.rules.formulaFinale = "";
+
+    switch(tipo){
+
+        case "italiana":
+        case "gironiFinale":
+
+            state.rules.formulaGironi =
+                "tuttiControTutti";
+
+            state.rules.formulaFinale =
+                "eliminazioneDiretta";
+
+            state.rules.qualificatePerGirone = 2;
+
+            state.rules.numeroQualificateFinali =
+                Number(state.rules.numeroGironi || 0) * 2;
+
+            if(
+                state.rules.numeroQualificateFinali >= 8
+            ){
+
+                state.rules.usaQuarti = true;
+                state.rules.usaSemifinali = true;
+                state.rules.usaFinale = true;
+
+            }
+            else if(
+                state.rules.numeroQualificateFinali >= 4
+            ){
+
+                state.rules.usaQuarti = false;
+                state.rules.usaSemifinali = true;
+                state.rules.usaFinale = true;
+
+            }
+            else if(
+                state.rules.numeroQualificateFinali >= 2
+            ){
+
+                state.rules.usaFinale = true;
+
+            }
+
+        break;
+
+
+        case "eliminazione":
+
+            state.rules.formulaGironi = "";
+            state.rules.formulaFinale =
+                "eliminazioneDiretta";
+
+            state.rules.numeroQualificateFinali =
+                Number(state.rules.numeroSquadre || 0);
+
+            if(
+                state.rules.numeroQualificateFinali >= 8
+            ){
+
+                state.rules.usaQuarti = true;
+                state.rules.usaSemifinali = true;
+                state.rules.usaFinale = true;
+
+            }
+            else if(
+                state.rules.numeroQualificateFinali >= 4
+            ){
+
+                state.rules.usaSemifinali = true;
+                state.rules.usaFinale = true;
+
+            }
+            else if(
+                state.rules.numeroQualificateFinali >= 2
+            ){
+
+                state.rules.usaFinale = true;
+
+            }
+
+        break;
+
+
+        case "svizzero":
+
+            state.rules.formulaGironi = "svizzero";
+            state.rules.formulaFinale = "classifica";
+
+            state.rules.numeroQualificateFinali = 4;
+            state.rules.usaSemifinali = true;
+            state.rules.usaFinale = true;
+
+            if(!state.svizzero){
+
+                state.svizzero = {
+                    turno: 1,
+                    totaleTurni: 0,
+                    squadre: [],
+                    incontri: []
+                };
+
+            }
+
+        break;
+
+
+        case "americano":
+
+            state.rules.formulaGironi = "americano";
+            state.rules.formulaFinale = "classifica";
+
+            state.rules.numeroQualificateFinali = 1;
+
+            if(!state.americano){
+
+                state.americano = {
+                    turno: 1,
+                    totaleTurni: 0,
+                    giocatori: [],
+                    rotazioni: []
+                };
+
+            }
+
+        break;
+
+
+        case "mexicano":
+
+            state.rules.formulaGironi = "mexicano";
+            state.rules.formulaFinale = "classifica";
+
+            state.rules.numeroQualificateFinali = 1;
+
+            if(!state.mexicano){
+
+                state.mexicano = {
+                    turno: 1,
+                    totaleTurni: 0,
+                    giocatori: [],
+                    abbinamenti: []
+                };
+
+            }
+
+        break;
+
+
+        case "king":
+
+            state.rules.formulaGironi =
+                "kingOfTheCourt";
+
+            state.rules.formulaFinale =
+                "classifica";
+
+            state.rules.numeroQualificateFinali = 1;
+
+            if(!state.king){
+
+                state.king = {
+                    turno: 1,
+                    campi: [],
+                    rotazioni: []
+                };
+
+            }
+
+        break;
+
+
+        case "short":
+
+            state.rules.formulaGironi =
+                "shortFormat";
+
+            state.rules.formulaFinale =
+                "eliminazioneDiretta";
+
+            state.rules.numeroQualificateFinali = 4;
+
+            state.rules.usaQuarti = true;
+            state.rules.usaSemifinali = true;
+            state.rules.usaFinale = true;
+
+            if(!state.short){
+
+                state.short = {
+                    turno: 1,
+                    incontri: []
+                };
+
+            }
+
+        break;
+
+
+        case "manuale":
+        case "personalizzato":
+
+            state.rules.formulaGironi = "";
+            state.rules.formulaFinale = "";
+            state.rules.numeroQualificateFinali = 0;
+
+        break;
+
+    }
+
+    state.qRes =
+        Array(4).fill("-");
+
+    state.sTopRes =
+        Array(2).fill("-");
+
+    state.fTopRes =
+        "-";
+
+    state.finalTop = [];
+    state.campioneTop = null;
+
+    state.mostraQuarti =
+        state.rules.usaQuarti === true;
+
+    state.rules.mostraQuarti =
+        state.rules.usaQuarti === true;
+
+    localStorage.setItem(
+        "torneoState",
+        JSON.stringify(state)
+    );
+
+    if(
+        typeof aggiornaPannelloRegole === "function"
+    ){
+        aggiornaPannelloRegole();
+    }
+
+    if(
+        typeof aggiornaNomeFormulaTorneo === "function"
+    ){
+        aggiornaNomeFormulaTorneo();
+    }
+
+}
+
+ 
+
 function ensureRules(){
 
     /*
