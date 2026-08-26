@@ -11916,6 +11916,7 @@ function renderGironiFinale(){
 
 }
 
+
 function renderTables(){
 
     ensureRules();
@@ -11934,79 +11935,34 @@ function renderTables(){
                 (_,i)=>i
             );
 
-
-        if(squadre.length % 2 !== 0){
-
+        if(squadre.length % 2 !== 0)
             squadre.push(null);
 
-        }
-
-
         let rounds=[];
+        let totale=squadre.length;
+        let turni=totale-1;
+        let meta=totale/2;
 
-        let totale =
-            squadre.length;
-
-        let turni =
-            totale - 1;
-
-        let meta =
-            totale / 2;
-
-
-        for(
-            let r=0;
-            r<turni;
-            r++
-        ){
+        for(let r=0;r<turni;r++){
 
             let round=[];
 
+            for(let i=0;i<meta;i++){
 
-            for(
-                let i=0;
-                i<meta;
-                i++
-            ){
+                let a=squadre[i];
+                let b=squadre[totale-1-i];
 
-                let a =
-                    squadre[i];
-
-                let b =
-                    squadre[
-                        totale-1-i
-                    ];
-
-
-                if(
-                    a!==null &&
-                    b!==null
-                ){
-
-                    round.push([
-                        a,
-                        b
-                    ]);
-
-                }
+                if(a!==null && b!==null)
+                    round.push([a,b]);
 
             }
 
-
             rounds.push(round);
 
+            let fisso=squadre[0];
+            let resto=squadre.slice(1);
 
-            let fisso =
-                squadre[0];
-
-            let resto =
-                squadre.slice(1);
-
-
-            resto.unshift(
-                resto.pop()
-            );
-
+            resto.unshift(resto.pop());
 
             squadre=[
                 fisso,
@@ -12015,40 +11971,27 @@ function renderTables(){
 
         }
 
-
-        /*
-            ANDATA / RITORNO
-        */
-
-        if(
-            state.rules.garaAndataRitorno===true
-        ){
+        if(state.rules.garaAndataRitorno===true){
 
             let ritorno =
                 rounds.map(
                     round =>
                         round.map(
-                            match =>
-                                [
-                                    match[1],
-                                    match[0]
-                                ]
+                            match => [
+                                match[1],
+                                match[0]
+                            ]
                         )
                 );
 
-
             rounds =
-                rounds.concat(
-                    ritorno
-                );
+                rounds.concat(ritorno);
 
         }
-
 
         return rounds;
 
     }
-
 
 
     /*
@@ -12060,21 +12003,14 @@ function renderTables(){
     let campiPerGirone={
 
         A:[2,3],
-
         B:[4,5],
-
         C:[6,7],
-
         D:[8,9],
-
         E:[10,11],
-
         F:[12,13],
-
         G:[14,15]
 
     };
-
 
 
     /*
@@ -12084,50 +12020,22 @@ function renderTables(){
     */
 
     let durata =
-        Number(
-            state.rules.duration
-        ) || 30;
-
+        Number(state.rules.duration) || 30;
 
     let start =
-        String(
-            state.rules.start || "20:00"
-        );
+        String(state.rules.start || "20:00");
 
+    let partiOra=start.split(":");
 
-    let partiOra =
-        start.split(":");
+    let oraBase=Number(partiOra[0]);
 
-
-    let oraBase =
-        Number(
-            partiOra[0]
-        );
-
-
-    if(
-        !Number.isFinite(oraBase)
-    ){
-
+    if(!Number.isFinite(oraBase))
         oraBase=20;
 
-    }
+    let minutiBase=Number(partiOra[1]);
 
-
-    let minutiBase =
-        Number(
-            partiOra[1]
-        );
-
-
-    if(
-        !Number.isFinite(minutiBase)
-    ){
-
+    if(!Number.isFinite(minutiBase))
         minutiBase=0;
-
-    }
-
 
 
     /*
@@ -12137,13 +12045,9 @@ function renderTables(){
     */
 
     let numeroGironi =
-        Number(
-            state.rules.numeroGironi
-        ) || 2;
-
+        Number(state.rules.numeroGironi) || 2;
 
     let lettereGironi=[
-
         "A",
         "B",
         "C",
@@ -12151,9 +12055,7 @@ function renderTables(){
         "E",
         "F",
         "G"
-
     ];
-
 
 
     /*
@@ -12172,13 +12074,9 @@ function renderTables(){
         g++
     ){
 
-        let tag =
-            lettereGironi[g];
+        let tag=lettereGironi[g];
 
-
-        let squadre =
-            state[tag];
-
+        let squadre=state[tag];
 
         if(
             !Array.isArray(squadre) ||
@@ -12193,18 +12091,25 @@ function renderTables(){
         let partite=[];
 
 
-
         /*
-            USA LE PARTITE GIÀ PRESENTI (ma controllando che non siano troncate a 12)
+            USA LE PARTITE ESISTENTI
+            SOLO SE COMPLETE
         */
+
+        let partiteAttese =
+            squadre.length *
+            (squadre.length - 1) /
+            (
+                state.rules.garaAndataRitorno
+                    ? 1
+                    : 2
+            );
+
 
         if(
             state.partiteGironi &&
-            Array.isArray(
-                state.partiteGironi[tag]
-            ) &&
-            state.partiteGironi[tag].length>0 &&
-            state.partiteGironi[tag].length >= (squadre.length * (squadre.length - 1) / (state.rules.garaAndataRitorno ? 1 : 2)) // Forza ricalcolo se le vecchie partite erano parziali
+            Array.isArray(state.partiteGironi[tag]) &&
+            state.partiteGironi[tag].length >= partiteAttese
         ){
 
             partite =
@@ -12212,20 +12117,12 @@ function renderTables(){
 
         }
 
-
-
-        /*
-            SE NON ESISTONO O ERANO TRONCATE,
-            CREA IL ROUND ROBIN COMPLETO SULLE 8 SQUADRE
-        */
-
         else{
 
             let rounds =
                 generaRoundRobin(
                     squadre.length
                 );
-
 
             rounds.forEach(
                 round=>{
@@ -12235,52 +12132,48 @@ function renderTables(){
 
                             partite.push({
 
-                                casa:
-                                    match[0],
-
-                                ospite:
-                                    match[1]
+                                casa:match[0],
+                                ospite:match[1]
 
                             });
 
                         }
+
                     );
 
                 }
+
             );
 
-            // Salva le partite corrette
-            if(!state.partiteGironi) state.partiteGironi = {};
-            state.partiteGironi[tag] = partite;
+
+            if(!state.partiteGironi)
+                state.partiteGironi={};
+
+            state.partiteGironi[tag]=partite;
 
         }
 
 
-
         /*
-            NORMALIZZAZIONE PARTITE
+            ============================
+            NORMALIZZAZIONE
+            ============================
         */
 
         partite =
             partite.map(
                 match=>{
 
-                    if(
-                        Array.isArray(match)
-                    ){
+                    if(Array.isArray(match)){
 
                         return {
 
-                            casa:
-                                match[0],
-
-                            ospite:
-                                match[1]
+                            casa:match[0],
+                            ospite:match[1]
 
                         };
 
                     }
-
 
                     return match;
 
@@ -12288,9 +12181,10 @@ function renderTables(){
             );
 
 
-
         /*
-            INSERIMENTO NEL CALENDARIO
+            ============================
+            INSERIMENTO CALENDARIO
+            ============================
         */
 
         partite.forEach(
@@ -12298,20 +12192,11 @@ function renderTables(){
 
                 calendario.push({
 
-                    girone:
-                        tag,
-
-                    casa:
-                        match.casa,
-
-                    ospite:
-                        match.ospite,
-
-                    campo:
-                        null,
-
-                    slot:
-                        null
+                    girone:tag,
+                    casa:match.casa,
+                    ospite:match.ospite,
+                    campo:null,
+                    slot:null
 
                 });
 
@@ -12319,7 +12204,6 @@ function renderTables(){
         );
 
     }
-
 
 
     /*
@@ -12335,9 +12219,7 @@ function renderTables(){
         partita=>{
 
             let assegnata=false;
-
             let slot=0;
-
 
             let campiDisponibili =
                 campiPerGirone[
@@ -12356,7 +12238,6 @@ function renderTables(){
                     let campo =
                         campiDisponibili[i];
 
-
                     let conflitto=false;
 
 
@@ -12367,12 +12248,8 @@ function renderTables(){
                                 o.slot===slot &&
                                 (
                                     o.campo===campo ||
-                                    o.squadre.includes(
-                                        partita.casa
-                                    ) ||
-                                    o.squadre.includes(
-                                        partita.ospite
-                                    )
+                                    o.squadre.includes(partita.casa) ||
+                                    o.squadre.includes(partita.ospite)
                                 )
                             ){
 
@@ -12386,32 +12263,20 @@ function renderTables(){
 
                     if(!conflitto){
 
-                        partita.campo =
-                            campo;
-
-
-                        partita.slot =
-                            slot;
-
+                        partita.campo=campo;
+                        partita.slot=slot;
 
                         occupazioni.push({
 
-                            slot:
-                                slot,
-
-                            campo:
-                                campo,
+                            slot:slot,
+                            campo:campo,
 
                             squadre:[
-
                                 partita.casa,
-
                                 partita.ospite
-
                             ]
 
                         });
-
 
                         assegnata=true;
 
@@ -12422,17 +12287,119 @@ function renderTables(){
                 }
 
 
-                if(!assegnata){
-
+                if(!assegnata)
                     slot++;
-
-                }
 
             }
 
         }
     );
 
+
+    /*
+        ============================
+        FUNZIONE NOME COPPIA
+        ============================
+    */
+
+    function nomeCoppia(coppia){
+
+        if(coppia === undefined || coppia === null)
+            return "";
+
+        /*
+            LA COPPIA È GIÀ UN OGGETTO:
+            USIAMO IL NOME SALVATO DA ADMIN.
+        */
+
+        if(
+            typeof coppia === "object" &&
+            typeof coppia.nome === "string" &&
+            coppia.nome.trim() !== ""
+        ){
+
+            return coppia.nome.trim();
+
+        }
+
+
+        /*
+            COMPATIBILITÀ CON VECCHI DATI
+        */
+
+        if(
+            typeof coppia === "object" &&
+            (
+                coppia.g1 !== undefined ||
+                coppia.g2 !== undefined
+            )
+        ){
+
+            return [
+
+                coppia.g1 || "",
+                coppia.g2 || ""
+
+            ]
+            .filter(Boolean)
+            .join(" / ");
+
+        }
+
+
+        /*
+            VECCHIO FORMATO giocatore1 / giocatore2
+        */
+
+        if(typeof coppia === "object"){
+
+            let g1=coppia.giocatore1;
+            let g2=coppia.giocatore2;
+
+
+            function nomeGiocatore(g){
+
+                if(!g)
+                    return "";
+
+                if(typeof g==="string")
+                    return g;
+
+                if(typeof g==="object"){
+
+                    /*
+                        Preferenza: cognome.
+                    */
+
+                    return String(
+                        g.cognome ||
+                        g.nome_giocatore ||
+                        g.nome ||
+                        ""
+                    ).trim();
+
+                }
+
+                return String(g);
+
+            }
+
+
+            return [
+
+                nomeGiocatore(g1),
+                nomeGiocatore(g2)
+
+            ]
+            .filter(Boolean)
+            .join(" / ");
+
+        }
+
+
+        return String(coppia);
+
+    }
 
 
     /*
@@ -12448,9 +12415,7 @@ function renderTables(){
         g++
     ){
 
-        let tag =
-            lettereGironi[g];
-
+        let tag=lettereGironi[g];
 
         let box =
             document.getElementById(
@@ -12458,11 +12423,8 @@ function renderTables(){
             );
 
 
-        if(!box){
-
+        if(!box)
             continue;
-
-        }
 
 
         let partite =
@@ -12472,51 +12434,28 @@ function renderTables(){
             );
 
 
-
         /*
             RISULTATI
         */
 
-        if(
-            !Array.isArray(
-                state[tag+"res"]
-            )
-        ){
-
+        if(!Array.isArray(state[tag+"res"]))
             state[tag+"res"]=[];
-
-        }
 
 
         /*
             TEMPI
         */
 
-        if(
-            !Array.isArray(
-                state[tag+"time"]
-            )
-        ){
-
+        if(!Array.isArray(state[tag+"time"]))
             state[tag+"time"]=[];
-
-        }
 
 
         /*
             CAMPI
         */
 
-        if(
-            !Array.isArray(
-                state[tag+"camp"]
-            )
-        ){
-
+        if(!Array.isArray(state[tag+"camp"]))
             state[tag+"camp"]=[];
-
-        }
-
 
 
         /*
@@ -12553,16 +12492,16 @@ function renderTables(){
         }
 
 
-
         let rows="";
 
 
         partite.forEach(
             (m,i)=>{
 
-
                 /*
+                    ============================
                     ORARIO
+                    ============================
                 */
 
                 let minuti =
@@ -12572,44 +12511,23 @@ function renderTables(){
                         durata
                     );
 
-
                 let ora =
                     oraBase +
-                    Math.floor(
-                        minuti / 60
-                    );
-
+                    Math.floor(minuti/60);
 
                 let min =
                     minuti % 60;
 
-
                 let tempo =
-
-                    String(
-                        ora
-                    ).padStart(
-                        2,
-                        "0"
-                    )
-
-                    +
-
-                    ":"
-
-                    +
-
-                    String(
-                        min
-                    ).padStart(
-                        2,
-                        "0"
-                    );
-
+                    String(ora).padStart(2,"0") +
+                    ":" +
+                    String(min).padStart(2,"0");
 
 
                 /*
+                    ============================
                     CAMPO
+                    ============================
                 */
 
                 if(
@@ -12618,31 +12536,31 @@ function renderTables(){
                     state[tag+"camp"][i] === null
                 ){
 
-                    state[tag+"camp"][i] =
-                        m.campo;
+                    state[tag+"camp"][i]=m.campo;
 
                 }
 
 
-
                 /*
+                    ============================
                     ORARIO
+                    ============================
                 */
 
                 if(
                     !state[tag+"time"][i] ||
-                    state[tag+"time"][i] === "-"
+                    state[tag+"time"][i]==="-"
                 ){
 
-                    state[tag+"time"][i] =
-                        tempo;
+                    state[tag+"time"][i]=tempo;
 
                 }
 
 
-
                 /*
+                    ============================
                     RISULTATO
+                    ============================
                 */
 
                 if(
@@ -12662,251 +12580,30 @@ function renderTables(){
                     ).split("-");
 
 
-
                 /*
-                    COPPIA CASA
+                    ============================
+                    COPPIE
+                    ============================
                 */
 
-                let casa =
+                const casa =
                     state[tag][m.casa];
 
-
-                let squadraCasa="";
-
-
-                if(casa){
-
-                    if(
-                        typeof casa==="object"
-                    ){
-
-                        if(
-                            casa.g1!==undefined ||
-                            casa.g2!==undefined
-                        ){
-
-                            squadraCasa =
-                                String(
-                                    casa.g1 || ""
-                                )
-                                +
-                                " / "
-                                +
-                                String(
-                                    casa.g2 || ""
-                                );
-
-                        }
-
-                        else if(
-                            casa.giocatore1 ||
-                            casa.giocatore2
-                        ){
-
-                            let g1 =
-                                casa.giocatore1;
-
-                            let g2 =
-                                casa.giocatore2;
-
-
-                            if(
-                                typeof g1==="object"
-                            ){
-
-                                g1 =
-                                    String(
-                                        g1.nome || ""
-                                    )
-                                    +
-                                    " "
-                                    +
-                                    String(
-                                        g1.cognome || ""
-                                    );
-
-                            }
-
-
-                            if(
-                                typeof g2==="object"
-                            ){
-
-                                g2 =
-                                    String(
-                                        g2.nome || ""
-                                    )
-                                    +
-                                    " "
-                                    +
-                                    String(
-                                        g2.cognome || ""
-                                    );
-
-                            }
-
-
-                            squadraCasa =
-                                String(g1 || "")
-                                +
-                                " / "
-                                +
-                                String(g2 || "");
-
-                        }
-
-                        else if(casa.nome){
-
-                            squadraCasa =
-                                String(
-                                    casa.nome
-                                );
-
-                        }
-
-                        else{
-
-                            squadraCasa =
-                                String(casa);
-
-                        }
-
-                    }
-
-                    else{
-
-                        squadraCasa =
-                            String(casa);
-
-                    }
-
-                }
-
-
-
-                /*
-                    COPPIA OSPITE
-                */
-
-                let ospite =
+                const ospite =
                     state[tag][m.ospite];
 
 
-                let squadraOspite="";
+                const squadraCasa =
+                    nomeCoppia(casa);
 
-
-                if(ospite){
-
-                    if(
-                        typeof ospite==="object"
-                    ){
-
-                        if(
-                            ospite.g1!==undefined ||
-                            ospite.g2!==undefined
-                        ){
-
-                            squadraOspite =
-                                String(
-                                    ospite.g1 || ""
-                                )
-                                +
-                                " / "
-                                +
-                                String(
-                                    ospite.g2 || ""
-                                );
-
-                        }
-
-                        else if(
-                            ospite.giocatore1 ||
-                            ospite.giocatore2
-                        ){
-
-                            let g1 =
-                                ospite.giocatore1;
-
-                            let g2 =
-                                ospite.giocatore2;
-
-
-                            if(
-                                typeof g1==="object"
-                            ){
-
-                                g1 =
-                                    String(
-                                        g1.nome || ""
-                                    )
-                                    +
-                                    " "
-                                    +
-                                    String(
-                                        g1.cognome || ""
-                                    );
-
-                            }
-
-
-                            if(
-                                typeof g2==="object"
-                            ){
-
-                                g2 =
-                                    String(
-                                        g2.nome || ""
-                                    )
-                                    +
-                                    " "
-                                    +
-                                    String(
-                                        g2.cognome || ""
-                                    );
-
-                            }
-
-
-                            squadraOspite =
-                                String(g1 || "")
-                                +
-                                " / "
-                                +
-                                String(g2 || "");
-
-                        }
-
-                        else if(ospite.nome){
-
-                            squadraOspite =
-                                String(
-                                    ospite.nome
-                                );
-
-                        }
-
-                        else{
-
-                            squadraOspite =
-                                String(ospite);
-
-                        }
-
-                    }
-
-                    else{
-
-                        squadraOspite =
-                            String(ospite);
-
-                    }
-
-                }
-
+                const squadraOspite =
+                    nomeCoppia(ospite);
 
 
                 /*
-                    HTML ORIGINALE
+                    ============================
+                    HTML
+                    ============================
                 */
 
                 rows += `
@@ -12966,18 +12663,34 @@ ${squadraOspite}
 
 <input
 
-value="${risultato[0]==='-' ? '' : risultato[0]}"
+value="${
+    risultato[0]==="-" ?
+    "" :
+    risultato[0]
+}"
 
-oninput="updateRes('${tag}',${i},0,this.value)"
+oninput="updateRes(
+    '${tag}',
+    ${i},
+    0,
+    this.value
+)"
 
 >
 
 
 <input
 
-value="${risultato[1] || ''}"
+value="${
+    risultato[1] || ""
+}"
 
-oninput="updateRes('${tag}',${i},1,this.value)"
+oninput="updateRes(
+    '${tag}',
+    ${i},
+    1,
+    this.value
+)"
 
 >
 
@@ -12988,17 +12701,17 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 `;
 
             }
+
         );
 
 
-
-        box.innerHTML =
-            rows;
-
+        box.innerHTML=rows;
 
 
         /*
+            ============================
             VISIBILITÀ CARD
+            ============================
         */
 
         let card =
@@ -13012,10 +12725,7 @@ oninput="updateRes('${tag}',${i},1,this.value)"
             card.style.display =
 
                 (
-                    Array.isArray(
-                        state[tag]
-                    )
-                    &&
+                    Array.isArray(state[tag]) &&
                     state[tag].length>0
                 )
 
@@ -13033,6 +12743,9 @@ oninput="updateRes('${tag}',${i},1,this.value)"
 
 }
 
+
+
+   
 function renderMatchCard(titolo, match, tipo, index, risultato){
 
     if(
