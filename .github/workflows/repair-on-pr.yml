@@ -1,0 +1,141 @@
+name: Repair Bove from PR trigger
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Inject empty tournament renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('Bove.html')
+          text=p.read_text(encoding='utf-8')
+          marker='<!-- BOVE EMPTY TOURNAMENT PATCH V2 -->'
+          if marker in text:
+              print('Patch V2 gia presente')
+              raise SystemExit(0)
+
+          patch=r'''<!-- BOVE EMPTY TOURNAMENT PATCH V2 -->
+<script>
+(function(){
+    const groups=["A","B","C","D","E","F","G"];
+    function activeGroups(){
+        const n=Math.max(1,Number(state?.rules?.numeroGironi)||2);
+        return groups.slice(0,n);
+    }
+
+    const oldTables=window.renderTables;
+    window.renderTables=function(){
+        if(typeof oldTables==='function'){try{oldTables();}catch(e){console.error(e);}}
+        activeGroups().forEach(g=>{
+            const card=document.getElementById('card'+g);
+            const rows=document.getElementById(g+'rows');
+            if(card) card.style.display='block';
+            if(rows && !rows.querySelector('tr')){
+                rows.innerHTML=Array.from({length:6},(_,i)=>`<tr><td></td><td></td><td class="match-cell"><div class="team-line">—</div><div class="vs-line"><b>VS</b></div><div class="team-line">—</div></td><td></td></tr>`).join('');
+            }
+        });
+    };
+
+    const oldClass=window.renderClass;
+    window.renderClass=function(){
+        if(typeof oldClass==='function'){try{oldClass();}catch(e){console.error(e);}}
+        const per=Math.max(1,Number(state?.rules?.squadrePerGirone)||4);
+        activeGroups().forEach(g=>{
+            const card=document.getElementById('card'+g);
+            const box=document.getElementById(g+'class');
+            if(card) card.style.display='block';
+            if(box && !box.querySelector('tr')){
+                box.innerHTML=Array.from({length:per},()=>'<tr><td></td><td></td><td>0</td><td>0</td><td>0</td><td>0</td></tr>').join('');
+            }
+        });
+    };
+
+    window.renderKO=function(){
+        ensureRules();
+        const q=document.getElementById('Q');
+        const s=document.getElementById('S');
+        const f=document.getElementById('finaleBox')||document.getElementById('F');
+        if(!q||!s||!f)return;
+        const qt=q.closest('table'),st=s.closest('table'),ft=f.closest('table');
+        q.innerHTML='';s.innerHTML='';f.innerHTML='';
+        document.querySelectorAll('.winner-box.top-win').forEach(e=>e.remove());
+        if(!Array.isArray(state.qRes))state.qRes=Array(4).fill('-');
+        if(!Array.isArray(state.sTopRes))state.sTopRes=Array(2).fill('-');
+        while(state.qRes.length<4)state.qRes.push('-');
+        while(state.sTopRes.length<2)state.sTopRes.push('-');
+        if(typeof state.fTopRes!=='string')state.fTopRes='-';
+
+        let qual=[];
+        try{const r=getFinalQualified();if(Array.isArray(r))qual=r;}catch(e){console.error(e);}
+        const expected=Math.max(0,Number(state.rules.numeroQualificateFinali)||((Number(state.rules.numeroGironi)||0)*(Number(state.rules.qualificatePerGirone)||0)));
+        const slot=Array.from({length:expected},(_,i)=>qual[i]||'');
+        const qOn=state.rules.usaQuarti===true&&expected>=8;
+        const sOn=state.rules.usaSemifinali===true;
+        const fOn=state.rules.usaFinale===true;
+        let sem=[];
+
+        if(qOn){
+            const qm=[[slot[0],slot[7]],[slot[3],slot[4]],[slot[1],slot[6]],[slot[2],slot[5]]];
+            qm.forEach((m,i)=>q.innerHTML+=creaMatchKO(m,'q',i,state.qRes[i]));
+            if(qt)qt.style.display='table';
+            const w=qm.map((m,i)=>getWinner(m,state.qRes[i])).filter(Boolean);
+            sem=w.length===4?[[w[0],w[1]],[w[2],w[3]]]:[['',''],['','']];
+        }else if(expected>=4){
+            sem=[[slot[0],slot[3]],[slot[2],slot[1]]];
+            if(qt)qt.style.display='none';
+        }else if(expected>=2){
+            sem=[[slot[0],slot[1]]];
+            if(qt)qt.style.display='none';
+        }else if(qt)qt.style.display='none';
+
+        let finalists=[];
+        if(sOn){
+            if(expected>=4&&sem.length<2)sem.push(['','']);
+            sem.slice(0,2).forEach((m,i)=>{
+                s.innerHTML+=creaMatchKO(m,'s',i,state.sTopRes[i]);
+                const w=getWinner(m,state.sTopRes[i]);if(w)finalists.push(w);
+            });
+            if(st)st.style.display='table';
+        }else if(expected>=2){
+            finalists=[slot[0]||'',slot[1]||''];
+            if(st)st.style.display='none';
+        }else if(st)st.style.display='none';
+
+        state.finalTop=[finalists[0]||'',finalists[1]||''];
+        if(fOn){
+            f.innerHTML=creaMatchKO(state.finalTop,'f',0,state.fTopRes);
+            if(ft)ft.style.display='table';
+        }else if(ft)ft.style.display='none';
+
+        console.log('=== BOVE EMPTY STRUCTURE V2 ===',{expected,qualificati:qual.length,qOn,sOn,fOn,qRows:q.querySelectorAll('tr').length,sRows:s.querySelectorAll('tr').length,fRows:f.querySelectorAll('tr').length});
+    };
+})();
+</script>
+'''
+          text=text.replace('</body>',patch+'\n</body>',1)
+          p.write_text(text,encoding='utf-8')
+
+      - name: Commit to main
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Apply final empty tournament rendering fix'
+          git push origin HEAD:main
