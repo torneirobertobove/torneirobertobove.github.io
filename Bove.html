@@ -9955,247 +9955,153 @@ function getWinner(match,res){
 
 function getFinalQualified(){
 
-ensureRules();
+    ensureRules();
 
-const qualificati = [];
+    const qualificati = [];
 
-const lettere = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G"
-];
+    const numeroGironi =
+        Number(state.rules?.numeroGironi) || 0;
 
-const numeroGironi =
-    Math.max(
-        1,
-        Number(
-            state.rules?.numeroGironi ??
-            state.numeroGironi ??
-            2
-        )
-    );
+    const perGirone =
+        Number(state.rules?.qualificatePerGirone) || 0;
 
-const qualificatePerGirone =
-    Math.max(
-        1,
-        Number(
-            state.rules?.qualificatePerGirone ??
-            state.qualificatePerGirone ??
-            1
-        )
-    );
+    const lettere = [
+        "A","B","C","D","E","F"
+    ];
 
-for(
-    let i = 0;
-    i < numeroGironi;
-    i++
-){
+    for(let i = 0; i < numeroGironi; i++){
 
-    const girone =
-        lettere[i];
+        const girone = lettere[i];
 
-    if(!girone)
-        continue;
+        const teams = state[girone];
 
-    const squadre =
-        Array.isArray(state[girone])
-            ? state[girone]
-            : [];
+        if(!Array.isArray(teams))
+            continue;
 
-    if(
-        squadre.length === 0
-    ){
+        /*
+        ========================================================
+        CLASSIFICA REALE DEL GIRONE
+        ========================================================
+        */
 
-        console.warn(
-            "Girone " +
-            girone +
-            " vuoto: nessun qualificato."
-        );
+        const risultati =
+            Array.isArray(state[girone + "res"])
+                ? state[girone + "res"]
+                : [];
 
-        continue;
-    }
-
-    const risultati =
-        Array.isArray(
-            state[girone + "res"]
-        )
-            ? state[girone + "res"]
-            : [];
-
-    let classifica = [];
-
-    try{
-
-        if(
-            typeof calc !== "function"
-        ){
-
-            console.error(
-                "calc() non disponibile."
-            );
-
-            return [];
-        }
-
-        classifica =
+        const classifica =
             calc(
-                squadre,
+                teams,
                 risultati
             );
 
-    }
-    catch(e){
-
-        console.error(
-            "Errore calc() nel girone " +
-            girone +
-            ":",
-            e
-        );
-
-        continue;
-    }
-
-    if(
-        !Array.isArray(classifica) ||
-        classifica.length === 0
-    ){
-
-        console.warn(
-            "Nessuna classifica valida per il girone:",
-            girone
-        );
-
-        continue;
-    }
-
-    const limite =
-        Math.min(
-            qualificatePerGirone,
-            classifica.length
-        );
-
-    for(
-        let posizione = 0;
-        posizione < limite;
-        posizione++
-    ){
-
-        const elemento =
-            classifica[posizione];
-
-        if(
-            elemento === null ||
-            elemento === undefined
-        )
+        if(!Array.isArray(classifica))
             continue;
 
-        let nome = "";
+        /*
+        ========================================================
+        PRENDIAMO LE PRIME N POSIZIONI
+        ========================================================
+        */
 
-        if(
-            typeof elemento === "string"
+        for(
+            let posizione = 0;
+            posizione < perGirone;
+            posizione++
         ){
 
-            nome =
-                elemento;
+            const dati =
+                classifica[posizione];
 
-        }
-        else if(
-            typeof elemento === "object"
-        ){
+            if(!dati)
+                continue;
 
-            nome =
-                elemento.n ??
-                elemento.nome ??
-                elemento.squadra ??
-                elemento.name ??
-                "";
-        }
+            /*
+            ----------------------------------------------------
+            calc() può restituire direttamente la squadra
+            oppure un oggetto contenente l'indice.
+            ----------------------------------------------------
+            */
 
-        nome =
-            String(nome)
-            .trim();
+            let squadra = null;
 
-        if(
-            nome === ""
-        ){
+            if(
+                typeof dati === "object" &&
+                dati.index !== undefined
+            ){
 
-            console.warn(
-                "Qualificato senza nome:",
+                squadra =
+                    teams[dati.index];
+
+            }
+            else if(
+                typeof dati === "object" &&
+                (
+                    dati.g1 !== undefined ||
+                    dati.g2 !== undefined
+                )
+            ){
+
+                squadra = dati;
+
+            }
+
+            if(
+                squadra === undefined ||
+                squadra === null
+            )
+                continue;
+
+            qualificati.push(
+                squadra
+            );
+
+            console.log(
+                "QUALIFICATO:",
                 {
                     girone,
-                    posizione: posizione + 1,
-                    elemento
+                    posizione:
+                        posizione + 1,
+
+                    squadra:
+                        typeof nomeSquadra === "function"
+                            ? nomeSquadra(squadra)
+                            : squadra
                 }
             );
 
-            continue;
         }
 
-        if(
-            qualificati.includes(nome)
-        ){
-
-            console.warn(
-                "Qualificato duplicato ignorato:",
-                nome,
-                "girone:",
-                girone
-            );
-
-            continue;
-        }
-
-        qualificati.push(nome);
-
-        console.log(
-            "QUALIFICATO:",
-            {
-                girone,
-                posizione: posizione + 1,
-                squadra: nome,
-                dati: elemento
-            }
-        );
     }
-}
 
-const attesi =
-    numeroGironi *
-    qualificatePerGirone;
+    console.log(
+        "========================================"
+    );
 
-state.finalQualified =
-    [...qualificati];
+    console.log(
+        "QUALIFICATI FASE FINALE:",
+        qualificati.map(s =>
+            typeof nomeSquadra === "function"
+                ? nomeSquadra(s)
+                : s
+        )
+    );
 
-console.log(
-    "========================================"
-);
+    console.log(
+        "NUMERO QUALIFICATI:",
+        qualificati.length
+    );
 
-console.log(
-    "QUALIFICATI FASE FINALE:",
-    qualificati
-);
+    console.log(
+        "ATTESI:",
+        numeroGironi * perGirone
+    );
 
-console.log(
-    "NUMERO QUALIFICATI:",
-    qualificati.length
-);
+    console.log(
+        "========================================"
+    );
 
-console.log(
-    "ATTESI:",
-    attesi
-);
-
-console.log(
-    "========================================"
-);
-
-return qualificati;
-
+    return qualificati;
 }
    
 function creaFinale(semifinali){
