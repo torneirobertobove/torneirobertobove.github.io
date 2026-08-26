@@ -8550,6 +8550,7 @@ return true;
 }
 
 
+
 function renderKO(){
 
     ensureRules();
@@ -8598,16 +8599,36 @@ function renderKO(){
 
     /*
     ============================================================
-    NOME REALE DELLA COPPIA
+    FUNZIONE UNICA DI VISUALIZZAZIONE COPPIA
     ============================================================
     */
 
     function nomeCoppia(squadra){
 
         if(
-            squadra &&
+            squadra === null ||
+            squadra === undefined ||
+            squadra === "" ||
+            squadra === "-"
+        ){
+
+            return "-";
+
+        }
+
+
+        /*
+        COPPIA OGGETTO
+        */
+
+        if(
             typeof squadra === "object"
         ){
+
+            /*
+            Se esiste già il nome completo della coppia
+            utilizziamo quello.
+            */
 
             if(
                 typeof squadra.nome === "string" &&
@@ -8618,62 +8639,97 @@ function renderKO(){
 
             }
 
-            if(
-                squadra.giocatore1 ||
-                squadra.giocatore2
-            ){
 
-                const g1 =
-                    squadra.giocatore1 || {};
+            /*
+            Fallback dai due giocatori.
+            */
 
-                const g2 =
-                    squadra.giocatore2 || {};
+            const giocatore1 =
+                squadra.giocatore1;
 
-                const c1 =
-                    g1.cognome ||
-                    g1.nome ||
-                    "";
+            const giocatore2 =
+                squadra.giocatore2;
 
-                const c2 =
-                    g2.cognome ||
-                    g2.nome ||
-                    "";
 
-                const nome =
-                    (
-                        String(c1).trim() +
-                        (
-                            c2
-                                ? " / " + String(c2).trim()
-                                : ""
-                        )
+            function nomeGiocatore(g){
+
+                if(!g)
+                    return "";
+
+                const cognome =
+                    String(
+                        g.cognome ??
+                        ""
                     ).trim();
 
-                if(nome !== "")
-                    return nome;
+                const nome =
+                    String(
+                        g.nome ??
+                        ""
+                    ).trim();
+
+
+                /*
+                Preferenza:
+                iniziale nome + cognome
+                */
+
+                if(
+                    cognome !== "" &&
+                    nome !== ""
+                ){
+
+                    return (
+                        nome.charAt(0).toUpperCase() +
+                        ". " +
+                        cognome
+                    );
+
+                }
+
+
+                if(cognome !== "")
+                    return cognome;
+
+                return nome;
+
             }
+
+
+            const p1 =
+                nomeGiocatore(
+                    giocatore1
+                );
+
+            const p2 =
+                nomeGiocatore(
+                    giocatore2
+                );
+
+
+            if(p1 && p2)
+                return p1 + " / " + p2;
+
+            if(p1)
+                return p1;
+
+            if(p2)
+                return p2;
+
+
+            return "-";
 
         }
 
-        if(
-            squadra !== undefined &&
-            squadra !== null
-        ){
 
-            const valore =
-                String(squadra).trim();
+        /*
+        STRINGA GIÀ PRONTA
+        */
 
-            if(
-                valore !== "" &&
-                valore !== "[object Object]"
-            ){
+        return String(
+            squadra
+        ).trim() || "-";
 
-                return valore;
-            }
-
-        }
-
-        return "-";
     }
 
 
@@ -8814,6 +8870,7 @@ function renderKO(){
 
                 const width =
                     widths[index];
+
 
                 cella.style.display =
                     "table-cell";
@@ -9042,20 +9099,25 @@ function renderKO(){
         ){
 
             return "";
+
         }
 
 
         /*
-        ========================================================
-        CONVERSIONE OGGETTO -> NOME COPPIA
-        ========================================================
+        IMPORTANTE:
+        gli oggetti coppia restano intatti.
+        Solo per la visualizzazione vengono convertiti.
         */
 
         const squadra1 =
-            nomeCoppia(match[0]);
+            nomeCoppia(
+                match[0]
+            );
 
         const squadra2 =
-            nomeCoppia(match[1]);
+            nomeCoppia(
+                match[1]
+            );
 
 
         const campo =
@@ -9285,6 +9347,7 @@ function renderKO(){
             </tr>
 
         `;
+
     }
 
 
@@ -9402,6 +9465,7 @@ function renderKO(){
             fTable.style.display = "none";
 
         return;
+
     }
 
 
@@ -9420,12 +9484,6 @@ function renderKO(){
     if(fTable)
         fTable.style.display = "none";
 
-
-    /*
-    ============================================================
-    FASE SUCCESSIVA
-    ============================================================
-    */
 
     let semifinali = [];
 
@@ -9492,16 +9550,10 @@ function renderKO(){
                 );
 
 
-            if(
-                vincitore &&
-                vincitore !== "-"
-            ){
-
+            if(vincitore)
                 vincitori.push(
                     vincitore
                 );
-
-            }
 
         });
 
@@ -9548,10 +9600,8 @@ function renderKO(){
 
     else{
 
-        if(qualificati.length < 4){
-
+        if(qualificati.length < 4)
             return;
-        }
 
 
         semifinali = [
@@ -9593,10 +9643,8 @@ function renderKO(){
             if(
                 !Array.isArray(match) ||
                 match.length !== 2
-            ){
-
+            )
                 return;
-            }
 
 
             s.innerHTML +=
@@ -9662,6 +9710,7 @@ function renderKO(){
         state.campioneTop = null;
 
         return;
+
     }
 
 
@@ -9732,6 +9781,7 @@ function renderKO(){
         }
 
     }
+
     else{
 
         state.campioneTop = null;
@@ -9739,6 +9789,8 @@ function renderKO(){
     }
 
 }
+
+
 
 
 
