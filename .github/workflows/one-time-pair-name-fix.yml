@@ -1,0 +1,135 @@
+name: One-time Bove pair-name fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply global pair-name fix') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Apply global pair-name fix
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          if '/* BOVE GLOBAL COPPIA NAME FIX V1 */' in text:
+              print('Fix gia presente')
+              raise SystemExit(0)
+
+          helper = r'''/* BOVE GLOBAL COPPIA NAME FIX V1 */
+function formatNomeCoppia(squadra){
+
+    if(squadra === null || squadra === undefined || squadra === "" || squadra === "-")
+        return "-";
+
+    function formatGiocatore(g){
+        if(g === null || g === undefined || g === "") return "";
+
+        if(typeof g === "object"){
+            const nome = String(g.nome ?? g.firstName ?? "").trim();
+            const cognome = String(g.cognome ?? g.lastName ?? "").trim();
+            if(nome && cognome) return nome.charAt(0).toUpperCase() + ". " + cognome;
+            if(cognome) return cognome;
+            if(nome) return nome;
+            return "";
+        }
+
+        const s = String(g).replace(/\s+/g," ").trim();
+        if(!s) return "";
+        const parti = s.split(" ").filter(Boolean);
+        if(parti.length === 1) return parti[0];
+        return parti[0].charAt(0).toUpperCase() + ". " + parti[parti.length - 1];
+    }
+
+    if(typeof squadra === "object"){
+        const g1 = squadra.giocatore1 ?? squadra.g1 ?? squadra.player1 ?? squadra.coppia1;
+        const g2 = squadra.giocatore2 ?? squadra.g2 ?? squadra.player2 ?? squadra.coppia2;
+
+        if(g1 !== undefined || g2 !== undefined){
+            const a = formatGiocatore(g1);
+            const b = formatGiocatore(g2);
+            if(a && b) return a + " / " + b;
+            return a || b || "-";
+        }
+
+        if(typeof squadra.nome === "string" && squadra.nome.trim()){
+            squadra = squadra.nome.trim();
+        }else{
+            return "-";
+        }
+    }
+
+    const s = String(squadra).replace(/\s+/g," ").trim();
+    if(!s || s === "-") return "-";
+
+    if(s.includes("/")){
+        const parti = s.split("/").map(x => formatGiocatore(x.trim())).filter(Boolean);
+        if(parti.length) return parti.join(" / ");
+    }
+
+    return formatGiocatore(s);
+}
+'''
+
+          marker = 'function renderTables(){'
+          if marker not in text:
+              raise SystemExit('renderTables non trovato')
+          text = text.replace(marker, helper + '\n\n' + marker, 1)
+
+          pattern = r'''        /\*\n                    COPPIA CASA\n                \*/.*?                /\*\n                    HTML ORIGINALE\n                \*/'''
+          replacement = '''        /*
+                    COPPIE: visualizzazione unica e coerente
+                */
+
+                const squadraCasa =
+                    formatNomeCoppia(state[tag][m.casa]);
+
+                const squadraOspite =
+                    formatNomeCoppia(state[tag][m.ospite]);
+
+
+                /*
+                    HTML ORIGINALE
+                */'''
+          text, n = re.subn(pattern, replacement, text, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('Blocco coppie renderTables non trovato')
+
+          pattern2 = r'''    function nomeCoppia\(squadra\)\{.*?\n    \}\n\n\n    /\*\n    ============================================================\n    LAYOUT KO'''
+          replacement2 = '''    function nomeCoppia(squadra){
+        return formatNomeCoppia(squadra);
+    }
+
+
+    /*
+    ============================================================
+    LAYOUT KO'''
+          text, n = re.subn(pattern2, replacement2, text, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('nomeCoppia locale renderKO non trovato')
+
+          p.write_text(text, encoding='utf-8')
+
+      - name: Commit repaired Bove
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git commit -m 'Apply global pair-name fix'
+          git push origin HEAD:main
