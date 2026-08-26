@@ -9966,7 +9966,7 @@ function getFinalQualified(){
         Number(state.rules?.qualificatePerGirone) || 0;
 
     const lettere = [
-        "A","B","C","D","E","F"
+        "A","B","C","D","E","F","G"
     ];
 
     for(let i = 0; i < numeroGironi; i++){
@@ -9977,12 +9977,6 @@ function getFinalQualified(){
 
         if(!Array.isArray(teams))
             continue;
-
-        /*
-        ========================================================
-        CLASSIFICA REALE DEL GIRONE
-        ========================================================
-        */
 
         const risultati =
             Array.isArray(state[girone + "res"])
@@ -9998,12 +9992,6 @@ function getFinalQualified(){
         if(!Array.isArray(classifica))
             continue;
 
-        /*
-        ========================================================
-        PRENDIAMO LE PRIME N POSIZIONI
-        ========================================================
-        */
-
         for(
             let posizione = 0;
             posizione < perGirone;
@@ -10017,40 +10005,67 @@ function getFinalQualified(){
                 continue;
 
             /*
-            ----------------------------------------------------
-            calc() può restituire direttamente la squadra
-            oppure un oggetto contenente l'indice.
-            ----------------------------------------------------
+            ====================================================
+            calc() restituisce:
+                {
+                    n: "Nome coppia",
+                    pt: ...,
+                    gf: ...,
+                    gs: ...,
+                    df: ...,
+                    qual: ...
+                }
+
+            Non esiste dati.index.
+            ====================================================
             */
 
-            let squadra = null;
+            const nome =
+                String(dati.n || "").trim();
 
-            if(
-                typeof dati === "object" &&
-                dati.index !== undefined
-            ){
+            if(!nome)
+                continue;
 
-                squadra =
-                    teams[dati.index];
+            /*
+            ====================================================
+            CERCA LA COPPIA REALE NEL GIRONE
+            ====================================================
+            */
 
-            }
-            else if(
-                typeof dati === "object" &&
-                (
-                    dati.g1 !== undefined ||
-                    dati.g2 !== undefined
-                )
-            ){
+            let squadra =
+                teams.find(t => {
 
-                squadra = dati;
+                    if(!t)
+                        return false;
 
-            }
+                    const nomeT =
+                        typeof nomeSquadra === "function"
+                            ? nomeSquadra(t)
+                            : String(t);
+
+                    return (
+                        String(nomeT).trim() === nome
+                    );
+
+                });
+
+            /*
+            ====================================================
+            FALLBACK
+            ====================================================
+            */
 
             if(
                 squadra === undefined ||
                 squadra === null
-            )
-                continue;
+            ){
+
+                squadra = {
+                    g1: nome,
+                    g2: ""
+                };
+
+            }
 
             qualificati.push(
                 squadra
@@ -10062,11 +10077,7 @@ function getFinalQualified(){
                     girone,
                     posizione:
                         posizione + 1,
-
-                    squadra:
-                        typeof nomeSquadra === "function"
-                            ? nomeSquadra(squadra)
-                            : squadra
+                    squadra: nome
                 }
             );
 
@@ -10075,30 +10086,21 @@ function getFinalQualified(){
     }
 
     console.log(
-        "========================================"
-    );
+        "=== QUALIFICATI FASE FINALE ===",
+        {
+            ottenuti:
+                qualificati.length,
 
-    console.log(
-        "QUALIFICATI FASE FINALE:",
-        qualificati.map(s =>
-            typeof nomeSquadra === "function"
-                ? nomeSquadra(s)
-                : s
-        )
-    );
+            attesi:
+                numeroGironi * perGirone,
 
-    console.log(
-        "NUMERO QUALIFICATI:",
-        qualificati.length
-    );
-
-    console.log(
-        "ATTESI:",
-        numeroGironi * perGirone
-    );
-
-    console.log(
-        "========================================"
+            qualificati:
+                qualificati.map(s =>
+                    typeof nomeSquadra === "function"
+                        ? nomeSquadra(s)
+                        : s
+                )
+        }
     );
 
     return qualificati;
