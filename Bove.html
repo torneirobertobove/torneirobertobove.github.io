@@ -13395,6 +13395,7 @@ function chiudiMenuAutomatico(){
 
 }
    
+
 async function initDefaults(){
 
     try{
@@ -13403,7 +13404,7 @@ async function initDefaults(){
         ============================================================
         IMPORTANTE
         initDefaults() CREA SOLAMENTE UNO STATO BASE.
-        
+
         NON deve:
         - caricare Supabase
         - caricare URL
@@ -13487,54 +13488,113 @@ async function initDefaults(){
 
         /*
         ============================================================
-        NON FORZIAMO IL FORMATO SE È GIÀ PRESENTE
+        PARTECIPANTI / COPPIE
         ============================================================
         */
 
-        let formato =
-            Number(
-                state.rules.numeroSquadre
-            );
-
-
         if(
-            ![
-                8,
-                12,
-                16,
-                20,
-                24
-            ].includes(formato)
+            !Array.isArray(state.partecipanti)
         ){
 
-            formato =
-                Number(state.formato);
+            state.partecipanti = [];
 
         }
 
 
         if(
-            ![
-                8,
-                12,
-                16,
-                20,
-                24
-            ].includes(formato)
+            !Array.isArray(state.coppie)
         ){
 
-            formato = 8;
+            state.coppie = [];
 
         }
-
-
-        state.rules.numeroSquadre =
-            formato;
 
 
         /*
         ============================================================
-        STRUTTURA
+        DETERMINAZIONE FORMATO
+        ============================================================
+
+        PRIORITÀ:
+
+        1. numero reale delle coppie già presenti
+        2. numeroSquadre nelle regole
+        3. state.formato
+        4. default 8
+
+        Una coppia = una squadra.
+
+        Questo impedisce che una configurazione precedente
+        da 16 squadre trasformi 8 coppie reali in 4 gironi.
+        ============================================================
+        */
+
+        const formatiValidi = [
+
+            8,
+            12,
+            16,
+            20,
+            24
+
+        ];
+
+
+        let formato = 0;
+
+
+        const numeroCoppie =
+            state.coppie.length;
+
+
+        if(
+            formatiValidi.includes(
+                numeroCoppie
+            )
+        ){
+
+            formato =
+                numeroCoppie;
+
+        }
+        else{
+
+            formato =
+                Number(
+                    state.rules.numeroSquadre
+                );
+
+
+            if(
+                !formatiValidi.includes(
+                    formato
+                )
+            ){
+
+                formato =
+                    Number(
+                        state.formato
+                    );
+
+            }
+
+
+            if(
+                !formatiValidi.includes(
+                    formato
+                )
+            ){
+
+                formato = 8;
+
+            }
+
+        }
+
+
+        /*
+        ============================================================
+        STRUTTURA TORNEO
         ============================================================
         */
 
@@ -13578,6 +13638,10 @@ async function initDefaults(){
         ============================================================
         */
 
+        state.rules.numeroSquadre =
+            formato;
+
+
         state.rules.numeroGironi =
             struttura.numeroGironi;
 
@@ -13592,16 +13656,8 @@ async function initDefaults(){
         ============================================================
         */
 
-        if(
-            state.formato === undefined ||
-            state.formato === null ||
-            state.formato === ""
-        ){
-
-            state.formato =
-                formato;
-
-        }
+        state.formato =
+            formato;
 
 
         /*
@@ -13620,6 +13676,25 @@ async function initDefaults(){
                 String(formato);
 
         }
+        else{
+
+            /*
+            Se il numero reale delle coppie ha determinato
+            il formato, anche formatoTorneo deve essere coerente.
+            */
+
+            if(
+                formatiValidi.includes(
+                    numeroCoppie
+                )
+            ){
+
+                state.rules.formatoTorneo =
+                    String(formato);
+
+            }
+
+        }
 
 
         /*
@@ -13636,30 +13711,6 @@ async function initDefaults(){
 
             state.rules.tipoTorneo =
                 "gironiFinale";
-
-        }
-
-
-        /*
-        ============================================================
-        PARTECIPANTI / COPPIE
-        ============================================================
-        */
-
-        if(
-            !Array.isArray(state.partecipanti)
-        ){
-
-            state.partecipanti = [];
-
-        }
-
-
-        if(
-            !Array.isArray(state.coppie)
-        ){
-
-            state.coppie = [];
 
         }
 
@@ -13916,6 +13967,8 @@ async function initDefaults(){
     }
 
 }
+
+
    
 window.addEventListener("load", async()=>{
 
