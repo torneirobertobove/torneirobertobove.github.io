@@ -1,0 +1,235 @@
+name: Fix empty Bove tournament structure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply verified Bove repair
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          text = p.read_text(encoding='utf-8')
+
+          # Empty groups must still render their complete configured structure.
+          render_class = r'''function renderClass(){
+
+    ensureRules();
+
+    const gironi = ["A","B","C","D","E","F","G"];
+    const perGirone = Math.max(1, Number(state.rules.squadrePerGirone) || 4);
+    const qualificate = Math.max(0, Number(state.rules.qualificatePerGirone) || 0);
+
+    function soloCognomiClassifica(valore){
+        if(valore === null || valore === undefined) return "";
+        if(typeof valore === "object"){
+            if(valore.cognome !== undefined && valore.cognome !== null){
+                const c = String(valore.cognome).trim();
+                if(c) return c;
+            }
+            const g1 = valore.giocatore1 || valore.g1 || valore.player1 || null;
+            const g2 = valore.giocatore2 || valore.g2 || valore.player2 || null;
+            const c1 = soloCognomiClassifica(g1);
+            const c2 = soloCognomiClassifica(g2);
+            if(c1 && c2) return c1 + "/" + c2;
+            return c1 || c2 || "";
+        }
+        const testo = String(valore).replace(/\t/g," ").replace(/\s+/g," ").trim();
+        if(!testo) return "";
+        return testo.split("/").map(parte=>{
+            const parole = parte.trim().split(/\s+/).filter(Boolean);
+            return parole.length ? parole[parole.length-1] : "";
+        }).filter(Boolean).join("/");
+    }
+
+    gironi.forEach(tag => {
+        const tbody = document.getElementById(tag + "class");
+        const card = document.getElementById("card" + tag);
+        if(!tbody) return;
+
+        const indice = gironi.indexOf(tag);
+        if(indice >= Number(state.rules.numeroGironi || 0)){
+            tbody.innerHTML = "";
+            if(card) card.style.display = "none";
+            state["rank" + tag] = [];
+            return;
+        }
+
+        if(card) card.style.display = "block";
+        tbody.innerHTML = "";
+
+        const squadre = Array.isArray(state[tag]) ? state[tag] : [];
+        const risultati = Array.isArray(state[tag + "res"]) ? state[tag + "res"] : [];
+        let classifica = [];
+
+        if(squadre.length > 0){
+            try{ classifica = calc(squadre, risultati); }
+            catch(e){ console.error("Errore calc() nel girone " + tag + ":", e); }
+        }
+
+        if(!Array.isArray(classifica)) classifica = [];
+        state["rank" + tag] = classifica;
+
+        for(let i = 0; i < perGirone; i++){
+            const x = classifica[i] || {n:"",pt:0,gf:0,gs:0,df:0};
+            const tr = document.createElement("tr");
+            const tdNome = document.createElement("td");
+            const tdFreccia = document.createElement("td");
+            const tdPt = document.createElement("td");
+            const tdGf = document.createElement("td");
+            const tdGs = document.createElement("td");
+            const tdDf = document.createElement("td");
+            tdNome.textContent = soloCognomiClassifica(x.n || "");
+            tdFreccia.style.textAlign = "center";
+            tdFreccia.style.fontWeight = "700";
+            tdFreccia.textContent = x.n ? (i < qualificate ? "▲" : "▼") : "";
+            tdFreccia.style.color = i < qualificate ? "#22c55e" : "#ef4444";
+            tdPt.textContent = String(Number(x.pt) || 0);
+            tdGf.textContent = String(Number(x.gf) || 0);
+            tdGs.textContent = String(Number(x.gs) || 0);
+            tdDf.textContent = String(Number(x.df) || 0);
+            tr.append(tdNome,tdFreccia,tdPt,tdGf,tdGs,tdDf);
+            tbody.appendChild(tr);
+        }
+    });
+}
+'''
+
+          text, n = re.subn(
+              r'function renderClass\(\)\s*\{.*?\n\}\s*\n\s*function render\(\)',
+              render_class + '\nfunction render()', text, count=1, flags=re.S
+          )
+          if n != 1:
+              raise SystemExit('renderClass non trovato')
+
+          # For an empty active group, generate only visual round-robin slots locally.
+          old = '''        let squadre =\n            state[tag];\n\n\n        if(\n            !Array.isArray(squadre) ||\n            squadre.length<2\n        ){\n\n            continue;\n\n        }\n\n\n        let partite=[];'''
+          new = '''        let squadre = Array.isArray(state[tag]) ? state[tag] : [];\n        const strutturaVuota = squadre.length < 2;\n        const numeroPostiGirone = Math.max(2, Number(state.rules.squadrePerGirone) || 4);\n        let partite=[];'''
+          if old not in text:
+              raise SystemExit('renderTables: blocco squadre non trovato')
+          text = text.replace(old,new,1)
+
+          old = '''        /*\n            USA LE PARTITE GIÀ PRESENTI (ma controllando che non siano troncate a 12)\n        */\n\n        if(\n            state.partiteGironi &&\n            Array.isArray(\n                state.partiteGironi[tag]\n            ) &&\n            state.partiteGironi[tag].length>0 &&\n            state.partiteGironi[tag].length >= (squadre.length * (squadre.length - 1) / (state.rules.garaAndataRitorno ? 1 : 2)) // Forza ricalcolo se le vecchie partite erano parziali\n        ){\n\n            partite =\n                state.partiteGironi[tag];\n\n        }\n\n\n\n        /*\n            SE NON ESISTONO O ERANO TRONCATE,\n            CREA IL ROUND ROBIN COMPLETO SULLE 8 SQUADRE\n        */\n\n        else{\n\n            let rounds =\n                generaRoundRobin(\n                    squadre.length\n                );'''
+          new = '''        if(strutturaVuota){\n            let rounds = generaRoundRobin(numeroPostiGirone);\n            rounds.forEach(round=>round.forEach(match=>{\n                partite.push({casa:match[0],ospite:match[1]});\n            }));\n        }\n        else if(\n            state.partiteGironi &&\n            Array.isArray(state.partiteGironi[tag]) &&\n            state.partiteGironi[tag].length>0 &&\n            state.partiteGironi[tag].length >= (squadre.length * (squadre.length - 1) / (state.rules.garaAndataRitorno ? 1 : 2))\n        ){\n            partite = state.partiteGironi[tag];\n        }\n        else{\n            let rounds = generaRoundRobin(squadre.length);'''
+          if old not in text:
+              raise SystemExit('renderTables: blocco calendario non trovato')
+          text = text.replace(old,new,1)
+
+          old = '''        if(card){\n\n            card.style.display =\n\n                (\n                    Array.isArray(\n                        state[tag]\n                    )\n                    &&\n                    state[tag].length>0\n                )\n\n                ?\n\n                "block"\n\n                :\n\n                "none";\n\n        }'''
+          new = '''        if(card){\n            card.style.display = lettereGironi.indexOf(tag) < numeroGironi ? "block" : "none";\n        }'''
+          if old not in text:
+              raise SystemExit('renderTables: visibilita card non trovata')
+          text = text.replace(old,new,1)
+
+          # KO bracket: draw all configured slots even when no teams are present.
+          render_ko = r'''function renderKO(){
+    ensureRules();
+    const q=document.getElementById("Q"), s=document.getElementById("S"), f=document.getElementById("finaleBox");
+    if(!q||!s||!f)return;
+    const qTable=q.closest("table"), sTable=s.closest("table"), fTable=f.closest("table");
+    q.innerHTML="";s.innerHTML="";f.innerHTML="";
+    document.querySelectorAll(".winner-box.top-win").forEach(el=>el.remove());
+    if(!Array.isArray(state.qRes))state.qRes=Array(4).fill("-");
+    while(state.qRes.length<4)state.qRes.push("-");
+    state.qRes=state.qRes.slice(0,4);
+    if(!Array.isArray(state.sTopRes))state.sTopRes=Array(2).fill("-");
+    while(state.sTopRes.length<2)state.sTopRes.push("-");
+    state.sTopRes=state.sTopRes.slice(0,2);
+    if(!Array.isArray(state.qCamp))state.qCamp=[];if(!Array.isArray(state.qTime))state.qTime=[];
+    if(!Array.isArray(state.sCamp))state.sCamp=[];if(!Array.isArray(state.sTime))state.sTime=[];
+    if(!Array.isArray(state.fCamp))state.fCamp=[];if(!Array.isArray(state.fTime))state.fTime=[];
+    if(typeof state.fTopRes!=="string"||!state.fTopRes.trim())state.fTopRes="-";
+
+    function creaMatchKO(match,gruppo,index,risultato){
+        const a=Array.isArray(match)&&match[0]?String(match[0]):"";
+        const b=Array.isArray(match)&&match[1]?String(match[1]):"";
+        const ck=gruppo==="q"?"qCamp":gruppo==="s"?"sCamp":"fCamp";
+        const tk=gruppo==="q"?"qTime":gruppo==="s"?"sTime":"fTime";
+        const campo=Array.isArray(state[ck])?(state[ck][index]??""):"";
+        const ora=Array.isArray(state[tk])?(state[tk][index]??""):"";
+        const ris=risultato&&risultato!=="-"?String(risultato):"";
+        return `<tr><td><input value="${campo}" style="width:45px" onchange="updateCamp('${gruppo.toUpperCase()}',${index},this.value)"></td><td><input type="time" value="${ora}" onchange="updateTime('${gruppo.toUpperCase()}',${index},this.value)"></td><td class="match-cell"><div class="team-line">${a}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${b}</div></td><td class="db-cell"><input value="${ris}" placeholder="Ris" oninput="updateKOResult('${gruppo.toUpperCase()}',${index},this.value)"></td></tr>`;
+    }
+
+    const expected=Math.max(0,Number(state.rules.numeroQualificateFinali)||((Number(state.rules.numeroGironi)||0)*(Number(state.rules.qualificatePerGirone)||0)));
+    let qualificati=[];try{const x=getFinalQualified();if(Array.isArray(x))qualificati=x;}catch(e){console.error(e);}
+    const slots=Array.from({length:expected},(_,i)=>qualificati[i]||"");
+    const usaQuarti=state.rules.usaQuarti===true&&expected>=8;
+    const usaSemifinali=state.rules.usaSemifinali===true;
+    const usaFinale=state.rules.usaFinale===true;
+    let semifinali=[];
+
+    if(usaQuarti){
+        const quarti=[[slots[0]||"",slots[7]||""],[slots[3]||"",slots[4]||""],[slots[1]||"",slots[6]||""],[slots[2]||"",slots[5]||""]];
+        quarti.forEach((m,i)=>q.innerHTML+=creaMatchKO(m,"q",i,state.qRes[i]));
+        qTable.style.display="table";
+        semifinali=[[getWinner(quarti[0],state.qRes[0])||"",getWinner(quarti[1],state.qRes[1])||""],[getWinner(quarti[2],state.qRes[2])||"",getWinner(quarti[3],state.qRes[3])||"")];
+    }else if(expected>=4){
+        semifinali=[[slots[0]||"",slots[3]||""],[slots[2]||"",slots[1]||""]];
+    }else if(expected>=2){
+        semifinali=[[slots[0]||"",slots[1]||""]];
+    }
+
+    let finalisti=[];
+    if(usaSemifinali){
+        if(semifinali.length<2&&expected>=4)semifinali.push(["",""]);
+        semifinali.slice(0,2).forEach((m,i)=>{s.innerHTML+=creaMatchKO(m,"s",i,state.sTopRes[i]);const w=getWinner(m,state.sTopRes[i]);if(w)finalisti.push(w);});
+        sTable.style.display="table";
+    }else if(expected>=2){finalisti=[slots[0]||"",slots[1]||""];}
+
+    state.finalTop=[finalisti[0]||"",finalisti[1]||""];
+    if(usaFinale){
+        f.innerHTML=creaMatchKO(state.finalTop,"f",0,state.fTopRes);fTable.style.display="table";
+        const campione=getWinner(state.finalTop,state.fTopRes);state.campioneTop=campione||null;
+        if(campione)fTable.insertAdjacentHTML("afterend",`<div class="winner-box top-win">🏆 CAMPIONE TORNEO:<br>${campione}</div>`);
+    }else{fTable.style.display="none";state.campioneTop=null;}
+    console.log("=== STRUTTURA KO ===",{attesi:expected,qualificati:qualificati.length,quarti:usaQuarti,semifinali:usaSemifinali,finale:usaFinale,righeQ:q.querySelectorAll("tr").length,righeS:s.querySelectorAll("tr").length,righeF:f.querySelectorAll("tr").length});
+}
+'''
+
+          text, n = re.subn(
+              r'function renderKO\(\)\s*\{.*?\n\}\s*\n\s*function updateKOResult\(',
+              render_ko + '\nfunction updateKOResult(', text, count=1, flags=re.S
+          )
+          if n != 1:
+              raise SystemExit('renderKO non trovato')
+
+          p.write_text(text,encoding='utf-8')
+
+      - name: Validate JavaScript
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S|re.I)
+          if not scripts: raise SystemExit('Nessun script')
+          for i,s in enumerate(scripts,1):
+              f=Path(tempfile.gettempdir())/f'bove_{i}.js';f.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr);raise SystemExit(f'Sintassi non valida script {i}')
+          print('SINTASSI OK')
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet -- Bove.html; then echo 'Nessuna modifica necessaria'; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git commit -m 'Fix empty tournament groups and knockout skeleton'
+          git push
