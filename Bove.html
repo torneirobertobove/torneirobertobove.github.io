@@ -710,11 +710,6 @@ async function loadState(){
                             configurazione[k];
 
 
-                        /*
-                        NON SOVRASCRIVERE CON ARRAY VUOTI
-                        DATI GIÀ PRESENTI.
-                        */
-
                         if(
                             ricevuto.length > 0
                         ){
@@ -945,12 +940,6 @@ async function loadState(){
             numeroCoppie;
 
 
-        /*
-        ============================================================
-        LE COPPIE REALI SONO LA FONTE DEL FORMATO
-        ============================================================
-        */
-
         if(
             formatiValidi.includes(
                 formatoReale
@@ -1071,28 +1060,29 @@ async function loadState(){
 
         /*
         ============================================================
-        10. RICOSTRUZIONE GIRONI DALLE COPPIE REALI
+        10. RICOSTRUZIONE AUTORITATIVA DEI GIRONI
         ============================================================
 
         IMPORTANTE:
 
-        LE COPPIE SONO LA FONTE UFFICIALE DEL TORNEO.
+        LE COPPIE DEL TORNEO CORRENTE SONO LA FONTE AUTORITATIVA.
 
-        NON USIAMO I GIRONI PRESENTI IN MEMORIA.
+        NON USIAMO PIU' A/B/C/D VECCHI COME RIFERIMENTO.
 
-        Questo elimina eventuali squadre rimaste da un vecchio
-        torneo presenti in A/B/C/D/E/F/G.
+        Questo elimina eventuali squadre rimaste dal vecchio torneo.
         ============================================================
         */
 
         if(
-            Array.isArray(state.coppie)
+            Array.isArray(state.coppie) &&
+            state.coppie.length ===
+                numeroGironi * perGirone
         ){
 
             /*
-            ========================================================
+            --------------------------------------------------------
             PULIZIA COMPLETA DEI GIRONI
-            ========================================================
+            --------------------------------------------------------
             */
 
             lettereGironi.forEach(
@@ -1105,9 +1095,9 @@ async function loadState(){
 
 
             /*
-            ========================================================
-            RICOSTRUZIONE SEQUENZIALE
-            ========================================================
+            --------------------------------------------------------
+            RICOSTRUZIONE DALLE COPPIE REALI
+            --------------------------------------------------------
             */
 
             state.coppie.forEach(
@@ -1131,9 +1121,7 @@ async function loadState(){
                             ];
 
 
-                        state[
-                            nomeGirone
-                        ].push(
+                        state[nomeGirone].push(
                             coppia
                         );
 
@@ -1144,11 +1132,8 @@ async function loadState(){
 
 
             console.log(
-                "GIRONI RICOSTRUITI ESCLUSIVAMENTE DALLE COPPIE REALI:",
+                "GIRONI RICOSTRUITI DALLE COPPIE REALI:",
                 {
-                    coppie:
-                        state.coppie.length,
-
                     A:
                         state.A.length,
 
@@ -1207,77 +1192,44 @@ async function loadState(){
 
         /*
         ============================================================
-        12. RESET ARRAY RISULTATI / ORARI / CAMPI
+        12. GARANTISCI ARRAY RISULTATI / ORARI / CAMPI
         ============================================================
         */
 
         lettereGironi.forEach(
             g => {
 
-                const girone =
-                    Array.isArray(
-                        state[g]
+                if(
+                    !Array.isArray(
+                        state[g+"res"]
                     )
-                        ? state[g]
-                        : [];
-
-
-                let totale = 0;
-
-
-                for(
-                    let i = 0;
-                    i < girone.length;
-                    i++
                 ){
 
-                    for(
-                        let j = i + 1;
-                        j < girone.length;
-                        j++
-                    ){
-
-                        totale++;
-
-                    }
+                    state[g+"res"] = [];
 
                 }
 
 
-                /*
-                ====================================================
-                RISULTATI
-                ====================================================
-                */
+                if(
+                    !Array.isArray(
+                        state[g+"time"]
+                    )
+                ){
 
-                state[g+"res"] =
-                    Array(
-                        totale
-                    ).fill("-");
+                    state[g+"time"] = [];
 
-
-                /*
-                ====================================================
-                ORARI
-                ====================================================
-                */
-
-                state[g+"time"] =
-                    Array(
-                        totale
-                    ).fill("-");
+                }
 
 
-                /*
-                ====================================================
-                CAMPI
-                ====================================================
-                */
+                if(
+                    !Array.isArray(
+                        state[g+"camp"]
+                    )
+                ){
 
-                state[g+"camp"] =
-                    Array(
-                        totale
-                    ).fill("");
+                    state[g+"camp"] = [];
+
+                }
 
             }
         );
@@ -1499,7 +1451,6 @@ async function loadState(){
     }
 
 }
-
    
 </script>
 </body>
