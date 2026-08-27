@@ -1,4 +1,4 @@
-name: Fix Bove pair names
+name: Fix Bove pair rendering
 
 on:
   push:
@@ -9,13 +9,17 @@ permissions:
   contents: write
 
 jobs:
-  fix-pair-names:
+  fix-pair-rendering:
+    if: ${{ !contains(github.event.head_commit.message, 'Fix Bove pair rendering') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
 
-      - name: Patch pair-name rendering only
+      - name: Repair renderMatchCard safely
         shell: python
         run: |
           from pathlib import Path
@@ -23,145 +27,111 @@ jobs:
 
           p = Path('Bove.html')
           text = p.read_text(encoding='utf-8')
-          original = text
+          marker = '/* BOVE PAIR RENDER PATCH V2 */'
 
-          helper = r'''function nomeCoppia(squadra){
+          if marker in text:
+              print('Patch gia presente')
+              raise SystemExit(0)
 
-    if(
-        squadra === null ||
-        squadra === undefined ||
-        squadra === "" ||
-        squadra === "-"
-    ){
-        return "-";
-    }
+          patch = r'''
 
-    if(typeof squadra === "object"){
+/* BOVE PAIR RENDER PATCH V2 */
+function boveNomeCoppia(squadra){
+    if(squadra === null || squadra === undefined || squadra === '' || squadra === '-') return '-';
 
-        if(
-            typeof squadra.nome === "string" &&
-            squadra.nome.trim() !== ""
-        ){
-            return squadra.nome.trim();
+    if(typeof squadra === 'object'){
+        const g1 = squadra.giocatore1 ?? squadra.g1 ?? squadra.player1;
+        const g2 = squadra.giocatore2 ?? squadra.g2 ?? squadra.player2;
+
+        if(g1 !== undefined || g2 !== undefined){
+            const nomeGiocatore = g => {
+                if(g === null || g === undefined) return '';
+                if(typeof g === 'object'){
+                    const nome = String(g.nome ?? '').trim();
+                    const cognome = String(g.cognome ?? '').trim();
+                    if(nome && cognome) return nome.charAt(0).toUpperCase() + '. ' + cognome;
+                    return cognome || nome;
+                }
+                return String(g).trim();
+            };
+            const a = nomeGiocatore(g1);
+            const b = nomeGiocatore(g2);
+            if(a && b) return a + ' / ' + b;
+            return a || b || '-';
         }
 
-        function nomeGiocatore(g){
-            if(!g) return "";
-
-            const cognome = String(g.cognome ?? "").trim();
-            const nome = String(g.nome ?? "").trim();
-
-            if(cognome !== "" && nome !== ""){
-                return nome.charAt(0).toUpperCase() + ". " + cognome;
-            }
-
-            if(cognome !== "") return cognome;
-            return nome;
-        }
-
-        const p1 = nomeGiocatore(
-            squadra.giocatore1 ?? squadra.g1 ?? squadra.player1
-        );
-        const p2 = nomeGiocatore(
-            squadra.giocatore2 ?? squadra.g2 ?? squadra.player2
-        );
-
-        if(p1 && p2) return p1 + " / " + p2;
-        if(p1) return p1;
-        if(p2) return p2;
-        return "-";
+        if(typeof squadra.nome === 'string' && squadra.nome.trim()) return squadra.nome.trim();
+        return '-';
     }
 
-    return String(squadra).trim() || "-";
+    return String(squadra).trim() || '-';
+}
+
+/* Override globale: impedisce qualsiasi String(object) -> [object Object]. */
+function renderMatchCard(titolo, match, tipo, index, risultato){
+    if(!Array.isArray(match) || match.length !== 2) return '';
+
+    const fase = String(tipo || '').toUpperCase();
+    const i = Number(index) || 0;
+    const squadra1 = boveNomeCoppia(match[0]);
+    const squadra2 = boveNomeCoppia(match[1]);
+
+    let campo = '';
+    let ora = '';
+
+    if(fase === 'Q'){
+        campo = Array.isArray(state.qCamp) && state.qCamp[i] !== undefined ? state.qCamp[i] : '';
+        ora = Array.isArray(state.qTime) && state.qTime[i] !== undefined ? state.qTime[i] : '';
+    }else if(fase === 'S'){
+        campo = Array.isArray(state.sCamp) && state.sCamp[i] !== undefined ? state.sCamp[i] : '';
+        ora = Array.isArray(state.sTime) && state.sTime[i] !== undefined ? state.sTime[i] : '';
+    }else if(fase === 'F'){
+        campo = Array.isArray(state.fCamp) && state.fCamp[i] !== undefined ? state.fCamp[i] : '';
+        ora = Array.isArray(state.fTime) && state.fTime[i] !== undefined ? state.fTime[i] : '';
+    }
+
+    const ris = risultato !== undefined && risultato !== null ? String(risultato) : '-';
+
+    return `
+<tr>
+<td><input value="${campo}" style="width:45px" onchange="updateCamp('${fase}',${i},this.value)"></td>
+<td><input type="time" value="${ora}" onchange="updateTime('${fase}',${i},this.value)"></td>
+<td class="match-cell"><div class="team-line">${squadra1}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${squadra2}</div></td>
+<td class="db-cell"><input value="${ris === '-' ? '' : ris}" placeholder="Ris" oninput="updateKOResult('${fase}',${i},this.value)"></td>
+</tr>`;
 }
 '''
 
-          # Add one global normalizer before renderTables if none exists globally.
-          if not re.search(r'(?m)^function nomeCoppia\(squadra\)\s*\{', text):
-              marker = 'function renderTables(){'
-              if marker not in text:
-                  raise SystemExit('renderTables non trovato')
-              text = text.replace(marker, helper + '\n' + marker, 1)
+          # Replace only the existing renderMatchCard declaration, preserving the rest.
+          pattern = re.compile(r'function\s+renderMatchCard\s*\([^)]*\)\s*\{.*?\n\}\s*(?=\n\s*function\s+aggiornaDescrizioneTipoTorneo)', re.S)
+          text, n = pattern.subn('', text, count=1)
+          if n != 1:
+              raise SystemExit(f'renderMatchCard originale non trovato: {n}')
 
-          # In renderTables, replace the two long object-to-string blocks with the
-          # single canonical pair formatter. This preserves the existing HTML,
-          # results, fields and times.
-          casa_pattern = re.compile(
-              r'(?s)(\n\s*/\*\s*\n\s*COPPIA CASA\s*\n\s*\*/\s*\n\s*)'
-              r'let casa\s*=\s*state\[tag\]\[m\.casa\];.*?'
-              r'(?=\n\s*/\*\s*\n\s*COPPIA OSPITE\s*\n\s*\*/)',
-              re.S
-          )
-          casa_replacement = r'''\1const casa = state[tag][m.casa];
-
-                const squadraCasa =
-                    nomeCoppia(casa);
-
-'''
-          text, n1 = casa_pattern.subn(casa_replacement, text, count=1)
-
-          ospite_pattern = re.compile(
-              r'(?s)(\n\s*/\*\s*\n\s*COPPIA OSPITE\s*\n\s*\*/\s*\n\s*)'
-              r'let ospite\s*=\s*state\[tag\]\[m\.ospite\];.*?'
-              r'(?=\n\s*/\*\s*\n\s*HTML ORIGINALE\s*\n\s*\*/)',
-              re.S
-          )
-          ospite_replacement = r'''\1const ospite = state[tag][m.ospite];
-
-                const squadraOspite =
-                    nomeCoppia(ospite);
-
-'''
-          text, n2 = ospite_pattern.subn(ospite_replacement, text, count=1)
-
-          # Also correct the common renderKO conversion if present.
-          text = text.replace(
-              'const squadra1 = match[0] ? String(match[0]) : "";',
-              'const squadra1 = nomeCoppia(match[0]);',
-              1
-          )
-          text = text.replace(
-              'const squadra2 = match[1] ? String(match[1]) : "";',
-              'const squadra2 = nomeCoppia(match[1]);',
-              1
-          )
-
-          if text == original:
-              print('NESSUNA MODIFICA NECESSARIA')
-              raise SystemExit(0)
-
-          if n1 != 1 or n2 != 1:
-              raise SystemExit(f'Patch renderTables incompleta: casa={n1}, ospite={n2}')
+          marker_pos = text.find('function aggiornaDescrizioneTipoTorneo')
+          if marker_pos < 0:
+              raise SystemExit('Punto di inserimento non trovato')
+          text = text[:marker_pos] + patch + '\n' + text[marker_pos:]
 
           p.write_text(text, encoding='utf-8')
-          print('PATCH NOMI COPPIE APPLICATA: renderTables + renderKO')
+          print('PATCH NOMI COPPIE APPLICATA')
 
-      - name: Syntax check
+      - name: Validate structure
         shell: python
         run: |
           from pathlib import Path
-          import re
           t = Path('Bove.html').read_text(encoding='utf-8')
-          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>', t, re.S | re.I)
-          js = '\n'.join(scripts)
-          # Basic structural checks; browser validation remains authoritative.
-          if js.count('{') != js.count('}'):
-              raise SystemExit('Errore bilanciamento parentesi graffe')
-          if 'function renderTables()' not in js:
-              raise SystemExit('renderTables mancante')
-          if 'function nomeCoppia(squadra)' not in js:
-              raise SystemExit('nomeCoppia mancante')
-          print('SYNTAX CHECK OK')
+          if '/* BOVE PAIR RENDER PATCH V2 */' not in t:
+              raise SystemExit('Patch non presente')
+          if t.count('function renderMatchCard(') != 1:
+              raise SystemExit('renderMatchCard duplicata o assente')
+          print('VALIDAZIONE OK')
 
-      - name: Commit repair
+      - name: Commit repaired Bove
         shell: bash
         run: |
-          if git diff --quiet -- Bove.html; then
-            echo 'Nessun commit necessario'
-            exit 0
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git commit -m 'Fix pair-name rendering in Bove'
-          git push
+          git commit -m 'Fix Bove pair rendering'
+          git push origin HEAD:main
