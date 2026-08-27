@@ -238,6 +238,56 @@ async function loadState(){
 
         /*
         ============================================================
+        0. PULIZIA PREVENTIVA DATI TORNEO PRECEDENTE
+        ============================================================
+        */
+
+        if(idTorneo){
+
+            state.A = [];
+            state.B = [];
+            state.C = [];
+            state.D = [];
+            state.E = [];
+            state.F = [];
+            state.G = [];
+
+            state.Ares = [];
+            state.Bres = [];
+            state.Cres = [];
+            state.Dres = [];
+            state.Eres = [];
+            state.Fres = [];
+            state.Gres = [];
+
+            state.Atime = [];
+            state.Btime = [];
+            state.Ctime = [];
+            state.Dtime = [];
+            state.Etime = [];
+            state.Ftime = [];
+            state.Gtime = [];
+
+            state.Acamp = [];
+            state.Bcamp = [];
+            state.Ccamp = [];
+            state.Dcamp = [];
+            state.Ecamp = [];
+            state.Fcamp = [];
+            state.Gcamp = [];
+
+            /*
+            IMPORTANTE:
+            NON cancelliamo state.coppie qui,
+            perché potrebbe essere caricata subito
+            dalla configurazione Supabase.
+            */
+
+        }
+
+
+        /*
+        ============================================================
         1. TORNEO VIA URL
         ============================================================
         */
@@ -396,6 +446,12 @@ async function loadState(){
                         {};
 
 
+                    /*
+                    ==================================================
+                    IDENTIFICAZIONE TORNEO CORRENTE
+                    ==================================================
+                    */
+
                     state = {
 
                         ...state,
@@ -407,19 +463,13 @@ async function loadState(){
                             torneo.nome !== null &&
                             torneo.nome !== undefined
                                 ? torneo.nome
-                                : (
-                                    state.nomeTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         dataTorneo:
                             torneo.data !== null &&
                             torneo.data !== undefined
                                 ? torneo.data
-                                : (
-                                    state.dataTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         rules:{
                             ...(
@@ -578,48 +628,16 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    LE ISCRIZIONI SONO SOLO FALLBACK.
-                    NON SOVRASCRIVONO COPPIE ESISTENTI.
+                    IMPORTANTE
+
+                    LE ISCRIZIONI NON CREANO COPPIE SE
+                    IL TORNEO HA GIA' LE COPPIE SALVATE.
+
+                    INOLTRE NON USIAMO MAI ISCRIZIONI DI UN ALTRO
+                    TORNEO PERCHE' LA QUERY E' VINCOLATA A
+                    QUESTO idTorneo.
                     ==================================================
                     */
-
-                    if(
-                        (
-                            !Array.isArray(state.coppie) ||
-                            state.coppie.length === 0
-                        ) &&
-                        state.iscritti.length > 0
-                    ){
-
-                        state.coppie =
-                            state.iscritti.map(
-                                item => {
-
-                                    if(
-                                        item.nome &&
-                                        item.cognome
-                                    ){
-
-                                        return (
-                                            item.nome +
-                                            " " +
-                                            item.cognome
-                                        );
-
-                                    }
-
-
-                                    return (
-                                        item.nome ||
-                                        item.nome_giocatore ||
-                                        item.coppia ||
-                                        "Squadra"
-                                    );
-
-                                }
-                            );
-
-                    }
 
                 }
 
@@ -697,8 +715,34 @@ async function loadState(){
             ];
 
 
+            /*
+            ========================================================
+            IMPORTANTE
+
+            NON RECUPERIAMO I VECCHI GIRONI A/B/C/D.
+
+            Verranno ricostruiti successivamente dalle COPPIE
+            DEL TORNEO CORRENTE.
+            ========================================================
+            */
+
             arrayDaRecuperare.forEach(
                 k => {
+
+                    if(
+                        k === "A" ||
+                        k === "B" ||
+                        k === "C" ||
+                        k === "D" ||
+                        k === "E" ||
+                        k === "F" ||
+                        k === "G"
+                    ){
+
+                        return;
+
+                    }
+
 
                     if(
                         Array.isArray(
@@ -706,27 +750,8 @@ async function loadState(){
                         )
                     ){
 
-                        const ricevuto =
+                        state[k] =
                             configurazione[k];
-
-
-                        if(
-                            ricevuto.length > 0
-                        ){
-
-                            state[k] =
-                                ricevuto;
-
-                        }
-                        else if(
-                            !Array.isArray(
-                                state[k]
-                            )
-                        ){
-
-                            state[k] = [];
-
-                        }
 
                     }
 
@@ -764,8 +789,7 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.partecipanti
-                    ) &&
-                    cfg.partecipanti.length > 0
+                    )
                 ){
 
                     state.partecipanti =
@@ -777,8 +801,7 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    ) &&
-                    cfg.coppie.length > 0
+                    )
                 ){
 
                     state.coppie =
@@ -793,13 +816,23 @@ async function loadState(){
 
         /*
         ============================================================
-        5. RECUPERO EMERGENZA savedTeams
+        5. savedTeams
+        ============================================================
+
+        MAI utilizzare savedTeams quando esiste idTorneo.
+
+        savedTeams appartiene al browser e può appartenere
+        ad un torneo completamente diverso.
         ============================================================
         */
 
         if(
-            !Array.isArray(state.coppie) ||
-            state.coppie.length === 0
+            !idTorneo &&
+            !torneoParam &&
+            (
+                !Array.isArray(state.coppie) ||
+                state.coppie.length === 0
+            )
         ){
 
             try{
@@ -851,7 +884,7 @@ async function loadState(){
         /*
         ============================================================
         6. LOCAL STORAGE
-        SOLO SE NON ESISTE TORNEO REMOTO
+        SOLO SENZA TORNEO REMOTO
         ============================================================
         */
 
@@ -917,16 +950,18 @@ async function loadState(){
 
         /*
         ============================================================
-        8. CORREZIONE FORMATO REALE
+        8. FORMATO REALE DEL TORNEO
         ============================================================
         */
 
         const formatiValidi = [
+
             8,
             12,
             16,
             20,
             24
+
         ];
 
 
@@ -936,52 +971,48 @@ async function loadState(){
                 : 0;
 
 
-        let formatoReale =
-            numeroCoppie;
+        const strutture = {
+
+            8:{
+                numeroGironi:2,
+                squadrePerGirone:4
+            },
+
+            12:{
+                numeroGironi:3,
+                squadrePerGirone:4
+            },
+
+            16:{
+                numeroGironi:4,
+                squadrePerGirone:4
+            },
+
+            20:{
+                numeroGironi:5,
+                squadrePerGirone:4
+            },
+
+            24:{
+                numeroGironi:6,
+                squadrePerGirone:4
+            }
+
+        };
 
 
         if(
             formatiValidi.includes(
-                formatoReale
+                numeroCoppie
             )
         ){
 
-            const strutture = {
-
-                8:{
-                    numeroGironi:2,
-                    squadrePerGirone:4
-                },
-
-                12:{
-                    numeroGironi:3,
-                    squadrePerGirone:4
-                },
-
-                16:{
-                    numeroGironi:4,
-                    squadrePerGirone:4
-                },
-
-                20:{
-                    numeroGironi:5,
-                    squadrePerGirone:4
-                },
-
-                24:{
-                    numeroGironi:6,
-                    squadrePerGirone:4
-                }
-
-            };
-
-
             const struttura =
-                strutture[formatoReale];
+                strutture[numeroCoppie];
 
 
             state.rules.numeroSquadre =
-                formatoReale;
+                numeroCoppie;
 
 
             state.rules.numeroGironi =
@@ -993,11 +1024,13 @@ async function loadState(){
 
 
             state.formato =
-                formatoReale;
+                numeroCoppie;
 
 
             state.rules.formatoTorneo =
-                String(formatoReale);
+                String(
+                    numeroCoppie
+                );
 
 
             console.log(
@@ -1060,16 +1093,15 @@ async function loadState(){
 
         /*
         ============================================================
-        10. RICOSTRUZIONE AUTORITATIVA DEI GIRONI
+        10. RICOSTRUZIONE TOTALE DEI GIRONI
         ============================================================
 
-        IMPORTANTE:
+        QUESTO E' IL PUNTO FONDAMENTALE.
 
-        LE COPPIE DEL TORNEO CORRENTE SONO LA FONTE AUTORITATIVA.
+        I VECCHI A/B/C/D/E/F/G NON VENGONO UTILIZZATI.
 
-        NON USIAMO PIU' A/B/C/D VECCHI COME RIFERIMENTO.
+        I GIRONI VENGONO CREATI ESCLUSIVAMENTE DA state.coppie.
 
-        Questo elimina eventuali squadre rimaste dal vecchio torneo.
         ============================================================
         */
 
@@ -1081,7 +1113,7 @@ async function loadState(){
 
             /*
             --------------------------------------------------------
-            PULIZIA COMPLETA DEI GIRONI
+            SVUOTA COMPLETAMENTE TUTTI I GIRONI
             --------------------------------------------------------
             */
 
@@ -1096,7 +1128,7 @@ async function loadState(){
 
             /*
             --------------------------------------------------------
-            RICOSTRUZIONE DALLE COPPIE REALI
+            INSERISCE ESCLUSIVAMENTE LE COPPIE CORRENTI
             --------------------------------------------------------
             */
 
@@ -1132,7 +1164,7 @@ async function loadState(){
 
 
             console.log(
-                "GIRONI RICOSTRUITI DALLE COPPIE REALI:",
+                "GIRONI RICOSTRUITI DALLE COPPIE DEL TORNEO CORRENTE:",
                 {
                     A:
                         state.A.length,
@@ -1158,6 +1190,24 @@ async function loadState(){
             );
 
         }
+        else{
+
+            /*
+            --------------------------------------------------------
+            SE NON ABBIAMO COPPIE VALIDE,
+            NON MOSTRIAMO VECCHIE SQUADRE.
+            --------------------------------------------------------
+            */
+
+            lettereGironi.forEach(
+                g => {
+
+                    state[g] = [];
+
+                }
+            );
+
+        }
 
 
         /*
@@ -1171,15 +1221,6 @@ async function loadState(){
 
                 if(
                     index >= numeroGironi
-                ){
-
-                    state[g] = [];
-
-                }
-                else if(
-                    !Array.isArray(
-                        state[g]
-                    )
                 ){
 
                     state[g] = [];
@@ -1199,37 +1240,52 @@ async function loadState(){
         lettereGironi.forEach(
             g => {
 
-                if(
-                    !Array.isArray(
-                        state[g+"res"]
+                const girone =
+                    Array.isArray(
+                        state[g]
                     )
+                        ? state[g]
+                        : [];
+
+
+                let totale = 0;
+
+
+                for(
+                    let i = 0;
+                    i < girone.length;
+                    i++
                 ){
 
-                    state[g+"res"] = [];
+                    for(
+                        let j = i + 1;
+                        j < girone.length;
+                        j++
+                    ){
+
+                        totale++;
+
+                    }
 
                 }
 
 
-                if(
-                    !Array.isArray(
-                        state[g+"time"]
-                    )
-                ){
-
-                    state[g+"time"] = [];
-
-                }
+                state[g+"res"] =
+                    Array(
+                        totale
+                    ).fill("-");
 
 
-                if(
-                    !Array.isArray(
-                        state[g+"camp"]
-                    )
-                ){
+                state[g+"time"] =
+                    Array(
+                        totale
+                    ).fill("-");
 
-                    state[g+"camp"] = [];
 
-                }
+                state[g+"camp"] =
+                    Array(
+                        totale
+                    ).fill("");
 
             }
         );
@@ -1252,14 +1308,7 @@ async function loadState(){
                         Array.isArray(
                             state[g]
                         ) &&
-                        state[g].some(
-                            squadra =>
-                                squadra !== null &&
-                                squadra !== undefined &&
-                                String(
-                                    squadra
-                                ).trim() !== ""
-                        )
+                        state[g].length > 0
                 );
 
 
@@ -1284,14 +1333,7 @@ async function loadState(){
                     Array.isArray(
                         state[g]
                     ) &&
-                    state[g].some(
-                        squadra =>
-                            squadra !== null &&
-                            squadra !== undefined &&
-                            String(
-                                squadra
-                            ).trim() !== ""
-                    )
+                    state[g].length > 0
             );
 
 
@@ -1314,6 +1356,9 @@ async function loadState(){
         console.log(
             "=== LOADSTATE FINALE ===",
             {
+                idTorneo:
+                    state.idTorneo,
+
                 coppie:
                     Array.isArray(
                         state.coppie
