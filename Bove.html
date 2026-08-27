@@ -5240,6 +5240,7 @@ async function updateAndSync(){
 
 }
 
+
 async function loadState(){
 
     const params =
@@ -5262,11 +5263,9 @@ async function loadState(){
 
     try{
 
-        /*
-        ========================================================
-        TORNEO REMOTO
-        ========================================================
-        */
+        /* =====================================================
+           TORNEO REMOTO
+        ===================================================== */
 
         if(torneoRemoto){
 
@@ -5295,34 +5294,27 @@ async function loadState(){
                 Array(4).fill("-");
 
             state.qCamp = [];
-
             state.qTime = [];
 
             state.sTopRes =
                 Array(2).fill("-");
 
             state.sCamp = [];
-
             state.sTime = [];
 
             state.fTopRes = "-";
-
             state.fCamp = "";
-
             state.fTime = "";
 
             state.finalTop = [];
-
             state.campioneTop = null;
 
         }
 
 
-        /*
-        ========================================================
-        TORNEO PASSATO VIA URL
-        ========================================================
-        */
+        /* =====================================================
+           TORNEO PASSATO VIA URL
+        ===================================================== */
 
         if(
             torneoParam &&
@@ -5337,7 +5329,6 @@ async function loadState(){
                             torneoParam
                         )
                     );
-
 
                 state = {
 
@@ -5437,12 +5428,10 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        SUPABASE
-        FONTE UNICA PER IL TORNEO REMOTO
-        ========================================================
-        */
+        /* =====================================================
+           SUPABASE
+           FONTE UNICA DEL TORNEO REMOTO
+        ===================================================== */
 
         if(
             idParam &&
@@ -5581,11 +5570,9 @@ async function loadState(){
             }
 
 
-            /*
-            ====================================================
-            ISCRIZIONI APPROVATE
-            ====================================================
-            */
+            /* =================================================
+               ISCRIZIONI APPROVATE
+            ================================================= */
 
             try{
 
@@ -5641,11 +5628,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        RECUPERO DATI SALVATI
-        ========================================================
-        */
+        /* =====================================================
+           RECUPERO ARRAY SALVATI
+        ===================================================== */
 
         if(configurazione){
 
@@ -5778,11 +5763,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        REGOLE
-        ========================================================
-        */
+        /* =====================================================
+           REGOLE
+        ===================================================== */
 
         if(
             typeof ensureRules === "function"
@@ -5793,11 +5776,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        FORMATO REALE DEL TORNEO
-        ========================================================
-        */
+        /* =====================================================
+           FORMATO REALE
+        ===================================================== */
 
         const strutture = {
 
@@ -5837,7 +5818,49 @@ async function loadState(){
             0;
 
 
+        /*
+           IMPORTANTE:
+           Non cambiamo il formato del torneo quando
+           il numero di coppie è ancora incompleto.
+
+           Il torneo resta quello definito dalle regole.
+        */
+
         if(
+            state.rules.numeroSquadre &&
+            strutture[
+                Number(
+                    state.rules.numeroSquadre
+                )
+            ]
+        ){
+
+            const numeroSquadre =
+                Number(
+                    state.rules.numeroSquadre
+                );
+
+            const struttura =
+                strutture[numeroSquadre];
+
+
+            state.rules.numeroGironi =
+                struttura.numeroGironi;
+
+
+            state.rules.squadrePerGirone =
+                struttura.squadrePerGirone;
+
+
+            state.formato =
+                numeroSquadre;
+
+
+            state.rules.formatoTorneo =
+                String(numeroSquadre);
+
+        }
+        else if(
             strutture[numeroCoppie]
         ){
 
@@ -5864,28 +5887,12 @@ async function loadState(){
             state.rules.formatoTorneo =
                 String(numeroCoppie);
 
-
-            console.log(
-                "FORMATO RICAVATO DALLE COPPIE:",
-                {
-                    coppie: numeroCoppie,
-                    numeroSquadre:
-                        state.rules.numeroSquadre,
-                    numeroGironi:
-                        state.rules.numeroGironi,
-                    squadrePerGirone:
-                        state.rules.squadrePerGirone
-                }
-            );
-
         }
 
 
-        /*
-        ========================================================
-        STRUTTURA GIRONI
-        ========================================================
-        */
+        /* =====================================================
+           GIRONI
+        ===================================================== */
 
         const lettere =
             ["A","B","C","D","E","F","G"];
@@ -5912,41 +5919,15 @@ async function loadState(){
 
         /*
         ========================================================
-        CONTROLLO GIRONI GIÀ COMPLETI
-        ========================================================
-        */
+        RICOSTRUZIONE DALLE COPPIE
 
-        const completi =
-            gironiAttivi.every(
-                g =>
-                    Array.isArray(state[g]) &&
-                    state[g].filter(
-                        x =>
-                            x !== null &&
-                            x !== undefined &&
-                            String(x).trim() !== ""
-                    ).length === perGirone
-            );
+        Le coppie già salvate sono distribuite
+        progressivamente nei gironi.
 
-
-        /*
-        ========================================================
-        RICOSTRUZIONE GIRONI DALLE COPPIE
-        ========================================================
-
-        IMPORTANTE:
-
-        NON richiediamo più 8 coppie per iniziare.
-
-        Se esiste anche una sola coppia,
-        viene inserita nel primo posto libero
-        partendo da Girone A.
-
-        1 coppia  -> A = 1
-        2 coppie  -> A = 2
-        4 coppie  -> A = 4
-        5 coppie  -> A = 4, B = 1
-        8 coppie  -> A = 4, B = 4
+        1 -> A
+        4 -> A
+        5 -> A + B
+        8 -> A + B
 
         Nessuna coppia viene inventata.
         ========================================================
@@ -5954,8 +5935,7 @@ async function loadState(){
 
         if(
             Array.isArray(state.coppie) &&
-            state.coppie.length > 0 &&
-            !completi
+            state.coppie.length > 0
         ){
 
             lettere.forEach(
@@ -6007,13 +5987,33 @@ async function loadState(){
             );
 
         }
+        else{
+
+            /*
+               Nessuna coppia disponibile:
+               manteniamo i gironi vuoti.
+            */
+
+            lettere.forEach(
+                g => {
+
+                    if(
+                        !Array.isArray(state[g])
+                    ){
+
+                        state[g] = [];
+
+                    }
+
+                }
+            );
+
+        }
 
 
-        /*
-        ========================================================
-        GARANTIAMO GLI ARRAY DEI GIRONI
-        ========================================================
-        */
+        /* =====================================================
+           GARANTIAMO SOLO I GIRONI ATTIVI
+        ===================================================== */
 
         lettere.forEach(
             (g,i) => {
@@ -6037,11 +6037,9 @@ async function loadState(){
         );
 
 
-        /*
-        ========================================================
-        GENERAZIONE PARTITE
-        ========================================================
-        */
+        /* =====================================================
+           GENERAZIONE PARTITE
+        ===================================================== */
 
         if(
             typeof generaPartiteGironi === "function"
@@ -6069,11 +6067,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        LOCAL STORAGE
-        ========================================================
-        */
+        /* =====================================================
+           LOCAL STORAGE
+        ===================================================== */
 
         if(
             !torneoRemoto &&
@@ -6093,11 +6089,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        LOG FINALE
-        ========================================================
-        */
+        /* =====================================================
+           CONTROLLO FINALE
+        ===================================================== */
 
         console.log(
             "=== LOADSTATE FINALE ===",
@@ -6181,11 +6175,9 @@ async function loadState(){
         );
 
 
-        /*
-        ========================================================
-        RENDER
-        ========================================================
-        */
+        /* =====================================================
+           RENDER
+        ===================================================== */
 
         if(
             typeof render === "function"
@@ -6208,11 +6200,9 @@ async function loadState(){
         }
 
 
-        /*
-        ========================================================
-        APERTURA REGOLE
-        ========================================================
-        */
+        /* =====================================================
+           APERTURA REGOLE
+        ===================================================== */
 
         if(
             params.get("apriRegole") === "true"
@@ -6256,6 +6246,8 @@ async function loadState(){
     }
 
 }
+
+
    
 function reset(){
 
