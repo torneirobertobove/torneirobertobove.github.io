@@ -10708,7 +10708,6 @@ function getWinner(match,res){
 }
 
 
-
 function getFinalQualified(){
 
     ensureRules();
@@ -10728,6 +10727,7 @@ function getFinalQualified(){
         Number(state.rules?.squadrePerGirone) || 4;
 
     const numeroGironi =
+        Number(state.rules?.numeroGironi) ||
         Math.ceil(
             numeroSquadre /
             squadrePerGirone
@@ -10735,6 +10735,7 @@ function getFinalQualified(){
 
     state.rules.numeroGironi =
         numeroGironi;
+
 
     /*
     ============================================================
@@ -10751,8 +10752,11 @@ function getFinalQualified(){
         !Number.isFinite(perGirone) ||
         perGirone < 1
     ){
+
         perGirone = 2;
+
     }
+
 
     /*
     ============================================================
@@ -10769,9 +10773,10 @@ function getFinalQualified(){
         "F"
     ];
 
+
     /*
     ============================================================
-    CONVERTITORE UNICO DEL NOME COPPIA
+    CONVERTITORE NOME COPPIA
     ============================================================
     */
 
@@ -10781,25 +10786,48 @@ function getFinalQualified(){
             coppia === null ||
             coppia === undefined
         ){
+
             return "";
+
         }
+
+
+        /*
+        --------------------------------------------------------
+        COPPIA STRINGA
+        --------------------------------------------------------
+        */
 
         if(
             typeof coppia === "string"
         ){
+
             return coppia.trim();
+
         }
+
+
+        /*
+        --------------------------------------------------------
+        VALORE NON OGGETTO
+        --------------------------------------------------------
+        */
 
         if(
             typeof coppia !== "object"
         ){
-            return String(coppia).trim();
+
+            return String(
+                coppia
+            ).trim();
+
         }
 
+
         /*
-        --------------------------------------------
-        STRUTTURA REALE DELLE COPPIE
-        --------------------------------------------
+        --------------------------------------------------------
+        GIOCATORI DELLA COPPIA
+        --------------------------------------------------------
         */
 
         if(
@@ -10813,27 +10841,28 @@ function getFinalQualified(){
             const g2 =
                 coppia.giocatore2;
 
+
             function nomeGiocatore(g){
 
-                if(
-                    !g
-                ){
+                if(!g){
+
                     return "";
+
                 }
+
 
                 if(
                     typeof g === "string"
                 ){
+
                     return g.trim();
+
                 }
+
 
                 if(
                     typeof g === "object"
                 ){
-
-                    /*
-                    Preferiamo nome + cognome.
-                    */
 
                     const nome =
                         String(
@@ -10846,6 +10875,7 @@ function getFinalQualified(){
                             g.cognome ??
                             ""
                         ).trim();
+
 
                     if(
                         nome ||
@@ -10860,9 +10890,6 @@ function getFinalQualified(){
 
                     }
 
-                    /*
-                    Fallback eventuale.
-                    */
 
                     if(
                         g.nome_giocatore
@@ -10876,9 +10903,11 @@ function getFinalQualified(){
 
                 }
 
+
                 return String(g).trim();
 
             }
+
 
             const n1 =
                 nomeGiocatore(g1);
@@ -10886,18 +10915,41 @@ function getFinalQualified(){
             const n2 =
                 nomeGiocatore(g2);
 
-            return (
-                n1 +
-                " / " +
+
+            if(
+                n1 &&
                 n2
-            ).trim();
+            ){
+
+                return (
+                    n1 +
+                    " / " +
+                    n2
+                );
+
+            }
+
+
+            if(n1){
+
+                return n1;
+
+            }
+
+
+            if(n2){
+
+                return n2;
+
+            }
 
         }
 
+
         /*
-        --------------------------------------------
-        EVENTUALI STRUTTURE PRECEDENTI
-        --------------------------------------------
+        --------------------------------------------------------
+        FORMATO g1 / g2
+        --------------------------------------------------------
         */
 
         if(
@@ -10905,31 +10957,73 @@ function getFinalQualified(){
             coppia.g2 !== undefined
         ){
 
-            return (
-                String(coppia.g1 ?? "").trim() +
-                " / " +
-                String(coppia.g2 ?? "").trim()
-            ).trim();
+            const g1 =
+                String(
+                    coppia.g1 ??
+                    ""
+                ).trim();
+
+            const g2 =
+                String(
+                    coppia.g2 ??
+                    ""
+                ).trim();
+
+
+            if(
+                g1 &&
+                g2
+            ){
+
+                return (
+                    g1 +
+                    " / " +
+                    g2
+                );
+
+            }
+
+
+            return g1 || g2;
 
         }
 
+
+        /*
+        --------------------------------------------------------
+        NOME COPPIA GIÀ PRESENTE
+        --------------------------------------------------------
+        */
+
         if(
-            coppia.nome
+            typeof coppia.nome === "string" &&
+            coppia.nome.trim() !== ""
+        ){
+
+            return coppia.nome.trim();
+
+        }
+
+
+        if(
+            coppia.nomeCoppia
         ){
 
             return String(
-                coppia.nome
+                coppia.nomeCoppia
             ).trim();
 
         }
+
 
         return "";
 
     }
 
+
     /*
     ============================================================
-    LETTURA GIRONI
+    LETTURA GIRONI E CLASSIFICHE
     ============================================================
     */
 
@@ -10942,22 +11036,29 @@ function getFinalQualified(){
         const girone =
             lettere[i];
 
-        if(
-            !girone
-        ){
+        if(!girone){
+
             continue;
+
         }
 
+
         const teams =
-            Array.isArray(state[girone])
+            Array.isArray(
+                state[girone]
+            )
                 ? state[girone]
                 : [];
+
 
         if(
             teams.length === 0
         ){
+
             continue;
+
         }
+
 
         /*
         ========================================================
@@ -10972,6 +11073,7 @@ function getFinalQualified(){
                 ? state[girone + "res"]
                 : [];
 
+
         /*
         ========================================================
         CLASSIFICA
@@ -10984,38 +11086,61 @@ function getFinalQualified(){
                 risultati
             );
 
+
         if(
             !Array.isArray(classifica)
         ){
+
             continue;
+
         }
+
 
         /*
         ========================================================
         NUMERO QUALIFICATE
         ========================================================
+        
+        SENZA QUARTI:
+            usa qualificatePerGirone.
+
+        CON QUARTI:
+            se il formato richiede i Quarti,
+            tutte le squadre dei gironi entrano
+            nella fase Quarti.
+
+        Esempio 8 squadre:
+            A = 4
+            B = 4
+
+            totale Quarti = 8
+        ========================================================
         */
 
-        let limite =
-            Math.min(
-                perGirone,
-                classifica.length
-            );
+        let limite;
 
-        /*
-        Con 8 squadre:
-        2 gironi × 2 qualificate = 4.
-        */
 
         if(
-            state.rules.usaQuarti === true &&
-            teams.length === 4 &&
-            numeroGironi * perGirone >= 8
+            state.rules?.usaQuarti === true
         ){
 
-            limite = 2;
+            limite =
+                Math.min(
+                    teams.length,
+                    classifica.length
+                );
 
         }
+        else{
+
+            limite =
+                Math.min(
+                    perGirone,
+                    classifica.length
+                );
+
+        }
+
 
         /*
         ========================================================
@@ -11032,50 +11157,61 @@ function getFinalQualified(){
             const dati =
                 classifica[posizione];
 
-            if(
-                !dati
-            ){
+
+            if(!dati){
+
                 continue;
+
             }
+
+
+            /*
+            ----------------------------------------------------
+            NOME PRESENTE NELLA CLASSIFICA
+            ----------------------------------------------------
+            */
 
             const nomeClassifica =
                 String(
                     dati.n ??
+                    dati.nome ??
                     ""
                 ).trim();
 
-            if(
-                !nomeClassifica
-            ){
-                continue;
-            }
 
             /*
             ----------------------------------------------------
-            CERCA LA COPPIA REALE
+            RECUPERO COPPIA REALE
             ----------------------------------------------------
             */
 
-            let squadra =
-                teams.find(
-                    coppia => {
+            let squadra;
 
-                        const nome =
-                            nomeCoppia(
-                                coppia
+
+            if(
+                nomeClassifica
+            ){
+
+                squadra =
+                    teams.find(
+                        coppia => {
+
+                            return (
+                                nomeCoppia(
+                                    coppia
+                                ) ===
+                                nomeClassifica
                             );
 
-                        return (
-                            nome ===
-                            nomeClassifica
-                        );
+                        }
+                    );
 
-                    }
-                );
+            }
+
 
             /*
             ----------------------------------------------------
-            FALLBACK INDICE
+            FALLBACK SICURO
             ----------------------------------------------------
             */
 
@@ -11088,6 +11224,7 @@ function getFinalQualified(){
                     teams[posizione];
 
             }
+
 
             /*
             ----------------------------------------------------
@@ -11115,6 +11252,7 @@ function getFinalQualified(){
 
             }
 
+
             /*
             ----------------------------------------------------
             EVITA DUPLICATI
@@ -11132,6 +11270,7 @@ function getFinalQualified(){
                 );
 
             }
+
 
             console.log(
                 "QUALIFICATO CORRETTO:",
@@ -11151,42 +11290,75 @@ function getFinalQualified(){
 
     }
 
+
     /*
     ============================================================
-    NUMERO FINALE
+    NUMERO FINALE ATTESO
     ============================================================
     */
 
     const attesi =
-        numeroGironi *
-        perGirone;
+        state.rules?.usaQuarti === true
+            ? Math.min(
+                numeroSquadre,
+                qualificati.length
+            )
+            : numeroGironi * perGirone;
+
+
+    /*
+    ============================================================
+    NUMERO QUALIFICATI FASE SUCCESSIVA
+    ============================================================
+    */
 
     let numeroFinale =
         Number(
             state.rules?.numeroQualificateFinali
         );
 
+
+    /*
+    ------------------------------------------------------------
+    CON QUARTI:
+    la fase successiva riceve tutte le squadre
+    necessarie a costruire i Quarti.
+    
+    Per 8 squadre:
+        8 qualificati
+        4 quarti
+    ------------------------------------------------------------
+    */
+
     if(
-        state.rules.usaQuarti === true
-    ){
-
-        numeroFinale = 8;
-
-    }
-
-    if(
-        !Number.isFinite(numeroFinale) ||
-        numeroFinale < 1
+        state.rules?.usaQuarti === true
     ){
 
         numeroFinale =
-            attesi;
+            Math.min(
+                numeroSquadre,
+                qualificati.length
+            );
+
+    }
+    else{
+
+        if(
+            !Number.isFinite(numeroFinale) ||
+            numeroFinale < 1
+        ){
+
+            numeroFinale =
+                attesi;
+
+        }
 
     }
 
+
     /*
     ============================================================
-    RISULTATO
+    RISULTATO FINALE
     ============================================================
     */
 
@@ -11195,6 +11367,13 @@ function getFinalQualified(){
             0,
             numeroFinale
         );
+
+
+    /*
+    ============================================================
+    DEBUG FINALE
+    ============================================================
+    */
 
     console.log(
         "========================================"
@@ -11231,14 +11410,20 @@ function getFinalQualified(){
     );
 
     console.log(
+        "QUARTI ATTIVI:",
+        state.rules?.usaQuarti === true
+    );
+
+    console.log(
         "========================================"
     );
+
 
     return risultato;
 
 }
 
-   
+ 
 function creaFinale(semifinali){
 
     ensureRules();
