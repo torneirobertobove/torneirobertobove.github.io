@@ -208,6 +208,7 @@ function bloccaGestionale(){
     console.warn( "Gestionale bloccato: serve un amministratore" );
 }
 
+
 async function loadState(){
 
     const params =
@@ -229,7 +230,100 @@ async function loadState(){
 
         /*
         ============================================================
-        1. TORNEO VIA URL
+        1. PULIZIA STATO QUANDO VIENE APERTO UN TORNEO SPECIFICO
+        ============================================================
+
+        Se esiste idTorneo oppure torneoParam NON devono rimanere
+        coppie, partecipanti o gironi del torneo precedente.
+        ============================================================
+        */
+
+        if(
+            idTorneo ||
+            torneoParam
+        ){
+
+            state = {
+
+                idTorneo:
+                    idTorneo
+                        ? Number(idTorneo)
+                        : null,
+
+                nomeTorneo:"",
+                dataTorneo:"",
+
+                rules:
+                    state &&
+                    state.rules &&
+                    typeof state.rules === "object"
+                        ? { ...state.rules }
+                        : {},
+
+                iscritti:[],
+                partecipanti:[],
+                coppie:[],
+
+                A:[],
+                B:[],
+                C:[],
+                D:[],
+                E:[],
+                F:[],
+                G:[],
+
+                Ares:[],
+                Bres:[],
+                Cres:[],
+                Dres:[],
+                Eres:[],
+                Fres:[],
+                Gres:[],
+
+                Atime:[],
+                Btime:[],
+                Ctime:[],
+                Dtime:[],
+                Etime:[],
+                Ftime:[],
+                Gtime:[],
+
+                Acamp:[],
+                Bcamp:[],
+                Ccamp:[],
+                Dcamp:[],
+                Ecamp:[],
+                Fcamp:[],
+                Gcamp:[],
+
+                qRes:[],
+                qCamp:[],
+                qTime:[],
+
+                sTopRes:[],
+                sCamp:[],
+                sTime:[],
+
+                fTopRes:"-",
+                fCamp:[],
+                fTime:[],
+
+                finalTop:[],
+                campioneTop:null
+
+            };
+
+            console.log(
+                "STATO PRECEDENTE PULITO PER TORNEO:",
+                idTorneo
+            );
+
+        }
+
+
+        /*
+        ============================================================
+        2. TORNEO VIA URL
         ============================================================
         */
 
@@ -338,7 +432,7 @@ async function loadState(){
 
         /*
         ============================================================
-        2. SUPABASE
+        3. SUPABASE
         ============================================================
         */
 
@@ -369,6 +463,9 @@ async function loadState(){
                         error
                     );
 
+                    state.coppie = [];
+                    state.partecipanti = [];
+
                 }
 
                 if(torneo){
@@ -388,19 +485,13 @@ async function loadState(){
                             torneo.nome !== null &&
                             torneo.nome !== undefined
                                 ? torneo.nome
-                                : (
-                                    state.nomeTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         dataTorneo:
                             torneo.data !== null &&
                             torneo.data !== undefined
                                 ? torneo.data
-                                : (
-                                    state.dataTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         rules:{
                             ...(
@@ -420,6 +511,8 @@ async function loadState(){
                     ==================================================
                     */
 
+                    state.partecipanti = [];
+
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -430,11 +523,6 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
-                    else{
-
-                        state.partecipanti = [];
-
-                    }
 
 
                     /*
@@ -442,6 +530,8 @@ async function loadState(){
                     COPPIE
                     ==================================================
                     */
+
+                    state.coppie = [];
 
                     if(
                         Array.isArray(
@@ -451,11 +541,6 @@ async function loadState(){
 
                         state.coppie =
                             configurazione.coppie;
-
-                    }
-                    else{
-
-                        state.coppie = [];
 
                     }
 
@@ -514,13 +599,34 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    TORNEO NON TROVATO
+                    TORNEO NON TROVATO:
+                    NON RECUPERARE DATI DI ALTRI TORNEI
                     ==================================================
                     */
 
                     state.coppie = [];
-
                     state.partecipanti = [];
+                    state.iscritti = [];
+
+                    [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G"
+                    ].forEach(
+                        g => {
+
+                            state[g] = [];
+
+                            state[g+"res"] = [];
+                            state[g+"time"] = [];
+                            state[g+"camp"] = [];
+
+                        }
+                    );
 
                 }
 
@@ -533,15 +639,15 @@ async function loadState(){
                 );
 
                 state.coppie = [];
-
                 state.partecipanti = [];
+                state.iscritti = [];
 
             }
 
 
             /*
             ========================================================
-            3. ISCRIZIONI APPROVATE
+            4. ISCRIZIONI APPROVATE
             ========================================================
             */
 
@@ -598,7 +704,7 @@ async function loadState(){
 
         /*
         ============================================================
-        4. RECUPERO ARRAY DEL TORNEO
+        5. RECUPERO ARRAY DEL TORNEO
         ============================================================
         */
 
@@ -663,26 +769,8 @@ async function loadState(){
                         )
                     ){
 
-                        const ricevuto =
+                        state[k] =
                             configurazione[k];
-
-                        if(
-                            ricevuto.length > 0
-                        ){
-
-                            state[k] =
-                                ricevuto;
-
-                        }
-                        else if(
-                            !Array.isArray(
-                                state[k]
-                            )
-                        ){
-
-                            state[k] = [];
-
-                        }
 
                     }
 
@@ -712,8 +800,7 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.partecipanti
-                    ) &&
-                    cfg.partecipanti.length > 0
+                    )
                 ){
 
                     state.partecipanti =
@@ -739,8 +826,12 @@ async function loadState(){
 
         /*
         ============================================================
-        5. savedTeams
-        SOLO SENZA TORNEO REMOTO
+        6. savedTeams
+        SOLO QUANDO NON ESISTE ASSOLUTAMENTE UN TORNEO SPECIFICO
+        ============================================================
+
+        Questa è la protezione fondamentale:
+        con idTorneo NON viene MAI letto savedTeams.
         ============================================================
         */
 
@@ -799,7 +890,8 @@ async function loadState(){
 
         /*
         ============================================================
-        6. LOCAL STORAGE
+        7. LOCAL STORAGE
+        SOLO SENZA TORNEO SPECIFICO
         ============================================================
         */
 
@@ -854,7 +946,7 @@ async function loadState(){
 
         /*
         ============================================================
-        7. NORMALIZZAZIONE REGOLE
+        8. NORMALIZZAZIONE REGOLE
         ============================================================
         */
 
@@ -863,7 +955,7 @@ async function loadState(){
 
         /*
         ============================================================
-        8. CORREZIONE FORMATO REALE
+        9. CORREZIONE FORMATO REALE
         ============================================================
         */
 
@@ -958,7 +1050,7 @@ async function loadState(){
 
         /*
         ============================================================
-        9. GIRONI
+        10. GIRONI
         ============================================================
         */
 
@@ -993,7 +1085,7 @@ async function loadState(){
 
         /*
         ============================================================
-        10. VERIFICA GIRONI
+        11. VERIFICA GIRONI
         ============================================================
         */
 
@@ -1032,7 +1124,7 @@ async function loadState(){
 
         /*
         ============================================================
-        11. DISTRIBUZIONE COPPIE
+        12. DISTRIBUZIONE COPPIE
         ============================================================
         */
 
@@ -1109,7 +1201,7 @@ async function loadState(){
 
         /*
         ============================================================
-        12. SVUOTA GIRONI NON PREVISTI
+        13. SVUOTA GIRONI NON PREVISTI
         ============================================================
         */
 
@@ -1139,7 +1231,7 @@ async function loadState(){
 
         /*
         ============================================================
-        13. ARRAY RISULTATI / ORARI / CAMPI
+        14. ARRAY RISULTATI / ORARI / CAMPI
         ============================================================
         */
 
@@ -1182,7 +1274,7 @@ async function loadState(){
 
         /*
         ============================================================
-        14. GENERAZIONE PARTITE
+        15. GENERAZIONE PARTITE
         ============================================================
         */
 
@@ -1218,7 +1310,8 @@ async function loadState(){
 
         /*
         ============================================================
-        15. SALVATAGGIO LOCALE DI SICUREZZA
+        16. SALVATAGGIO LOCALE DI SICUREZZA
+        SOLO SENZA idTorneo
         ============================================================
         */
 
@@ -1238,7 +1331,10 @@ async function loadState(){
                     )
             );
 
-        if(haSquadre){
+        if(
+            haSquadre &&
+            !idTorneo
+        ){
 
             localStorage.setItem(
                 "torneoState",
@@ -1250,7 +1346,7 @@ async function loadState(){
 
         /*
         ============================================================
-        16. CONTROLLO FINALE
+        17. CONTROLLO FINALE
         ============================================================
         */
 
@@ -1326,7 +1422,7 @@ async function loadState(){
 
         /*
         ============================================================
-        17. RENDER
+        18. RENDER
         ============================================================
         */
 
@@ -1354,7 +1450,7 @@ async function loadState(){
 
         /*
         ============================================================
-        18. APERTURA REGOLE
+        19. APERTURA REGOLE
         ============================================================
         */
 
@@ -1406,7 +1502,6 @@ async function loadState(){
     }
 
 }
-
 
 
 
