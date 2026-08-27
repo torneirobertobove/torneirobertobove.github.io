@@ -221,9 +221,7 @@ async function loadState(){
     const torneoParam =
         params.get("torneo");
 
-
     let configurazione = null;
-
 
     /*
     ============================================================
@@ -233,13 +231,12 @@ async function loadState(){
 
     window.__BOVE_LOADING__ = true;
 
-
     try{
 
         /*
-        ============================================================
-        1. TORNEO VIA URL
-        ============================================================
+        ========================================================
+        1. TORNEO PASSATO VIA URL
+        ========================================================
         */
 
         if(torneoParam){
@@ -252,7 +249,6 @@ async function loadState(){
                             torneoParam
                         )
                     );
-
 
                 state = {
 
@@ -280,7 +276,6 @@ async function loadState(){
 
                 };
 
-
                 if(
                     Array.isArray(
                         configurazione.partecipanti
@@ -291,7 +286,6 @@ async function loadState(){
                         configurazione.partecipanti;
 
                 }
-
 
                 if(
                     Array.isArray(
@@ -304,14 +298,12 @@ async function loadState(){
 
                 }
 
-
                 if(
                     configurazione.configurazione
                 ){
 
                     const cfg =
                         configurazione.configurazione;
-
 
                     if(
                         Array.isArray(
@@ -323,7 +315,6 @@ async function loadState(){
                             cfg.partecipanti;
 
                     }
-
 
                     if(
                         Array.isArray(
@@ -352,9 +343,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        2. SUPABASE
-        ============================================================
+        ========================================================
+        2. CARICAMENTO TORNEO DA SUPABASE
+        ========================================================
         */
 
         if(
@@ -375,8 +366,21 @@ async function loadState(){
                             "id",
                             Number(idTorneo)
                         )
-                        .single();
+                        .maybeSingle();
 
+
+                /*
+                ==================================================
+                IMPORTANTE:
+
+                .maybeSingle() evita il PGRST116 quando
+                il torneo non esiste.
+
+                Un torneo inesistente NON deve essere
+                trasformato automaticamente nel torneo
+                precedente presente in localStorage.
+                ==================================================
+                */
 
                 if(error){
 
@@ -387,20 +391,21 @@ async function loadState(){
 
                 }
 
+                if(!torneo){
+
+                    console.warn(
+                        "TORNEO NON TROVATO IN SUPABASE:",
+                        idTorneo
+                    );
+
+                }
+
 
                 if(torneo){
 
                     configurazione =
                         torneo.configurazione ||
                         {};
-
-
-                    /*
-                    ==================================================
-                    IMPORTANTE:
-                    UN TORNEO REMOTO È ISOLATO DAL LOCAL STORAGE.
-                    ==================================================
-                    */
 
                     state = {
 
@@ -440,9 +445,9 @@ async function loadState(){
 
 
                     /*
-                    ==================================================
+                    ==============================================
                     PARTECIPANTI
-                    ==================================================
+                    ==============================================
                     */
 
                     if(
@@ -455,17 +460,12 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
-                    else{
-
-                        state.partecipanti = [];
-
-                    }
 
 
                     /*
-                    ==================================================
+                    ==============================================
                     COPPIE
-                    ==================================================
+                    ==============================================
                     */
 
                     if(
@@ -478,22 +478,12 @@ async function loadState(){
                             configurazione.coppie;
 
                     }
-                    else{
-
-                        /*
-                        NUOVO TORNEO:
-                        NESSUNA COPPIA.
-                        */
-
-                        state.coppie = [];
-
-                    }
 
 
                     /*
-                    ==================================================
+                    ==============================================
                     CONFIGURAZIONE NIDIFICATA
-                    ==================================================
+                    ==============================================
                     */
 
                     if(
@@ -543,20 +533,6 @@ async function loadState(){
                     }
 
                 }
-                else{
-
-                    /*
-                    ==================================================
-                    TORNEO NON TROVATO:
-                    NON USARE DATI LOCALI.
-                    ==================================================
-                    */
-
-                    state.coppie = [];
-
-                    state.partecipanti = [];
-
-                }
 
             }
             catch(err){
@@ -566,23 +542,14 @@ async function loadState(){
                     err
                 );
 
-
-                /*
-                TORNEO REMOTO:
-                IN CASO DI ERRORE NON RECUPERARE
-                savedTeams.
-                */
-
-                state.coppie = [];
-
-                state.partecipanti = [];
-
             }
 
 
             /*
             ========================================================
             3. ISCRIZIONI APPROVATE
+
+            Le iscrizioni appartengono al torneo corrente.
             ========================================================
             */
 
@@ -621,22 +588,6 @@ async function loadState(){
                             ? iscritti
                             : [];
 
-
-                    /*
-                    ==================================================
-                    IMPORTANTE
-                    ==================================================
-
-                    NON trasformiamo automaticamente le iscrizioni
-                    in COPPIE.
-
-                    Le coppie devono provenire dalla configurazione
-                    del torneo oppure essere create esplicitamente
-                    dal flusso di iscrizione.
-
-                    Un torneo nuovo resta quindi vuoto.
-                    */
-
                 }
 
             }
@@ -655,9 +606,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         4. RECUPERO ARRAY DEL TORNEO
-        ============================================================
+        ========================================================
         */
 
         if(configurazione){
@@ -727,11 +678,8 @@ async function loadState(){
 
 
                         /*
-                        DATI PRESENTI:
-                        RECUPERIAMOLI.
-
-                        ARRAY VUOTO:
-                        NON INVENTIAMO DATI.
+                        NON SOVRASCRIVERE DATI VALIDI
+                        CON ARRAY VUOTI.
                         */
 
                         if(
@@ -801,7 +749,8 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    )
+                    ) &&
+                    cfg.coppie.length > 0
                 ){
 
                     state.coppie =
@@ -815,18 +764,17 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        5. RECUPERO savedTeams
-        ============================================================
+        ========================================================
+        5. savedTeams
 
-        ATTENZIONE:
+        MAI usare savedTeams quando esiste idTorneo.
 
-        savedTeams PUÒ essere utilizzato SOLO quando NON esiste
-        un torneo remoto identificato da idTorneo.
+        savedTeams è soltanto un archivio locale di emergenza
+        per una sessione SENZA torneo identificato.
 
-        Questo impedisce di contaminare un nuovo torneo con
-        le squadre dell'ultimo test.
-        ============================================================
+        QUESTO BLOCCA DEFINITIVAMENTE la contaminazione del
+        nuovo torneo con le 8 coppie del torneo precedente.
+        ========================================================
         */
 
         if(
@@ -885,10 +833,12 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        6. LOCAL STORAGE
-        SOLO SE NON ESISTE TORNEO REMOTO
-        ============================================================
+        ========================================================
+        6. LOCAL STORAGE torneoState
+
+        Anche questo NON deve contaminare un torneo aperto
+        tramite idTorneo.
+        ========================================================
         */
 
         if(
@@ -943,26 +893,34 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         7. NORMALIZZAZIONE REGOLE
-        ============================================================
+        ========================================================
         */
 
         ensureRules();
 
 
         /*
-        ============================================================
-        8. CORREZIONE FORMATO REALE
-        ============================================================
+        ========================================================
+        8. FORMATO REALE
+
+        Se esistono coppie REALI del torneo, il loro numero
+        determina il formato.
+
+        NON vengono mai prese da savedTeams se idTorneo
+        è presente.
+        ========================================================
         */
 
         const formatiValidi = [
+
             8,
             12,
             16,
             20,
             24
+
         ];
 
 
@@ -1057,9 +1015,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         9. GIRONI
-        ============================================================
+        ========================================================
         */
 
         const lettereGironi = [
@@ -1095,9 +1053,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        10. VERIFICA GIRONI GIÀ CORRETTI
-        ============================================================
+        ========================================================
+        10. CONTROLLO GIRONI
+        ========================================================
         */
 
         const gironiCompleti =
@@ -1136,9 +1094,11 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        11. DISTRIBUZIONE DELLE COPPIE
-        ============================================================
+        ========================================================
+        11. RICOSTRUZIONE GIRONI
+
+        SOLO se esistono coppie REALI.
+        ========================================================
         */
 
         if(
@@ -1216,9 +1176,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        12. SVUOTA I GIRONI NON PREVISTI
-        ============================================================
+        ========================================================
+        12. SVUOTA GIRONI NON PREVISTI
+        ========================================================
         */
 
         lettereGironi.forEach(
@@ -1246,9 +1206,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
-        13. GARANTISCI ARRAY RISULTATI / ORARI / CAMPI
-        ============================================================
+        ========================================================
+        13. ARRAY RISULTATI / ORARI / CAMPI
+        ========================================================
         */
 
         lettereGironi.forEach(
@@ -1291,9 +1251,11 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         14. GENERAZIONE PARTITE
-        ============================================================
+
+        SOLO quando esistono effettivamente squadre.
+        ========================================================
         */
 
         if(
@@ -1328,9 +1290,11 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         15. SALVATAGGIO LOCALE DI SICUREZZA
-        ============================================================
+
+        SOLO se esistono effettivamente squadre.
+        ========================================================
         */
 
         const haSquadre =
@@ -1361,19 +1325,20 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         16. CONTROLLO FINALE
-        ============================================================
+        ========================================================
         */
 
         console.log(
             "=== LOADSTATE FINALE ===",
             {
+
                 idTorneo:
                     state.idTorneo,
 
                 tipoTorneo:
-                    state.rules?.tipoTorneo,
+                    state.rules.tipoTorneo,
 
                 coppie:
                     Array.isArray(
@@ -1432,14 +1397,15 @@ async function loadState(){
                     Array.isArray(state.G)
                         ? state.G.length
                         : 0
+
             }
         );
 
 
         /*
-        ============================================================
+        ========================================================
         17. RENDER
-        ============================================================
+        ========================================================
         */
 
         if(
@@ -1465,9 +1431,9 @@ async function loadState(){
 
 
         /*
-        ============================================================
+        ========================================================
         18. APERTURA REGOLE
-        ============================================================
+        ========================================================
         */
 
         const apriRegole =
