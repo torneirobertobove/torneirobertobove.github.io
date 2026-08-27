@@ -8856,8 +8856,6 @@ return true;
 
 
 
-
-
 function renderKO(){
 
     ensureRules();
@@ -8932,10 +8930,6 @@ function renderKO(){
             ).trim();
 
 
-        /*
-        Se il giocatore arriva già come stringa
-        */
-
         if(
             !nome &&
             !cognome &&
@@ -8972,10 +8966,6 @@ function renderKO(){
         }
 
 
-        /*
-        Prima lettera del nome maiuscola
-        */
-
         if(nome){
 
             nome =
@@ -8985,12 +8975,6 @@ function renderKO(){
 
         }
 
-
-        /*
-        Cognome:
-        prima lettera maiuscola,
-        resto minuscolo
-        */
 
         if(cognome){
 
@@ -9050,21 +9034,9 @@ function renderKO(){
         }
 
 
-        /*
-        ========================================================
-        COPPIA OGGETTO
-        ========================================================
-        */
-
         if(
             typeof squadra === "object"
         ){
-
-            /*
-            ----------------------------------------------------
-            COPPIA CON GIOCATORI
-            ----------------------------------------------------
-            */
 
             const giocatore1 =
                 squadra.giocatore1;
@@ -9106,12 +9078,6 @@ function renderKO(){
                 return p2;
 
 
-            /*
-            ----------------------------------------------------
-            FORMATO g1 / g2
-            ----------------------------------------------------
-            */
-
             if(
                 squadra.g1 !== undefined ||
                 squadra.g2 !== undefined
@@ -9152,12 +9118,6 @@ function renderKO(){
             }
 
 
-            /*
-            ----------------------------------------------------
-            NOME COPPIA GIÀ PRESENTE
-            ----------------------------------------------------
-            */
-
             if(
                 typeof squadra.nome === "string" &&
                 squadra.nome.trim() !== ""
@@ -9167,12 +9127,6 @@ function renderKO(){
 
             }
 
-
-            /*
-            ----------------------------------------------------
-            ALTRI FORMATI
-            ----------------------------------------------------
-            */
 
             if(
                 squadra.nomeCoppia
@@ -9190,12 +9144,6 @@ function renderKO(){
         }
 
 
-        /*
-        ========================================================
-        STRINGA
-        ========================================================
-        */
-
         const testo =
             String(
                 squadra
@@ -9205,10 +9153,6 @@ function renderKO(){
         if(!testo)
             return "-";
 
-
-        /*
-        Se contiene già una coppia
-        */
 
         if(
             testo.includes("/")
@@ -9624,20 +9568,29 @@ function renderKO(){
 
         /*
         --------------------------------------------------------
-        NON CREARE MAI UNA SQUADRA FITTIZIA
+        PER SEMIFINALI/FINALE POSSIAMO AVERE UNA SQUADRA
+        ANCORA NON DETERMINATA.
+        NON CREIAMO UNA SQUADRA FITTIZIA:
+        MOSTRIAMO SOLO "IN ATTESA".
         --------------------------------------------------------
         */
 
-        if(
-            !squadra1 ||
-            squadra1 === "-" ||
-            !squadra2 ||
-            squadra2 === "-"
-        ){
+        const visuale1 =
+            (
+                squadra1 &&
+                squadra1 !== "-"
+            )
+                ? squadra1
+                : "IN ATTESA";
 
-            return "";
 
-        }
+        const visuale2 =
+            (
+                squadra2 &&
+                squadra2 !== "-"
+            )
+                ? squadra2
+                : "IN ATTESA";
 
 
         let valore =
@@ -9668,7 +9621,7 @@ function renderKO(){
                 <td class="match-cell">
 
                     <div>
-                        ${squadra1}
+                        ${visuale1}
                     </div>
 
                     <div style="
@@ -9680,7 +9633,7 @@ function renderKO(){
                     </div>
 
                     <div>
-                        ${squadra2}
+                        ${visuale2}
                     </div>
 
                 </td>
@@ -9879,55 +9832,44 @@ function renderKO(){
 
         /*
         --------------------------------------------------------
-        SEMIFINALI SOLO CON 4 QUARTI DECISI
+        COSTRUZIONE SEMIFINALI
+        --------------------------------------------------------
+
+        PRIMA:
+        le semifinali venivano create SOLO quando tutti
+        i quarti erano conclusi.
+
+        ADESSO:
+        la struttura delle semifinali viene creata subito.
+
+        I vincitori già determinati vengono inseriti.
+        Quelli non ancora determinati rimangono null
+        e vengono visualizzati come "IN ATTESA".
         --------------------------------------------------------
         */
 
-        const tuttiQuartiCompletati =
-            vincitoriQuarti.length === 4 &&
-            vincitoriQuarti.every(
-                squadra =>
-                    squadra !== null &&
-                    squadra !== undefined &&
-                    squadra !== "-"
-            );
+        semifinali = [
+
+            [
+                vincitoriQuarti[0] || null,
+                vincitoriQuarti[1] || null
+            ],
+
+            [
+                vincitoriQuarti[2] || null,
+                vincitoriQuarti[3] || null
+            ]
+
+        ];
 
 
-        if(
-            tuttiQuartiCompletati
-        ){
-
-            semifinali = [
-
-                [
-                    vincitoriQuarti[0],
-                    vincitoriQuarti[1]
-                ],
-
-                [
-                    vincitoriQuarti[2],
-                    vincitoriQuarti[3]
+        state.semifinaliTop =
+            semifinali.map(
+                match => [
+                    match[0],
+                    match[1]
                 ]
-
-            ];
-
-
-            state.semifinaliTop =
-                semifinali.map(
-                    match => [
-                        match[0],
-                        match[1]
-                    ]
-                );
-
-        }
-        else{
-
-            semifinali = [];
-
-            state.semifinaliTop = [];
-
-        }
+            );
 
 
         applicaLayoutGironi(
@@ -10081,43 +10023,23 @@ function renderKO(){
 
         /*
         --------------------------------------------------------
-        FINALISTI SOLO QUANDO ENTRAMBE LE SEMIFINALI
-        SONO STATE DECise
+        FINALISTI
+        --------------------------------------------------------
+
+        Manteniamo sempre due posizioni.
+
+        Questo permette alla finale di avere una struttura
+        persistente senza inventare squadre.
         --------------------------------------------------------
         */
 
-        const semifinaliCompletate =
-            finalisti.length === 2 &&
-            finalisti.every(
-                squadra =>
-                    squadra !== null &&
-                    squadra !== undefined &&
-                    squadra !== "-"
-            );
+        state.finalTop = [
 
+            finalisti[0] || null,
 
-        if(
-            semifinaliCompletate
-        ){
+            finalisti[1] || null
 
-            /*
-            Manteniamo gli OGGETTI REALI
-            */
-
-            state.finalTop = [
-                finalisti[0],
-                finalisti[1]
-            ];
-
-        }
-        else{
-
-            state.finalTop = [
-                "-",
-                "-"
-            ];
-
-        }
+        ];
 
 
         applicaLayoutGironi(
@@ -10127,6 +10049,12 @@ function renderKO(){
     }
 
     else{
+
+        /*
+        --------------------------------------------------------
+        SEMIFINALI DISATTIVATE
+        --------------------------------------------------------
+        */
 
         state.finalTop = [];
 
@@ -10158,98 +10086,45 @@ function renderKO(){
 
     /*
     ------------------------------------------------------------
-    SERVONO ESATTAMENTE DUE FINALISTI REALI
+    LA FINALE VIENE COSTRUITA ANCHE SE I FINALISTI
+    NON SONO ANCORA NOTI.
     ------------------------------------------------------------
     */
 
-    if(
-        !Array.isArray(state.finalTop) ||
-        state.finalTop.length !== 2 ||
-        !state.finalTop[0] ||
-        !state.finalTop[1] ||
-        state.finalTop[0] === "-" ||
-        state.finalTop[1] === "-"
-    ){
+    const finalistiDisponibili =
+        Array.isArray(state.finalTop) &&
+        state.finalTop.length === 2
+            ? state.finalTop
+            : [
+                null,
+                null
+            ];
 
-        f.innerHTML = "";
-
-        state.campioneTop = null;
-
-        if(fTable)
-            fTable.style.display =
-                "none";
-
-        return;
-
-    }
-
-
-    /*
-    ============================================================
-    CORREZIONE DEFINITIVA
-    ============================================================
-    */
-
-    /*
-    state.finalTop rimane composto dagli oggetti
-    originali delle coppie.
-
-    Per il RENDER passiamo invece esclusivamente
-    i nomi delle due coppie.
-
-    Questo evita:
-        [object Object]
-
-    senza alterare lo stato del torneo.
-    */
 
     const finalistiVisualizzazione = [
 
         nomeCoppia(
-            state.finalTop[0]
-        ),
+            finalistiDisponibili[0]
+        ) !== "-"
+            ? nomeCoppia(
+                finalistiDisponibili[0]
+            )
+            : "IN ATTESA",
 
         nomeCoppia(
-            state.finalTop[1]
-        )
+            finalistiDisponibili[1]
+        ) !== "-"
+            ? nomeCoppia(
+                finalistiDisponibili[1]
+            )
+            : "IN ATTESA"
 
     ];
 
 
     /*
     ------------------------------------------------------------
-    CONTROLLO NOMI FINALI
-    ------------------------------------------------------------
-    */
-
-    if(
-        !finalistiVisualizzazione[0] ||
-        finalistiVisualizzazione[0] === "-" ||
-        !finalistiVisualizzazione[1] ||
-        finalistiVisualizzazione[1] === "-"
-    ){
-
-        console.error(
-            "renderKO: finalisti non visualizzabili",
-            state.finalTop
-        );
-
-        f.innerHTML = "";
-
-        state.campioneTop = null;
-
-        if(fTable)
-            fTable.style.display =
-                "none";
-
-        return;
-
-    }
-
-
-    /*
-    ------------------------------------------------------------
-    LA FINALE DIVENTA VISIBILE SOLO ORA
+    FINALE VISIBILE
     ------------------------------------------------------------
     */
 
@@ -10280,36 +10155,55 @@ function renderKO(){
     ============================================================
     */
 
-    const campione =
-        getWinner(
-            state.finalTop,
-            state.fTopRes
-        );
+    const finalePronta =
+        Array.isArray(state.finalTop) &&
+        state.finalTop.length === 2 &&
+        state.finalTop[0] &&
+        state.finalTop[1] &&
+        state.finalTop[0] !== "-" &&
+        state.finalTop[1] !== "-";
 
 
-    if(
-        campione !== null &&
-        campione !== undefined &&
-        campione !== "" &&
-        campione !== "-"
-    ){
+    if(finalePronta){
 
-        state.campioneTop =
-            campione;
+        const campione =
+            getWinner(
+                state.finalTop,
+                state.fTopRes
+            );
 
 
-        f.innerHTML +=
-            `
-            <div class="winner-box top-win">
+        if(
+            campione !== null &&
+            campione !== undefined &&
+            campione !== "" &&
+            campione !== "-"
+        ){
 
-                🏆 CAMPIONE TORNEO:<br>
+            state.campioneTop =
+                campione;
 
-                ${nomeCoppia(
-                    campione
-                )}
 
-            </div>
-            `;
+            f.innerHTML +=
+                `
+                <div class="winner-box top-win">
+
+                    🏆 CAMPIONE TORNEO:<br>
+
+                    ${nomeCoppia(
+                        campione
+                    )}
+
+                </div>
+                `;
+
+        }
+        else{
+
+            state.campioneTop =
+                null;
+
+        }
 
     }
     else{
@@ -10320,8 +10214,6 @@ function renderKO(){
     }
 
 }
-
-
 
 
   function updateKOResult(type,index,valore){
