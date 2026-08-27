@@ -238,6 +238,85 @@ async function loadState(){
 
         /*
         ============================================================
+        0. STATO PULITO PER TORNEO REMOTO
+        ============================================================
+
+        IMPORTANTE:
+
+        Se esiste idTorneo oppure torneoParam,
+        NON dobbiamo mantenere gironi/coppie del torneo precedente
+        presenti nello state iniziale.
+        ============================================================
+        */
+
+        if(
+            idTorneo ||
+            torneoParam
+        ){
+
+            state.A = [];
+            state.B = [];
+            state.C = [];
+            state.D = [];
+            state.E = [];
+            state.F = [];
+            state.G = [];
+
+            state.Ares = [];
+            state.Bres = [];
+            state.Cres = [];
+            state.Dres = [];
+            state.Eres = [];
+            state.Fres = [];
+            state.Gres = [];
+
+            state.Atime = [];
+            state.Btime = [];
+            state.Ctime = [];
+            state.Dtime = [];
+            state.Etime = [];
+            state.Ftime = [];
+            state.Gtime = [];
+
+            state.Acamp = [];
+            state.Bcamp = [];
+            state.Ccamp = [];
+            state.Dcamp = [];
+            state.Ecamp = [];
+            state.Fcamp = [];
+            state.Gcamp = [];
+
+            state.coppie = [];
+
+            state.partecipanti = [];
+
+            state.iscritti = [];
+
+            state.qRes = [];
+
+            state.qCamp = [];
+
+            state.qTime = [];
+
+            state.sTopRes = [];
+
+            state.sCamp = [];
+
+            state.sTime = [];
+
+            state.fTopRes = "-";
+
+            state.fCamp = "";
+
+            state.fTime = "";
+
+            state.finalTop = [];
+
+        }
+
+
+        /*
+        ============================================================
         1. TORNEO VIA URL
         ============================================================
         */
@@ -396,6 +475,16 @@ async function loadState(){
                         {};
 
 
+                    /*
+                    ==================================================
+                    STATO TORNEO REMOTO
+                    ==================================================
+
+                    NON facciamo più merge dei vecchi gironi.
+                    Il contenuto di Supabase è la fonte del torneo.
+                    ==================================================
+                    */
+
                     state = {
 
                         ...state,
@@ -407,19 +496,13 @@ async function loadState(){
                             torneo.nome !== null &&
                             torneo.nome !== undefined
                                 ? torneo.nome
-                                : (
-                                    state.nomeTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         dataTorneo:
                             torneo.data !== null &&
                             torneo.data !== undefined
                                 ? torneo.data
-                                : (
-                                    state.dataTorneo ||
-                                    ""
-                                ),
+                                : "",
 
                         rules:{
                             ...(
@@ -449,6 +532,11 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
+                    else{
+
+                        state.partecipanti = [];
+
+                    }
 
 
                     /*
@@ -467,6 +555,11 @@ async function loadState(){
                             configurazione.coppie;
 
                     }
+                    else{
+
+                        state.coppie = [];
+
+                    }
 
 
                     /*
@@ -483,7 +576,10 @@ async function loadState(){
                             configurazione.configurazione;
 
 
-                        if(cfg.rules){
+                        if(
+                            cfg.rules &&
+                            typeof cfg.rules === "object"
+                        ){
 
                             state.rules = {
 
@@ -538,6 +634,12 @@ async function loadState(){
             ========================================================
             3. ISCRIZIONI APPROVATE
             ========================================================
+
+            Le iscrizioni vengono caricate solamente come
+            informazione del torneo.
+
+            NON possono creare o sovrascrivere le COPPIE.
+            ========================================================
             */
 
             try{
@@ -574,52 +676,6 @@ async function loadState(){
                         Array.isArray(iscritti)
                             ? iscritti
                             : [];
-
-
-                    /*
-                    ==================================================
-                    LE ISCRIZIONI SONO SOLO FALLBACK.
-                    NON SOVRASCRIVONO COPPIE ESISTENTI.
-                    ==================================================
-                    */
-
-                    if(
-                        (
-                            !Array.isArray(state.coppie) ||
-                            state.coppie.length === 0
-                        ) &&
-                        state.iscritti.length > 0
-                    ){
-
-                        state.coppie =
-                            state.iscritti.map(
-                                item => {
-
-                                    if(
-                                        item.nome &&
-                                        item.cognome
-                                    ){
-
-                                        return (
-                                            item.nome +
-                                            " " +
-                                            item.cognome
-                                        );
-
-                                    }
-
-
-                                    return (
-                                        item.nome ||
-                                        item.nome_giocatore ||
-                                        item.coppia ||
-                                        "Squadra"
-                                    );
-
-                                }
-                            );
-
-                    }
 
                 }
 
@@ -706,32 +762,19 @@ async function loadState(){
                         )
                     ){
 
-                        const ricevuto =
-                            configurazione[k];
-
-
                         /*
-                        NON SOVRASCRIVERE CON ARRAY VUOTI
-                        DATI GIÀ PRESENTI.
+                        ==================================================
+                        IMPORTANTE:
+
+                        Anche un array vuoto è valido.
+
+                        Non conserviamo più il vecchio array
+                        presente nello state.
+                        ==================================================
                         */
 
-                        if(
-                            ricevuto.length > 0
-                        ){
-
-                            state[k] =
-                                ricevuto;
-
-                        }
-                        else if(
-                            !Array.isArray(
-                                state[k]
-                            )
-                        ){
-
-                            state[k] = [];
-
-                        }
+                        state[k] =
+                            configurazione[k];
 
                     }
 
@@ -753,7 +796,10 @@ async function loadState(){
                     configurazione.configurazione;
 
 
-                if(cfg.rules){
+                if(
+                    cfg.rules &&
+                    typeof cfg.rules === "object"
+                ){
 
                     state.rules = {
 
@@ -769,8 +815,7 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.partecipanti
-                    ) &&
-                    cfg.partecipanti.length > 0
+                    )
                 ){
 
                     state.partecipanti =
@@ -782,14 +827,31 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    ) &&
-                    cfg.coppie.length > 0
+                    )
                 ){
 
                     state.coppie =
                         cfg.coppie;
 
                 }
+
+
+                arrayDaRecuperare.forEach(
+                    k => {
+
+                        if(
+                            Array.isArray(
+                                cfg[k]
+                            )
+                        ){
+
+                            state[k] =
+                                cfg[k];
+
+                        }
+
+                    }
+                );
 
             }
 
@@ -800,53 +862,69 @@ async function loadState(){
         ============================================================
         5. RECUPERO EMERGENZA savedTeams
         ============================================================
+
+        IMPORTANTE:
+
+        MAI recuperare savedTeams quando stiamo caricando
+        un torneo tramite idTorneo oppure torneoParam.
+
+        savedTeams appartiene alla memoria locale e potrebbe
+        appartenere ad un torneo completamente diverso.
+        ============================================================
         */
 
         if(
-            !Array.isArray(state.coppie) ||
-            state.coppie.length === 0
+            !torneoParam &&
+            !idTorneo
         ){
 
-            try{
+            if(
+                !Array.isArray(state.coppie) ||
+                state.coppie.length === 0
+            ){
 
-                const saved =
-                    localStorage.getItem(
-                        "savedTeams"
-                    );
+                try{
 
-
-                if(saved){
-
-                    const squadreSalvate =
-                        JSON.parse(saved);
-
-
-                    if(
-                        Array.isArray(
-                            squadreSalvate
-                        ) &&
-                        squadreSalvate.length > 0
-                    ){
-
-                        state.coppie =
-                            squadreSalvate;
-
-                        console.warn(
-                            "RECUPERO SQUADRE DA savedTeams:",
-                            state.coppie
+                    const saved =
+                        localStorage.getItem(
+                            "savedTeams"
                         );
+
+
+                    if(saved){
+
+                        const squadreSalvate =
+                            JSON.parse(saved);
+
+
+                        if(
+                            Array.isArray(
+                                squadreSalvate
+                            ) &&
+                            squadreSalvate.length > 0
+                        ){
+
+                            state.coppie =
+                                squadreSalvate;
+
+                            console.warn(
+                                "RECUPERO SQUADRE DA savedTeams:",
+                                state.coppie
+                            );
+
+                        }
 
                     }
 
                 }
+                catch(err){
 
-            }
-            catch(err){
+                    console.error(
+                        "Errore recupero savedTeams:",
+                        err
+                    );
 
-                console.error(
-                    "Errore recupero savedTeams:",
-                    err
-                );
+                }
 
             }
 
@@ -924,18 +1002,6 @@ async function loadState(){
         ============================================================
         8. CORREZIONE FORMATO REALE
         ============================================================
-
-        IMPORTANTE:
-
-        state.coppie contiene le SQUADRE.
-
-        Se le coppie esistono, il loro numero è la fonte
-        più affidabile per stabilire il formato reale.
-
-        Questo impedisce che una vecchia configurazione
-        16 squadre / 4 gironi rimanga attiva quando il torneo
-        contiene realmente 8 coppie.
-        ============================================================
         */
 
         const formatiValidi = [
@@ -956,11 +1022,6 @@ async function loadState(){
         let formatoReale =
             numeroCoppie;
 
-
-        /*
-        Se le coppie presenti hanno un formato valido,
-        QUESTO è il formato del torneo.
-        */
 
         if(
             formatiValidi.includes(
@@ -1125,20 +1186,6 @@ async function loadState(){
         ============================================================
         11. DISTRIBUZIONE CORRETTA DELLE COPPIE
         ============================================================
-
-        Se i gironi NON sono completi correttamente,
-        li ricostruiamo dalle coppie reali.
-
-        Questo è il punto che risolve il caso:
-
-        8 coppie
-        A = 4
-        B = 4
-        C = vuoto
-        D = vuoto
-
-        senza permettere che il vecchio formato 16 rimanga.
-        ============================================================
         */
 
         if(
@@ -1148,10 +1195,6 @@ async function loadState(){
             !gironiCompleti
         ){
 
-            /*
-            PULIZIA SOLO DEI GIRONI
-            */
-
             lettereGironi.forEach(
                 g => {
 
@@ -1160,10 +1203,6 @@ async function loadState(){
                 }
             );
 
-
-            /*
-            DISTRIBUZIONE SEQUENZIALE
-            */
 
             state.coppie.forEach(
                 (coppia,index) => {
