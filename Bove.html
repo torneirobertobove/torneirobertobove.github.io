@@ -276,7 +276,6 @@ async function loadState(){
                                 ? configurazione.configurazione.rules
                                 : {}
                         )
-
                     }
 
                 };
@@ -396,6 +395,13 @@ async function loadState(){
                         {};
 
 
+                    /*
+                    ==================================================
+                    IMPORTANTE:
+                    UN TORNEO REMOTO È ISOLATO DAL LOCAL STORAGE.
+                    ==================================================
+                    */
+
                     state = {
 
                         ...state,
@@ -449,6 +455,11 @@ async function loadState(){
                             configurazione.partecipanti;
 
                     }
+                    else{
+
+                        state.partecipanti = [];
+
+                    }
 
 
                     /*
@@ -465,6 +476,16 @@ async function loadState(){
 
                         state.coppie =
                             configurazione.coppie;
+
+                    }
+                    else{
+
+                        /*
+                        NUOVO TORNEO:
+                        NESSUNA COPPIA.
+                        */
+
+                        state.coppie = [];
 
                     }
 
@@ -522,6 +543,20 @@ async function loadState(){
                     }
 
                 }
+                else{
+
+                    /*
+                    ==================================================
+                    TORNEO NON TROVATO:
+                    NON USARE DATI LOCALI.
+                    ==================================================
+                    */
+
+                    state.coppie = [];
+
+                    state.partecipanti = [];
+
+                }
 
             }
             catch(err){
@@ -530,6 +565,17 @@ async function loadState(){
                     "Errore recupero torneo Supabase:",
                     err
                 );
+
+
+                /*
+                TORNEO REMOTO:
+                IN CASO DI ERRORE NON RECUPERARE
+                savedTeams.
+                */
+
+                state.coppie = [];
+
+                state.partecipanti = [];
 
             }
 
@@ -578,48 +624,18 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    LE ISCRIZIONI SONO SOLO FALLBACK.
-                    NON SOVRASCRIVONO COPPIE ESISTENTI.
+                    IMPORTANTE
                     ==================================================
+
+                    NON trasformiamo automaticamente le iscrizioni
+                    in COPPIE.
+
+                    Le coppie devono provenire dalla configurazione
+                    del torneo oppure essere create esplicitamente
+                    dal flusso di iscrizione.
+
+                    Un torneo nuovo resta quindi vuoto.
                     */
-
-                    if(
-                        (
-                            !Array.isArray(state.coppie) ||
-                            state.coppie.length === 0
-                        ) &&
-                        state.iscritti.length > 0
-                    ){
-
-                        state.coppie =
-                            state.iscritti.map(
-                                item => {
-
-                                    if(
-                                        item.nome &&
-                                        item.cognome
-                                    ){
-
-                                        return (
-                                            item.nome +
-                                            " " +
-                                            item.cognome
-                                        );
-
-                                    }
-
-
-                                    return (
-                                        item.nome ||
-                                        item.nome_giocatore ||
-                                        item.coppia ||
-                                        "Squadra"
-                                    );
-
-                                }
-                            );
-
-                    }
 
                 }
 
@@ -711,8 +727,11 @@ async function loadState(){
 
 
                         /*
-                        NON SOVRASCRIVERE CON ARRAY VUOTI
-                        DATI GIÀ PRESENTI.
+                        DATI PRESENTI:
+                        RECUPERIAMOLI.
+
+                        ARRAY VUOTO:
+                        NON INVENTIAMO DATI.
                         */
 
                         if(
@@ -782,8 +801,7 @@ async function loadState(){
                 if(
                     Array.isArray(
                         cfg.coppie
-                    ) &&
-                    cfg.coppie.length > 0
+                    )
                 ){
 
                     state.coppie =
@@ -798,13 +816,26 @@ async function loadState(){
 
         /*
         ============================================================
-        5. RECUPERO EMERGENZA savedTeams
+        5. RECUPERO savedTeams
+        ============================================================
+
+        ATTENZIONE:
+
+        savedTeams PUÒ essere utilizzato SOLO quando NON esiste
+        un torneo remoto identificato da idTorneo.
+
+        Questo impedisce di contaminare un nuovo torneo con
+        le squadre dell'ultimo test.
         ============================================================
         */
 
         if(
-            !Array.isArray(state.coppie) ||
-            state.coppie.length === 0
+            !idTorneo &&
+            !torneoParam &&
+            (
+                !Array.isArray(state.coppie) ||
+                state.coppie.length === 0
+            )
         ){
 
             try{
@@ -924,18 +955,6 @@ async function loadState(){
         ============================================================
         8. CORREZIONE FORMATO REALE
         ============================================================
-
-        IMPORTANTE:
-
-        state.coppie contiene le SQUADRE.
-
-        Se le coppie esistono, il loro numero è la fonte
-        più affidabile per stabilire il formato reale.
-
-        Questo impedisce che una vecchia configurazione
-        16 squadre / 4 gironi rimanga attiva quando il torneo
-        contiene realmente 8 coppie.
-        ============================================================
         */
 
         const formatiValidi = [
@@ -956,11 +975,6 @@ async function loadState(){
         let formatoReale =
             numeroCoppie;
 
-
-        /*
-        Se le coppie presenti hanno un formato valido,
-        QUESTO è il formato del torneo.
-        */
 
         if(
             formatiValidi.includes(
@@ -1123,21 +1137,7 @@ async function loadState(){
 
         /*
         ============================================================
-        11. DISTRIBUZIONE CORRETTA DELLE COPPIE
-        ============================================================
-
-        Se i gironi NON sono completi correttamente,
-        li ricostruiamo dalle coppie reali.
-
-        Questo è il punto che risolve il caso:
-
-        8 coppie
-        A = 4
-        B = 4
-        C = vuoto
-        D = vuoto
-
-        senza permettere che il vecchio formato 16 rimanga.
+        11. DISTRIBUZIONE DELLE COPPIE
         ============================================================
         */
 
@@ -1148,10 +1148,6 @@ async function loadState(){
             !gironiCompleti
         ){
 
-            /*
-            PULIZIA SOLO DEI GIRONI
-            */
-
             lettereGironi.forEach(
                 g => {
 
@@ -1160,10 +1156,6 @@ async function loadState(){
                 }
             );
 
-
-            /*
-            DISTRIBUZIONE SEQUENZIALE
-            */
 
             state.coppie.forEach(
                 (coppia,index) => {
@@ -1377,11 +1369,24 @@ async function loadState(){
         console.log(
             "=== LOADSTATE FINALE ===",
             {
+                idTorneo:
+                    state.idTorneo,
+
+                tipoTorneo:
+                    state.rules?.tipoTorneo,
+
                 coppie:
                     Array.isArray(
                         state.coppie
                     )
                         ? state.coppie.length
+                        : 0,
+
+                iscritti:
+                    Array.isArray(
+                        state.iscritti
+                    )
+                        ? state.iscritti.length
                         : 0,
 
                 numeroSquadre:
