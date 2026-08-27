@@ -8618,16 +8618,338 @@ function renderKO(){
 
 
         /*
+        ========================================================
+        FUNZIONE NOME PUNTATO
+        ========================================================
+        RISULTATO:
+        Roberto Bove  -> R.Bove
+        Josè Rizzi    -> J.Rizzi
+        Claudio Falba -> C.Falba
+
+        Prima lettera del nome MAIUSCOLA.
+        Prima lettera del cognome MAIUSCOLA.
+        ========================================================
+        */
+
+        function nomePuntato(g){
+
+            if(
+                g === null ||
+                g === undefined ||
+                g === ""
+            ){
+
+                return "";
+
+            }
+
+
+            /*
+            ----------------------------------------------------
+            OGGETTO GIOCATORE
+            ----------------------------------------------------
+            */
+
+            if(typeof g === "object"){
+
+                let nome =
+                    String(
+                        g.nome ??
+                        g.nome_giocatore ??
+                        ""
+                    ).trim();
+
+                let cognome =
+                    String(
+                        g.cognome ??
+                        g.cognome_giocatore ??
+                        ""
+                    ).trim();
+
+
+                /*
+                ------------------------------------------------
+                SE nome_giocatore CONTIENE GIÀ
+                NOME + COGNOME
+                ------------------------------------------------
+                */
+
+                if(
+                    !cognome &&
+                    g.nome_giocatore
+                ){
+
+                    const parti =
+                        String(
+                            g.nome_giocatore
+                        )
+                        .trim()
+                        .split(/\s+/);
+
+
+                    if(parti.length >= 2){
+
+                        nome =
+                            parti.shift();
+
+                        cognome =
+                            parti.join(" ");
+
+                    }
+                    else{
+
+                        cognome =
+                            String(
+                                g.nome_giocatore
+                            ).trim();
+
+                    }
+
+                }
+
+
+                /*
+                ------------------------------------------------
+                NORMALIZZAZIONE NOME
+                ------------------------------------------------
+                */
+
+                nome =
+                    nome
+                        ? nome.charAt(0).toUpperCase()
+                          + nome.slice(1)
+                        : "";
+
+
+                /*
+                ------------------------------------------------
+                NORMALIZZAZIONE COGNOME
+                ------------------------------------------------
+                */
+
+                cognome =
+                    cognome
+                        ? cognome
+                            .toLowerCase()
+                            .replace(
+                                /(^|[\s'-])([a-zà-ÿ])/giu,
+                                function(_, separatore, lettera){
+
+                                    return (
+                                        separatore +
+                                        lettera.toUpperCase()
+                                    );
+
+                                }
+                            )
+                        : "";
+
+
+                /*
+                ------------------------------------------------
+                NOME + COGNOME
+                ------------------------------------------------
+                */
+
+                if(
+                    nome &&
+                    cognome
+                ){
+
+                    return (
+                        nome.charAt(0).toUpperCase() +
+                        "." +
+                        cognome
+                    );
+
+                }
+
+
+                /*
+                ------------------------------------------------
+                SOLO COGNOME
+                ------------------------------------------------
+                */
+
+                if(cognome)
+                    return cognome;
+
+
+                /*
+                ------------------------------------------------
+                SOLO NOME
+                ------------------------------------------------
+                */
+
+                if(nome){
+
+                    return (
+                        nome.charAt(0).toUpperCase() +
+                        "."
+                    );
+
+                }
+
+
+                return "";
+
+            }
+
+
+            /*
+            ====================================================
+            STRINGA
+            ====================================================
+            */
+
+            const testo =
+                String(g).trim();
+
+
+            if(!testo)
+                return "";
+
+
+            const parti =
+                testo.split(/\s+/);
+
+
+            if(parti.length === 1){
+
+                return (
+                    parti[0].charAt(0).toUpperCase() +
+                    parti[0].slice(1)
+                );
+
+            }
+
+
+            const nome =
+                parti.shift();
+
+            const cognome =
+                parti.join(" ");
+
+
+            const cognomeFormattato =
+                cognome
+                    .toLowerCase()
+                    .replace(
+                        /(^|[\s'-])([a-zà-ÿ])/giu,
+                        function(_, separatore, lettera){
+
+                            return (
+                                separatore +
+                                lettera.toUpperCase()
+                            );
+
+                        }
+                    );
+
+
+            return (
+                nome.charAt(0).toUpperCase() +
+                "." +
+                cognomeFormattato
+            );
+
+        }
+
+
+        /*
+        ========================================================
         COPPIA OGGETTO
+        ========================================================
         */
 
         if(
             typeof squadra === "object"
         ){
 
+            const giocatore1 =
+                squadra.giocatore1;
+
+            const giocatore2 =
+                squadra.giocatore2;
+
+
+            const p1 =
+                nomePuntato(
+                    giocatore1
+                );
+
+            const p2 =
+                nomePuntato(
+                    giocatore2
+                );
+
+
             /*
-            Se esiste già il nome completo della coppia
-            utilizziamo quello.
+            ----------------------------------------------------
+            PRIORITÀ ASSOLUTA AI DUE GIOCATORI
+            ----------------------------------------------------
+            */
+
+            if(
+                p1 &&
+                p2
+            ){
+
+                return (
+                    p1 +
+                    " / " +
+                    p2
+                );
+
+            }
+
+
+            if(p1)
+                return p1;
+
+
+            if(p2)
+                return p2;
+
+
+            /*
+            ----------------------------------------------------
+            FALLBACK PER VECCHIE STRUTTURE g1 / g2
+            ----------------------------------------------------
+            */
+
+            if(
+                squadra.g1 !== undefined ||
+                squadra.g2 !== undefined
+            ){
+
+                const p1 =
+                    nomePuntato(
+                        squadra.g1
+                    );
+
+                const p2 =
+                    nomePuntato(
+                        squadra.g2
+                    );
+
+
+                if(p1 && p2)
+                    return p1 + " / " + p2;
+
+                if(p1)
+                    return p1;
+
+                if(p2)
+                    return p2;
+
+            }
+
+
+            /*
+            ----------------------------------------------------
+            FALLBACK NOME
+            ----------------------------------------------------
             */
 
             if(
@@ -8640,90 +8962,15 @@ function renderKO(){
             }
 
 
-            /*
-            Fallback dai due giocatori.
-            */
-
-            const giocatore1 =
-                squadra.giocatore1;
-
-            const giocatore2 =
-                squadra.giocatore2;
-
-
-            function nomeGiocatore(g){
-
-                if(!g)
-                    return "";
-
-                const cognome =
-                    String(
-                        g.cognome ??
-                        ""
-                    ).trim();
-
-                const nome =
-                    String(
-                        g.nome ??
-                        ""
-                    ).trim();
-
-
-                /*
-                Preferenza:
-                iniziale nome + cognome
-                */
-
-                if(
-                    cognome !== "" &&
-                    nome !== ""
-                ){
-
-                    return (
-                        nome.charAt(0).toUpperCase() +
-                        ". " +
-                        cognome
-                    );
-
-                }
-
-
-                if(cognome !== "")
-                    return cognome;
-
-                return nome;
-
-            }
-
-
-            const p1 =
-                nomeGiocatore(
-                    giocatore1
-                );
-
-            const p2 =
-                nomeGiocatore(
-                    giocatore2
-                );
-
-
-            if(p1 && p2)
-                return p1 + " / " + p2;
-
-            if(p1)
-                return p1;
-
-            if(p2)
-                return p2;
-
-
             return "-";
 
         }
 
 
         /*
+        ========================================================
         STRINGA GIÀ PRONTA
+        ========================================================
         */
 
         return String(
@@ -9104,9 +9351,10 @@ function renderKO(){
 
 
         /*
-        IMPORTANTE:
-        gli oggetti coppia restano intatti.
-        Solo per la visualizzazione vengono convertiti.
+        ========================================================
+        GLI OGGETTI COPPIA RESTANO INALTERATI.
+        SOLO LA VISUALIZZAZIONE USA IL NOME PUNTATO.
+        ========================================================
         */
 
         const squadra1 =
@@ -9789,6 +10037,7 @@ function renderKO(){
     }
 
 }
+
 
 
 
