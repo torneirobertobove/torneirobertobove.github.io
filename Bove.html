@@ -10410,6 +10410,7 @@ function getWinner(match,res){
 }
 
 
+
 function getFinalQualified(){
 
     ensureRules();
@@ -10418,7 +10419,7 @@ function getFinalQualified(){
 
     /*
     ============================================================
-    CALCOLO REALE DEL NUMERO GIRONI
+    NUMERO GIRONI / STRUTTURA
     ============================================================
     */
 
@@ -10428,20 +10429,11 @@ function getFinalQualified(){
     const squadrePerGirone =
         Number(state.rules?.squadrePerGirone) || 4;
 
-    /*
-    NON fidarsi di numeroGironi eventualmente rimasto
-    da una configurazione precedente.
-    */
-
     const numeroGironi =
         Math.ceil(
             numeroSquadre /
             squadrePerGirone
         );
-
-    /*
-    Sincronizza il regolamento.
-    */
 
     state.rules.numeroGironi =
         numeroGironi;
@@ -10481,6 +10473,164 @@ function getFinalQualified(){
 
     /*
     ============================================================
+    CONVERTITORE UNICO DEL NOME COPPIA
+    ============================================================
+    */
+
+    function nomeCoppia(coppia){
+
+        if(
+            coppia === null ||
+            coppia === undefined
+        ){
+            return "";
+        }
+
+        if(
+            typeof coppia === "string"
+        ){
+            return coppia.trim();
+        }
+
+        if(
+            typeof coppia !== "object"
+        ){
+            return String(coppia).trim();
+        }
+
+        /*
+        --------------------------------------------
+        STRUTTURA REALE DELLE COPPIE
+        --------------------------------------------
+        */
+
+        if(
+            coppia.giocatore1 ||
+            coppia.giocatore2
+        ){
+
+            const g1 =
+                coppia.giocatore1;
+
+            const g2 =
+                coppia.giocatore2;
+
+            function nomeGiocatore(g){
+
+                if(
+                    !g
+                ){
+                    return "";
+                }
+
+                if(
+                    typeof g === "string"
+                ){
+                    return g.trim();
+                }
+
+                if(
+                    typeof g === "object"
+                ){
+
+                    /*
+                    Preferiamo nome + cognome.
+                    */
+
+                    const nome =
+                        String(
+                            g.nome ??
+                            ""
+                        ).trim();
+
+                    const cognome =
+                        String(
+                            g.cognome ??
+                            ""
+                        ).trim();
+
+                    if(
+                        nome ||
+                        cognome
+                    ){
+
+                        return (
+                            nome +
+                            " " +
+                            cognome
+                        ).trim();
+
+                    }
+
+                    /*
+                    Fallback eventuale.
+                    */
+
+                    if(
+                        g.nome_giocatore
+                    ){
+
+                        return String(
+                            g.nome_giocatore
+                        ).trim();
+
+                    }
+
+                }
+
+                return String(g).trim();
+
+            }
+
+            const n1 =
+                nomeGiocatore(g1);
+
+            const n2 =
+                nomeGiocatore(g2);
+
+            return (
+                n1 +
+                " / " +
+                n2
+            ).trim();
+
+        }
+
+        /*
+        --------------------------------------------
+        EVENTUALI STRUTTURE PRECEDENTI
+        --------------------------------------------
+        */
+
+        if(
+            coppia.g1 !== undefined ||
+            coppia.g2 !== undefined
+        ){
+
+            return (
+                String(coppia.g1 ?? "").trim() +
+                " / " +
+                String(coppia.g2 ?? "").trim()
+            ).trim();
+
+        }
+
+        if(
+            coppia.nome
+        ){
+
+            return String(
+                coppia.nome
+            ).trim();
+
+        }
+
+        return "";
+
+    }
+
+    /*
+    ============================================================
     LETTURA GIRONI
     ============================================================
     */
@@ -10494,24 +10644,26 @@ function getFinalQualified(){
         const girone =
             lettere[i];
 
-        if(!girone)
+        if(
+            !girone
+        ){
             continue;
+        }
 
         const teams =
             Array.isArray(state[girone])
                 ? state[girone]
                 : [];
 
-        /*
-        Se il girone è vuoto non inventiamo squadre.
-        */
-
-        if(teams.length === 0)
+        if(
+            teams.length === 0
+        ){
             continue;
+        }
 
         /*
         ========================================================
-        CLASSIFICA REALE
+        RISULTATI DEL GIRONE
         ========================================================
         */
 
@@ -10522,18 +10674,27 @@ function getFinalQualified(){
                 ? state[girone + "res"]
                 : [];
 
+        /*
+        ========================================================
+        CLASSIFICA
+        ========================================================
+        */
+
         const classifica =
             calc(
                 teams,
                 risultati
             );
 
-        if(!Array.isArray(classifica))
+        if(
+            !Array.isArray(classifica)
+        ){
             continue;
+        }
 
         /*
         ========================================================
-        QUANTE SQUADRE PRENDERE
+        NUMERO QUALIFICATE
         ========================================================
         */
 
@@ -10544,8 +10705,8 @@ function getFinalQualified(){
             );
 
         /*
-        Con quarti attivi e gironi da 4:
-        la fase finale deve avere 8 posizioni.
+        Con 8 squadre:
+        2 gironi × 2 qualificate = 4.
         */
 
         if(
@@ -10553,12 +10714,14 @@ function getFinalQualified(){
             teams.length === 4 &&
             numeroGironi * perGirone >= 8
         ){
+
             limite = 2;
+
         }
 
         /*
         ========================================================
-        INSERIMENTO QUALIFICATE
+        RECUPERO DELLE COPPIE ORIGINALI
         ========================================================
         */
 
@@ -10571,72 +10734,106 @@ function getFinalQualified(){
             const dati =
                 classifica[posizione];
 
-            if(!dati)
+            if(
+                !dati
+            ){
                 continue;
-
-            /*
-            calc() restituisce:
-            {
-                n,
-                pt,
-                gf,
-                gs,
-                df,
-                qual
             }
 
-            Il nome corretto è quindi dati.n.
-            */
-
-            const nome =
+            const nomeClassifica =
                 String(
-                    dati.n ?? ""
+                    dati.n ??
+                    ""
                 ).trim();
 
-            if(nome === "")
+            if(
+                !nomeClassifica
+            ){
                 continue;
+            }
 
             /*
-            Cerchiamo la coppia originale nel girone
-            usando il nome prodotto da calc().
+            ----------------------------------------------------
+            CERCA LA COPPIA REALE
+            ----------------------------------------------------
             */
 
             let squadra =
                 teams.find(
-                    coppia =>
-                        String(
-                            coppia?.nome ?? coppia ?? ""
-                        ).trim() === nome
+                    coppia => {
+
+                        const nome =
+                            nomeCoppia(
+                                coppia
+                            );
+
+                        return (
+                            nome ===
+                            nomeClassifica
+                        );
+
+                    }
                 );
 
             /*
-            Fallback: se calc() e struttura hanno
-            lo stesso indice, utilizziamo quello.
+            ----------------------------------------------------
+            FALLBACK INDICE
+            ----------------------------------------------------
             */
 
             if(
                 squadra === undefined &&
                 teams[posizione] !== undefined
             ){
+
                 squadra =
                     teams[posizione];
+
             }
 
             /*
-            Se non troviamo la coppia originale,
-            NON ne inventiamo una.
+            ----------------------------------------------------
+            NON INVENTARE MAI UNA COPPIA
+            ----------------------------------------------------
             */
 
             if(
                 squadra === undefined ||
                 squadra === null
             ){
+
+                console.error(
+                    "COPPIA QUALIFICATA NON TROVATA:",
+                    {
+                        girone,
+                        posizione:
+                            posizione + 1,
+                        nomeClassifica,
+                        teams
+                    }
+                );
+
                 continue;
+
             }
 
-            qualificati.push(
-                squadra
-            );
+            /*
+            ----------------------------------------------------
+            EVITA DUPLICATI
+            ----------------------------------------------------
+            */
+
+            if(
+                !qualificati.includes(
+                    squadra
+                )
+            ){
+
+                qualificati.push(
+                    squadra
+                );
+
+            }
 
             console.log(
                 "QUALIFICATO CORRETTO:",
@@ -10644,11 +10841,11 @@ function getFinalQualified(){
                     girone,
                     posizione:
                         posizione + 1,
-                    squadra:
-                        String(
-                            squadra?.nome ??
+                    nome:
+                        nomeCoppia(
                             squadra
-                        )
+                        ),
+                    squadra
                 }
             );
 
@@ -10658,18 +10855,13 @@ function getFinalQualified(){
 
     /*
     ============================================================
-    NUMERO FINALE ATTESO
+    NUMERO FINALE
     ============================================================
     */
 
     const attesi =
         numeroGironi *
         perGirone;
-
-    /*
-    Se ci sono i quarti, il tabellone deve avere
-    esattamente 8 slot.
-    */
 
     let numeroFinale =
         Number(
@@ -10679,19 +10871,25 @@ function getFinalQualified(){
     if(
         state.rules.usaQuarti === true
     ){
+
         numeroFinale = 8;
+
     }
 
     if(
         !Number.isFinite(numeroFinale) ||
         numeroFinale < 1
     ){
+
         numeroFinale =
             attesi;
+
     }
 
     /*
-    Non possiamo inventare qualificati mancanti.
+    ============================================================
+    RISULTATO
+    ============================================================
     */
 
     const risultato =
@@ -10708,8 +10906,7 @@ function getFinalQualified(){
         "QUALIFICATI FASE FINALE:",
         risultato.map(
             squadra =>
-                String(
-                    squadra?.nome ??
+                nomeCoppia(
                     squadra
                 )
         )
@@ -10740,7 +10937,9 @@ function getFinalQualified(){
     );
 
     return risultato;
+
 }
+
    
 function creaFinale(semifinali){
 
