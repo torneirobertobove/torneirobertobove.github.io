@@ -6654,14 +6654,58 @@ function loadSavedTeams(){
 
     ensureRules();
 
-    let saved =
+    /*
+    ============================================================
+    SOLO STATO LOCALE
+    ============================================================
+
+    Se Bove è stato aperto con un torneo remoto tramite
+    idTorneo, NON deve mai recuperare savedTeams.
+    ============================================================
+    */
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    const idTorneo =
+        params.get("idTorneo");
+
+    const torneoParam =
+        params.get("torneo");
+
+
+    if(
+        idTorneo ||
+        torneoParam
+    ){
+
+        console.log(
+            "loadSavedTeams(): torneo remoto presente, "
+            + "recupero locale ignorato."
+        );
+
+        return;
+
+    }
+
+
+    /*
+    ============================================================
+    RECUPERO LOCALE
+    ============================================================
+    */
+
+    const saved =
         localStorage.getItem(
             "savedTeams"
         );
 
-    if(!saved)
 
+    if(!saved)
         return;
+
 
     let teams;
 
@@ -6678,33 +6722,17 @@ function loadSavedTeams(){
             e
         );
 
-        localStorage.removeItem("savedTeams");
+        localStorage.removeItem(
+            "savedTeams"
+        );
 
         return;
 
     }
 
 
-    if(!Array.isArray(teams))
-
-        return;
-
-
-    let richieste =
-        Number(
-            state.rules.numeroSquadre
-        ) || 8;
-
-
-
-    /*
-        ============================
-        CONTROLLO COMPATIBILITA'
-        RESET VECCHIO TORNEO
-        ============================
-    */
-
     if(
+        !Array.isArray(teams) ||
         teams.length === 0
     ){
 
@@ -6713,64 +6741,54 @@ function loadSavedTeams(){
     }
 
 
+    const richieste =
+        Number(
+            state.rules.numeroSquadre
+        ) || 8;
+
+
+    /*
+    ============================================================
+    CONTROLLO COMPATIBILITA'
+    ============================================================
+    */
+
     if(
         teams.length !== richieste
     ){
 
         console.warn(
-
             "Reset squadre salvate vecchio torneo:",
             teams.length,
             "richieste:",
             richieste
-
         );
-
 
         localStorage.removeItem(
             "savedTeams"
         );
-
 
         return;
 
     }
 
 
-
-    /*
-        ============================
-        RESET GIRONI
-        ============================
-    */
-
-    state.A=[];
-    state.B=[];
-    state.C=[];
-    state.D=[];
-
-
-
-    let numeroGironi =
+    const numeroGironi =
         Number(
             state.rules.numeroGironi
         ) || 2;
 
 
-
-    let squadrePerGirone =
+    const squadrePerGirone =
         Number(
             state.rules.squadrePerGirone
         ) || 4;
 
 
-
     if(
-
         numeroGironi *
         squadrePerGirone !==
         richieste
-
     ){
 
         console.warn(
@@ -6782,102 +6800,108 @@ function loadSavedTeams(){
     }
 
 
-
     /*
-        ============================
-        RICOSTRUZIONE GIRONI
-        ============================
+    ============================================================
+    RESET GIRONI
+    ============================================================
     */
 
-
-    [
+    const lettere = [
         "A",
         "B",
         "C",
-        "D"
-
-    ].forEach((g,i)=>{
-
-
-        if(
-            i < numeroGironi
-        ){
+        "D",
+        "E",
+        "F"
+    ];
 
 
-            let start =
-                i *
-                squadrePerGirone;
+    lettere.forEach(g => {
 
+        state[g] = [];
 
+        state[g + "res"] = [];
 
-            let end =
-                start +
-                squadrePerGirone;
+        state[g + "time"] = [];
 
-
-
-            state[g] =
-                teams.slice(
-                    start,
-                    end
-                );
-
-        }
-
+        state[g + "camp"] = [];
 
     });
 
 
-
     /*
-        ============================
-        PULIZIA GIRONI NON USATI
-        ============================
+    ============================================================
+    COPPIE
+    ============================================================
     */
 
-
-    if(numeroGironi < 3)
-
-        state.C=[];
-
-
-    if(numeroGironi < 4)
-
-        state.D=[];
-
+    state.coppie =
+        teams.map(nome => ({
+            nome: nome
+        }));
 
 
     /*
-        ============================
-        RESET PARTITE
-        ============================
+    ============================================================
+    DISTRIBUZIONE GIRONI
+    ============================================================
     */
 
+    for(
+        let i = 0;
+        i < numeroGironi;
+        i++
+    ){
 
-    function sistema(nome,girone){
+        const start =
+            i *
+            squadrePerGirone;
 
 
-        let totale=0;
+        const end =
+            start +
+            squadrePerGirone;
 
 
-        let n =
-            Array.isArray(girone)
-            ?
-            girone.length
-            :
-            0;
+        state[lettere[i]] =
+            teams.slice(
+                start,
+                end
+            );
 
+    }
+
+
+    /*
+    ============================================================
+    PARTITE GIRONI
+    ============================================================
+    */
+
+    function sistema(nome){
+
+        const girone =
+            Array.isArray(state[nome])
+                ? state[nome]
+                : [];
+
+
+        const n =
+            girone.length;
+
+
+        let totale = 0;
 
 
         for(
-            let i=0;
-            i<n;
+            let i = 0;
+            i < n;
             i++
         ){
 
             for(
-                let j=i+1;
-                j<n;
+                let j = i + 1;
+                j < n;
                 j++
             ){
 
@@ -6888,82 +6912,48 @@ function loadSavedTeams(){
         }
 
 
-
-        if(
-            !Array.isArray(
-                state[nome+"res"]
-            )
-            ||
-            state[nome+"res"].length !== totale
-        )
-
-            state[nome+"res"] =
-                Array(totale).fill("-");
+        state[nome + "res"] =
+            Array(totale).fill("-");
 
 
-
-        if(
-            !Array.isArray(
-                state[nome+"time"]
-            )
-            ||
-            state[nome+"time"].length !== totale
-        )
-
-            state[nome+"time"] =
-                Array(totale).fill("-");
+        state[nome + "time"] =
+            Array(totale).fill("-");
 
 
-
-        if(
-            !Array.isArray(
-                state[nome+"camp"]
-            )
-            ||
-            state[nome+"camp"].length !== totale
-        )
-
-            state[nome+"camp"] =
-                Array(totale).fill("");
+        state[nome + "camp"] =
+            Array(totale).fill("");
 
     }
 
 
+    lettere.forEach(g => {
 
-    [
-        "A",
-        "B",
-        "C",
-        "D"
-
-    ].forEach(g=>{
-
-
-        sistema(
-            g,
-            state[g]
-        );
-
+        sistema(g);
 
     });
 
 
-
     /*
-        ============================
-        SINCRONIZZAZIONE
-        ============================
+    ============================================================
+    FORMATO
+    ============================================================
     */
-
 
     state.formato =
         richieste;
 
 
+    /*
+    ============================================================
+    SINCRONIZZAZIONE
+    ============================================================
+    */
 
     updateAndSync();
 
 }
+
+   
 function saveTeams(){
 
     ensureRules();
