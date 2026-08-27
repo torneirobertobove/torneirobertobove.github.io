@@ -230,100 +230,7 @@ async function loadState(){
 
         /*
         ============================================================
-        1. PULIZIA STATO QUANDO VIENE APERTO UN TORNEO SPECIFICO
-        ============================================================
-
-        Se esiste idTorneo oppure torneoParam NON devono rimanere
-        coppie, partecipanti o gironi del torneo precedente.
-        ============================================================
-        */
-
-        if(
-            idTorneo ||
-            torneoParam
-        ){
-
-            state = {
-
-                idTorneo:
-                    idTorneo
-                        ? Number(idTorneo)
-                        : null,
-
-                nomeTorneo:"",
-                dataTorneo:"",
-
-                rules:
-                    state &&
-                    state.rules &&
-                    typeof state.rules === "object"
-                        ? { ...state.rules }
-                        : {},
-
-                iscritti:[],
-                partecipanti:[],
-                coppie:[],
-
-                A:[],
-                B:[],
-                C:[],
-                D:[],
-                E:[],
-                F:[],
-                G:[],
-
-                Ares:[],
-                Bres:[],
-                Cres:[],
-                Dres:[],
-                Eres:[],
-                Fres:[],
-                Gres:[],
-
-                Atime:[],
-                Btime:[],
-                Ctime:[],
-                Dtime:[],
-                Etime:[],
-                Ftime:[],
-                Gtime:[],
-
-                Acamp:[],
-                Bcamp:[],
-                Ccamp:[],
-                Dcamp:[],
-                Ecamp:[],
-                Fcamp:[],
-                Gcamp:[],
-
-                qRes:[],
-                qCamp:[],
-                qTime:[],
-
-                sTopRes:[],
-                sCamp:[],
-                sTime:[],
-
-                fTopRes:"-",
-                fCamp:[],
-                fTime:[],
-
-                finalTop:[],
-                campioneTop:null
-
-            };
-
-            console.log(
-                "STATO PRECEDENTE PULITO PER TORNEO:",
-                idTorneo
-            );
-
-        }
-
-
-        /*
-        ============================================================
-        2. TORNEO VIA URL
+        1. TORNEO VIA URL
         ============================================================
         */
 
@@ -364,6 +271,7 @@ async function loadState(){
 
                 };
 
+
                 if(
                     Array.isArray(
                         configurazione.partecipanti
@@ -374,6 +282,7 @@ async function loadState(){
                         configurazione.partecipanti;
 
                 }
+
 
                 if(
                     Array.isArray(
@@ -386,12 +295,14 @@ async function loadState(){
 
                 }
 
+
                 if(
                     configurazione.configurazione
                 ){
 
                     const cfg =
                         configurazione.configurazione;
+
 
                     if(
                         Array.isArray(
@@ -403,6 +314,7 @@ async function loadState(){
                             cfg.partecipanti;
 
                     }
+
 
                     if(
                         Array.isArray(
@@ -432,7 +344,7 @@ async function loadState(){
 
         /*
         ============================================================
-        3. SUPABASE
+        2. SUPABASE
         ============================================================
         */
 
@@ -456,6 +368,7 @@ async function loadState(){
                         )
                         .maybeSingle();
 
+
                 if(error){
 
                     console.error(
@@ -463,16 +376,21 @@ async function loadState(){
                         error
                     );
 
-                    state.coppie = [];
-                    state.partecipanti = [];
-
                 }
+
 
                 if(torneo){
 
                     configurazione =
                         torneo.configurazione ||
                         {};
+
+
+                    /*
+                    ==================================================
+                    DATI PRINCIPALI TORNEO
+                    ==================================================
+                    */
 
                     state = {
 
@@ -485,13 +403,19 @@ async function loadState(){
                             torneo.nome !== null &&
                             torneo.nome !== undefined
                                 ? torneo.nome
-                                : "",
+                                : (
+                                    state.nomeTorneo ||
+                                    ""
+                                ),
 
                         dataTorneo:
                             torneo.data !== null &&
                             torneo.data !== undefined
                                 ? torneo.data
-                                : "",
+                                : (
+                                    state.dataTorneo ||
+                                    ""
+                                ),
 
                         rules:{
                             ...(
@@ -511,8 +435,6 @@ async function loadState(){
                     ==================================================
                     */
 
-                    state.partecipanti = [];
-
                     if(
                         Array.isArray(
                             configurazione.partecipanti
@@ -530,8 +452,6 @@ async function loadState(){
                     COPPIE
                     ==================================================
                     */
-
-                    state.coppie = [];
 
                     if(
                         Array.isArray(
@@ -558,6 +478,7 @@ async function loadState(){
                         const cfg =
                             configurazione.configurazione;
 
+
                         if(cfg.rules){
 
                             state.rules = {
@@ -570,6 +491,7 @@ async function loadState(){
 
                         }
 
+
                         if(
                             Array.isArray(
                                 cfg.partecipanti
@@ -580,6 +502,7 @@ async function loadState(){
                                 cfg.partecipanti;
 
                         }
+
 
                         if(
                             Array.isArray(
@@ -599,34 +522,20 @@ async function loadState(){
 
                     /*
                     ==================================================
-                    TORNEO NON TROVATO:
-                    NON RECUPERARE DATI DI ALTRI TORNEI
+                    TORNEO NON TROVATO
                     ==================================================
                     */
 
-                    state.coppie = [];
-                    state.partecipanti = [];
-                    state.iscritti = [];
-
-                    [
-                        "A",
-                        "B",
-                        "C",
-                        "D",
-                        "E",
-                        "F",
-                        "G"
-                    ].forEach(
-                        g => {
-
-                            state[g] = [];
-
-                            state[g+"res"] = [];
-                            state[g+"time"] = [];
-                            state[g+"camp"] = [];
-
-                        }
+                    console.warn(
+                        "TORNEO NON TROVATO:",
+                        idTorneo
                     );
+
+                    state.coppie =
+                        [];
+
+                    state.partecipanti =
+                        [];
 
                 }
 
@@ -638,16 +547,30 @@ async function loadState(){
                     err
                 );
 
-                state.coppie = [];
-                state.partecipanti = [];
-                state.iscritti = [];
+
+                /*
+                ==================================================
+                IMPORTANTE:
+                IN CASO DI ERRORE REMOTO NON USARE savedTeams.
+                ==================================================
+                */
+
+                state.coppie =
+                    [];
+
+                state.partecipanti =
+                    [];
 
             }
 
 
             /*
             ========================================================
-            4. ISCRIZIONI APPROVATE
+            3. ISCRIZIONI APPROVATE
+            ========================================================
+
+            Gli iscritti vengono caricati per il gestionale,
+            ma NON vengono trasformati in coppie.
             ========================================================
             */
 
@@ -668,14 +591,13 @@ async function loadState(){
                             "stato.eq.approvato,approvato.eq.true"
                         );
 
+
                 if(erroreIscritti){
 
                     console.error(
                         "Errore caricamento iscritti:",
                         erroreIscritti
                     );
-
-                    state.iscritti = [];
 
                 }
                 else{
@@ -695,8 +617,6 @@ async function loadState(){
                     err
                 );
 
-                state.iscritti = [];
-
             }
 
         }
@@ -704,7 +624,7 @@ async function loadState(){
 
         /*
         ============================================================
-        5. RECUPERO ARRAY DEL TORNEO
+        4. RECUPERO ARRAY DEL TORNEO
         ============================================================
         */
 
@@ -760,6 +680,7 @@ async function loadState(){
 
             ];
 
+
             arrayDaRecuperare.forEach(
                 k => {
 
@@ -778,12 +699,19 @@ async function loadState(){
             );
 
 
+            /*
+            ========================================================
+            CONFIGURAZIONE NIDIFICATA
+            ========================================================
+            */
+
             if(
                 configurazione.configurazione
             ){
 
                 const cfg =
                     configurazione.configurazione;
+
 
                 if(cfg.rules){
 
@@ -797,6 +725,7 @@ async function loadState(){
 
                 }
 
+
                 if(
                     Array.isArray(
                         cfg.partecipanti
@@ -807,6 +736,7 @@ async function loadState(){
                         cfg.partecipanti;
 
                 }
+
 
                 if(
                     Array.isArray(
@@ -819,6 +749,24 @@ async function loadState(){
 
                 }
 
+
+                arrayDaRecuperare.forEach(
+                    k => {
+
+                        if(
+                            Array.isArray(
+                                cfg[k]
+                            )
+                        ){
+
+                            state[k] =
+                                cfg[k];
+
+                        }
+
+                    }
+                );
+
             }
 
         }
@@ -826,12 +774,13 @@ async function loadState(){
 
         /*
         ============================================================
-        6. savedTeams
-        SOLO QUANDO NON ESISTE ASSOLUTAMENTE UN TORNEO SPECIFICO
+        5. savedTeams
         ============================================================
 
-        Questa è la protezione fondamentale:
-        con idTorneo NON viene MAI letto savedTeams.
+        SOLO FLUSSO LOCALE.
+
+        MAI se esiste idTorneo.
+        MAI se esiste torneoParam.
         ============================================================
         */
 
@@ -851,10 +800,12 @@ async function loadState(){
                         "savedTeams"
                     );
 
+
                 if(saved){
 
                     const squadreSalvate =
                         JSON.parse(saved);
+
 
                     if(
                         Array.isArray(
@@ -865,6 +816,7 @@ async function loadState(){
 
                         state.coppie =
                             squadreSalvate;
+
 
                         console.warn(
                             "RECUPERO SQUADRE DA savedTeams:",
@@ -890,8 +842,8 @@ async function loadState(){
 
         /*
         ============================================================
-        7. LOCAL STORAGE
-        SOLO SENZA TORNEO SPECIFICO
+        6. LOCAL STORAGE
+        SOLO FLUSSO LOCALE.
         ============================================================
         */
 
@@ -905,12 +857,14 @@ async function loadState(){
                     "torneoState"
                 );
 
+
             if(locale){
 
                 try{
 
                     const salvato =
                         JSON.parse(locale);
+
 
                     state = {
 
@@ -946,7 +900,7 @@ async function loadState(){
 
         /*
         ============================================================
-        8. NORMALIZZAZIONE REGOLE
+        7. NORMALIZZAZIONE REGOLE
         ============================================================
         */
 
@@ -955,7 +909,7 @@ async function loadState(){
 
         /*
         ============================================================
-        9. CORREZIONE FORMATO REALE
+        8. CORREZIONE FORMATO REALE
         ============================================================
         */
 
@@ -967,13 +921,16 @@ async function loadState(){
             24
         ];
 
+
         const numeroCoppie =
             Array.isArray(state.coppie)
                 ? state.coppie.length
                 : 0;
 
+
         const formatoReale =
             numeroCoppie;
+
 
         if(
             formatiValidi.includes(
@@ -1010,23 +967,30 @@ async function loadState(){
 
             };
 
+
             const struttura =
                 strutture[formatoReale];
+
 
             state.rules.numeroSquadre =
                 formatoReale;
 
+
             state.rules.numeroGironi =
                 struttura.numeroGironi;
+
 
             state.rules.squadrePerGirone =
                 struttura.squadrePerGirone;
 
+
             state.formato =
                 formatoReale;
 
+
             state.rules.formatoTorneo =
                 String(formatoReale);
+
 
             console.log(
                 "FORMATO RICAVATO DALLE COPPIE:",
@@ -1050,7 +1014,7 @@ async function loadState(){
 
         /*
         ============================================================
-        10. GIRONI
+        9. GIRONI
         ============================================================
         */
 
@@ -1066,15 +1030,18 @@ async function loadState(){
 
         ];
 
+
         const numeroGironi =
             Number(
                 state.rules.numeroGironi
             ) || 2;
 
+
         const perGirone =
             Number(
                 state.rules.squadrePerGirone
             ) || 4;
+
 
         const gironiAttivi =
             lettereGironi.slice(
@@ -1085,7 +1052,7 @@ async function loadState(){
 
         /*
         ============================================================
-        11. VERIFICA GIRONI
+        10. VERIFICA GIRONI
         ============================================================
         */
 
@@ -1103,6 +1070,7 @@ async function loadState(){
 
                     }
 
+
                     const validi =
                         state[g].filter(
                             squadra =>
@@ -1112,6 +1080,7 @@ async function loadState(){
                                     squadra
                                 ).trim() !== ""
                         );
+
 
                     return (
                         validi.length ===
@@ -1124,7 +1093,7 @@ async function loadState(){
 
         /*
         ============================================================
-        12. DISTRIBUZIONE COPPIE
+        11. DISTRIBUZIONE COPPIE
         ============================================================
         */
 
@@ -1143,6 +1112,7 @@ async function loadState(){
                 }
             );
 
+
             state.coppie.forEach(
                 (coppia,index) => {
 
@@ -1151,6 +1121,7 @@ async function loadState(){
                             index /
                             perGirone
                         );
+
 
                     if(
                         indiceGirone <
@@ -1169,6 +1140,7 @@ async function loadState(){
 
                 }
             );
+
 
             console.log(
                 "GIRONI RICOSTRUITI DALLE COPPIE:",
@@ -1201,7 +1173,7 @@ async function loadState(){
 
         /*
         ============================================================
-        13. SVUOTA GIRONI NON PREVISTI
+        12. SVUOTA GIRONI NON PREVISTI
         ============================================================
         */
 
@@ -1231,7 +1203,7 @@ async function loadState(){
 
         /*
         ============================================================
-        14. ARRAY RISULTATI / ORARI / CAMPI
+        13. ARRAY RISULTATI / ORARI / CAMPI
         ============================================================
         */
 
@@ -1248,6 +1220,7 @@ async function loadState(){
 
                 }
 
+
                 if(
                     !Array.isArray(
                         state[g+"time"]
@@ -1257,6 +1230,7 @@ async function loadState(){
                     state[g+"time"] = [];
 
                 }
+
 
                 if(
                     !Array.isArray(
@@ -1274,7 +1248,15 @@ async function loadState(){
 
         /*
         ============================================================
-        15. GENERAZIONE PARTITE
+        14. GENERAZIONE PARTITE
+        ============================================================
+
+        IMPORTANTE:
+
+        Se i gironi sono già completi e il torneo remoto contiene
+        già il tabellone, NON rigeneriamo le partite.
+
+        Questo preserva il tabellone salvato.
         ============================================================
         */
 
@@ -1299,7 +1281,21 @@ async function loadState(){
                         )
                 );
 
-            if(presenti){
+
+            const partiteGiaSalvate =
+                gironiAttivi.some(
+                    g =>
+                        Array.isArray(
+                            state[g+"res"]
+                        ) &&
+                        state[g+"res"].length > 0
+                );
+
+
+            if(
+                presenti &&
+                !partiteGiaSalvate
+            ){
 
                 generaPartiteGironi();
 
@@ -1310,43 +1306,47 @@ async function loadState(){
 
         /*
         ============================================================
-        16. SALVATAGGIO LOCALE DI SICUREZZA
-        SOLO SENZA idTorneo
+        15. NON SALVARE AUTOMATICAMENTE UN TORNEO REMOTO
         ============================================================
         */
 
-        const haSquadre =
-            gironiAttivi.some(
-                g =>
-                    Array.isArray(
-                        state[g]
-                    ) &&
-                    state[g].some(
-                        squadra =>
-                            squadra !== null &&
-                            squadra !== undefined &&
-                            String(
-                                squadra
-                            ).trim() !== ""
-                    )
-            );
-
         if(
-            haSquadre &&
-            !idTorneo
+            !idTorneo &&
+            !torneoParam
         ){
 
-            localStorage.setItem(
-                "torneoState",
-                JSON.stringify(state)
-            );
+            const haSquadre =
+                gironiAttivi.some(
+                    g =>
+                        Array.isArray(
+                            state[g]
+                        ) &&
+                        state[g].some(
+                            squadra =>
+                                squadra !== null &&
+                                squadra !== undefined &&
+                                String(
+                                    squadra
+                                ).trim() !== ""
+                        )
+                );
+
+
+            if(haSquadre){
+
+                localStorage.setItem(
+                    "torneoState",
+                    JSON.stringify(state)
+                );
+
+            }
 
         }
 
 
         /*
         ============================================================
-        17. CONTROLLO FINALE
+        16. CONTROLLO FINALE
         ============================================================
         */
 
@@ -1415,6 +1415,24 @@ async function loadState(){
                 G:
                     Array.isArray(state.G)
                         ? state.G.length
+                        : 0,
+
+                qRes:
+                    Array.isArray(state.qRes)
+                        ? state.qRes.length
+                        : 0,
+
+                sTopRes:
+                    Array.isArray(state.sTopRes)
+                        ? state.sTopRes.length
+                        : 0,
+
+                fTopRes:
+                    state.fTopRes,
+
+                finalTop:
+                    Array.isArray(state.finalTop)
+                        ? state.finalTop.length
                         : 0
             }
         );
@@ -1422,7 +1440,7 @@ async function loadState(){
 
         /*
         ============================================================
-        18. RENDER
+        17. RENDER
         ============================================================
         */
 
@@ -1450,7 +1468,7 @@ async function loadState(){
 
         /*
         ============================================================
-        19. APERTURA REGOLE
+        18. APERTURA REGOLE
         ============================================================
         */
 
@@ -1458,6 +1476,7 @@ async function loadState(){
             params.get(
                 "apriRegole"
             );
+
 
         if(
             apriRegole === "true"
@@ -1502,7 +1521,6 @@ async function loadState(){
     }
 
 }
-
 
 
    
