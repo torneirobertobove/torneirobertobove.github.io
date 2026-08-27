@@ -14450,17 +14450,33 @@ async function initDefaults(){
 
         /*
         ============================================================
-        IMPORTANTE
-        initDefaults() CREA SOLAMENTE UNO STATO BASE.
+        INIT DEFAULTS
+        ============================================================
+
+        Questa funzione:
+
+        - prepara lo stato
+        - prepara le regole
+        - prepara gironi
+        - prepara risultati
+        - prepara fase finale
 
         NON deve:
+
         - caricare Supabase
-        - caricare URL
         - caricare localStorage
-        - distribuire squadre
+        - caricare URL
         - generare partite
+        - distribuire squadre
         - renderizzare
         - salvare
+        ============================================================
+        */
+
+
+        /*
+        ============================================================
+        STATO BASE
         ============================================================
         */
 
@@ -14476,7 +14492,7 @@ async function initDefaults(){
 
         /*
         ============================================================
-        IDENTIFICATIVO
+        IDENTIFICATIVO TORNEO
         ============================================================
         */
 
@@ -14536,7 +14552,7 @@ async function initDefaults(){
 
         /*
         ============================================================
-        PARTECIPANTI / COPPIE
+        PARTECIPANTI
         ============================================================
         */
 
@@ -14549,6 +14565,12 @@ async function initDefaults(){
         }
 
 
+        /*
+        ============================================================
+        COPPIE
+        ============================================================
+        */
+
         if(
             !Array.isArray(state.coppie)
         ){
@@ -14560,39 +14582,40 @@ async function initDefaults(){
 
         /*
         ============================================================
-        DETERMINAZIONE FORMATO
-        ============================================================
-
-        PRIORITÀ:
-
-        1. numero reale delle coppie già presenti
-        2. numeroSquadre nelle regole
-        3. state.formato
-        4. default 8
-
-        Una coppia = una squadra.
-
-        Questo impedisce che una configurazione precedente
-        da 16 squadre trasformi 8 coppie reali in 4 gironi.
+        FORMATI CONSENTITI
         ============================================================
         */
 
         const formatiValidi = [
-
             8,
             12,
             16,
             20,
             24
-
         ];
 
 
-        let formato = 0;
+        /*
+        ============================================================
+        DETERMINAZIONE FORMATO
+        ============================================================
 
+        Se esistono esattamente 8/12/16/20/24 coppie reali,
+        il loro numero ha priorità.
+
+        Altrimenti:
+
+        1. rules.numeroSquadre
+        2. state.formato
+        3. default 8
+        ============================================================
+        */
 
         const numeroCoppie =
             state.coppie.length;
+
+
+        let formato;
 
 
         if(
@@ -14605,44 +14628,44 @@ async function initDefaults(){
                 numeroCoppie;
 
         }
-        else{
+        else if(
+            formatiValidi.includes(
+                Number(
+                    state.rules.numeroSquadre
+                )
+            )
+        ){
 
             formato =
                 Number(
                     state.rules.numeroSquadre
                 );
 
-
-            if(
-                !formatiValidi.includes(
-                    formato
+        }
+        else if(
+            formatiValidi.includes(
+                Number(
+                    state.formato
                 )
-            ){
+            )
+        ){
 
-                formato =
-                    Number(
-                        state.formato
-                    );
+            formato =
+                Number(
+                    state.formato
+                );
 
-            }
+        }
+        else{
 
-
-            if(
-                !formatiValidi.includes(
-                    formato
-                )
-            ){
-
-                formato = 8;
-
-            }
+            formato = 8;
 
         }
 
 
         /*
         ============================================================
-        STRUTTURA TORNEO
+        STRUTTURA FORMATO
         ============================================================
         */
 
@@ -14682,9 +14705,13 @@ async function initDefaults(){
 
         /*
         ============================================================
-        COERENZA STRUTTURA
+        COERENZA FORMATO
         ============================================================
         */
+
+        state.formato =
+            formato;
+
 
         state.rules.numeroSquadre =
             formato;
@@ -14700,17 +14727,7 @@ async function initDefaults(){
 
         /*
         ============================================================
-        FORMATO PRINCIPALE
-        ============================================================
-        */
-
-        state.formato =
-            formato;
-
-
-        /*
-        ============================================================
-        NOME FORMATO
+        FORMATO TORNEO
         ============================================================
         */
 
@@ -14722,25 +14739,6 @@ async function initDefaults(){
 
             state.rules.formatoTorneo =
                 String(formato);
-
-        }
-        else{
-
-            /*
-            Se il numero reale delle coppie ha determinato
-            il formato, anche formatoTorneo deve essere coerente.
-            */
-
-            if(
-                formatiValidi.includes(
-                    numeroCoppie
-                )
-            ){
-
-                state.rules.formatoTorneo =
-                    String(formato);
-
-            }
 
         }
 
@@ -14770,7 +14768,6 @@ async function initDefaults(){
         */
 
         const lettereGironi = [
-
             "A",
             "B",
             "C",
@@ -14778,68 +14775,77 @@ async function initDefaults(){
             "E",
             "F",
             "G"
-
         ];
 
 
-        lettereGironi.forEach(g => {
+        lettereGironi.forEach(
+            g => {
 
-            if(
-                !Array.isArray(state[g])
-            ){
+                if(
+                    !Array.isArray(state[g])
+                ){
 
-                state[g] = [];
+                    state[g] = [];
+
+                }
 
             }
-
-        });
+        );
 
 
         /*
         ============================================================
-        RISULTATI / ORARI / CAMPI
+        RISULTATI / ORARI / CAMPI GIRONI
         ============================================================
         */
 
-        lettereGironi.forEach(g => {
+        lettereGironi.forEach(
+            g => {
 
-            const resKey =
-                g + "res";
+                const resKey =
+                    g + "res";
 
-            const timeKey =
-                g + "time";
+                const timeKey =
+                    g + "time";
 
-            const campKey =
-                g + "camp";
+                const campKey =
+                    g + "camp";
 
 
-            if(
-                !Array.isArray(state[resKey])
-            ){
+                if(
+                    !Array.isArray(
+                        state[resKey]
+                    )
+                ){
 
-                state[resKey] = [];
+                    state[resKey] = [];
+
+                }
+
+
+                if(
+                    !Array.isArray(
+                        state[timeKey]
+                    )
+                ){
+
+                    state[timeKey] = [];
+
+                }
+
+
+                if(
+                    !Array.isArray(
+                        state[campKey]
+                    )
+                ){
+
+                    state[campKey] = [];
+
+                }
 
             }
-
-
-            if(
-                !Array.isArray(state[timeKey])
-            ){
-
-                state[timeKey] = [];
-
-            }
-
-
-            if(
-                !Array.isArray(state[campKey])
-            ){
-
-                state[campKey] = [];
-
-            }
-
-        });
+        );
 
 
         /*
@@ -14849,7 +14855,8 @@ async function initDefaults(){
         */
 
         if(
-            !Array.isArray(state.qRes)
+            !Array.isArray(state.qRes) ||
+            state.qRes.length !== 4
         ){
 
             state.qRes =
@@ -14859,7 +14866,8 @@ async function initDefaults(){
 
 
         if(
-            !Array.isArray(state.sTopRes)
+            !Array.isArray(state.sTopRes) ||
+            state.sTopRes.length !== 2
         ){
 
             state.sTopRes =
@@ -14967,18 +14975,175 @@ async function initDefaults(){
 
         /*
         ============================================================
-        NESSUNA GENERAZIONE QUI
+        FASE KO
+        ============================================================
+
+        IMPORTANTE:
+
+        La configurazione ufficiale è SOLO:
+
+            state.rules.usaQuarti
+            state.rules.usaSemifinali
+            state.rules.usaFinale
+            state.rules.mostraQuarti
+
+        NON creiamo copie in:
+
+            state.usaQuarti
+            state.usaSemifinali
+            state.usaFinale
+
+        evitando così due configurazioni differenti.
+        ============================================================
+        */
+
+        if(
+            state.rules.usaQuarti === undefined
+        ){
+
+            state.rules.usaQuarti =
+                true;
+
+        }
+
+
+        if(
+            state.rules.usaSemifinali === undefined
+        ){
+
+            state.rules.usaSemifinali =
+                true;
+
+        }
+
+
+        if(
+            state.rules.usaFinale === undefined
+        ){
+
+            state.rules.usaFinale =
+                true;
+
+        }
+
+
+        if(
+            state.rules.mostraQuarti === undefined
+        ){
+
+            state.rules.mostraQuarti =
+                true;
+
+        }
+
+
+        /*
+        ============================================================
+        QUALIFICATE
+        ============================================================
+        */
+
+        if(
+            state.rules.qualificatePerGirone === undefined ||
+            state.rules.qualificatePerGirone === null ||
+            Number(
+                state.rules.qualificatePerGirone
+            ) < 1
+        ){
+
+            state.rules.qualificatePerGirone =
+                2;
+
+        }
+
+
+        if(
+            state.rules.numeroQualificateFinali === undefined ||
+            state.rules.numeroQualificateFinali === null ||
+            Number(
+                state.rules.numeroQualificateFinali
+            ) < 1
+        ){
+
+            state.rules.numeroQualificateFinali =
+                state.rules.numeroGironi *
+                state.rules.qualificatePerGirone;
+
+        }
+
+
+        /*
+        ============================================================
+        COERENZA FASE KO CON NUMERO QUALIFICATE
+        ============================================================
+        */
+
+        const numeroQualificate =
+            Number(
+                state.rules.numeroQualificateFinali
+            );
+
+
+        /*
+        Se ci sono 8 qualificate:
+        quarti possibili.
+
+        Se ce ne sono 4:
+        semifinali dirette.
+
+        Non modifichiamo automaticamente la scelta
+        dell'utente sulle checkbox.
+        ============================================================
+        */
+
+        if(
+            numeroQualificate < 8 &&
+            state.rules.usaQuarti === true
+        ){
+
+            /*
+            Non forziamo usaQuarti a false:
+            sarà renderKO a stabilire se i quarti
+            sono realmente producibili.
+            */
+
+        }
+
+
+        /*
+        ============================================================
+        PULIZIA STATO TEMPORANEO FASE FINALE
+        ============================================================
+
+        finalTop NON deve contenere squadre inventate
+        all'avvio.
+
+        Viene popolato da renderKO quando le semifinali
+        sono realmente determinate.
+        ============================================================
+        */
+
+        if(
+            !Array.isArray(state.finalTop)
+        ){
+
+            state.finalTop = [];
+
+        }
+
+
+        /*
+        ============================================================
+        DIAGNOSTICA
         ============================================================
         */
 
         console.log(
             "INIT DEFAULTS COMPLETATO:",
             {
+
                 idTorneo:
                     state.idTorneo,
-
-                nomeTorneo:
-                    state.nomeTorneo,
 
                 formato:
                     state.formato,
@@ -14993,9 +15158,38 @@ async function initDefaults(){
                     state.rules.squadrePerGirone,
 
                 coppie:
-                    Array.isArray(state.coppie)
-                        ? state.coppie.length
-                        : 0
+                    state.coppie.length,
+
+                usaQuarti:
+                    state.rules.usaQuarti,
+
+                usaSemifinali:
+                    state.rules.usaSemifinali,
+
+                usaFinale:
+                    state.rules.usaFinale,
+
+                mostraQuarti:
+                    state.rules.mostraQuarti,
+
+                qualificatePerGirone:
+                    state.rules.qualificatePerGirone,
+
+                numeroQualificateFinali:
+                    state.rules.numeroQualificateFinali,
+
+                qRes:
+                    state.qRes,
+
+                sTopRes:
+                    state.sTopRes,
+
+                fTopRes:
+                    state.fTopRes,
+
+                finalTop:
+                    state.finalTop
+
             }
         );
 
@@ -15015,7 +15209,6 @@ async function initDefaults(){
     }
 
 }
-
 
    
 window.addEventListener("load", async()=>{
