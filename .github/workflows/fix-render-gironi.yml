@@ -1,0 +1,113 @@
+name: Fix Bove render gironi
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-render-gironi.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch Bove render logic
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          original = s
+
+          old = '''    if(
+        typeof generaPartiteGironi==="function" &&
+        state &&
+        state.A &&
+        state.B &&
+        Array.isArray(state.A) &&
+        Array.isArray(state.B) &&
+        state.A.length>0 &&
+        state.B.length>0
+    ){
+        generaPartiteGironi();
+    }'''
+
+          new = '''    if(
+        typeof generaPartiteGironi === "function" &&
+        state &&
+        state.rules
+    ){
+        const lettereRender = ["A","B","C","D","E","F","G"];
+        const esisteGirone = lettereRender.some(tag =>
+            Array.isArray(state[tag]) &&
+            state[tag].length > 0
+        );
+
+        if(esisteGirone){
+            generaPartiteGironi();
+        }
+    }'''
+
+          if old not in s:
+              raise SystemExit('Blocco render() da correggere non trovato')
+          s = s.replace(old, new, 1)
+
+          old2 = '''        let partite=[];
+        if(state.partiteGironi&&Array.isArray(state.partiteGironi[tag])){
+            partite=state.partiteGironi[tag];
+        }else{
+            let rounds=generaRoundRobin(squadre.length);
+            rounds.forEach(round=>{
+                round.forEach(match=>{
+                    partite.push(match);
+                });
+            });
+        }
+           partite.forEach(match=>{'''
+
+          new2 = '''        let partite=[];
+        if(state.partiteGironi&&Array.isArray(state.partiteGironi[tag])){
+            partite=state.partiteGironi[tag];
+        }else if(squadre.length >= 2){
+            let rounds=generaRoundRobin(squadre.length);
+            rounds.forEach(round=>{
+                round.forEach(match=>{
+                    partite.push({casa:match[0], ospite:match[1]});
+                });
+            });
+        }
+           partite.forEach(match=>{'''
+
+          if old2 not in s:
+              raise SystemExit('Blocco generazione calendario di renderTables non trovato')
+          s = s.replace(old2, new2, 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('patched:', s != original)
+
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, re.S|re.I)
+          Path('/tmp/bove-js.js').write_text('\n\n'.join(scripts), encoding='utf-8')
+          print('script blocks:', len(scripts))
+          PY
+          node --check /tmp/bove-js.js
+
+      - name: Commit repair and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'Bove Repair'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/fix-render-gironi.yml
+          git commit -m 'Fix Bove render for partially populated groups'
+          git push
