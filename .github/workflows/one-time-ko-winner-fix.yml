@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   fix:
-    if: ${{ !contains(github.event.head_commit.message, 'fix: enable automatic KO winner progression') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,147 +46,55 @@ jobs:
 
     const gruppo = String(g || "").toUpperCase();
 
-    /*
-    ============================================================
-    GIRONI
-    ============================================================
-    */
-
     if(map[gruppo]){
-
         const chiave = map[gruppo];
-
-        if(!Array.isArray(state[chiave]))
-            state[chiave] = [];
-
+        if(!Array.isArray(state[chiave])) state[chiave] = [];
         let s = state[chiave];
-
-        if(s[i] === undefined || s[i] === null || s[i] === "")
-            s[i] = "-";
-
+        if(s[i] === undefined || s[i] === null || s[i] === "") s[i] = "-";
         let p = String(s[i]).split("-");
-
-        if(p.length !== 2)
-            p = ["", ""];
-
+        if(p.length !== 2) p = ["", ""];
         p[pos] = String(val ?? "").trim();
-
         const casa = p[0] || "";
         const ospite = p[1] || "";
-
-        s[i] =
-            casa === "" && ospite === ""
-                ? "-"
-                : casa + "-" + ospite;
-
+        s[i] = casa === "" && ospite === "" ? "-" : casa + "-" + ospite;
     }
-
-    /*
-    ============================================================
-    QUARTI
-    ============================================================
-    */
-
     else if(gruppo === "Q"){
-
-        if(!Array.isArray(state.qRes))
-            state.qRes = Array(4).fill("-");
-
-        while(state.qRes.length < 4)
-            state.qRes.push("-");
-
+        if(!Array.isArray(state.qRes)) state.qRes = Array(4).fill("-");
+        while(state.qRes.length < 4) state.qRes.push("-");
         let p = String(state.qRes[i] ?? "-").split("-");
-
-        if(p.length !== 2)
-            p = ["", ""];
-
+        if(p.length !== 2) p = ["", ""];
         p[pos] = String(val ?? "").trim();
-
-        state.qRes[i] =
-            p[0] === "" && p[1] === ""
-                ? "-"
-                : p[0] + "-" + p[1];
-
+        state.qRes[i] = p[0] === "" && p[1] === "" ? "-" : p[0] + "-" + p[1];
     }
-
-    /*
-    ============================================================
-    SEMIFINALI
-    ============================================================
-    */
-
     else if(gruppo === "S"){
-
-        if(!Array.isArray(state.sTopRes))
-            state.sTopRes = Array(2).fill("-");
-
-        while(state.sTopRes.length < 2)
-            state.sTopRes.push("-");
-
+        if(!Array.isArray(state.sTopRes)) state.sTopRes = Array(2).fill("-");
+        while(state.sTopRes.length < 2) state.sTopRes.push("-");
         let p = String(state.sTopRes[i] ?? "-").split("-");
-
-        if(p.length !== 2)
-            p = ["", ""];
-
+        if(p.length !== 2) p = ["", ""];
         p[pos] = String(val ?? "").trim();
-
-        state.sTopRes[i] =
-            p[0] === "" && p[1] === ""
-                ? "-"
-                : p[0] + "-" + p[1];
-
+        state.sTopRes[i] = p[0] === "" && p[1] === "" ? "-" : p[0] + "-" + p[1];
     }
-
-    /*
-    ============================================================
-    FINALE
-    ============================================================
-    */
-
     else if(gruppo === "F"){
-
         let p = String(state.fTopRes ?? "-").split("-");
-
-        if(p.length !== 2)
-            p = ["", ""];
-
+        if(p.length !== 2) p = ["", ""];
         p[pos] = String(val ?? "").trim();
-
-        state.fTopRes =
-            p[0] === "" && p[1] === ""
-                ? "-"
-                : p[0] + "-" + p[1];
-
+        state.fTopRes = p[0] === "" && p[1] === "" ? "-" : p[0] + "-" + p[1];
     }
-
     else{
         return;
     }
 
-    if(typeof renderClass === "function")
-        renderClass();
-
-    if(typeof renderKO === "function")
-        renderKO();
-
-    if(typeof updateAndSync === "function")
-        updateAndSync();
+    if(typeof renderClass === "function") renderClass();
+    if(typeof renderKO === "function") renderKO();
+    if(typeof updateAndSync === "function") updateAndSync();
 
 }
 '''
 
           pattern = r'function updateRes\(g,i,pos,val\)\s*\{.*?\n\s*\}\s*\n\s*function updateCamp\('
-          text2, n = re.subn(
-              pattern,
-              replacement + '\nfunction updateCamp(',
-              text,
-              count=1,
-              flags=re.S
-          )
-
+          text2, n = re.subn(pattern, replacement + '\nfunction updateCamp(', text, count=1, flags=re.S)
           if n != 1:
               raise SystemExit('ERRORE: function updateRes non trovata')
-
           p.write_text(text2, encoding='utf-8', newline='\n')
           print('OK: updateRes ora gestisce A-G, Q, S e F')
 
@@ -195,7 +102,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
           text = Path('Bove.html').read_text(encoding='utf-8')
           required = [
               'function updateRes(g,i,pos,val)',
@@ -215,7 +121,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Bove.html .github/workflows/one-time-ko-winner-fix.yml
+          git add Bove.html
           git rm .github/workflows/one-time-ko-winner-fix.yml
           git commit -m "fix: enable automatic KO winner progression"
           git push
