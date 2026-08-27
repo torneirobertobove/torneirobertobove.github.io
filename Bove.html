@@ -8551,6 +8551,7 @@ return true;
 
 
 
+
 function renderKO(){
 
     ensureRules();
@@ -8599,6 +8600,135 @@ function renderKO(){
 
     /*
     ============================================================
+    NOME GIOCATORE
+    ============================================================
+    FORMATO:
+    R. Bove
+    M. Milan
+    C. Falba
+    J. Rizzi
+    ============================================================
+    */
+
+    function nomeGiocatore(g){
+
+        if(!g)
+            return "";
+
+
+        let nome =
+            String(
+                g.nome ??
+                g.nome_giocatore ??
+                ""
+            ).trim();
+
+
+        let cognome =
+            String(
+                g.cognome ??
+                g.cognome_giocatore ??
+                ""
+            ).trim();
+
+
+        /*
+        Se il nome arriva già come stringa
+        */
+
+        if(
+            !nome &&
+            !cognome &&
+            typeof g === "string"
+        ){
+
+            const testo =
+                g.trim();
+
+            if(!testo)
+                return "";
+
+            const parti =
+                testo.split(/\s+/);
+
+            if(parti.length >= 2){
+
+                nome =
+                    parti[0];
+
+                cognome =
+                    parti.slice(1).join(" ");
+
+            }
+            else{
+
+                return testo;
+
+            }
+
+        }
+
+
+        /*
+        Prima lettera del nome MAIUSCOLA
+        */
+
+        if(nome){
+
+            nome =
+                nome
+                    .charAt(0)
+                    .toUpperCase();
+
+        }
+
+
+        /*
+        Cognome:
+        prima lettera MAIUSCOLA,
+        resto invariato in minuscolo.
+        */
+
+        if(cognome){
+
+            cognome =
+                cognome
+                    .toLowerCase()
+                    .replace(
+                        /(^|[\s'-])([a-zà-ÿ])/gi,
+                        (m,prefix,lettera) =>
+                            prefix +
+                            lettera.toUpperCase()
+                    );
+
+        }
+
+
+        if(
+            nome &&
+            cognome
+        ){
+
+            return (
+                nome +
+                ". " +
+                cognome
+            );
+
+        }
+
+
+        if(cognome)
+            return cognome;
+
+
+        return nome;
+
+    }
+
+
+    /*
+    ============================================================
     FUNZIONE UNICA DI VISUALIZZAZIONE COPPIA
     ============================================================
     */
@@ -8619,245 +8749,6 @@ function renderKO(){
 
         /*
         ========================================================
-        FUNZIONE NOME PUNTATO
-        ========================================================
-        RISULTATO:
-        Roberto Bove  -> R.Bove
-        Josè Rizzi    -> J.Rizzi
-        Claudio Falba -> C.Falba
-
-        Prima lettera del nome MAIUSCOLA.
-        Prima lettera del cognome MAIUSCOLA.
-        ========================================================
-        */
-
-        function nomePuntato(g){
-
-            if(
-                g === null ||
-                g === undefined ||
-                g === ""
-            ){
-
-                return "";
-
-            }
-
-
-            /*
-            ----------------------------------------------------
-            OGGETTO GIOCATORE
-            ----------------------------------------------------
-            */
-
-            if(typeof g === "object"){
-
-                let nome =
-                    String(
-                        g.nome ??
-                        g.nome_giocatore ??
-                        ""
-                    ).trim();
-
-                let cognome =
-                    String(
-                        g.cognome ??
-                        g.cognome_giocatore ??
-                        ""
-                    ).trim();
-
-
-                /*
-                ------------------------------------------------
-                SE nome_giocatore CONTIENE GIÀ
-                NOME + COGNOME
-                ------------------------------------------------
-                */
-
-                if(
-                    !cognome &&
-                    g.nome_giocatore
-                ){
-
-                    const parti =
-                        String(
-                            g.nome_giocatore
-                        )
-                        .trim()
-                        .split(/\s+/);
-
-
-                    if(parti.length >= 2){
-
-                        nome =
-                            parti.shift();
-
-                        cognome =
-                            parti.join(" ");
-
-                    }
-                    else{
-
-                        cognome =
-                            String(
-                                g.nome_giocatore
-                            ).trim();
-
-                    }
-
-                }
-
-
-                /*
-                ------------------------------------------------
-                NORMALIZZAZIONE NOME
-                ------------------------------------------------
-                */
-
-                nome =
-                    nome
-                        ? nome.charAt(0).toUpperCase()
-                          + nome.slice(1)
-                        : "";
-
-
-                /*
-                ------------------------------------------------
-                NORMALIZZAZIONE COGNOME
-                ------------------------------------------------
-                */
-
-                cognome =
-                    cognome
-                        ? cognome
-                            .toLowerCase()
-                            .replace(
-                                /(^|[\s'-])([a-zà-ÿ])/giu,
-                                function(_, separatore, lettera){
-
-                                    return (
-                                        separatore +
-                                        lettera.toUpperCase()
-                                    );
-
-                                }
-                            )
-                        : "";
-
-
-                /*
-                ------------------------------------------------
-                NOME + COGNOME
-                ------------------------------------------------
-                */
-
-                if(
-                    nome &&
-                    cognome
-                ){
-
-                    return (
-                        nome.charAt(0).toUpperCase() +
-                        "." +
-                        cognome
-                    );
-
-                }
-
-
-                /*
-                ------------------------------------------------
-                SOLO COGNOME
-                ------------------------------------------------
-                */
-
-                if(cognome)
-                    return cognome;
-
-
-                /*
-                ------------------------------------------------
-                SOLO NOME
-                ------------------------------------------------
-                */
-
-                if(nome){
-
-                    return (
-                        nome.charAt(0).toUpperCase() +
-                        "."
-                    );
-
-                }
-
-
-                return "";
-
-            }
-
-
-            /*
-            ====================================================
-            STRINGA
-            ====================================================
-            */
-
-            const testo =
-                String(g).trim();
-
-
-            if(!testo)
-                return "";
-
-
-            const parti =
-                testo.split(/\s+/);
-
-
-            if(parti.length === 1){
-
-                return (
-                    parti[0].charAt(0).toUpperCase() +
-                    parti[0].slice(1)
-                );
-
-            }
-
-
-            const nome =
-                parti.shift();
-
-            const cognome =
-                parti.join(" ");
-
-
-            const cognomeFormattato =
-                cognome
-                    .toLowerCase()
-                    .replace(
-                        /(^|[\s'-])([a-zà-ÿ])/giu,
-                        function(_, separatore, lettera){
-
-                            return (
-                                separatore +
-                                lettera.toUpperCase()
-                            );
-
-                        }
-                    );
-
-
-            return (
-                nome.charAt(0).toUpperCase() +
-                "." +
-                cognomeFormattato
-            );
-
-        }
-
-
-        /*
-        ========================================================
         COPPIA OGGETTO
         ========================================================
         */
@@ -8865,6 +8756,12 @@ function renderKO(){
         if(
             typeof squadra === "object"
         ){
+
+            /*
+            ----------------------------------------------------
+            COPPIA CON GIOCATORI
+            ----------------------------------------------------
+            */
 
             const giocatore1 =
                 squadra.giocatore1;
@@ -8874,21 +8771,15 @@ function renderKO(){
 
 
             const p1 =
-                nomePuntato(
+                nomeGiocatore(
                     giocatore1
                 );
 
             const p2 =
-                nomePuntato(
+                nomeGiocatore(
                     giocatore2
                 );
 
-
-            /*
-            ----------------------------------------------------
-            PRIORITÀ ASSOLUTA AI DUE GIOCATORI
-            ----------------------------------------------------
-            */
 
             if(
                 p1 &&
@@ -8914,7 +8805,7 @@ function renderKO(){
 
             /*
             ----------------------------------------------------
-            FALLBACK PER VECCHIE STRUTTURE g1 / g2
+            FORMATO g1 / g2
             ----------------------------------------------------
             */
 
@@ -8923,32 +8814,43 @@ function renderKO(){
                 squadra.g2 !== undefined
             ){
 
-                const p1 =
-                    nomePuntato(
+                const p1g =
+                    nomeGiocatore(
                         squadra.g1
                     );
 
-                const p2 =
-                    nomePuntato(
+                const p2g =
+                    nomeGiocatore(
                         squadra.g2
                     );
 
 
-                if(p1 && p2)
-                    return p1 + " / " + p2;
+                if(
+                    p1g &&
+                    p2g
+                ){
 
-                if(p1)
-                    return p1;
+                    return (
+                        p1g +
+                        " / " +
+                        p2g
+                    );
 
-                if(p2)
-                    return p2;
+                }
+
+
+                if(p1g)
+                    return p1g;
+
+                if(p2g)
+                    return p2g;
 
             }
 
 
             /*
             ----------------------------------------------------
-            FALLBACK NOME
+            NOME COPPIA GIÀ PRESENTE
             ----------------------------------------------------
             */
 
@@ -8957,7 +8859,25 @@ function renderKO(){
                 squadra.nome.trim() !== ""
             ){
 
-                return squadra.nome.trim();
+                return squadra.nome
+                    .trim();
+
+            }
+
+
+            /*
+            ----------------------------------------------------
+            ALTRI FORMATI
+            ----------------------------------------------------
+            */
+
+            if(
+                squadra.nomeCoppia
+            ){
+
+                return String(
+                    squadra.nomeCoppia
+                ).trim();
 
             }
 
@@ -8969,13 +8889,41 @@ function renderKO(){
 
         /*
         ========================================================
-        STRINGA GIÀ PRONTA
+        STRINGA
         ========================================================
         */
 
-        return String(
-            squadra
-        ).trim() || "-";
+        const testo =
+            String(
+                squadra
+            ).trim();
+
+
+        if(!testo)
+            return "-";
+
+
+        /*
+        Se la stringa contiene una coppia
+        già completa, non alterarla.
+        */
+
+        if(
+            testo.includes("/")
+        ){
+
+            return testo
+                .split("/")
+                .map(
+                    parte =>
+                        parte.trim()
+                )
+                .join(" / ");
+
+        }
+
+
+        return testo;
 
     }
 
@@ -9033,7 +8981,9 @@ function renderKO(){
 
 
         let colgroup =
-            table.querySelector("colgroup");
+            table.querySelector(
+                "colgroup"
+            );
 
 
         if(!colgroup){
@@ -9060,7 +9010,9 @@ function renderKO(){
         `;
 
 
-        table.querySelectorAll("tr").forEach(tr=>{
+        table.querySelectorAll(
+            "tr"
+        ).forEach(tr=>{
 
             tr.style.display =
                 "table-row";
@@ -9090,13 +9042,18 @@ function renderKO(){
         });
 
 
-        table.querySelectorAll("tr").forEach(tr=>{
+        table.querySelectorAll(
+            "tr"
+        ).forEach(tr=>{
 
             const celle =
                 Array.from(
                     tr.children
-                ).filter(el =>
-                    el.matches("td, th")
+                ).filter(
+                    el =>
+                        el.matches(
+                            "td, th"
+                        )
                 );
 
 
@@ -9113,31 +9070,33 @@ function renderKO(){
             ];
 
 
-            celle.forEach((cella,index)=>{
+            celle.forEach(
+                (cella,index)=>{
 
-                const width =
-                    widths[index];
+                    const width =
+                        widths[index];
 
 
-                cella.style.display =
-                    "table-cell";
+                    cella.style.display =
+                        "table-cell";
 
-                cella.style.width =
-                    width;
+                    cella.style.width =
+                        width;
 
-                cella.style.minWidth =
-                    width;
+                    cella.style.minWidth =
+                        width;
 
-                cella.style.maxWidth =
-                    width;
+                    cella.style.maxWidth =
+                        width;
 
-                cella.style.boxSizing =
-                    "border-box";
+                    cella.style.boxSizing =
+                        "border-box";
 
-                cella.style.verticalAlign =
-                    "middle";
+                    cella.style.verticalAlign =
+                        "middle";
 
-            });
+                }
+            );
 
         });
 
@@ -9350,17 +9309,11 @@ function renderKO(){
         }
 
 
-        /*
-        ========================================================
-        GLI OGGETTI COPPIA RESTANO INALTERATI.
-        SOLO LA VISUALIZZAZIONE USA IL NOME PUNTATO.
-        ========================================================
-        */
-
         const squadra1 =
             nomeCoppia(
                 match[0]
             );
+
 
         const squadra2 =
             nomeCoppia(
@@ -9370,7 +9323,9 @@ function renderKO(){
 
         const campo =
             Array.isArray(
-                state[gruppo + "Camp"]
+                state[
+                    gruppo + "Camp"
+                ]
             )
                 ? (
                     state[
@@ -9382,7 +9337,9 @@ function renderKO(){
 
         const ora =
             Array.isArray(
-                state[gruppo + "Time"]
+                state[
+                    gruppo + "Time"
+                ]
             )
                 ? (
                     state[
@@ -9392,8 +9349,8 @@ function renderKO(){
                 : "";
 
 
-        let ris1 = "-";
-        let ris2 = "-";
+        let ris1 = "";
+        let ris2 = "";
 
 
         if(
@@ -9408,10 +9365,10 @@ function renderKO(){
             if(parti.length >= 2){
 
                 ris1 =
-                    parti[0].trim() || "-";
+                    parti[0].trim();
 
                 ris2 =
-                    parti[1].trim() || "-";
+                    parti[1].trim();
 
             }
 
@@ -9601,7 +9558,7 @@ function renderKO(){
 
     /*
     ============================================================
-    RESET
+    RESET HTML
     ============================================================
     */
 
@@ -9611,8 +9568,12 @@ function renderKO(){
 
 
     document
-        .querySelectorAll(".winner-box.top-win")
-        .forEach(el => el.remove());
+        .querySelectorAll(
+            ".winner-box.top-win"
+        )
+        .forEach(
+            el => el.remove()
+        );
 
 
     /*
@@ -9622,10 +9583,13 @@ function renderKO(){
     */
 
     if(!Array.isArray(state.qRes))
-        state.qRes = Array(4).fill("-");
+        state.qRes =
+            Array(4).fill("-");
+
 
     while(state.qRes.length < 4)
         state.qRes.push("-");
+
 
     if(state.qRes.length > 4)
         state.qRes =
@@ -9634,6 +9598,7 @@ function renderKO(){
 
     if(!Array.isArray(state.qCamp))
         state.qCamp = [];
+
 
     if(!Array.isArray(state.qTime))
         state.qTime = [];
@@ -9646,10 +9611,13 @@ function renderKO(){
     */
 
     if(!Array.isArray(state.sTopRes))
-        state.sTopRes = Array(2).fill("-");
+        state.sTopRes =
+            Array(2).fill("-");
+
 
     while(state.sTopRes.length < 2)
         state.sTopRes.push("-");
+
 
     if(state.sTopRes.length > 2)
         state.sTopRes =
@@ -9658,6 +9626,7 @@ function renderKO(){
 
     if(!Array.isArray(state.sCamp))
         state.sCamp = [];
+
 
     if(!Array.isArray(state.sTime))
         state.sTime = [];
@@ -9683,6 +9652,7 @@ function renderKO(){
 
     if(!Array.isArray(state.fCamp))
         state.fCamp = [];
+
 
     if(!Array.isArray(state.fTime))
         state.fTime = [];
@@ -9726,8 +9696,10 @@ function renderKO(){
     if(qTable)
         qTable.style.display = "none";
 
+
     if(sTable)
         sTable.style.display = "none";
+
 
     if(fTable)
         fTable.style.display = "none";
@@ -9776,66 +9748,79 @@ function renderKO(){
         ];
 
 
-        const vincitori = [];
+        const vincitoriQuarti = [];
 
 
-        quarti.forEach((match,index)=>{
+        quarti.forEach(
+            (match,index)=>{
 
-            q.innerHTML +=
-                creaMatchKO(
-                    "QUARTO " + (index + 1),
-                    match,
-                    "q",
-                    index,
-                    state.qRes[index]
-                );
-
-
-            const vincitore =
-                getWinner(
-                    match,
-                    state.qRes[index]
-                );
+                q.innerHTML +=
+                    creaMatchKO(
+                        "QUARTO " +
+                        (index + 1),
+                        match,
+                        "q",
+                        index,
+                        state.qRes[index]
+                    );
 
 
-            if(vincitore)
-                vincitori.push(
-                    vincitore
-                );
-
-        });
-
-
-        applicaLayoutGironi(qTable);
+                const vincitore =
+                    getWinner(
+                        match,
+                        state.qRes[index]
+                    );
 
 
-        if(vincitori.length === 4){
+                vincitoriQuarti[index] =
+                    (
+                        vincitore &&
+                        vincitore !== "-"
+                    )
+                        ? vincitore
+                        : null;
 
-            semifinali = [
+            }
+        );
 
-                [
-                    vincitori[0],
-                    vincitori[1]
-                ],
 
-                [
-                    vincitori[2],
-                    vincitori[3]
+        /*
+        ========================================================
+        PASSAGGIO AUTOMATICO QUARTI → SEMIFINALI
+        ========================================================
+        */
+
+        semifinali = [
+
+            [
+                vincitoriQuarti[0] || "-",
+                vincitoriQuarti[1] || "-"
+            ],
+
+            [
+                vincitoriQuarti[2] || "-",
+                vincitoriQuarti[3] || "-"
+            ]
+
+        ];
+
+
+        /*
+        Salviamo immediatamente il flusso
+        */
+
+        state.semifinaliTop =
+            semifinali.map(
+                match => [
+                    match[0],
+                    match[1]
                 ]
+            );
 
-            ];
 
-        }
-        else{
-
-            semifinali = [
-
-                ["-", "-"],
-                ["-", "-"]
-
-            ];
-
-        }
+        applicaLayoutGironi(
+            qTable
+        );
 
     }
 
@@ -9848,8 +9833,13 @@ function renderKO(){
 
     else{
 
-        if(qualificati.length < 4)
+        if(
+            qualificati.length < 4
+        ){
+
             return;
+
+        }
 
 
         semifinali = [
@@ -9866,6 +9856,15 @@ function renderKO(){
 
         ];
 
+
+        state.semifinaliTop =
+            semifinali.map(
+                match => [
+                    match[0],
+                    match[1]
+                ]
+            );
+
     }
 
 
@@ -9880,54 +9879,64 @@ function renderKO(){
     ){
 
         if(sTable)
-            sTable.style.display = "table";
+            sTable.style.display =
+                "table";
 
 
         const finalisti = [];
 
 
-        semifinali.forEach((match,index)=>{
+        semifinali.forEach(
+            (match,index)=>{
 
-            if(
-                !Array.isArray(match) ||
-                match.length !== 2
-            )
-                return;
+                if(
+                    !Array.isArray(match) ||
+                    match.length !== 2
+                ){
 
+                    finalisti[index] =
+                        null;
 
-            s.innerHTML +=
-                creaMatchKO(
-                    "SEMIFINALE " + (index + 1),
-                    match,
-                    "s",
-                    index,
-                    state.sTopRes[index]
-                );
+                    return;
+
+                }
 
 
-            const vincitore =
-                getWinner(
-                    match,
-                    state.sTopRes[index]
-                );
+                s.innerHTML +=
+                    creaMatchKO(
+                        "SEMIFINALE " +
+                        (index + 1),
+                        match,
+                        "s",
+                        index,
+                        state.sTopRes[index]
+                    );
 
 
-            if(
-                vincitore &&
-                vincitore !== "-"
-            ){
+                const vincitore =
+                    getWinner(
+                        match,
+                        state.sTopRes[index]
+                    );
 
-                finalisti.push(
-                    vincitore
-                );
+
+                finalisti[index] =
+                    (
+                        vincitore &&
+                        vincitore !== "-"
+                    )
+                        ? vincitore
+                        : null;
 
             }
+        );
 
-        });
 
-
-        applicaLayoutGironi(sTable);
-
+        /*
+        ========================================================
+        PASSAGGIO AUTOMATICO SEMIFINALI → FINALE
+        ========================================================
+        */
 
         state.finalTop = [
 
@@ -9935,6 +9944,11 @@ function renderKO(){
             finalisti[1] || "-"
 
         ];
+
+
+        applicaLayoutGironi(
+            sTable
+        );
 
     }
 
@@ -9955,7 +9969,8 @@ function renderKO(){
         state.rules.usaFinale !== true
     ){
 
-        state.campioneTop = null;
+        state.campioneTop =
+            null;
 
         return;
 
@@ -9976,7 +9991,8 @@ function renderKO(){
 
 
     if(fTable)
-        fTable.style.display = "table";
+        fTable.style.display =
+            "table";
 
 
     f.innerHTML =
@@ -9989,7 +10005,9 @@ function renderKO(){
         );
 
 
-    applicaLayoutGironi(fTable);
+    applicaLayoutGironi(
+        fTable
+    );
 
 
     /*
@@ -10032,12 +10050,12 @@ function renderKO(){
 
     else{
 
-        state.campioneTop = null;
+        state.campioneTop =
+            null;
 
     }
 
 }
-
 
 
 
