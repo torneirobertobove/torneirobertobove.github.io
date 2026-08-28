@@ -8354,102 +8354,57 @@ return true;
     updateAndSync();
 }
 
-function updateKOResult(type,index,numero,valore){
+function updateKOResult(type,index,squadra,valore){
 
     ensureRules();
 
-    valore=String(valore||"").trim();
+    valore = String(valore ?? "").trim();
 
-    let arrayRisultati=null;
+    let risultati;
 
-    if(type==="Q"){
+    if(type === "Q"){
 
         if(!Array.isArray(state.qRes))
-            state.qRes=Array(4).fill("-");
+            state.qRes = Array.from(
+                {length:4},
+                () => ["",""]
+            );
 
-        arrayRisultati=state.qRes;
+        if(!Array.isArray(state.qRes[index]))
+            state.qRes[index] = ["",""];
+
+        state.qRes[index][squadra] = valore;
 
     }
 
-    else if(type==="S"){
+    else if(type === "S"){
 
         if(!Array.isArray(state.sTopRes))
-            state.sTopRes=Array(2).fill("-");
+            state.sTopRes = Array.from(
+                {length:2},
+                () => ["",""]
+            );
 
-        arrayRisultati=state.sTopRes;
+        if(!Array.isArray(state.sTopRes[index]))
+            state.sTopRes[index] = ["",""];
 
-    }
-
-    else if(type==="F"){
-
-        let risultatoAttuale=
-            String(state.fTopRes||"-");
-
-        let partiExtra=
-            risultatoAttuale.split("|");
-
-        let base=
-            partiExtra[0]||"-";
-
-        let extra=
-            partiExtra.length>1
-                ? "|" + partiExtra.slice(1).join("|")
-                : "";
-
-        let risultati=
-            base.split("-");
-
-        while(risultati.length<2)
-            risultati.push("");
-
-        risultati[numero]=valore;
-
-        state.fTopRes=
-            (risultati[0]||"") +
-            "-" +
-            (risultati[1]||"") +
-            extra;
+        state.sTopRes[index][squadra] = valore;
 
     }
 
-    if(arrayRisultati){
+    else if(type === "F"){
 
-        let risultatoAttuale=
-            String(arrayRisultati[index]||"-");
+        if(!Array.isArray(state.fTopRes))
+            state.fTopRes = ["",""];
 
-        let partiExtra=
-            risultatoAttuale.split("|");
-
-        let base=
-            partiExtra[0]||"-";
-
-        let extra=
-            partiExtra.length>1
-                ? "|" + partiExtra.slice(1).join("|")
-                : "";
-
-        let risultati=
-            base.split("-");
-
-        while(risultati.length<2)
-            risultati.push("");
-
-        risultati[numero]=valore;
-
-        arrayRisultati[index]=
-            (risultati[0]||"") +
-            "-" +
-            (risultati[1]||"") +
-            extra;
+        state.fTopRes[squadra] = valore;
 
     }
 
     renderKO();
 
     updateAndSync();
-
 }
-
                    
 function getWinner(match,res){
 
@@ -10399,58 +10354,129 @@ function renderKO(){
     }
 }
 
-function renderMatchCard(titolo,match,type,index,risultato){
-    const res=risultato || "-";
+function renderMatchCard(titolo, match, type, index, risultato){
 
-    const parti=String(res).split("-");
+    let risultati = ["", ""];
 
-    const risultatoCasa =
-        parti[0]==="-" ? "" : (parti[0] || "");
+    if(Array.isArray(risultato)){
+        risultati = [
+            risultato[0] ?? "",
+            risultato[1] ?? ""
+        ];
+    }
+    else if(typeof risultato === "string" && risultato.includes("-")){
+        const parti = risultato.split("|")[0].split("-");
 
-    const risultatoOspite =
-        parti[1] || "";
+        if(parti.length === 2){
+            risultati = [
+                parti[0].trim(),
+                parti[1].trim()
+            ];
+        }
+    }
 
-    const campKey={Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];
-    const timeKey={Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];
+    const campKey = {
+        Q:"qCamp",
+        S:"sTopCamp",
+        F:"fTopCamp"
+    }[type];
 
-    const camp=Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
-    const time=Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
+    const timeKey = {
+        Q:"qTime",
+        S:"sTopTime",
+        F:"fTopTime"
+    }[type];
 
-    const winner=getWinner(match,risultato);
-    const stato=winner ? "Terminata" : "Da giocare";
+    const camp =
+        Array.isArray(state[campKey])
+            ? (state[campKey][index] || "")
+            : "";
+
+    const time =
+        Array.isArray(state[timeKey])
+            ? (state[timeKey][index] || "")
+            : "";
+
+    const risultatoWinner =
+        Array.isArray(risultato)
+            ? risultato.join("-")
+            : risultato;
+
+    const winner =
+        getWinner(match, risultatoWinner);
+
+    const stato =
+        winner
+            ? "Terminata"
+            : "Da giocare";
 
     return `
 <tr>
+
     <td>
-        <input value="${String(camp).replace(/"/g,"&quot;")}" style="width:45px" onchange="updateKOField('${type}',${index},'camp',this.value)">
+        <input
+            value="${String(camp).replace(/"/g,"&quot;")}"
+            style="width:45px"
+            onchange="updateKOField('${type}',${index},'camp',this.value)"
+        >
     </td>
+
     <td>
-        <input value="${String(time).replace(/"/g,"&quot;")}" style="width:80px" onchange="updateKOField('${type}',${index},'time',this.value)">
+        <input
+            value="${String(time).replace(/"/g,"&quot;")}"
+            style="width:80px"
+            onchange="updateKOField('${type}',${index},'time',this.value)"
+        >
     </td>
+
     <td class="match-cell">
-        <div class="team-line">${formatCoppiaDisplay(match[0])}</div>
-        <div class="vs-line"><b>VS</b></div>
-        <div class="team-line">${formatCoppiaDisplay(match[1])}</div>
-        <div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>
-        ${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}
+
+        <div class="team-line">
+            ${formatCoppiaDisplay(match[0])}
+        </div>
+
+        <div class="vs-line">
+            <b>VS</b>
+        </div>
+
+        <div class="team-line">
+            ${formatCoppiaDisplay(match[1])}
+        </div>
+
+        <div style="font-size:12px;opacity:.7;margin-top:4px;">
+            ${stato}
+        </div>
+
+        ${
+            winner
+            ?
+            `<div class="winner-box">
+                🏆 Passa: ${formatCoppiaDisplay(winner)}
+            </div>`
+            :
+            ""
+        }
+
     </td>
+
     <td class="db-cell">
 
         <input
             type="text"
-            value="${String(risultatoCasa).replace(/"/g,"&quot;")}"
-            onchange="updateKOResult('${type}',${index},0,this.value)"
+            value="${String(risultati[0]).replace(/"/g,"&quot;")}"
+            oninput="updateKOResult('${type}',${index},0,this.value)"
             style="width:45px;text-align:center"
         >
 
         <input
             type="text"
-            value="${String(risultatoOspite).replace(/"/g,"&quot;")}"
-            onchange="updateKOResult('${type}',${index},1,this.value)"
+            value="${String(risultati[1]).replace(/"/g,"&quot;")}"
+            oninput="updateKOResult('${type}',${index},1,this.value)"
             style="width:45px;text-align:center"
         >
 
     </td>
+
 </tr>
 `;
 }
