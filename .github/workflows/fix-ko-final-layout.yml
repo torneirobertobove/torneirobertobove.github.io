@@ -1,0 +1,45 @@
+name: Fix KO final layout
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-ko-final-layout.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix Bove.html KO layout
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('Bove.html')
+          s=p.read_text()
+
+          start=s.index('/* ========================================================\n   FIX ALLINEAMENTO TABELLE FASE FINALE KO')
+          end=s.index('/* ============================\n\n   NUOVE CELLE PARTITE KO', start)
+          css='''/* ========================================================\n   LAYOUT FASE FINALE KO — 6 COLONNE REALI\n   Campo | Ora | Minuti | Match | Ris.1 | Ris.2\n   ======================================================== */\n\ntable:has(> tbody#Q),\ntable:has(> tbody#S),\ntable:has(> tbody#finaleBox){\n    table-layout:fixed !important;\n    width:462px !important;\n    min-width:462px !important;\n    max-width:462px !important;\n    border-collapse:separate !important;\n    border-spacing:0 !important;\n}\n\ntable:has(> tbody#Q) col:nth-child(1),\ntable:has(> tbody#S) col:nth-child(1),\ntable:has(> tbody#finaleBox) col:nth-child(1){width:53px !important;}\n\ntable:has(> tbody#Q) col:nth-child(2),\ntable:has(> tbody#S) col:nth-child(2),\ntable:has(> tbody#finaleBox) col:nth-child(2){width:45px !important;}\n\ntable:has(> tbody#Q) col:nth-child(3),\ntable:has(> tbody#S) col:nth-child(3),\ntable:has(> tbody#finaleBox) col:nth-child(3){width:45px !important;}\n\ntable:has(> tbody#Q) col:nth-child(4),\ntable:has(> tbody#S) col:nth-child(4),\ntable:has(> tbody#finaleBox) col:nth-child(4){width:125px !important;}\n\ntable:has(> tbody#Q) col:nth-child(5),\ntable:has(> tbody#S) col:nth-child(5),\ntable:has(> tbody#finaleBox) col:nth-child(5){width:92px !important;}\n\ntable:has(> tbody#Q) col:nth-child(6),\ntable:has(> tbody#S) col:nth-child(6),\ntable:has(> tbody#finaleBox) col:nth-child(6){width:92px !important;}\n\ntable:has(> tbody#Q) th, table:has(> tbody#Q) td,\ntable:has(> tbody#S) th, table:has(> tbody#S) td,\ntable:has(> tbody#finaleBox) th, table:has(> tbody#finaleBox) td{\n    box-sizing:border-box !important;\n    padding:8px 4px !important;\n    text-align:center !important;\n    vertical-align:middle !important;\n}\n\ntable:has(> tbody#Q) th:nth-child(1), table:has(> tbody#Q) td:nth-child(1),\ntable:has(> tbody#S) th:nth-child(1), table:has(> tbody#S) td:nth-child(1),\ntable:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1){width:53px !important;}\n\ntable:has(> tbody#Q) th:nth-child(2), table:has(> tbody#Q) td:nth-child(2),\ntable:has(> tbody#S) th:nth-child(2), table:has(> tbody#S) td:nth-child(2),\ntable:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2){width:45px !important;}\n\ntable:has(> tbody#Q) th:nth-child(3), table:has(> tbody#Q) td:nth-child(3),\ntable:has(> tbody#S) th:nth-child(3), table:has(> tbody#S) td:nth-child(3),\ntable:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3){width:45px !important;}\n\ntable:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),\ntable:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),\ntable:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4){width:125px !important;}\n\ntable:has(> tbody#Q) th:nth-child(5), table:has(> tbody#Q) td:nth-child(5),\ntable:has(> tbody#S) th:nth-child(5), table:has(> tbody#S) td:nth-child(5),\ntable:has(> tbody#finaleBox) th:nth-child(5), table:has(> tbody#finaleBox) td:nth-child(5){width:92px !important;}\n\ntable:has(> tbody#Q) th:nth-child(6), table:has(> tbody#Q) td:nth-child(6),\ntable:has(> tbody#S) th:nth-child(6), table:has(> tbody#S) td:nth-child(6),\ntable:has(> tbody#finaleBox) th:nth-child(6), table:has(> tbody#finaleBox) td:nth-child(6){width:92px !important;}\n\ntable:has(> tbody#Q) td input,\ntable:has(> tbody#S) td input,\ntable:has(> tbody#finaleBox) td input{\n    width:45px !important;\n    min-width:45px !important;\n    max-width:45px !important;\n    height:34px !important;\n    margin:0 auto !important;\n    padding:4px !important;\n    box-sizing:border-box !important;\n    text-align:center !important;\n}\n\ntable:has(> tbody#Q) td.match-cell,\ntable:has(> tbody#S) td.match-cell,\ntable:has(> tbody#finaleBox) td.match-cell{\n    width:125px !important;\n    min-width:125px !important;\n    max-width:125px !important;\n}\n\n'''
+          s=s[:start]+css+s[end:]
+
+          old='''<tr>\n\n            <th>\n\n                <th colspan="4">'''
+          # no-op guard; headers are fixed below
+          s=s.replace('<th colspan="4">\n\n                            QUARTI DI FINALE','<th colspan="6">\n\n                            QUARTI DI FINALE')
+          s=s.replace('<th colspan="4">\n\n                            SEMIFINALI','<th colspan="6">\n\n                            SEMIFINALI')
+          s=s.replace('<th colspan="4">\n\n                            FINALE','<th colspan="6">\n\n                            FINALE')
+
+          # Replace the KO renderer with exactly six td cells.
+          a=s.index('function renderMatchCard(titolo, match, type, index, risultato){')
+          b=s.index('function applicaModelloTorneo(){', a)
+          fn='''function renderMatchCard(titolo, match, type, index, risultato){\n\n    const res=String(risultato || "-").split("-");\n    const risultato1=res[0] || "";\n    const risultato2=res[1] || "";\n\n    const campKey={Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];\n    const timeKey={Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];\n    const camp=Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";\n    const time=Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";\n    const winner=getWinner(match,risultato);\n    const stato=winner ? "Terminata" : "Da giocare";\n    const partiOra=String(time || "").split(":");\n    const ore=partiOra[0] || "";\n    const minuti=partiOra[1] || "";\n\n    const inputStyle=`width:45px !important;min-width:45px !important;max-width:45px !important;height:34px !important;padding:4px !important;margin:0 auto !important;box-sizing:border-box !important;text-align:center !important;`;\n\n    return `\n<tr>\n    <td><input type="text" value="${String(camp).replace(/"/g,"&quot;")}" onchange="updateKOField('${type}',${index},'camp',this.value)" style="${inputStyle}"></td>\n    <td><input type="text" value="${String(ore).replace(/"/g,"&quot;")}" onchange="updateKOField('${type}',${index},'time',this.value + ':' + this.parentElement.nextElementSibling.querySelector('input').value)" style="${inputStyle}"></td>\n    <td><input type="text" value="${String(minuti).replace(/"/g,"&quot;")}" onchange="updateKOField('${type}',${index},'time',this.parentElement.previousElementSibling.querySelector('input').value + ':' + this.value)" style="${inputStyle}"></td>\n    <td class="match-cell"><div class="team-line">${formatCoppiaDisplay(match[0])}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${formatCoppiaDisplay(match[1])}</div><div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}</td>\n    <td><input type="text" value="${String(risultato1).replace(/"/g,"&quot;")}" onchange="updateKOResult('${type}',${index},this.value,0)" style="${inputStyle}"></td>\n    <td><input type="text" value="${String(risultato2).replace(/"/g,"&quot;")}" onchange="updateKOResult('${type}',${index},this.value,1)" style="${inputStyle}"></td>\n</tr>`;\n}\n\n'''
+          s=s[:a]+fn+s[b:]
+          p.write_text(s)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Bove.html
+          git diff --cached --quiet || git commit -m 'Fix KO final six-column layout'
+          git push
