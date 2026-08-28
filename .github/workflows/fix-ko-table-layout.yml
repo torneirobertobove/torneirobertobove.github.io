@@ -1,0 +1,52 @@
+name: Fix KO table layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-ko-table-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply minimal KO layout fix
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          if 'table:has(> tbody#Q)' in s:
+              print('KO layout fix already present')
+          else:
+              marker = '/* ============================\n\n   NUOVE CELLE PARTITE KO\n'
+              css = '''\n/* ========================================================\n   FIX ALLINEAMENTO TABELLE FASE FINALE KO\n   ======================================================== */\n\ntable:has(> tbody#Q),\ntable:has(> tbody#S),\ntable:has(> tbody#finaleBox){\n    table-layout:fixed !important;\n    width:445px !important;\n    min-width:445px !important;\n    max-width:445px !important;\n    box-sizing:border-box !important;\n}\n\ntable:has(> tbody#Q) th:nth-child(1), table:has(> tbody#Q) td:nth-child(1),\ntable:has(> tbody#S) th:nth-child(1), table:has(> tbody#S) td:nth-child(1),\ntable:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1){width:148px !important;}\n\ntable:has(> tbody#Q) th:nth-child(2), table:has(> tbody#Q) td:nth-child(2),\ntable:has(> tbody#S) th:nth-child(2), table:has(> tbody#S) td:nth-child(2),\ntable:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2){width:87px !important;}\n\ntable:has(> tbody#Q) th:nth-child(3), table:has(> tbody#Q) td:nth-child(3),\ntable:has(> tbody#S) th:nth-child(3), table:has(> tbody#S) td:nth-child(3),\ntable:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3){width:135px !important;}\n\ntable:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),\ntable:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),\ntable:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4){width:75px !important;}\n\n'''
+              pos = s.find(marker)
+              if pos == -1:
+                  raise SystemExit('KO CSS marker not found; Bove.html left unchanged')
+              p.write_text(s[:pos] + css + s[pos:], encoding='utf-8')
+              print('Minimal KO layout CSS inserted')
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
+          Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/bove.js
+      - name: Commit fix and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name 'Bove Repair'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/fix-ko-table-layout.yml
+          git commit -m 'Fix KO table column alignment'
+          git push
