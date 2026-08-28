@@ -10668,65 +10668,126 @@ function renderGironiFinale(){
     `;
 
 }
+
+                   
 function renderTables(){
     ensureRules();
+
     function generaRoundRobin(n){
         let squadre=Array.from({length:n},(_,i)=>i);
+
         if(squadre.length%2!==0){
             squadre.push(null);
         }
+
         let rounds=[];
         let totale=squadre.length;
         let turni=totale-1;
         let meta=totale/2;
+
         for(let r=0;r<turni;r++){
+
             let round=[];
+
             for(let i=0;i<meta;i++){
+
                 let a=squadre[i];
                 let b=squadre[totale-1-i];
+
                 if(a!==null&&b!==null){
                     round.push([a,b]);
                 }
+
             }
+
             rounds.push(round);
+
             let fisso=squadre[0];
             let resto=squadre.slice(1);
+
             resto.unshift(resto.pop());
+
             squadre=[fisso,...resto];
+
         }
+
         if(state.rules.garaAndataRitorno===true){
-            let ritorno=rounds.map(round=>round.map(match=>[match[1],match[0]]));
+
+            let ritorno=
+                rounds.map(
+                    round=>
+                        round.map(
+                            match=>[match[1],match[0]]
+                        )
+                );
+
             rounds=rounds.concat(ritorno);
+
         }
+
         return rounds;
     }
+
     let campiPerGirone={
         A:[2,3],
         B:[4,5],
         C:[6,7],
         D:[8,9]
     };
-    let durata=Number(state.rules.duration||30);
-    let start=String(state.rules.start||"20:00");
-    let partiOra=start.split(":");
-    let oraBase=Number(partiOra[0])||20;
-    let minutiBase=Number(partiOra[1])||0;
+
+    let durata=
+        Number(state.rules.duration||30);
+
+    let start=
+        String(state.rules.start||"20:00");
+
+    let partiOra=
+        start.split(":");
+
+    let oraBase=
+        Number(partiOra[0])||20;
+
+    let minutiBase=
+        Number(partiOra[1])||0;
+
     let calendario=[];
+
     ["A","B","C","D"].forEach(tag=>{
+
         let squadre=state[tag];
-        if(!Array.isArray(squadre)||squadre.length<2)return;
+
+        if(!Array.isArray(squadre)||squadre.length<2)
+            return;
+
         let partite=[];
-        if(state.partiteGironi&&Array.isArray(state.partiteGironi[tag])){
-            partite=state.partiteGironi[tag];
-        }else{
-            let rounds=generaRoundRobin(squadre.length);
-            rounds.forEach(round=>{
-                round.forEach(match=>{
-                    partite.push(match);
-                });
-            });
+
+        if(
+            state.partiteGironi &&
+            Array.isArray(state.partiteGironi[tag])
+        ){
+
+            partite=
+                state.partiteGironi[tag];
+
         }
-           partite.forEach(match=>{
+        else{
+
+            let rounds=
+                generaRoundRobin(squadre.length);
+
+            rounds.forEach(round=>{
+
+                round.forEach(match=>{
+
+                    partite.push(match);
+
+                });
+
+            });
+
+        }
+
+        partite.forEach(match=>{
 
             calendario.push({
 
@@ -10749,54 +10810,145 @@ function renderTables(){
     });   // <-- QUESTA MANCAVA
 
     let occupazioni=[];
+
     calendario.forEach(partita=>{
+
         let assegnata=false;
         let slot=0;
-        let campiDisponibili=campiPerGirone[partita.girone]||[2,3];
+
+        let campiDisponibili=
+            campiPerGirone[partita.girone]||[2,3];
+
         while(!assegnata){
+
             for(let i=0;i<campiDisponibili.length;i++){
-                let campo=campiDisponibili[i];
+
+                let campo=
+                    campiDisponibili[i];
+
                 let conflitto=false;
+
                 occupazioni.forEach(o=>{
-                    if(o.slot===slot&&(o.campo===campo||o.squadre.includes(partita.casa)||o.squadre.includes(partita.ospite))){
+
+                    if(
+                        o.slot===slot &&
+                        (
+                            o.campo===campo ||
+                            o.squadre.includes(partita.casa) ||
+                            o.squadre.includes(partita.ospite)
+                        )
+                    ){
+
                         conflitto=true;
+
                     }
+
                 });
+
                 if(!conflitto){
+
                     partita.campo=campo;
                     partita.slot=slot;
+
                     occupazioni.push({
+
                         slot:slot,
+
                         campo:campo,
-                        squadre:[partita.casa,partita.ospite]
+
+                        squadre:[
+                            partita.casa,
+                            partita.ospite
+                        ]
+
                     });
+
                     assegnata=true;
+
                     break;
+
                 }
+
             }
-            if(!assegnata)slot++;
+
+            if(!assegnata)
+                slot++;
+
         }
+
     });
+
     ["A","B","C","D"].forEach(tag=>{
-        let box=document.getElementById(tag+"rows");
-        if(!box)return;
-        let partite=calendario.filter(p=>p.girone===tag);
-        if(!Array.isArray(state[tag+"res"]))state[tag+"res"]=[];
-        while(state[tag+"res"].length<partite.length)state[tag+"res"].push("-");
-        if(state[tag+"res"].length>partite.length)state[tag+"res"]=state[tag+"res"].slice(0,partite.length);
-        if(!Array.isArray(state[tag+"time"]))state[tag+"time"]=[];
-        if(!Array.isArray(state[tag+"camp"]))state[tag+"camp"]=[];
-        while(state[tag+"time"].length<partite.length)state[tag+"time"].push("-");
-        while(state[tag+"camp"].length<partite.length)state[tag+"camp"].push("");
+
+        let box=
+            document.getElementById(
+                tag+"rows"
+            );
+
+        if(!box)
+            return;
+
+        let partite=
+            calendario.filter(
+                p=>p.girone===tag
+            );
+
+        if(!Array.isArray(state[tag+"res"]))
+            state[tag+"res"]=[];
+
+        while(
+            state[tag+"res"].length<
+            partite.length
+        )
+            state[tag+"res"].push("-");
+
+        if(
+            state[tag+"res"].length>
+            partite.length
+        ){
+
+            state[tag+"res"]=
+                state[tag+"res"].slice(
+                    0,
+                    partite.length
+                );
+
+        }
+
+        if(!Array.isArray(state[tag+"time"]))
+            state[tag+"time"]=[];
+
+        if(!Array.isArray(state[tag+"camp"]))
+            state[tag+"camp"]=[];
+
+        while(
+            state[tag+"time"].length<
+            partite.length
+        )
+            state[tag+"time"].push("-");
+
+        while(
+            state[tag+"camp"].length<
+            partite.length
+        )
+            state[tag+"camp"].push("");
+
         let rows="";
 
         partite.forEach((m,i)=>{
 
-            let minuti=minutiBase+(m.slot*durata);
+            let minuti=
+                minutiBase+
+                (m.slot*durata);
 
-            let ora=oraBase+Math.floor(minuti/60);
+            let ora=
+                oraBase+
+                Math.floor(
+                    minuti/60
+                );
 
-            let min=minuti%60;
+            let min=
+                minuti%60;
 
             let tempo=
                 String(ora).padStart(2,"0")
@@ -10804,38 +10956,39 @@ function renderTables(){
                 +
                 String(min).padStart(2,"0");
 
+            state[tag+"time"][i]=
+                tempo;
 
-            state[tag+"time"][i]=tempo;
-
-            state[tag+"camp"][i]=m.campo;
-
+            state[tag+"camp"][i]=
+                m.campo;
 
             if(!state[tag+"res"][i])
                 state[tag+"res"][i]="-";
 
-
             let risultato=
-                String(state[tag+"res"][i])
-                .split("-");
-
+                String(
+                    state[tag+"res"][i]
+                ).split("-");
 
             let squadraCasa =
                 state[tag][m.casa]
                 ?
-                formatCoppiaDisplay(state[tag][m.casa])
+                formatCoppiaDisplay(
+                    state[tag][m.casa]
+                )
                 :
                 "";
-
 
             let squadraOspite =
                 state[tag][m.ospite]
                 ?
-                formatCoppiaDisplay(state[tag][m.ospite])
+                formatCoppiaDisplay(
+                    state[tag][m.ospite]
+                )
                 :
                 "";
 
-
-           rows+=`
+            rows+=`
 <tr>
 <td>
 <input 
@@ -10886,11 +11039,13 @@ oninput="updateRes('${tag}',${i},1,this.value)">
 
         });
 
+        box.innerHTML=
+            rows;
 
-        box.innerHTML=rows;
-
-
-        let card=document.getElementById("card"+tag);
+        let card=
+            document.getElementById(
+                "card"+tag
+            );
 
         if(card){
 
@@ -10909,11 +11064,36 @@ oninput="updateRes('${tag}',${i},1,this.value)">
 
     });
 
+    /*
+        IMPORTANTE:
+        durante loadState() renderTables()
+        deve solamente costruire il layout.
 
-    updateAndSync();
+        Non deve chiamare updateAndSync(),
+        perché altrimenti il render eseguito
+        durante il caricamento remoto tenta
+        immediatamente di salvare lo stato.
+
+        I salvataggi continuano ad essere
+        effettuati dalle funzioni che modificano
+        realmente lo stato:
+        updateCamp()
+        updateTime()
+        updateRes()
+        ecc.
+    */
+
+    if(!window.__BOVE_LOADING__){
+
+        updateAndSync();
+
+    }
 
 }
-   
+
+
+
+                   
 function getFinalQualified(){
     ensureRules();
 
