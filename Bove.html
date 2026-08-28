@@ -6391,6 +6391,8 @@ state.rules.locked=false;
 
 
 }
+
+                   
 async function updateAndSync(){
 
     try{
@@ -6413,6 +6415,43 @@ async function updateAndSync(){
 
 
 
+        /*
+        =========================================================
+        TORNEO REMOTO
+        =========================================================
+
+        Se la pagina contiene ?idTorneo=...
+        NON dobbiamo mai creare automaticamente un nuovo ID.
+
+        Questo evita il problema che abbiamo appena visto:
+        ID remoto 1787863763360
+        ->
+        torneo non trovato
+        ->
+        state vuoto
+        ->
+        Date.now()
+        ->
+        nuovo torneo fantasma.
+        */
+
+        const idRemoto =
+            new URLSearchParams(
+                window.location.search
+            ).get("idTorneo");
+
+
+        const remoto =
+            !!idRemoto;
+
+
+
+        /*
+        =========================================================
+        DATA TORNEO
+        =========================================================
+        */
+
         if(!state.dataTorneo){
 
             state.dataTorneo =
@@ -6424,19 +6463,62 @@ async function updateAndSync(){
 
 
 
-        if(!state.idTorneo){
+        /*
+        =========================================================
+        ID TORNEO
+        =========================================================
 
-            state.idTorneo =
-                Date.now();
+        Per un torneo remoto l'ID deve essere quello presente
+        nell'URL.
+
+        Per un torneo locale, invece, possiamo crearne uno
+        nuovo se manca.
+        */
+
+        if(remoto){
+
+            if(!state.idTorneo){
+
+                state.idTorneo =
+                    Number(idRemoto);
+
+            }
+
+
+            /*
+            Se anche dopo questo controllo l'ID non è valido,
+            blocchiamo il salvataggio.
+            */
+
+            if(!state.idTorneo){
+
+                console.error(
+                    "SALVATAGGIO BLOCCATO: ID TORNEO REMOTO MANCANTE."
+                );
+
+                return false;
+
+            }
+
+        }
+        else{
+
+            if(!state.idTorneo){
+
+                state.idTorneo =
+                    Date.now();
+
+            }
 
         }
 
 
 
         /*
-            PROTEZIONE CONTRO STATO VUOTO
+        =========================================================
+        PROTEZIONE CONTRO STATO VUOTO
+        =========================================================
         */
-
 
         let precedente =
             localStorage.getItem(
@@ -6446,12 +6528,6 @@ async function updateAndSync(){
 
         let statoDaSalvare = true;
 
-
-
-        const remoto =
-            !!new URLSearchParams(
-                window.location.search
-            ).get("idTorneo");
 
 
         if(precedente && !remoto){
@@ -6509,19 +6585,15 @@ async function updateAndSync(){
 
             }
 
-
         }
 
 
 
         /*
-            COPIA COMPLETA DELLO STATO
-
-            Non viene modificato lo state originale.
-            La copia serve per garantire che tutto
-            il torneo venga salvato.
+        =========================================================
+        COPIA COMPLETA DELLO STATO
+        =========================================================
         */
-
 
         const snapshot =
             JSON.parse(
@@ -6530,14 +6602,64 @@ async function updateAndSync(){
 
 
 
+        /*
+        =========================================================
+        BLOCCO SPECIALE TORNEO REMOTO NON CARICATO
+        =========================================================
+
+        Se siamo dentro un URL remoto ma il torneo non è stato
+        realmente caricato e non abbiamo nome/coppie/squadre,
+        NON dobbiamo sovrascrivere il torneo con uno stato vuoto.
+
+        È esattamente la situazione che abbiamo visto nei log.
+        */
+
+        if(
+            remoto &&
+
+            !snapshot.nomeTorneo &&
+
+            (!Array.isArray(snapshot.coppie) ||
+             snapshot.coppie.length===0) &&
+
+            (!Array.isArray(snapshot.A) ||
+             snapshot.A.filter(
+                 x =>
+                 x!==null &&
+                 x!==undefined &&
+                 String(x).trim()!==""
+             ).length===0) &&
+
+            (!Array.isArray(snapshot.B) ||
+             snapshot.B.filter(
+                 x =>
+                 x!==null &&
+                 x!==undefined &&
+                 String(x).trim()!==""
+             ).length===0)
+        ){
+
+            console.warn(
+                "SALVATAGGIO REMOTO BLOCCATO: " +
+                "torneo non caricato o stato vuoto."
+            );
+
+            return false;
+
+        }
+
 
 
         /*
-            SALVATAGGIO STATO LOCALE
+        =========================================================
+        SALVATAGGIO STATO LOCALE
+        =========================================================
+
+        Un torneo remoto NON viene riversato nel localStorage
+        globale.
         */
 
-
-        if(statoDaSalvare){
+        if(statoDaSalvare && !remoto){
 
             localStorage.setItem(
 
@@ -6553,14 +6675,15 @@ async function updateAndSync(){
 
 
 
-
-
         /*
-            SALVATAGGIO SQUADRE
+        =========================================================
+        SALVATAGGIO SQUADRE LOCALE
+        =========================================================
         */
 
-
         if(
+
+            !remoto &&
 
             Array.isArray(snapshot.A) &&
             snapshot.A.length>0 &&
@@ -6579,7 +6702,6 @@ async function updateAndSync(){
                     [
 
                         ...snapshot.A,
-
                         ...snapshot.B
 
                     ]
@@ -6592,12 +6714,11 @@ async function updateAndSync(){
 
 
 
-
-
         /*
-            SUPABASE
+        =========================================================
+        SUPABASE
+        =========================================================
         */
-
 
         if(
 
@@ -6640,9 +6761,7 @@ async function updateAndSync(){
 
 
                         /*
-                            IMPORTANTE:
-                            salva tutto lo snapshot,
-                            non solo una parte dello state.
+                        Salviamo lo stato completo.
                         */
 
                         configurazione:
@@ -6671,17 +6790,20 @@ async function updateAndSync(){
 
             }
 
-
         }
 
 
 
         /*
-            VERIFICA DEL SALVATAGGIO LOCALE
+        =========================================================
+        VERIFICA SALVATAGGIO LOCALE
+        =========================================================
         */
 
-
-        if(statoDaSalvare){
+        if(
+            statoDaSalvare &&
+            !remoto
+        ){
 
             const verifica =
                 localStorage.getItem(
@@ -6692,7 +6814,8 @@ async function updateAndSync(){
             if(!verifica){
 
                 console.error(
-                    "Errore: torneoState non presente dopo il salvataggio."
+                    "Errore: torneoState non presente " +
+                    "dopo il salvataggio."
                 );
 
                 return false;
@@ -6718,7 +6841,8 @@ async function updateAndSync(){
                 ){
 
                     console.error(
-                        "Errore: ID torneo non corrispondente dopo il salvataggio."
+                        "Errore: ID torneo non corrispondente " +
+                        "dopo il salvataggio."
                     );
 
                     return false;
@@ -6742,6 +6866,12 @@ async function updateAndSync(){
 
 
 
+        /*
+        =========================================================
+        LOG FINALE
+        =========================================================
+        */
+
         console.log(
             "=== UPDATE AND SYNC COMPLETATO ==="
         );
@@ -6754,6 +6884,11 @@ async function updateAndSync(){
         console.log(
             "NOME TORNEO:",
             snapshot.nomeTorneo
+        );
+
+        console.log(
+            "TORNEO REMOTO:",
+            remoto
         );
 
         console.log(
@@ -6780,6 +6915,8 @@ async function updateAndSync(){
     }
 
 }
+
+
 
                    
 
