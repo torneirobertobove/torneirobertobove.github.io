@@ -8373,33 +8373,47 @@ return true;
     updateAndSync();
 }
 
-function updateKOResult(type,index,valore){
+function updateKOResult(type,index,valore,pos){
 
     ensureRules();
 
-    valore=String(valore||"-").trim();
+    valore = String(valore ?? "").trim();
 
-    if(type==="Q"){
+    if(type === "Q"){
 
         if(!Array.isArray(state.qRes))
-            state.qRes=Array(4).fill("-");
+            state.qRes = Array(4).fill("-");
 
-        state.qRes[index]=valore;
+        let res = String(state.qRes[index] || "-").split("-");
+
+        if(res.length !== 2)
+            res = ["",""];
+
+        res[pos] = valore;
+
+        state.qRes[index] = res.join("-");
 
     }
 
-    else if(type==="S"){
+    else if(type === "S"){
 
         if(!Array.isArray(state.sTopRes))
-            state.sTopRes=Array(2).fill("-");
+            state.sTopRes = Array(2).fill("-");
 
-        state.sTopRes[index]=valore;
+        let res = String(state.sTopRes[index] || "-").split("-");
+
+        if(res.length !== 2)
+            res = ["",""];
+
+        res[pos] = valore;
+
+        state.sTopRes[index] = res.join("-");
 
     }
 
-    else if(type==="F"){
+    else if(type === "F"){
 
-        state.fTopRes=valore;
+        state.fTopRes = valore;
 
     }
 
@@ -10357,21 +10371,24 @@ function renderKO(){
     }
 }
 
-function renderMatchCard(titolo,match,type,index,risultato){
+function renderMatchCard(titolo, match, type, index, risultato){
 
-    const res = String(risultato || "-");
+    const res = String(risultato || "-").split("-");
 
-    let parti = res.split("-");
+    const risultato1 = res[0] || "";
+    const risultato2 = res[1] || "";
 
-    if(parti.length !== 2){
-        parti = ["",""];
-    }
+    const campKey = {
+        Q:"qCamp",
+        S:"sTopCamp",
+        F:"fTopCamp"
+    }[type];
 
-    const res1 = parti[0] || "";
-    const res2 = parti[1] || "";
-
-    const campKey = {Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];
-    const timeKey = {Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];
+    const timeKey = {
+        Q:"qTime",
+        S:"sTopTime",
+        F:"fTopTime"
+    }[type];
 
     const camp = Array.isArray(state[campKey])
         ? (state[campKey][index] || "")
@@ -10381,8 +10398,11 @@ function renderMatchCard(titolo,match,type,index,risultato){
         ? (state[timeKey][index] || "")
         : "";
 
-    const winner = getWinner(match,risultato);
-    const stato = winner ? "Terminata" : "Da giocare";
+    const winner = getWinner(match, risultato);
+
+    const stato = winner
+        ? "Terminata"
+        : "Da giocare";
 
     return `
 <tr>
@@ -10431,28 +10451,24 @@ function renderMatchCard(titolo,match,type,index,risultato){
 
     </td>
 
+    <!-- RISULTATO SQUADRA 1 -->
     <td class="db-cell">
+        <input
+            type="text"
+            value="${String(risultato1).replace(/"/g,"&quot;")}"
+            onchange="updateKOResult('${type}',${index},this.value,0)"
+            style="width:35px;text-align:center"
+        >
+    </td>
 
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
-
-            <input
-                type="text"
-                value="${String(res1).replace(/"/g,"&quot;")}"
-                onchange="updateKOResult('${type}',${index},this.value,0)"
-                style="width:35px;text-align:center"
-                placeholder="0"
-            >
-
-            <input
-                type="text"
-                value="${String(res2).replace(/"/g,"&quot;")}"
-                onchange="updateKOResult('${type}',${index},this.value,1)"
-                style="width:35px;text-align:center"
-                placeholder="0"
-            >
-
-        </div>
-
+    <!-- RISULTATO SQUADRA 2 -->
+    <td class="db-cell">
+        <input
+            type="text"
+            value="${String(risultato2).replace(/"/g,"&quot;")}"
+            onchange="updateKOResult('${type}',${index},this.value,1)"
+            style="width:35px;text-align:center"
+        >
     </td>
 
 </tr>
