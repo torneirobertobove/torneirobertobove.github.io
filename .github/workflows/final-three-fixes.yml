@@ -1,0 +1,220 @@
+name: Final three Bove fixes
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: ${{ !startsWith(github.event.head_commit.message, '[FINAL-3-FIX]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Apply final three fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('Bove.html')
+          text=p.read_text(encoding='utf-8')
+
+          css = r'''
+
+/* ========================================================
+   FIX FINALE ALLINEAMENTO GIRONI
+   ======================================================== */
+.team-line{
+    display:block !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:20px !important;
+    line-height:20px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    vertical-align:middle !important;
+}
+.match-cell{
+    height:74px !important;
+    min-height:74px !important;
+    max-height:74px !important;
+    vertical-align:middle !important;
+    overflow:hidden !important;
+}
+.vs-line{
+    height:18px !important;
+    line-height:18px !important;
+    white-space:nowrap !important;
+}
+'''
+          if 'FIX FINALE ALLINEAMENTO GIRONI' not in text:
+              marker='</style>'
+              if marker not in text: raise SystemExit('STYLE non trovato')
+              text=text.replace(marker,css+'\n</style>',1)
+
+          new_match = r'''function renderMatchCard(titolo, match, tipo, index, risultato){
+
+    const fase =
+        (tipo === "Q" || tipo === "S" || tipo === "F")
+            ? tipo
+            : "F";
+
+    const indice = Number.isInteger(Number(index)) ? Number(index) : 0;
+
+    function escapeHtml(value){
+        return String(value ?? "")
+            .replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/"/g,"&quot;")
+            .replace(/'/g,"&#39;");
+    }
+
+    function nomeSquadra(squadra){
+        if(squadra === null || squadra === undefined) return "";
+        if(typeof squadra === "string") return squadra.trim();
+        if(typeof squadra === "number") return String(squadra);
+        if(typeof squadra !== "object") return String(squadra).trim();
+        if(squadra.g1 !== undefined || squadra.g2 !== undefined){
+            return (String(squadra.g1 || "") + " / " + String(squadra.g2 || "")).trim();
+        }
+        if(squadra.giocatore1 || squadra.giocatore2){
+            const g1=squadra.giocatore1, g2=squadra.giocatore2;
+            const n1=typeof g1 === "object" ? (String(g1.nome || "")+" "+String(g1.cognome || "")).trim() : String(g1 || "").trim();
+            const n2=typeof g2 === "object" ? (String(g2.nome || "")+" "+String(g2.cognome || "")).trim() : String(g2 || "").trim();
+            return (n1+(n1&&n2?" / ":"")+n2).trim();
+        }
+        if(squadra.nome !== undefined) return String(squadra.nome || "").trim();
+        if(squadra.nomeSquadra !== undefined) return String(squadra.nomeSquadra || "").trim();
+        if(squadra.squadra !== undefined) return String(squadra.squadra || "").trim();
+        return String(squadra).trim();
+    }
+
+    const squadra1 = Array.isArray(match) ? nomeSquadra(match[0]) : nomeSquadra(match?.squadra1 || match?.team1);
+    const squadra2 = Array.isArray(match) ? nomeSquadra(match[1]) : nomeSquadra(match?.squadra2 || match?.team2);
+
+    const campKey = fase === "Q" ? "qCamp" : fase === "S" ? "sCamp" : "fCamp";
+    const timeKey = fase === "Q" ? "qTime" : fase === "S" ? "sTime" : "fTime";
+
+    if(!Array.isArray(state[campKey])) state[campKey]=[];
+    if(!Array.isArray(state[timeKey])) state[timeKey]=[];
+    if(state[campKey][indice] === undefined || state[campKey][indice] === null) state[campKey][indice]="";
+    if(state[timeKey][indice] === undefined || state[timeKey][indice] === null) state[timeKey][indice]="";
+
+    let risultatoTesto = risultato !== undefined && risultato !== null ? String(risultato).trim() : "-";
+    if(!risultatoTesto || risultatoTesto === "-") risultatoTesto="";
+    const partiRis=risultatoTesto.split("-");
+    const ris1=partiRis[0] && partiRis[0] !== "-" ? partiRis[0].trim() : "";
+    const ris2=partiRis[1] ? partiRis[1].trim() : "";
+
+    return `
+<tr class="ko-match-row">
+    <td>
+        <input value="${escapeHtml(state[campKey][indice])}" style="width:45px" onchange="state['${campKey}'][${indice}]=this.value;updateAndSync();">
+    </td>
+    <td>
+        <input value="${escapeHtml(state[timeKey][indice])}" onchange="state['${timeKey}'][${indice}]=this.value;updateAndSync();">
+    </td>
+    <td class="match-cell">
+        <div class="team-line">${escapeHtml(squadra1)}</div>
+        <div class="vs-line"><b>VS</b></div>
+        <div class="team-line">${escapeHtml(squadra2)}</div>
+    </td>
+    <td class="db-cell">
+        <input aria-label="Risultato ${fase} partita ${indice+1} squadra 1" value="${escapeHtml(ris1)}" oninput="updateKOResult('${fase}',${indice},this.value+'-'+this.nextElementSibling.value)">
+        <input aria-label="Risultato ${fase} partita ${indice+1} squadra 2" value="${escapeHtml(ris2)}" oninput="updateKOResult('${fase}',${indice},this.previousElementSibling.value+'-'+this.value)">
+    </td>
+</tr>
+`;
+}
+'''
+          pat=re.compile(r'function renderMatchCard\(titolo, match, tipo, index, risultato\)\s*\{.*?\n\}\s*function aggiornaDescrizioneTipoTorneo\(\)',re.S)
+          if not pat.search(text): raise SystemExit('renderMatchCard non trovato')
+          text=pat.sub(new_match+'\nfunction aggiornaDescrizioneTipoTorneo()',text,count=1)
+
+          clean = r'''
+
+        /* ==================================================
+           NUOVO TORNEO SENZA URL: PARTENZA COMPLETAMENTE PULITA
+           ================================================== */
+        if(!idParam && !torneoParam){
+
+            [
+                "torneoState",
+                "savedTeams",
+                "torneo",
+                "torneoCorrente",
+                "currentTournament",
+                "currentTorneo",
+                "partiteGironi",
+                "torneoData"
+            ].forEach(k=>localStorage.removeItem(k));
+
+            const rulesPulite={
+                ...(state.rules || {}),
+                locked:false,
+                numeroSquadre:0,
+                numeroGironi:0,
+                squadrePerGirone:0,
+                formatoTorneo:""
+            };
+
+            const arrayPulito=[
+                "A","B","C","D","E","F","G",
+                "Ares","Bres","Cres","Dres","Eres","Fres","Gres",
+                "Atime","Btime","Ctime","Dtime","Etime","Ftime","Gtime",
+                "Acamp","Bcamp","Ccamp","Dcamp","Ecamp","Fcamp","Gcamp",
+                "coppie","partecipanti","iscritti","finalTop","qCamp","qTime",
+                "sCamp","sTime"
+            ];
+
+            arrayPulito.forEach(k=>state[k]=[]);
+            state.qRes=Array(4).fill("-");
+            state.sTopRes=Array(2).fill("-");
+            state.fTopRes="-";
+            state.fCamp="";
+            state.fTime="";
+            state.campioneTop=null;
+            state.idTorneo=null;
+            state.nomeTorneo="";
+            state.dataTorneo="";
+            state.formato=0;
+            state.rules=rulesPulite;
+            state.partiteGironi={};
+        }
+'''
+          marker='        /* TORNEO REMOTO: nessun dato locale puo entrare nello stato. */'
+          if 'NUOVO TORNEO SENZA URL: PARTENZA COMPLETAMENTE PULITA' not in text:
+              if marker not in text: raise SystemExit('marker loadState non trovato')
+              text=text.replace(marker,clean+'\n\n'+marker,1)
+
+          p.write_text(text,encoding='utf-8')
+
+      - name: Validate JavaScript structure
+        shell: bash
+        run: |
+          grep -q 'FIX FINALE ALLINEAMENTO GIRONI' Bove.html
+          grep -q 'function renderMatchCard(titolo, match, tipo, index, risultato){' Bove.html
+          grep -q 'NUOVO TORNEO SENZA URL: PARTENZA COMPLETAMENTE PULITA' Bove.html
+          python - <<'PY2'
+          from pathlib import Path
+          import re
+          t=Path('Bove.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',t,re.S)
+          Path('/tmp/bove-js-check.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY2
+          node --check /tmp/bove-js-check.js
+          echo 'FINAL THREE FIXES VALIDATED'
+
+      - name: Commit final fixes and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/final-three-fixes.yml
+          git commit -m '[FINAL-3-FIX] allineamento gironi, due risultati KO, nuovo torneo pulito'
+          git push origin HEAD:main
