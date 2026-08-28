@@ -7128,54 +7128,169 @@ try{
             ==========================================
             */
 
-            else{
+                   else{
 
-                console.warn(
-                    "TORNEO REMOTO NON TROVATO:",
-                    idParam
+            console.warn(
+                "TORNEO REMOTO NON TROVATO:",
+                idParam
+            );
+
+            /*
+            IMPORTANTE:
+            l'ID presente nell'URL non deve
+            rimanere nello state.
+
+            Se lo lasciassimo, updateAndSync()
+            continuerebbe a trattare questo
+            stato come un torneo remoto esistente.
+
+            Il torneo inesistente viene quindi
+            considerato come una nuova sessione.
+            */
+
+            state.idTorneo =
+                null;
+
+            state.nomeTorneo="";
+            state.dataTorneo="";
+
+            state.coppie=[];
+            state.partecipanti=[];
+            state.iscritti=[];
+
+            /*
+            Manteniamo la struttura di default
+            del formato, ma eliminiamo qualsiasi
+            dato appartenente al vecchio torneo.
+            */
+
+            state.A=[];
+            state.B=[];
+            state.C=[];
+            state.D=[];
+            state.E=[];
+            state.F=[];
+            state.G=[];
+
+            state.Ares=[];
+            state.Bres=[];
+            state.Cres=[];
+            state.Dres=[];
+            state.Eres=[];
+            state.Fres=[];
+            state.Gres=[];
+
+            state.Atime=[];
+            state.Btime=[];
+            state.Ctime=[];
+            state.Dtime=[];
+            state.Etime=[];
+            state.Ftime=[];
+            state.Gtime=[];
+
+            state.Acamp=[];
+            state.Bcamp=[];
+            state.Ccamp=[];
+            state.Dcamp=[];
+            state.Ecamp=[];
+            state.Fcamp=[];
+            state.Gcamp=[];
+
+            state.qRes=Array(4).fill("-");
+            state.qCamp=[];
+            state.qTime=[];
+
+            state.sTopRes=Array(2).fill("-");
+            state.sCamp=[];
+            state.sTime=[];
+
+            state.fTopRes="-";
+            state.fCamp="";
+            state.fTime="";
+
+            state.finalTop=[];
+            state.campioneTop=null;
+
+            state.rules={
+                ...(state.rules || {}),
+                numeroSquadre:0,
+                numeroGironi:0,
+                squadrePerGirone:0,
+                formatoTorneo:""
+            };
+
+            /*
+            Non manteniamo nessuna configurazione
+            del vecchio torneo.
+            */
+
+            configurazione=null;
+
+            console.warn(
+                "Vecchio ID remoto ignorato. Preparato nuovo torneo."
+            );
+
+        }
+
+    }
+    catch(err){
+
+        console.error(
+            "Errore recupero torneo Supabase:",
+            err
+        );
+
+    }
+
+
+    /*
+    ==================================================
+    ISCRIZIONI
+
+    Le leggiamo solo se il torneo remoto è stato
+    realmente trovato.
+
+    Se il torneo non esiste più, non dobbiamo
+    interrogare iscrizioni con il vecchio ID.
+    ==================================================
+    */
+
+    if(torneoCaricato){
+
+        try{
+
+            const {
+                data:iscritti,
+                error:erroreIscritti
+            }=
+                await sb
+                .from("iscrizioni")
+                .select("*")
+                .eq(
+                    "torneo_id",
+                    Number(idParam)
+                )
+                .or(
+                    "stato.eq.approvato,approvato.eq.true"
                 );
 
-                /*
-                IMPORTANTE:
-                l'ID presente nell'URL non deve
-                rimanere nello state.
 
-                Se lo lasciassimo, updateAndSync()
-                continuerebbe a trattare questo
-                stato come un torneo remoto esistente.
+            if(erroreIscritti){
 
-                Il torneo inesistente viene quindi
-                considerato come una nuova sessione.
-                */
+                console.error(
+                    "Errore caricamento iscritti:",
+                    erroreIscritti
+                );
 
-                state.idTorneo =
-                    null;
-
-                state.nomeTorneo="";
-                state.dataTorneo="";
-
-                state.coppie=[];
-                state.partecipanti=[];
                 state.iscritti=[];
 
-                state.rules={
-                    ...(state.rules || {}),
-                    numeroSquadre:0,
-                    numeroGironi:0,
-                    squadrePerGirone:0,
-                    formatoTorneo:""
-                };
+            }
+            else{
 
-                /*
-                Non manteniamo nessuna configurazione
-                del vecchio torneo.
-                */
-
-                configurazione=null;
-
-                console.warn(
-                    "Vecchio ID remoto ignorato. Preparato nuovo torneo."
-                );
+                state.iscritti =
+                    Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
 
             }
 
@@ -7183,82 +7298,18 @@ try{
         catch(err){
 
             console.error(
-                "Errore recupero torneo Supabase:",
+                "Errore recupero iscrizioni:",
                 err
             );
-
-        }
-
-
-        /*
-        ==================================================
-        ISCRIZIONI
-
-        Le leggiamo solo se il torneo remoto è stato
-        realmente trovato.
-
-        Se il torneo non esiste più, non dobbiamo
-        interrogare iscrizioni con il vecchio ID.
-        ==================================================
-        */
-
-        if(torneoCaricato){
-
-            try{
-
-                const {
-                    data:iscritti,
-                    error:erroreIscritti
-                }=
-                    await sb
-                    .from("iscrizioni")
-                    .select("*")
-                    .eq(
-                        "torneo_id",
-                        Number(idParam)
-                    )
-                    .or(
-                        "stato.eq.approvato,approvato.eq.true"
-                    );
-
-
-                if(erroreIscritti){
-
-                    console.error(
-                        "Errore caricamento iscritti:",
-                        erroreIscritti
-                    );
-
-                    state.iscritti=[];
-
-                }
-                else{
-
-                    state.iscritti =
-                        Array.isArray(iscritti)
-                            ? iscritti
-                            : [];
-
-                }
-
-            }
-            catch(err){
-
-                console.error(
-                    "Errore recupero iscrizioni:",
-                    err
-                );
-
-                state.iscritti=[];
-
-            }
-
-        }
-        else{
 
             state.iscritti=[];
 
         }
+
+    }
+    else{
+
+        state.iscritti=[];
 
     }
 
