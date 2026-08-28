@@ -1,0 +1,133 @@
+name: One-time final three fixes
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-time-final-three-fixes.yml
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply precise fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          bove = Path("Bove.html")
+          text = bove.read_text(encoding="utf-8")
+
+          old_css = '''.db-cell input{width:50%;}'''
+          new_css = '''.db-cell input{width:50%;}
+
+/* ========================================================
+   FIX ALLINEAMENTO GIRONI CON NOMI LUNGHI
+   ======================================================== */
+
+.match-cell .team-line{
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    display:block;
+    min-width:0;
+    height:1.2em;
+    line-height:1.2em;
+}
+'''
+
+          if old_css not in text:
+              raise SystemExit("Bove.html: CSS anchor non trovato")
+
+          if ".match-cell .team-line{" not in text:
+              text = text.replace(old_css, new_css, 1)
+
+          bove.write_text(text, encoding="utf-8")
+
+          admin = Path("admin.html")
+          text = admin.read_text(encoding="utf-8")
+
+          old_admin = '''                crit1:"df",
+
+                crit2:"gf",
+
+                crit3:"gs",
+
+                mostraQuarti:true
+
+            }
+
+        }
+
+    };'''
+
+          new_admin = '''                crit1:"df",
+
+                crit2:"gf",
+
+                crit3:"gs",
+
+                mostraQuarti:true
+
+            },
+
+            /*
+                FASE FINALE COMPLETAMENTE VUOTA
+                PER OGNI NUOVO TORNEO.
+            */
+
+            quarti:[],
+
+            qRes:Array(4).fill("-"),
+
+            qCamp:Array(4).fill(""),
+
+            qTime:Array(4).fill(""),
+
+            semiTop:[],
+
+            sTopRes:Array(2).fill("-"),
+
+            sTopCamp:Array(2).fill(""),
+
+            sTopTime:Array(2).fill(""),
+
+            finalTop:[],
+
+            fTopRes:"-",
+
+            fTopCamp:[""],
+
+            fTopTime:[""],
+
+            campioneTop:null
+
+        }
+
+    };'''
+
+          if old_admin not in text:
+              raise SystemExit("admin.html: configurazione anchor non trovato")
+
+          if "qCamp:Array(4).fill(\"\")" not in text:
+              text = text.replace(old_admin, new_admin, 1)
+
+          admin.write_text(text, encoding="utf-8")
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html admin.html
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica necessaria."
+            exit 0
+          fi
+          git commit -m "Fix long team alignment and clean new tournament bracket"
+          git push
