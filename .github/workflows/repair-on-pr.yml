@@ -37,7 +37,6 @@ jobs:
         const n=Math.max(1,Number(state?.rules?.numeroGironi)||2);
         return groups.slice(0,n);
     }
-
     const oldTables=window.renderTables;
     window.renderTables=function(){
         if(typeof oldTables==='function'){try{oldTables();}catch(e){console.error(e);}}
@@ -50,7 +49,6 @@ jobs:
             }
         });
     };
-
     const oldClass=window.renderClass;
     window.renderClass=function(){
         if(typeof oldClass==='function'){try{oldClass();}catch(e){console.error(e);}}
@@ -64,7 +62,6 @@ jobs:
             }
         });
     };
-
     window.renderKO=function(){
         ensureRules();
         const q=document.getElementById('Q');
@@ -79,7 +76,6 @@ jobs:
         while(state.qRes.length<4)state.qRes.push('-');
         while(state.sTopRes.length<2)state.sTopRes.push('-');
         if(typeof state.fTopRes!=='string')state.fTopRes='-';
-
         let qual=[];
         try{const r=getFinalQualified();if(Array.isArray(r))qual=r;}catch(e){console.error(e);}
         const expected=Math.max(0,Number(state.rules.numeroQualificateFinali)||((Number(state.rules.numeroGironi)||0)*(Number(state.rules.qualificatePerGirone)||0)));
@@ -88,7 +84,6 @@ jobs:
         const sOn=state.rules.usaSemifinali===true;
         const fOn=state.rules.usaFinale===true;
         let sem=[];
-
         if(qOn){
             const qm=[[slot[0],slot[7]],[slot[3],slot[4]],[slot[1],slot[6]],[slot[2],slot[5]]];
             qm.forEach((m,i)=>q.innerHTML+=creaMatchKO(m,'q',i,state.qRes[i]));
@@ -102,7 +97,6 @@ jobs:
             sem=[[slot[0],slot[1]]];
             if(qt)qt.style.display='none';
         }else if(qt)qt.style.display='none';
-
         let finalists=[];
         if(sOn){
             if(expected>=4&&sem.length<2)sem.push(['','']);
@@ -115,19 +109,52 @@ jobs:
             finalists=[slot[0]||'',slot[1]||''];
             if(st)st.style.display='none';
         }else if(st)st.style.display='none';
-
         state.finalTop=[finalists[0]||'',finalists[1]||''];
         if(fOn){
             f.innerHTML=creaMatchKO(state.finalTop,'f',0,state.fTopRes);
             if(ft)ft.style.display='table';
         }else if(ft)ft.style.display='none';
-
-        console.log('=== BOVE EMPTY STRUCTURE V2 ===',{expected,qualificati:qual.length,qOn,sOn,fOn,qRows:q.querySelectorAll('tr').length,sRows:s.querySelectorAll('tr').length,fRows:f.querySelectorAll('tr').length});
     };
 })();
 </script>
 '''
           text=text.replace('</body>',patch+'\n</body>',1)
+          p.write_text(text,encoding='utf-8')
+
+      - name: Copy group layout proportions to KO
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('Bove.html')
+          text=p.read_text(encoding='utf-8')
+          marker='/* BOVE KO LAYOUT V2 - COPIED FROM GROUPS */'
+          if marker in text:
+              print('KO layout already present')
+              raise SystemExit(0)
+          css=r'''
+<style>
+/* BOVE KO LAYOUT V2 - COPIED FROM GROUPS */
+/* Same group proportions: 53 | 101 | 120 | 188.
+   KO splits time into two cells and results into two cells. */
+table:has(> tbody#Q),table:has(> tbody#S),table:has(> tbody#finaleBox){
+ width:462px !important;min-width:462px !important;max-width:462px !important;
+ table-layout:fixed !important;border-collapse:collapse !important;border-spacing:0 !important;
+}
+table:has(> tbody#Q) th,table:has(> tbody#Q) td,table:has(> tbody#S) th,table:has(> tbody#S) td,table:has(> tbody#finaleBox) th,table:has(> tbody#finaleBox) td{
+ box-sizing:border-box !important;padding:8px 4px !important;text-align:center !important;vertical-align:middle !important;border-bottom:1px solid #1f2a3c !important;
+}
+table:has(> tbody#Q) th:nth-child(1),table:has(> tbody#Q) td:nth-child(1),table:has(> tbody#S) th:nth-child(1),table:has(> tbody#S) td:nth-child(1),table:has(> tbody#finaleBox) th:nth-child(1),table:has(> tbody#finaleBox) td:nth-child(1){width:53px !important;}
+table:has(> tbody#Q) th:nth-child(2),table:has(> tbody#Q) td:nth-child(2),table:has(> tbody#S) th:nth-child(2),table:has(> tbody#S) td:nth-child(2),table:has(> tbody#finaleBox) th:nth-child(2),table:has(> tbody#finaleBox) td:nth-child(2){width:50.5px !important;}
+table:has(> tbody#Q) th:nth-child(3),table:has(> tbody#Q) td:nth-child(3),table:has(> tbody#S) th:nth-child(3),table:has(> tbody#S) td:nth-child(3),table:has(> tbody#finaleBox) th:nth-child(3),table:has(> tbody#finaleBox) td:nth-child(3){width:50.5px !important;}
+table:has(> tbody#Q) th:nth-child(4),table:has(> tbody#Q) td:nth-child(4),table:has(> tbody#S) th:nth-child(4),table:has(> tbody#S) td:nth-child(4),table:has(> tbody#finaleBox) th:nth-child(4),table:has(> tbody#finaleBox) td:nth-child(4){width:120px !important;}
+table:has(> tbody#Q) th:nth-child(5),table:has(> tbody#Q) td:nth-child(5),table:has(> tbody#S) th:nth-child(5),table:has(> tbody#S) td:nth-child(5),table:has(> tbody#finaleBox) th:nth-child(5),table:has(> tbody#finaleBox) td:nth-child(5){width:94px !important;}
+table:has(> tbody#Q) th:nth-child(6),table:has(> tbody#Q) td:nth-child(6),table:has(> tbody#S) th:nth-child(6),table:has(> tbody#S) td:nth-child(6),table:has(> tbody#finaleBox) th:nth-child(6),table:has(> tbody#finaleBox) td:nth-child(6){width:94px !important;}
+table:has(> tbody#Q) td input,table:has(> tbody#S) td input,table:has(> tbody#finaleBox) td input{width:45px !important;min-width:45px !important;max-width:45px !important;height:34px !important;margin:0 auto !important;padding:5px !important;box-sizing:border-box !important;}
+table:has(> tbody#Q) td:not(:last-child),table:has(> tbody#S) td:not(:last-child),table:has(> tbody#finaleBox) td:not(:last-child),table:has(> tbody#Q) th:not(:last-child),table:has(> tbody#S) th:not(:last-child),table:has(> tbody#finaleBox) th:not(:last-child){border-right:1px solid #243041 !important;}
+.finalContainer .card{overflow-x:hidden !important;scrollbar-width:none !important;}.finalContainer .card::-webkit-scrollbar{display:none !important;}
+</style>
+'''
+          text=text.replace('</head>',css+'\n</head>',1)
           p.write_text(text,encoding='utf-8')
 
       - name: Commit to main
@@ -137,5 +164,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Apply final empty tournament rendering fix'
+          git commit -m 'Apply group layout proportions to KO tables'
           git push origin HEAD:main
