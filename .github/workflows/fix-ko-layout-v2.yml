@@ -1,0 +1,120 @@
+name: Fix KO layout v2
+
+on:
+  push:
+    paths:
+      - 'Bove.html'
+      - '.github/workflows/fix-ko-layout-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Copy group proportions to KO
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('Bove.html')
+          text=p.read_text(encoding='utf-8')
+          marker='/* BOVE KO LAYOUT V2 - COPIED FROM GROUPS */'
+          if marker in text:
+              print('KO V2 already present')
+              raise SystemExit(0)
+          css=r'''
+<style>
+/* BOVE KO LAYOUT V2 - COPIED FROM GROUPS */
+/* Gironi: 53 | 101 | 120 | 188. KO keeps the same four visual blocks,
+   splitting Ora into 2 cells and Risultati into 2 cells. */
+table:has(> tbody#Q),
+table:has(> tbody#S),
+table:has(> tbody#finaleBox){
+  width:462px !important;
+  min-width:462px !important;
+  max-width:462px !important;
+  table-layout:fixed !important;
+  border-collapse:collapse !important;
+  border-spacing:0 !important;
+  box-sizing:border-box !important;
+}
+
+table:has(> tbody#Q) th,table:has(> tbody#Q) td,
+table:has(> tbody#S) th,table:has(> tbody#S) td,
+table:has(> tbody#finaleBox) th,table:has(> tbody#finaleBox) td{
+  box-sizing:border-box !important;
+  padding:8px 4px !important;
+  text-align:center !important;
+  vertical-align:middle !important;
+  border-bottom:1px solid #1f2a3c !important;
+}
+
+table:has(> tbody#Q) th:nth-child(1),table:has(> tbody#Q) td:nth-child(1),
+table:has(> tbody#S) th:nth-child(1),table:has(> tbody#S) td:nth-child(1),
+table:has(> tbody#finaleBox) th:nth-child(1),table:has(> tbody#finaleBox) td:nth-child(1){width:53px !important;}
+
+table:has(> tbody#Q) th:nth-child(2),table:has(> tbody#Q) td:nth-child(2),
+table:has(> tbody#S) th:nth-child(2),table:has(> tbody#S) td:nth-child(2),
+table:has(> tbody#finaleBox) th:nth-child(2),table:has(> tbody#finaleBox) td:nth-child(2){width:50.5px !important;}
+
+table:has(> tbody#Q) th:nth-child(3),table:has(> tbody#Q) td:nth-child(3),
+table:has(> tbody#S) th:nth-child(3),table:has(> tbody#S) td:nth-child(3),
+table:has(> tbody#finaleBox) th:nth-child(3),table:has(> tbody#finaleBox) td:nth-child(3){width:50.5px !important;}
+
+table:has(> tbody#Q) th:nth-child(4),table:has(> tbody#Q) td:nth-child(4),
+table:has(> tbody#S) th:nth-child(4),table:has(> tbody#S) td:nth-child(4),
+table:has(> tbody#finaleBox) th:nth-child(4),table:has(> tbody#finaleBox) td:nth-child(4){width:120px !important;}
+
+table:has(> tbody#Q) th:nth-child(5),table:has(> tbody#Q) td:nth-child(5),
+table:has(> tbody#S) th:nth-child(5),table:has(> tbody#S) td:nth-child(5),
+table:has(> tbody#finaleBox) th:nth-child(5),table:has(> tbody#finaleBox) td:nth-child(5){width:94px !important;}
+
+table:has(> tbody#Q) th:nth-child(6),table:has(> tbody#Q) td:nth-child(6),
+table:has(> tbody#S) th:nth-child(6),table:has(> tbody#S) td:nth-child(6),
+table:has(> tbody#finaleBox) th:nth-child(6),table:has(> tbody#finaleBox) td:nth-child(6){width:94px !important;}
+
+table:has(> tbody#Q) td input,
+table:has(> tbody#S) td input,
+table:has(> tbody#finaleBox) td input{
+  width:45px !important;
+  min-width:45px !important;
+  max-width:45px !important;
+  height:34px !important;
+  margin:0 auto !important;
+  padding:5px !important;
+  box-sizing:border-box !important;
+}
+
+table:has(> tbody#Q) td:not(:last-child),
+table:has(> tbody#S) td:not(:last-child),
+table:has(> tbody#finaleBox) td:not(:last-child),
+table:has(> tbody#Q) th:not(:last-child),
+table:has(> tbody#S) th:not(:last-child),
+table:has(> tbody#finaleBox) th:not(:last-child){
+  border-right:1px solid #243041 !important;
+}
+
+.finalContainer .card{
+  overflow-x:hidden !important;
+  scrollbar-width:none !important;
+}
+.finalContainer .card::-webkit-scrollbar{display:none !important;}
+</style>
+'''
+          if '</head>' not in text: raise SystemExit('head non trovato')
+          text=text.replace('</head>',css+'\n</head>',1)
+          p.write_text(text,encoding='utf-8')
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          git diff --cached --check
+          git commit -m "Copy group layout proportions to KO"
+          git push origin HEAD:main
