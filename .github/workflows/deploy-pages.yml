@@ -200,6 +200,234 @@ jobs:
           else:
               print('Empty tournament patch already present')
 
+      - name: Apply definitive three fixes without replacing existing application functions
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p=Path('Bove.html')
+          text=p.read_text(encoding='utf-8')
+
+          css=r'''
+/* DEFINITIVE FIX: allineamento righe gironi */
+#Arows .team-line,#Brows .team-line,#Crows .team-line,#Drows .team-line,#Erows .team-line,#Frows .team-line,#Grows .team-line{
+    display:block;width:100%;height:1.35em;line-height:1.35em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+#Arows .match-cell,#Brows .match-cell,#Crows .match-cell,#Drows .match-cell,#Erows .match-cell,#Frows .match-cell,#Grows .match-cell{vertical-align:middle;}
+'''
+          if '/* DEFINITIVE FIX: allineamento righe gironi */' not in text:
+              text=text.replace('</style>',css+'\n</style>',1)
+
+          new_update=r'''function updateKOResult(type,index,valore){
+    ensureRules();
+    valore=String(valore ?? "").trim();
+    if(!valore) valore="-";
+    if(type==="Q"){
+        if(!Array.isArray(state.qRes)) state.qRes=Array(4).fill("-");
+        state.qRes[index]=valore;
+    }else if(type==="S"){
+        if(!Array.isArray(state.sTopRes)) state.sTopRes=Array(2).fill("-");
+        state.sTopRes[index]=valore;
+    }else if(type==="F"){
+        state.fTopRes=valore;
+    }
+    renderKO();
+    updateAndSync();
+}
+
+function updateKOScore(type,index,pos,valore){
+    ensureRules();
+    let key=null;
+    if(type==="Q") key="qRes";
+    else if(type==="S") key="sTopRes";
+    else if(type==="F") key="fTopRes";
+    else return;
+    let corrente;
+    if(key==="fTopRes") corrente=String(state.fTopRes ?? "-");
+    else{
+        if(!Array.isArray(state[key])) state[key]=key==="qRes" ? Array(4).fill("-") : Array(2).fill("-");
+        corrente=String(state[key][index] ?? "-");
+    }
+    let parti=corrente.split("-");
+    if(parti.length!==2) parti=["",""];
+    parti[pos]=String(valore ?? "").trim();
+    const risultato=(parti[0]==="" && parti[1]==="") ? "-" : (parti[0]+"-"+parti[1]);
+    if(key==="fTopRes") state.fTopRes=risultato;
+    else state[key][index]=risultato;
+    renderKO();
+    updateAndSync();
+}
+'''
+          text,n=re.subn(r'function updateKOResult\(type,index,valore\)\{.*?\n\}\s*function getWinner\(',new_update+'\nfunction getWinner(',text,count=1,flags=re.S)
+          if n!=1: raise SystemExit('updateKOResult non trovato: stop sicuro')
+
+          new_card=r'''function renderMatchCard(titolo,match,type,index,risultato){
+    const res=risultato || "-";
+    const campKey={Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];
+    const timeKey={Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];
+    const camp=Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
+    const time=Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
+    const parti=String(res).split("-");
+    const scoreA=parti[0] === "-" ? "" : (parti[0] || "");
+    const scoreB=parti.length>1 ? (parti[1] || "") : "";
+    const winner=getWinner(match,res);
+    const stato=winner ? "Terminata" : "Da giocare";
+    return `
+<tr>
+    <td><input value="${String(camp).replace(/"/g,"&quot;")}" style="width:45px" onchange="updateKOField('${type}',${index},'camp',this.value)"></td>
+    <td><input value="${String(time).replace(/"/g,"&quot;")}" style="width:80px" onchange="updateKOField('${type}',${index},'time',this.value)"></td>
+    <td class="match-cell">
+        <div class="team-line">${formatCoppiaDisplay(match[0])}</div>
+        <div class="vs-line"><b>VS</b></div>
+        <div class="team-line">${formatCoppiaDisplay(match[1])}</div>
+        <div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>
+        ${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}
+    </td>
+    <td class="db-cell">
+        <input type="text" inputmode="numeric" value="${String(scoreA).replace(/"/g,"&quot;")}" placeholder="0" aria-label="Risultato primo giocatore" onchange="updateKOScore('${type}',${index},0,this.value)" style="width:35px;text-align:center">
+        <input type="text" inputmode="numeric" value="${String(scoreB).replace(/"/g,"&quot;")}" placeholder="0" aria-label="Risultato secondo giocatore" onchange="updateKOScore('${type}',${index},1,this.value)" style="width:35px;text-align:center">
+    </td>
+</tr>`;
+}
+'''
+          text,n=re.subn(r'function renderMatchCard\(titolo,match,type,index,risultato\)\{.*?\n\}\s*function applicaModelloTorneo\(',new_card+'\nfunction applicaModelloTorneo(',text,count=1,flags=re.S)
+          if n!=1: raise SystemExit('renderMatchCard non trovato: stop sicuro')
+
+          text=text.replace('const {data:torneo,error}=await sb.from("tornei").select("*").eq("id",Number(idParam)).single();','const {data:torneo,error}=await sb.from("tornei").select("*").eq("id",Number(idParam)).maybeSingle();',1)
+          marker='''                    state.coppie=Array.isArray(configurazione.coppie)?configurazione.coppie:[];
+                    state.partecipanti=Array.isArray(configurazione.partecipanti)?configurazione.partecipanti:[];
+                }
+            }catch(err){console.error("Errore recupero torneo Supabase:",err);}'''
+          replacement='''                    state.coppie=Array.isArray(configurazione.coppie)?configurazione.coppie:[];
+                    state.partecipanti=Array.isArray(configurazione.partecipanti)?configurazione.partecipanti:[];
+                }else{
+                    console.warn("TORNEO REMOTO NON TROVATO:",idParam);
+                    state.idTorneo=Number(idParam);
+                    state.nomeTorneo="";
+                    state.dataTorneo="";
+                    state.coppie=[];
+                    state.partecipanti=[];
+                    state.iscritti=[];
+                    state.rules={...(state.rules||{}),numeroSquadre:0,numeroGironi:0,squadrePerGirone:0,formatoTorneo:""};
+                    configurazione=null;
+                }
+            }catch(err){console.error("Errore recupero torneo Supabase:",err);}'''
+          if marker not in text: raise SystemExit('Blocco torneo remoto non trovato: stop sicuro')
+          text=text.replace(marker,replacement,1)
+
+          old_guard='''                let vecchioCompleto =
+
+                    Array.isArray(vecchio.A) &&
+                    vecchio.A.length>0 &&
+
+                    Array.isArray(vecchio.B) &&
+                    vecchio.B.length>0;
+
+
+
+                let nuovoVuoto =
+
+                    !Array.isArray(state.A) ||
+                    state.A.length===0 ||
+
+                    !Array.isArray(state.B) ||
+                    state.B.length===0;
+
+
+
+                if(
+                    vecchioCompleto &&
+                    nuovoVuoto
+                ){'''
+          new_guard='''                const stessoTorneo = vecchio.idTorneo != null && state.idTorneo != null && String(vecchio.idTorneo) === String(state.idTorneo);
+
+                let vecchioCompleto =
+
+                    Array.isArray(vecchio.A) &&
+                    vecchio.A.length>0 &&
+
+                    Array.isArray(vecchio.B) &&
+                    vecchio.B.length>0;
+
+
+
+                let nuovoVuoto =
+
+                    !Array.isArray(state.A) ||
+                    state.A.length===0 ||
+
+                    !Array.isArray(state.B) ||
+                    state.B.length===0;
+
+
+
+                if(
+                    stessoTorneo &&
+                    vecchioCompleto &&
+                    nuovoVuoto
+                ){'''
+          if old_guard not in text: raise SystemExit('Protezione updateAndSync non trovata: stop sicuro')
+          text=text.replace(old_guard,new_guard,1)
+
+          init_marker='''        let salvato =
+            idTorneo
+                ? null
+                : localStorage.getItem(
+                    "torneoState"
+                );'''
+          init_replacement='''        let salvato =
+            idTorneo
+                ? null
+                : localStorage.getItem(
+                    "torneoState"
+                );
+
+        if(salvato){
+            try{
+                const locale=JSON.parse(salvato);
+                if(locale && state.idTorneo != null && locale.idTorneo != null && String(locale.idTorneo)!==String(state.idTorneo)){
+                    salvato=null;
+                    localStorage.removeItem("torneoState");
+                    localStorage.removeItem("savedTeams");
+                }
+            }catch(e){
+                salvato=null;
+                localStorage.removeItem("torneoState");
+            }
+        }'''
+          if init_marker in text: text=text.replace(init_marker,init_replacement,1)
+
+          p.write_text(text,encoding='utf-8')
+          print('DEFINITIVE FIXES APPLIED')
+
+      - name: Remove obsolete repair workflows
+        shell: bash
+        run: |
+          for f in \
+            .github/workflows/apply-tabellone-fix.yml \
+            .github/workflows/bove-repair.yml \
+            .github/workflows/final-bove-repair.yml \
+            .github/workflows/fix-empty-structure.yml \
+            .github/workflows/fix-pair-names.yml \
+            .github/workflows/layout-fix.yml \
+            .github/workflows/one-time-admin-fix.yml \
+            .github/workflows/one-time-bove-repair.yml \
+            .github/workflows/one-time-ko-flow-fix.yml \
+            .github/workflows/one-time-ko-winner-fix.yml \
+            .github/workflows/one-time-pair-name-fix.yml \
+            .github/workflows/one-time-save-reset.yml \
+            .github/workflows/one-time-save-reset-push.yml \
+            .github/workflows/repair-on-comment.yml \
+            .github/workflows/repair-on-pr.yml \
+            .github/workflows/repair-classification.yml \
+            .github/workflows/restore-renderclass.yml \
+            .github/workflows/definitive-bove-fix.yml \
+            .github/workflows/definitive-bove-fix2.yml; do
+              [ -f "$f" ] && rm -f "$f" || true
+          done
+
       - name: Validate JavaScript
         shell: python
         run: |
@@ -216,18 +444,19 @@ jobs:
                   raise SystemExit(f'Sintassi JS non valida nello script {i}')
           print('SINTASSI JS OK')
 
-      - name: Commit repaired Bove
+      - name: Commit repaired Bove and workflow cleanup
         shell: bash
         run: |
-          if git diff --quiet -- Bove.html; then
-            echo 'Bove gia aggiornato'
-            exit 0
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Bove.html
-          git commit -m 'Fix empty tournament visual structure'
-          git push
+          git add Bove.html .github/workflows
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'Definitive tournament display and state fixes'
+            git push
+          else
+            echo 'Nessuna modifica da committare'
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
