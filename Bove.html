@@ -151,17 +151,47 @@ input{width:100%;padding:8px;border-radius:4px;background:#0b1220;border:1px sol
   const supabaseUrl = 'https://iybjvtmfaupgthqqsngd.supabase.co';
   const supabaseKey = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
 
-  const sb = supabase.createClient(supabaseUrl, supabaseKey, {
-      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
-  });
+  const sb = supabase.createClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+          auth:{
+              persistSession:true,
+              autoRefreshToken:true,
+              detectSessionInUrl:true
+          }
+      }
+  );
 
 window.addEventListener("DOMContentLoaded", () => {
     async function verifyAccess(){
         const { data: { session } } = await sb.auth.getSession();
-        if(!session){ bloccaGestionale(); return; }
+        if(!session){
+            console.warn("Nessun utente autenticato");
+            bloccaGestionale();
+            return;
+        }
         const userId = session.user.id;
-        const { data: profilo, error } = await sb.from("profili").select("nome, ruolo").eq("user_id", userId).single();
-        if(error || !profilo || profilo.ruolo !== "admin"){ bloccaGestionale(); return; }
+        const { data: profilo, error } = await sb
+            .from("profili")
+            .select("nome, ruolo")
+            .eq("user_id", userId)
+            .single();
+
+        console.log("RISULTATO PROFILO:", profilo, error);
+
+        if(error || !profilo){
+            console.warn("Profilo amministratore non trovato");
+            bloccaGestionale();
+            return;
+        }
+
+        if(profilo.ruolo !== "admin"){
+            console.warn("Utente senza permessi admin:", profilo);
+            bloccaGestionale();
+            return;
+        }
+        console.log("ACCESSO ADMIN:", profilo.nome);
     }
     verifyAccess();
 });
@@ -173,6 +203,7 @@ function bloccaGestionale(){
             el.style.opacity = "0.6";
         }
     });
+    console.warn("Gestionale bloccato: serve un amministratore");
 }
 </script>
 </head>
@@ -189,19 +220,90 @@ function bloccaGestionale(){
 
 <div id="rulesModal" class="modal">
   <div class="modal-content">
-    <h3>⚙️ Regolamento e Criteri</h3>
-    <button class="back" onclick="closeRules()" style="width:100%; margin-top:15px;">Chiudi</button>
+    <h3>
+      ⚙️ Regolamento e Criteri
+      <button 
+        onclick="
+          let m=document.getElementById('manualeRegole');
+          m.style.display = m.style.display==='none' ? 'block' : 'none';
+        "
+        style="
+          background:none;
+          border:none;
+          cursor:pointer;
+          font-size:20px;
+          padding:0;
+          margin-left:8px;
+        ">
+        💡
+      </button>
+    </h3>
+
+    <div id="manualeRegole"
+      style="
+        display:none;
+        margin:15px 0;
+        padding:12px;
+        background:#0b1220;
+        border:1px solid #2563eb;
+        border-radius:8px;
+        font-size:13px;
+        line-height:1.5;
+      ">
+      <h4>💡 Manuale Istruzioni Torneo</h4>
+      <p><b>Configurazione automatica:</b><br>Il sistema crea automaticamente gironi, calendario, classifiche e fase finale in base al formato scelto (8, 12 o 16 squadre).</p>
+    </div>
+
+    <hr style="margin:15px 0;">
+    <h4>🏟️ Struttura Torneo</h4>
+    <label>Scegli formula preimpostata:</label>
+    <select id="tipoTorneo" onchange="applicaModelloTorneo(); aggiornaDescrizioneTipoTorneo()" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
+      <option value="">Seleziona formato torneo</option>
+      <option value="italiana">🇮🇹 Torneo all'italiana</option>
+      <option value="gironiFinale">🏆 Gironi + Fase Finale</option>
+      <option value="eliminazione">⚔️ Eliminazione Diretta</option>
+      <option value="svizzero">🇨🇭 Torneo Svizzero</option>
+      <option value="americano">🎾 Americano Padel</option>
+      <option value="mexicano">🇲🇽 Mexicano Padel</option>
+      <option value="king">👑 King of the Court</option>
+      <option value="short">⏱ Short Format</option>
+      <option value="manuale">⚙️ Torneo Personalizzato</option>
+    </select>
+
+    <div id="descrizioneTipoTorneo" style="margin-top:15px;padding:12px;background:#0b1220;border:1px solid #334155;border-radius:8px;font-size:13px;line-height:1.5;">
+      Seleziona una formula per visualizzare la descrizione.
+    </div>
+
+    <label>Formato torneo:</label>
+    <select id="formatoTorneo" onchange="setFormat(this.value)" style="width:100%;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;">
+      <option value="8">8 Squadre</option>
+      <option value="12">12 Squadre</option>
+      <option value="16">16 Squadre</option>
+      <option value="20">20 Squadre</option>
+      <option value="24">24 Squadre</option>
+    </select>
+
+    <label style="display:block;margin-top:10px;">Numero gironi:</label>
+    <input id="numeroGironi" type="number" min="1" value="2">
+
+    <label style="display:block;margin-top:10px;">Squadre per girone:</label>
+    <input id="squadrePerGirone" type="number" min="1" value="4">
+
+    <button onclick="applyRules(); salvaTorneoSupabase()" style="width:100%;margin-top:15px;background:#2563eb;">💾 Salva Regole</button>
+    <button class="back" onclick="closeRules()" style="width:100%;margin-top:5px;">Chiudi</button>
   </div>
 </div>
 
 <div id="formatModal" class="modal">
-<div class="modal-content">
-<h3>Seleziona Formato</h3>
-<button onclick="setFormat(8)" style="width:100%;margin:5px 0;">8 Squadre</button>
-<button onclick="setFormat(12)" style="width:100%;margin:5px 0;">12 Squadre</button>
-<button onclick="setFormat(16)" style="width:100%;margin:5px 0;">16 Squadre</button>
-<button class="back" onclick="document.getElementById('formatModal').style.display='none'" style="width:100%;margin:5px 0;">Chiudi</button>
-</div>
+  <div class="modal-content">
+    <h3>Seleziona Formato</h3>
+    <button onclick="setFormat(8)" style="width:100%;margin:5px 0;">8 Squadre</button>
+    <button onclick="setFormat(12)" style="width:100%;margin:5px 0;">12 Squadre</button>
+    <button onclick="setFormat(16)" style="width:100%;margin:5px 0;">16 Squadre</button>
+    <button onclick="setFormat(20)" style="width:100%;margin:5px 0;">20 Squadre</button>
+    <button onclick="setFormat(24)" style="width:100%;margin:5px 0;">24 Squadre</button>
+    <button class="back" onclick="document.getElementById('formatModal').style.display='none'" style="width:100%;margin:5px 0;">Chiudi</button>
+  </div>
 </div>
 
 <div class="container">
@@ -222,17 +324,19 @@ function bloccaGestionale(){
       <div class="subtitle">Roberto Bove<br>Director & Event Organizer</div>
     </div>
     <div style="text-align:center; width: 100%;">
-      <h1 id="titoloTorneo" style="margin:0;font-size:1.4rem;">🏆 Torneo Amatoriale Padel</h1>
-      <div id="nomeFormulaTorneo" style="font-size:12px;color:#60a5fa;font-weight:bold;margin-top:4px;"></div>
+      <div style="position:relative;width:100%;">
+        <h1 id="titoloTorneo" style="margin:0;font-size:1.4rem;">🏆 Torneo Amatoriale Padel</h1>
+        <div id="nomeFormulaTorneo" style="font-size:12px;color:#60a5fa;font-weight:bold;margin-top:4px;"></div>
+      </div>
       <input type="text" id="nomeTorneoInput" placeholder="Nome Torneo" onblur="state.nomeTorneo=this.value" class="date-input-field" style="width:200px;margin:10px auto 0;display:block;">
-      <div style="display:flex;justify-content:center;gap:15px;margin-top:8px;">
+      <div style="display:flex;justify-content:center;gap:15px;margin-top:5px;">
         <div style="text-align:center;">
           <div style="font-size:0.7rem;color:#94a3b8;margin-bottom:2px;">Data prevista:</div>
           <input type="date" class="date-input-field">
         </div>
         <div style="text-align:center;">
           <div style="font-size:0.7rem;color:#94a3b8;margin-bottom:2px;">Start ore:</div>
-          <input type="time" class="date-input-field" value="20:00" style="width:90px">
+          <input type="time" class="date-input-field" value="20:00" style="width:80px">
         </div>
       </div>
     </div>
@@ -247,30 +351,79 @@ function bloccaGestionale(){
       <table id="B"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Brows"></tbody></table>
       <table style="margin-top:20px;"><thead><tr><th>Girone B</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Bclass"></tbody></table>
     </div>
+    <div class="card" id="cardC" style="display:none;">
+      <table id="C"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Crows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone C</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Cclass"></tbody></table>
+    </div>
+    <div class="card" id="cardD" style="display:none;">
+      <table id="D"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Drows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone D</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Dclass"></tbody></table>
+    </div>
+    <div class="card" id="cardE" style="display:none;">
+      <table id="E"><thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead><tbody id="Erows"></tbody></table>
+      <table style="margin-top:20px;"><thead><tr><th>Girone E</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead><tbody id="Eclass"></tbody></table>
+    </div>
+    <div class="card" id="cardF" style="display:none;">
+      <table id="F">
+        <thead><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
+        <tbody id="Frows"></tbody>
+      </table>
+      <table style="margin-top:20px;">
+        <thead><tr><th>Girone F</th><th>PT</th><th>GF</th><th>GS</th><th>DR</th></tr></thead>
+        <tbody id="Fclass"></tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Box tornei speciali puliti da ID duplicati -->
+  <div class="card" id="svizzeroBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">🇨🇭 Torneo Svizzero</h2>
+    <div id="svizzeroContenuto"></div>
+  </div>
+
   <div class="card" id="americanoBox" style="display:none;margin-top:20px;">
-      <h2 style="text-align:center;">🎾 Americano Padel</h2>
-      <div id="americanoContenuto"></div>
+    <h2 style="text-align:center;">🎾 Americano Padel</h2>
+    <div id="americanoContenuto"></div>
+  </div>
+  <div class="card" id="mexicanoBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">🇲🇽 Mexicano Padel</h2>
+    <div id="mexicanoContenuto"></div>
+  </div>
+  <div class="card" id="kingBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">👑 King of the Court</h2>
+    <div id="kingContenuto"></div>
+  </div>
+  <div class="card" id="shortBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;">⏱ Short Format</h2>
+    <div id="shortContenuto"></div>
+  </div>
+
+  <div class="card" id="formulaTorneoBox" style="display:none;margin-top:20px;">
+    <h2 style="text-align:center;" id="formulaTorneoTitolo"></h2>
+    <div id="formulaTorneoContenuto"></div>
   </div>
 
   <div class="finalContainer">
-      <h2 style="text-align:center;margin-top:0;">🏆 Fase Finale</h2>
-      <div class="groups">
-          <div class="card">
-              <table>
-                  <thead><tr><th colspan="4">SEMIFINALI</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
-                  <tbody id="S"></tbody>
-              </table>
-          </div>
-          <div class="card">
-              <table>
-                  <thead><tr><th colspan="4">FINALE</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
-                  <tbody id="finaleBox"></tbody>
-              </table>
-          </div>
-      </div>
+    <h2 style="text-align:center;margin-top:0;">🏆 Fase Finale</h2>
+    <div class="groups">
+        <div class="card">
+            <table>
+                <thead><tr><th colspan="4">QUARTI DI FINALE</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
+                <tbody id="Q"></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th colspan="4">SEMIFINALI</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
+                <tbody id="S"></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th colspan="4">FINALE</th></tr><tr><th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th></tr></thead>
+                <tbody id="finaleBox"></tbody>
+            </table>
+        </div>
+    </div>
   </div>
 </div>
 </body>
