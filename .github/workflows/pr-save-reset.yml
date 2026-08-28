@@ -1,0 +1,78 @@
+name: Permanent Bove save reset patch
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Patch Bove.html
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('Bove.html'); text=p.read_text(encoding='utf-8')
+          if 'function salvaTorneoPersistente()' not in text:
+            pat=r'(<div id="menuComandi"\s+class="menu-dropdown">.*?)(\n\s*</div>)'
+            ins=r'''\1
+    <button id="boveSalvaTorneoBtn" type="button" onclick="salvaTorneoPersistente()">💾 Salva torneo</button>
+    <button id="boveResetTorneoBtn" type="button" onclick="resetTorneoPersistente()" style="background:#dc2626;">🗑️ Reset completo</button>\2'''
+            text,n=re.subn(pat,ins,text,count=1,flags=re.S)
+            if n!=1: raise SystemExit('menuComandi non trovato')
+            helper=r'''
+<script>
+async function salvaTorneoPersistente(){
+ try{
+  if(typeof state==='undefined'||!state){alert('❌ Stato torneo non disponibile.');return false;}
+  if(!state.idTorneo){alert('❌ Il torneo non ha un ID.');return false;}
+  const snapshot=JSON.parse(JSON.stringify(state));
+  localStorage.setItem('torneoState',JSON.stringify(snapshot));
+  if(Array.isArray(snapshot.A)&&Array.isArray(snapshot.B))localStorage.setItem('savedTeams',JSON.stringify([...snapshot.A,...snapshot.B]));
+  if(typeof sb!=='undefined'){const {error}=await sb.from('tornei').upsert({id:snapshot.idTorneo,nome:snapshot.nomeTorneo||'Torneo',data:snapshot.dataTorneo||null,stato:'attivo',configurazione:snapshot},{onConflict:'id'});if(error){alert('❌ Salvataggio server fallito:\n\n'+error.message);return false;}}
+  const v=JSON.parse(localStorage.getItem('torneoState')||'null');if(!v||String(v.idTorneo)!==String(snapshot.idTorneo)){alert('❌ Verifica salvataggio fallita.');return false;}
+  alert('✅ TORNEO SALVATO\n\nTutti i dati sono stati salvati.');return true;
+ }catch(e){console.error(e);alert('❌ Errore salvataggio:\n\n'+e.message);return false;}
+}
+async function resetTorneoPersistente(){
+ if(!confirm('⚠️ RESET COMPLETO E TOTALE\n\nVerranno cancellati tutti i dati del torneo, anche dal server.\n\nContinuare?'))return false;
+ const id=(typeof state!=='undefined'&&state)?state.idTorneo:null;
+ try{
+  if(id&&typeof sb!=='undefined'){const {error}=await sb.from('tornei').delete().eq('id',id);if(error){alert('❌ Reset server fallito:\n\n'+error.message);return false;}}
+  ['torneoState','savedTeams','torneo','torneoCorrente','currentTournament','currentTorneo','partiteGironi','torneoData'].forEach(k=>localStorage.removeItem(k));
+  try{const raw=localStorage.getItem('padel_admin_state');if(raw){const a=JSON.parse(raw);if(id&&String(a.torneoSelezionato)===String(id))a.torneoSelezionato=null;if(Array.isArray(a.tornei)&&id)a.tornei=a.tornei.filter(t=>String(t.id)!==String(id));localStorage.setItem('padel_admin_state',JSON.stringify(a));}}catch(e){}
+  state={formato:0,idTorneo:null,nomeTorneo:'',dataTorneo:'',A:[],B:[],C:[],D:[],E:[],F:[],Ares:[],Bres:[],Cres:[],Dres:[],Eres:[],Fres:[],Atime:[],Btime:[],Ctime:[],Dtime:[],Etime:[],Ftime:[],Acamp:[],Bcamp:[],Ccamp:[],Dcamp:[],Ecamp:[],Fcamp:[],qRes:Array(4).fill('-'),sTopRes:Array(2).fill('-'),fTopRes:'-',qCamp:Array(4).fill(''),qTime:Array(4).fill(''),sTopCamp:Array(2).fill(''),sTopTime:Array(2).fill(''),fTopCamp:[''],fTopTime:[''],finalTop:[],campioneTop:null,svizzero:null,americano:null,mexicano:null,king:null,short:null,partiteGironi:{},rules:{locked:false,tipoTorneo:'',formulaGironi:'',formulaFinale:'',numeroSquadre:0,numeroGironi:0,qualificatePerGirone:0,numeroQualificateFinali:0,usaQuarti:false,usaSemifinali:false,usaFinale:false}};
+  ['Arows','Brows','Crows','Drows','Erows','Frows','Q','S','finaleBox'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+  ['cardA','cardB','cardC','cardD','cardE','cardF'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  const ni=document.getElementById('nomeTorneoInput');if(ni)ni.value='';
+  localStorage.setItem('torneoState',JSON.stringify(state));
+  if(typeof aggiornaNomeFormulaTorneo==='function')aggiornaNomeFormulaTorneo();
+  if(typeof renderKO==='function')renderKO();
+  alert('✅ RESET COMPLETO ESEGUITO\n\nIl vecchio torneo non verrà recuperato al prossimo ingresso.');return true;
+ }catch(e){console.error(e);alert('❌ Errore reset:\n\n'+e.message);return false;}
+}
+</script>
+'''
+            text=text.replace('</body>',helper+'\n</body>',1)
+          p.write_text(text,encoding='utf-8')
+      - name: Validate
+        shell: bash
+        run: |
+          grep -q 'id="boveSalvaTorneoBtn"' Bove.html
+          grep -q 'function salvaTorneoPersistente()' Bove.html
+          grep -q 'function resetTorneoPersistente()' Bove.html
+      - name: Commit permanent change and remove temporary workflows
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/pr-save-reset.yml .github/workflows/one-time-save-reset.yml || true
+          git add Bove.html
+          git commit -m 'Add permanent tournament save and complete reset'
+          git push origin HEAD:main
