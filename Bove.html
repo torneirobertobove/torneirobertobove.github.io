@@ -8448,14 +8448,20 @@ function updateKOResult(type,index,valore,pos){
 
     else if(type === "F"){
 
-        state.fTopRes = valore;
+        let res = String(state.fTopRes || "-").split("-");
+
+        if(res.length !== 2)
+            res = ["",""];
+
+        res[pos] = valore;
+
+        state.fTopRes = res.join("-");
 
     }
 
     renderKO();
 
     updateAndSync();
-
 }
                    
 function getWinner(match,res){
@@ -10439,26 +10445,94 @@ function renderMatchCard(titolo, match, type, index, risultato){
         ? "Terminata"
         : "Da giocare";
 
+    const oraParti = String(time || "").split(":");
+    const ore = oraParti[0] || "";
+    const minuti = oraParti[1] || "";
+
+    const cellStyle = `
+        width:45px !important;
+        min-width:45px !important;
+        max-width:45px !important;
+        height:34px !important;
+        min-height:34px !important;
+        max-height:34px !important;
+        padding:0 !important;
+        margin:0 !important;
+        box-sizing:border-box !important;
+        text-align:center;
+        vertical-align:middle;
+    `;
+
+    const inputStyle = `
+        width:45px !important;
+        min-width:45px !important;
+        max-width:45px !important;
+        height:34px !important;
+        min-height:34px !important;
+        max-height:34px !important;
+        padding:4px !important;
+        margin:0 !important;
+        box-sizing:border-box !important;
+        text-align:center;
+    `;
+
     return `
 <tr>
 
-    <td>
+    <!-- CAMPO -->
+    <td style="${cellStyle}">
         <input
+            type="text"
             value="${String(camp).replace(/"/g,"&quot;")}"
-            style="width:45px"
             onchange="updateKOField('${type}',${index},'camp',this.value)"
+            style="${inputStyle}"
         >
     </td>
 
-    <td>
+    <!-- ORA -->
+    <td style="${cellStyle}">
         <input
-            value="${String(time).replace(/"/g,"&quot;")}"
-            style="width:80px"
-            onchange="updateKOField('${type}',${index},'time',this.value)"
+            type="text"
+            value="${String(ore).replace(/"/g,"&quot;")}"
+            onchange="
+                updateKOField(
+                    '${type}',
+                    ${index},
+                    'time',
+                    this.value + ':' +
+                    this.parentElement.nextElementSibling.querySelector('input').value
+                )
+            "
+            style="${inputStyle}"
         >
     </td>
 
-    <td class="match-cell">
+    <!-- MINUTI -->
+    <td style="${cellStyle}">
+        <input
+            type="text"
+            value="${String(minuti).replace(/"/g,"&quot;")}"
+            onchange="
+                updateKOField(
+                    '${type}',
+                    ${index},
+                    'time',
+                    this.parentElement.previousElementSibling.querySelector('input').value
+                    + ':' + this.value
+                )
+            "
+            style="${inputStyle}"
+        >
+    </td>
+
+    <!-- MATCH -->
+    <td
+        class="match-cell"
+        style="
+            vertical-align:middle;
+            text-align:center;
+        "
+    >
 
         <div class="team-line">
             ${formatCoppiaDisplay(match[0])}
@@ -10472,7 +10546,11 @@ function renderMatchCard(titolo, match, type, index, risultato){
             ${formatCoppiaDisplay(match[1])}
         </div>
 
-        <div style="font-size:12px;opacity:.7;margin-top:4px;">
+        <div style="
+            font-size:12px;
+            opacity:.7;
+            margin-top:4px;
+        ">
             ${stato}
         </div>
 
@@ -10486,44 +10564,24 @@ function renderMatchCard(titolo, match, type, index, risultato){
 
     </td>
 
-    <td class="db-cell">
+    <!-- RISULTATO SQUADRA 1 -->
+    <td style="${cellStyle}">
+        <input
+            type="text"
+            value="${String(risultato1).replace(/"/g,"&quot;")}"
+            onchange="updateKOResult('${type}',${index},this.value,0)"
+            style="${inputStyle}"
+        >
+    </td>
 
-        <div style="
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-            gap:6px;
-        ">
-
-            <input
-                type="text"
-                value="${String(risultato1).replace(/"/g,"&quot;")}"
-                onchange="updateKOResult('${type}',${index},this.value,0)"
-                style="
-                    width:35px !important;
-                    min-width:35px !important;
-                    max-width:35px !important;
-                    text-align:center;
-                    margin:0 auto;
-                "
-            >
-
-            <input
-                type="text"
-                value="${String(risultato2).replace(/"/g,"&quot;")}"
-                onchange="updateKOResult('${type}',${index},this.value,1)"
-                style="
-                    width:35px !important;
-                    min-width:35px !important;
-                    max-width:35px !important;
-                    text-align:center;
-                    margin:0 auto;
-                "
-            >
-
-        </div>
-
+    <!-- RISULTATO SQUADRA 2 -->
+    <td style="${cellStyle}">
+        <input
+            type="text"
+            value="${String(risultato2).replace(/"/g,"&quot;")}"
+            onchange="updateKOResult('${type}',${index},this.value,1)"
+            style="${inputStyle}"
+        >
     </td>
 
 </tr>
