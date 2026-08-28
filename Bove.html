@@ -10042,79 +10042,112 @@ function renderKO(){
 }
 
 function renderMatchCard(titolo, match, type, index, risultato){
-const res = risultato || "-";
 
-const campKey = { Q:"qCamp", S:"sTopCamp", F:"fTopCamp" }[type];
-const timeKey = { Q:"qTime", S:"sTopTime", F:"fTopTime" }[type];
+    const res = String(risultato || "-").trim();
 
-const camp = Array.isArray(state[campKey])
-    ? (state[campKey][index] || "")
-    : "";
+    const campKey = { Q:"qCamp", S:"sTopCamp", F:"fTopCamp" }[type];
+    const timeKey = { Q:"qTime", S:"sTopTime", F:"fTopTime" }[type];
 
-const time = Array.isArray(state[timeKey])
-    ? (state[timeKey][index] || "")
-    : "";
+    const camp = Array.isArray(state[campKey])
+        ? (state[campKey][index] || "")
+        : "";
 
-// Protezione: evita "undefined / undefined"
-const team1 = Array.isArray(match) && match[0] ? match[0] : null;
-const team2 = Array.isArray(match) && match[1] ? match[1] : null;
+    const time = Array.isArray(state[timeKey])
+        ? (state[timeKey][index] || "")
+        : "";
 
-const team1Display = team1
-    ? formatCoppiaDisplay(team1)
-    : "Da definire";
+    const team1 = Array.isArray(match) && match[0]
+        ? match[0]
+        : "";
 
-const team2Display = team2
-    ? formatCoppiaDisplay(team2)
-    : "Da definire";
+    const team2 = Array.isArray(match) && match[1]
+        ? match[1]
+        : "";
 
-const winner = Array.isArray(match) ? getWinner(match, risultato) : null;
-const stato = winner ? "Terminata" : "Da giocare";
+    const team1Display = team1
+        ? formatCoppiaDisplay(team1)
+        : "";
 
-return `
+    const team2Display = team2
+        ? formatCoppiaDisplay(team2)
+        : "";
 
+    const winner = getWinner(match, risultato);
+    const stato = winner ? "Terminata" : "Da giocare";
+
+    /*
+       RISULTATO:
+       "5-4"  -> risultato1 = 5, risultato2 = 4
+    */
+    const parti = res.split("|")[0].split("-");
+
+    const risultato1 = parti[0] !== undefined && parti[0] !== ""
+        ? parti[0].trim()
+        : "";
+
+    const risultato2 = parti[1] !== undefined && parti[1] !== ""
+        ? parti[1].trim()
+        : "";
+
+    return `
 <tr>
+
     <td>
         <input
-            value="${String(camp).replace(/"/g, "&quot;")}"
+            value="${String(camp).replace(/"/g,"&quot;")}"
             style="width:45px"
-            onchange="updateKOField('${type}', ${index}, 'camp', this.value)">
+            onchange="updateKOField('${type}',${index},'camp',this.value)">
     </td>
 
-<td>
-    <input
-        value="${String(time).replace(/"/g, "&quot;")}"
-        style="width:80px"
-        onchange="updateKOField('${type}', ${index}, 'time', this.value)">
-</td>
+    <td>
+        <input
+            value="${String(time).replace(/"/g,"&quot;")}"
+            style="width:80px"
+            onchange="updateKOField('${type}',${index},'time',this.value)">
+    </td>
 
-<td class="match-cell">
-    <div class="team-line">${team1Display}</div>
-    <div class="vs-line"><b>VS</b></div>
-    <div class="team-line">${team2Display}</div>
+    <td class="match-cell">
 
-    <div style="font-size:12px;opacity:.7;margin-top:4px;">
-        ${stato}
-    </div>
+        <div class="team-line">${team1Display}</div>
 
-    ${winner
-        ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>`
-        : ""
-    }
-</td>
+        <div class="vs-line">
+            <b>VS</b>
+        </div>
 
-<td class="db-cell">
-    <input
-        type="text"
-        value="${String(res).replace(/"/g, "&quot;")}"
-        onchange="updateKOResult('${type}', ${index}, this.value)"
-        style="width:70px;text-align:center">
-</td>
+        <div class="team-line">${team2Display}</div>
 
+        <div style="font-size:12px;opacity:.7;margin-top:4px;">
+            ${stato}
+        </div>
+
+        ${winner
+            ? `<div class="winner-box">
+                🏆 Passa: ${formatCoppiaDisplay(winner)}
+               </div>`
+            : ""
+        }
+
+    </td>
+
+    <td class="db-cell">
+        <input
+            type="text"
+            value="${String(risultato1).replace(/"/g,"&quot;")}"
+            onchange="updateKOResultPart('${type}',${index},1,this.value)"
+            style="width:35px;text-align:center">
+    </td>
+
+    <td class="db-cell">
+        <input
+            type="text"
+            value="${String(risultato2).replace(/"/g,"&quot;")}"
+            onchange="updateKOResultPart('${type}',${index},2,this.value)"
+            style="width:35px;text-align:center">
+    </td>
 
 </tr>
 `;
 }
-
 
                    
 function applicaModelloTorneo(){
