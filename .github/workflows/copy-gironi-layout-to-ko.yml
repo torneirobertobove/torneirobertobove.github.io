@@ -1,0 +1,138 @@
+name: Copy Gironi layout to KO
+on:
+  push:
+    paths:
+      - '.github/workflows/copy-gironi-layout-to-ko.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy Gironi geometry to KO
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('Bove.html')
+          s=p.read_text()
+
+          # Replace the whole KO CSS block with the exact 4-column geometry
+          # of the gironi, expanding Ora and Ris into two real cells each.
+          start=s.index('/* ========================================================\n   LAYOUT FASE FINALE KO')
+          end=s.index('/* ============================\n\n   NUOVE CELLE PARTITE KO', start)
+          css='''/* ========================================================
+   LAYOUT FASE FINALE KO — COPIA FEDELE DEI GIRONI
+   Gironi: Campo 53 | Ora 101 | Match 120 | Ris 188
+   KO:     Campo 53 | Ore 50 | Minuti 51 | Match 120 | Ris.1 94 | Ris.2 94
+   ======================================================== */
+
+table:has(> tbody#Q),
+table:has(> tbody#S),
+table:has(> tbody#finaleBox){
+    table-layout:fixed !important;
+    width:462px !important;
+    min-width:462px !important;
+    max-width:462px !important;
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+}
+
+table:has(> tbody#Q) col:nth-child(1), table:has(> tbody#S) col:nth-child(1), table:has(> tbody#finaleBox) col:nth-child(1){width:53px !important;}
+table:has(> tbody#Q) col:nth-child(2), table:has(> tbody#S) col:nth-child(2), table:has(> tbody#finaleBox) col:nth-child(2){width:50px !important;}
+table:has(> tbody#Q) col:nth-child(3), table:has(> tbody#S) col:nth-child(3), table:has(> tbody#finaleBox) col:nth-child(3){width:51px !important;}
+table:has(> tbody#Q) col:nth-child(4), table:has(> tbody#S) col:nth-child(4), table:has(> tbody#finaleBox) col:nth-child(4){width:120px !important;}
+table:has(> tbody#Q) col:nth-child(5), table:has(> tbody#S) col:nth-child(5), table:has(> tbody#finaleBox) col:nth-child(5){width:94px !important;}
+table:has(> tbody#Q) col:nth-child(6), table:has(> tbody#S) col:nth-child(6), table:has(> tbody#finaleBox) col:nth-child(6){width:94px !important;}
+
+table:has(> tbody#Q) th, table:has(> tbody#Q) td,
+table:has(> tbody#S) th, table:has(> tbody#S) td,
+table:has(> tbody#finaleBox) th, table:has(> tbody#finaleBox) td{
+    box-sizing:border-box !important;
+    padding:8px 4px !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+}
+
+table:has(> tbody#Q) td input,
+table:has(> tbody#S) td input,
+table:has(> tbody#finaleBox) td input{
+    width:45px !important;
+    min-width:45px !important;
+    max-width:45px !important;
+    height:34px !important;
+    margin:0 auto !important;
+    padding:4px !important;
+    box-sizing:border-box !important;
+    text-align:center !important;
+}
+
+table:has(> tbody#Q) td.match-cell,
+table:has(> tbody#S) td.match-cell,
+table:has(> tbody#finaleBox) td.match-cell{
+    width:120px !important;
+    min-width:120px !important;
+    max-width:120px !important;
+}
+
+'''
+          s=s[:start]+css+s[end:]
+
+          # Static KO headers: make them six real columns and align labels with data.
+          s=s.replace('''<th colspan="4">
+
+                            QUARTI DI FINALE''','''<th colspan="6">
+
+                            QUARTI DI FINALE''')
+          s=s.replace('''<th colspan="4">
+
+                            SEMIFINALI''','''<th colspan="6">
+
+                            SEMIFINALI''')
+          s=s.replace('''<th colspan="4">
+
+                            FINALE''','''<th colspan="6">
+
+                            FINALE''')
+
+          old='''<th>Campo</th>
+
+                        <th>Ora</th>
+
+                        <th>Match</th>
+
+                        <th>Ris</th>'''
+          new='''<th>Campo</th>
+
+                        <th>Ore</th>
+
+                        <th>Minuti</th>
+
+                        <th>Match</th>
+
+                        <th>Ris.1</th>
+
+                        <th>Ris.2</th>'''
+          s=s.replace(old,new)
+
+          # Ensure every KO table has the same real column structure.
+          for body in ('Q','S','finaleBox'):
+              marker=f'<tbody id="{body}"'
+              pos=s.index(marker)
+              tstart=s.rfind('<table',0,pos)
+              thead_end=s.index('</thead>',tstart)+len('</thead>')
+              head=s[tstart:thead_end]
+              if '<colgroup>' not in head:
+                  cols='<colgroup><col><col><col><col><col><col></colgroup>\n                '
+                  s=s[:tstart]+s[tstart:s.index('>',tstart)+1]+ '\n                '+cols+s[s.index('>',tstart)+1:]
+
+          p.write_text(s)
+          PY
+      - name: Commit KO layout
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Bove.html
+          git diff --cached --quiet || git commit -m 'Copy Gironi layout exactly to KO tables'
+          git push
