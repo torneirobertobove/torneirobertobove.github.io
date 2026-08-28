@@ -2577,71 +2577,66 @@ style="width:80px">
 
 <div class="menu-container">
 
+    <button class="menu-button" onclick="toggleMenu()">
 
-
-<button class="menu-button" onclick="toggleMenu()">
-
-    ☰
-
-</button>
-
-
-
-<div id="menuComandi" class="menu-dropdown">
-
-
-
-    <button onclick="document.getElementById('formatModal').style.display='block'">
-
-        ⚙️ Formato
+        ☰
 
     </button>
 
 
+    <div id="menuComandi" class="menu-dropdown">
 
 
+        <button onclick="document.getElementById('formatModal').style.display='block'">
 
-    <button onclick="openRules()">
+            ⚙️ Formato
 
-        📖 Regole
-
-    </button>
-
+        </button>
 
 
+        <button onclick="openRules()">
+
+            📖 Regole
+
+        </button>
 
 
-    <button onclick="document.getElementById('teamModal').style.display='block'">
+        <button onclick="document.getElementById('teamModal').style.display='block'">
 
-        📝 Squadre
+            📝 Squadre
 
-    </button>
-
-
+        </button>
 
 
+        <button type="button" onclick="salvaTorneoCompleto()">
 
-    <button onclick="window.print()">
+            💾 Salva
 
-        🖨️ Stampa
-
-    </button>
-
+        </button>
 
 
+        <button type="button" onclick="resetTorneoCompleto()">
+
+            ♻️ Reset completo
+
+        </button>
 
 
-    <button onclick="window.location.href='admin.html'">
+        <button onclick="window.print()">
 
-        ⬅️ Torna ad Admin
+            🖨️ Stampa
 
-    </button>
-
-
-
-</div>
+        </button>
 
 
+        <button onclick="window.location.href='admin.html'">
+
+            ⬅️ Torna ad Admin
+
+        </button>
+
+
+    </div>
 
 </div>
 
@@ -6519,13 +6514,15 @@ async function updateAndSync(){
 
 
 
-        const remoto = !!new URLSearchParams(window.location.search).get("idTorneo");
+        const remoto =
+            !!new URLSearchParams(
+                window.location.search
+            ).get("idTorneo");
+
 
         if(precedente && !remoto){
 
-
             try{
-
 
                 let vecchio =
                     JSON.parse(
@@ -6583,6 +6580,21 @@ async function updateAndSync(){
 
 
 
+        /*
+            COPIA COMPLETA DELLO STATO
+
+            Non viene modificato lo state originale.
+            La copia serve per garantire che tutto
+            il torneo venga salvato.
+        */
+
+
+        const snapshot =
+            JSON.parse(
+                JSON.stringify(state)
+            );
+
+
 
 
 
@@ -6593,18 +6605,17 @@ async function updateAndSync(){
 
         if(statoDaSalvare){
 
-
             localStorage.setItem(
 
                 "torneoState",
 
-                JSON.stringify(state)
+                JSON.stringify(
+                    snapshot
+                )
 
             );
 
-
         }
-
 
 
 
@@ -6617,14 +6628,13 @@ async function updateAndSync(){
 
         if(
 
-            Array.isArray(state.A) &&
-            state.A.length>0 &&
+            Array.isArray(snapshot.A) &&
+            snapshot.A.length>0 &&
 
-            Array.isArray(state.B) &&
-            state.B.length>0
+            Array.isArray(snapshot.B) &&
+            snapshot.B.length>0
 
         ){
-
 
             localStorage.setItem(
 
@@ -6634,9 +6644,9 @@ async function updateAndSync(){
 
                     [
 
-                        ...state.A,
+                        ...snapshot.A,
 
-                        ...state.B
+                        ...snapshot.B
 
                     ]
 
@@ -6644,10 +6654,7 @@ async function updateAndSync(){
 
             );
 
-
         }
-
-
 
 
 
@@ -6664,12 +6671,13 @@ async function updateAndSync(){
 
             statoDaSalvare &&
 
-            state.nomeTorneo &&
+            snapshot.nomeTorneo &&
 
-            state.nomeTorneo.trim()!==""
+            String(
+                snapshot.nomeTorneo
+            ).trim()!==""
 
         ){
-
 
             const {error}=
 
@@ -6682,23 +6690,29 @@ async function updateAndSync(){
                     {
 
                         id:
-                            state.idTorneo,
+                            snapshot.idTorneo,
 
 
                         nome:
-                            state.nomeTorneo,
+                            snapshot.nomeTorneo,
 
 
                         data:
-                            state.dataTorneo,
+                            snapshot.dataTorneo || null,
 
 
                         stato:
                             "attivo",
 
 
+                        /*
+                            IMPORTANTE:
+                            salva tutto lo snapshot,
+                            non solo una parte dello state.
+                        */
+
                         configurazione:
-                            state
+                            snapshot
 
                     },
 
@@ -6719,10 +6733,102 @@ async function updateAndSync(){
                     error
                 );
 
+                return false;
+
             }
 
 
         }
+
+
+
+        /*
+            VERIFICA DEL SALVATAGGIO LOCALE
+        */
+
+
+        if(statoDaSalvare){
+
+            const verifica =
+                localStorage.getItem(
+                    "torneoState"
+                );
+
+
+            if(!verifica){
+
+                console.error(
+                    "Errore: torneoState non presente dopo il salvataggio."
+                );
+
+                return false;
+
+            }
+
+
+            try{
+
+                const statoVerificato =
+                    JSON.parse(
+                        verifica
+                    );
+
+
+                if(
+                    String(
+                        statoVerificato.idTorneo
+                    ) !==
+                    String(
+                        snapshot.idTorneo
+                    )
+                ){
+
+                    console.error(
+                        "Errore: ID torneo non corrispondente dopo il salvataggio."
+                    );
+
+                    return false;
+
+                }
+
+
+            }
+            catch(e){
+
+                console.error(
+                    "Errore verifica torneoState:",
+                    e
+                );
+
+                return false;
+
+            }
+
+        }
+
+
+
+        console.log(
+            "=== UPDATE AND SYNC COMPLETATO ==="
+        );
+
+        console.log(
+            "ID TORNEO:",
+            snapshot.idTorneo
+        );
+
+        console.log(
+            "NOME TORNEO:",
+            snapshot.nomeTorneo
+        );
+
+        console.log(
+            "STATO SALVATO:",
+            snapshot
+        );
+
+
+        return true;
 
 
     }
@@ -6730,17 +6836,18 @@ async function updateAndSync(){
 
     catch(e){
 
-
         console.error(
             "Errore updateAndSync:",
             e
         );
 
+        return false;
 
     }
 
 }
 
+                   
 async function loadState(){
 
     const params = new URLSearchParams(window.location.search);
@@ -6959,12 +7066,17 @@ function aggiornaNomeFormulaTorneo(){
         box.innerHTML="";
 
 }
+
+                   
 function reset(){
 
 
     if(
         !confirm(
-            "Sei sicuro di voler cancellare il torneo corrente?"
+            "Sei sicuro di voler cancellare il torneo corrente?\n\n" +
+            "ATTENZIONE: il reset cancellerà completamente il torneo " +
+            "corrente, compresi squadre, risultati, orari, campi, " +
+            "fase finale e dati salvati."
         )
     )
         return;
@@ -6975,66 +7087,248 @@ function reset(){
 
     /*
     ============================
-    RESET DATI TORNEO
+    ID TORNEO DA CANCELLARE
     ============================
     */
 
-
-    state = {
-
-
-        ...state,
-
-
-
-        idTorneo:null,
-
-
-        nomeTorneo:"",
-
-
-        dataTorneo:"",
+    const idTorneoDaCancellare =
+        state && state.idTorneo
+            ? state.idTorneo
+            : null;
 
 
 
 
 
-        A:[],
-        B:[],
-        C:[],
-        D:[],
-        E:[],
-        F:[],
+    /*
+    ============================
+    CANCELLAZIONE SUPABASE
+    ============================
+    */
+
+    const eseguiResetLocale = () => {
+
+
+        /*
+        ============================
+        RESET DATI TORNEO
+        ============================
+        */
+
+        state = {
+
+
+            ...state,
+
+
+
+            idTorneo:null,
+
+
+            nomeTorneo:"",
+
+
+            dataTorneo:"",
+
+
+
+
+
+            A:[],
+            B:[],
+            C:[],
+            D:[],
+            E:[],
+            F:[],
 
 
 
 
 
 
-        Ares:[],
-        Bres:[],
-        Cres:[],
-        Dres:[],
-        Eres:[],
-        Fres:[],
+            Ares:[],
+            Bres:[],
+            Cres:[],
+            Dres:[],
+            Eres:[],
+            Fres:[],
 
 
 
-        Atime:[],
-        Btime:[],
-        Ctime:[],
-        Dtime:[],
-        Etime:[],
-        Ftime:[],
+            Atime:[],
+            Btime:[],
+            Ctime:[],
+            Dtime:[],
+            Etime:[],
+            Ftime:[],
 
 
 
-        Acamp:[],
-        Bcamp:[],
-        Ccamp:[],
-        Dcamp:[],
-        Ecamp:[],
-        Fcamp:[],
+            Acamp:[],
+            Bcamp:[],
+            Ccamp:[],
+            Dcamp:[],
+            Ecamp:[],
+            Fcamp:[],
+
+
+
+
+
+
+
+            /*
+            ============================
+            FASE FINALE
+            ============================
+            */
+
+
+            qRes:
+                Array(4)
+                .fill("-"),
+
+
+
+            sTopRes:
+                Array(2)
+                .fill("-"),
+
+
+
+            fTopRes:
+                "-",
+
+
+
+            /*
+            DATI AGGIUNTIVI FASE FINALE
+            */
+
+            qCamp:
+                Array(4)
+                .fill(""),
+
+            qTime:
+                Array(4)
+                .fill(""),
+
+            sTopCamp:
+                Array(2)
+                .fill(""),
+
+            sTopTime:
+                Array(2)
+                .fill(""),
+
+            fTopCamp:
+                [""],
+
+            fTopTime:
+                [""],
+
+
+
+            finalTop:[],
+
+
+
+            campioneTop:null,
+
+
+
+
+
+
+
+            /*
+            ============================
+            MOTORI SPECIALI
+            ============================
+            */
+
+
+            svizzero:null,
+
+
+            americano:null,
+
+
+            mexicano:null,
+
+
+            king:null,
+
+
+            short:null,
+
+
+
+            /*
+            PARTITE GENERATE
+            */
+
+            partiteGironi:{},
+
+
+
+
+
+
+
+            /*
+            ============================
+            RESET REGOLAMENTO
+            ============================
+            */
+
+
+            rules:{
+
+
+                ...(state.rules || {}),
+
+
+                locked:false,
+
+
+                tipoTorneo:"",
+
+
+                formulaGironi:"",
+
+
+                formulaFinale:"",
+
+
+                numeroSquadre:0,
+
+
+                numeroGironi:0,
+
+
+                qualificatePerGirone:0,
+
+
+                numeroQualificateFinali:0,
+
+
+                usaQuarti:false,
+
+
+                usaSemifinali:false,
+
+
+                usaFinale:false
+
+
+            }
+
+
+
+        };
+
+
 
 
 
@@ -7044,38 +7338,42 @@ function reset(){
 
         /*
         ============================
-        FASE FINALE
+        PULIZIA STORAGE
         ============================
         */
 
 
-        qRes:
-
-            Array(4)
-            .fill("-"),
-
+        localStorage.removeItem(
+            "torneoState"
+        );
 
 
-        sTopRes:
-
-            Array(2)
-            .fill("-"),
+        localStorage.removeItem(
+            "savedTeams"
+        );
 
 
 
-        fTopRes:
+        /*
+        ============================
+        PULIZIA EVENTUALI CHIAVI
+        ============================
+        */
 
-            "-",
+        [
+            "torneo",
+            "torneoCorrente",
+            "currentTournament",
+            "currentTorneo",
+            "partiteGironi",
+            "torneoData"
+        ].forEach(function(chiave){
 
+            localStorage.removeItem(
+                chiave
+            );
 
-
-        finalTop:[],
-
-
-
-        campioneTop:null,
-
-
+        });
 
 
 
@@ -7083,27 +7381,14 @@ function reset(){
 
         /*
         ============================
-        MOTORI SPECIALI
+        SALVA STATO VUOTO
         ============================
         */
 
-
-        svizzero:null,
-
-
-        americano:null,
-
-
-        mexicano:null,
-
-
-        king:null,
-
-
-        short:null,
-
-
-
+        localStorage.setItem(
+            "torneoState",
+            JSON.stringify(state)
+        );
 
 
 
@@ -7111,53 +7396,161 @@ function reset(){
 
         /*
         ============================
-        RESET REGOLAMENTO
+        CHIUSURA EVENTUALI MODAL
         ============================
         */
 
+        [
+            "teamModal",
+            "formatModal"
+        ].forEach(function(id){
 
-        rules:{
+            const modal =
+                document.getElementById(id);
 
+            if(modal)
+                modal.style.display="none";
 
-            ...state.rules,
-
-
-            locked:false,
-
-
-            tipoTorneo:"",
-
-
-            formulaGironi:"",
+        });
 
 
-            formulaFinale:"",
 
 
-            numeroSquadre:0,
+
+        /*
+        ============================
+        PULIZIA TABELLE / UI
+        ============================
+        */
+
+        [
+            "Arows",
+            "Brows",
+            "Crows",
+            "Drows",
+            "Erows",
+            "Frows",
+            "Q",
+            "S",
+            "finaleBox"
+        ].forEach(function(id){
+
+            const el =
+                document.getElementById(id);
+
+            if(el)
+                el.innerHTML="";
+
+        });
 
 
-            numeroGironi:0,
 
 
-            qualificatePerGirone:0,
+
+        /*
+        ============================
+        NASCONDI LE SCHEDE GIRONE
+        ============================
+        */
+
+        [
+            "cardA",
+            "cardB",
+            "cardC",
+            "cardD",
+            "cardE",
+            "cardF"
+        ].forEach(function(id){
+
+            const el =
+                document.getElementById(id);
+
+            if(el)
+                el.style.display="none";
+
+        });
 
 
-            numeroQualificateFinali:0,
 
 
-            usaQuarti:false,
+
+        /*
+        ============================
+        PULIZIA NOME TORNEO
+        ============================
+        */
+
+        const nomeInput =
+            document.getElementById(
+                "nomeTorneoInput"
+            );
 
 
-            usaSemifinali:false,
+        if(nomeInput)
+            nomeInput.value="";
 
 
-            usaFinale:false
 
+
+
+        /*
+        ============================
+        AGGIORNAMENTO UI
+        ============================
+        */
+
+        if(
+            typeof aggiornaNomeFormulaTorneo ===
+            "function"
+        ){
+
+            aggiornaNomeFormulaTorneo();
 
         }
 
 
+
+
+
+        /*
+        ============================
+        LOG FINALE
+        ============================
+        */
+
+        console.log(
+            "=== RESET COMPLETO ESEGUITO ==="
+        );
+
+        console.log(
+            "ID TORNEO CANCELLATO:",
+            idTorneoDaCancellare
+        );
+
+        console.log(
+            "STATE DOPO RESET:",
+            state
+        );
+
+        console.log(
+            "TORNEO STATE:",
+            localStorage.getItem(
+                "torneoState"
+            )
+        );
+
+        console.log(
+            "SAVED TEAMS:",
+            localStorage.getItem(
+                "savedTeams"
+            )
+        );
+
+
+        alert(
+            "✅ RESET COMPLETO ESEGUITO.\n\n" +
+            "Il torneo corrente è stato completamente azzerato."
+        );
 
     };
 
@@ -7165,83 +7558,83 @@ function reset(){
 
 
 
-
-
-
-
     /*
     ============================
-    PULIZIA STORAGE
+    CANCELLAZIONE REMOTA
     ============================
     */
-
-
-    localStorage.removeItem(
-        "savedTeams"
-    );
-
-
-
-    localStorage.setItem(
-
-        "torneoState",
-
-        JSON.stringify(state)
-
-    );
-
-
-
-
-
-
-
-    /*
-    ============================
-    CHIUSURA EVENTUALI MODAL
-    ============================
-    */
-
-
-    let modal =
-
-        document.getElementById(
-            "teamModal"
-        );
-
-
-
-    if(modal)
-
-        modal.style.display="none";
-
-
-
-
-
-
-
-
-    /*
-    ============================
-    AGGIORNAMENTO UI
-    ============================
-    */
-
 
     if(
-        typeof aggiornaNomeFormulaTorneo==="function"
-    )
+        idTorneoDaCancellare &&
+        typeof sb !== "undefined"
+    ){
 
-        aggiornaNomeFormulaTorneo();
+        sb
+        .from("tornei")
+        .delete()
+        .eq(
+            "id",
+            idTorneoDaCancellare
+        )
+        .then(function(risultato){
+
+            if(risultato.error){
+
+                console.error(
+                    "ERRORE CANCELLAZIONE TORNEO SUPABASE:",
+                    risultato.error
+                );
+
+                alert(
+                    "❌ ERRORE: il torneo non è stato cancellato dal server.\n\n" +
+                    risultato.error.message
+                );
+
+                return;
+
+            }
 
 
+            console.log(
+                "TORNEO CANCELLATO DA SUPABASE:",
+                idTorneoDaCancellare
+            );
 
-    updateAndSync();
 
+            eseguiResetLocale();
 
+        })
+        .catch(function(errore){
+
+            console.error(
+                "ERRORE RESET SUPABASE:",
+                errore
+            );
+
+            alert(
+                "❌ ERRORE DURANTE LA CANCELLAZIONE DAL SERVER.\n\n" +
+                errore.message
+            );
+
+        });
+
+    }
+    else{
+
+        /*
+        Se non esiste un ID remoto,
+        esegui comunque il reset locale completo.
+        */
+
+        eseguiResetLocale();
+
+    }
 
 }
+
+
+
+                   
 function formatCoppiaDisplay(coppia){
     if(coppia===undefined || coppia===null)
         return "";
