@@ -1,0 +1,66 @@
+name: Apply KO layout fix
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/fix-ko-layout.yml'
+      - '.github/workflows/trigger-ko-fix.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run canonical KO layout repair
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('Bove.html')
+          s=p.read_text(encoding='utf-8')
+          start=s.find('/* ========================================================\n   LAYOUT FASE FINALE KO')
+          if start!=-1:
+              end=s.find('/* Frecce Qualificazione */',start)
+              if end==-1: raise SystemExit('KO CSS marker missing')
+              s=s[:start]+s[end:]
+          a=s.find('function renderMatchCard')
+          b=s.find('function applicaModelloTorneo',a)
+          if a==-1 or b==-1: raise SystemExit('renderMatchCard markers missing')
+          fn=r'''function renderMatchCard(titolo, match, type, index, risultato){
+    const parts=String(risultato || "-").split("-");
+    const risultato1=parts[0]==="-" ? "" : (parts[0] || "");
+    const risultato2=parts[1] || "";
+    const campKey={Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];
+    const timeKey={Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];
+    const camp=Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
+    const time=Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
+    const winner=getWinner(match,String(risultato || "-"));
+    const stato=winner ? "Terminata" : "Da giocare";
+    const safe=v=>String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
+    return `
+<tr>
+<td><input value="${safe(camp)}" oninput="updateKOField('${type}',${index},'camp',this.value)" style="width:45px"></td>
+<td><input value="${safe(time)}" oninput="updateKOField('${type}',${index},'time',this.value)"></td>
+<td class="match-cell"><div class="team-line">${formatCoppiaDisplay(match[0])}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${formatCoppiaDisplay(match[1])}</div><div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}</td>
+<td class="db-cell"><input value="${safe(risultato1)}" oninput="updateKOResult('${type}',${index},this.value,0)"><input value="${safe(risultato2)}" oninput="updateKOResult('${type}',${index},this.value,1)"></td>
+</tr>`;
+}
+
+'''
+          s=s[:a]+fn+s[b:]
+          s=re.sub(r'<th colspan="\d+">\s*QUARTI DI FINALE','<th colspan="4">QUARTI DI FINALE',s)
+          s=re.sub(r'<th colspan="\d+">\s*SEMIFINALI','<th colspan="4">SEMIFINALI',s)
+          s=re.sub(r'<th colspan="\d+">\s*FINALE','<th colspan="4">FINALE',s)
+          s=re.sub(r'<th>Campo</th>\s*<th>(?:Ore|Ora)</th>\s*<th>(?:Minuti</th>\s*<th>)?Match</th>\s*<th>(?:Ris|Ris\.1)</th>(?:\s*<th>Ris\.2</th>)?','<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>',s,flags=re.S)
+          css='''\n/* KO = same table geometry as Gironi */\n.koBox,.finalContainer{overflow-x:hidden !important;}\n.koBox table,.finalContainer table{width:100% !important;min-width:0 !important;max-width:none !important;table-layout:auto !important;border-collapse:collapse !important;border-spacing:0 !important;}\n.koBox table td:nth-child(1),.finalContainer table td:nth-child(1){width:53px !important;}\n.koBox table td:nth-child(2),.finalContainer table td:nth-child(2){width:101px !important;}\n.koBox table td:nth-child(3),.finalContainer table td:nth-child(3){width:120px !important;}\n.koBox table td:nth-child(4),.finalContainer table td:nth-child(4){width:188px !important;}\n.koBox table td:nth-child(1) input,.finalContainer table td:nth-child(1) input{width:45px !important;}\n.koBox table td:nth-child(2) input,.finalContainer table td:nth-child(2) input{width:100% !important;}\n.koBox table td.db-cell input,.finalContainer table td.db-cell input{width:50% !important;min-width:0 !important;}\n'''
+          s=s.replace('</style>',css+'</style>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit Bove
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Bove.html
+          git commit -m 'Apply exact Gironi layout to KO phases'
+          git push
