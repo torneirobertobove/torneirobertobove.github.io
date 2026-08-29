@@ -34,8 +34,8 @@ jobs:
                   raise SystemExit('KO CSS end marker not found')
               s = s[:start] + s[end:]
 
-          # KO must use the same 4 real cells as the Gironi:
-          # Campo | Ora | Match | Ris
+          # KO uses one real time cell containing the complete Ora + Minuti value:
+          # Campo | Ora+Minuti | Match | Ris
           s = re.sub(
               r'<th colspan="\d+">\s*QUARTI DI FINALE',
               '<th colspan="4">\n                            QUARTI DI FINALE',
@@ -58,7 +58,7 @@ jobs:
           )
           s = old_header.sub('<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>', s)
 
-          # Replace renderMatchCard with the same 4-cell DOM pattern used by renderTables().
+          # Replace renderMatchCard with the 4-cell KO DOM.
           a = s.find('function renderMatchCard')
           if a == -1:
               raise SystemExit('renderMatchCard not found')
@@ -136,11 +136,10 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
 '''
           s = s[:a] + fn + s[b:]
 
-          # KO tables now inherit the normal table geometry, exactly like Gironi.
-          # Only remove the horizontal overflow from the KO containers.
+          # KO layout: exactly 4 columns, with one combined Ora+Minuti cell.
           css = r'''
 /* ========================================================
-   KO — COPIA FEDELE DEL LAYOUT DEI GIRONI
+   KO — ORA + MINUTI IN UN'UNICA CELLA
    Struttura reale: Campo | Ora | Match | Ris
    ======================================================== */
 .koBox, .finalContainer { overflow-x:hidden !important; }
@@ -192,7 +191,6 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
 
           p.write_text(s, encoding='utf-8')
 
-          # Syntax check every inline script.
           scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
           for i, script in enumerate(scripts):
               f = Path(f'/tmp/bove-{i}.js')
@@ -204,7 +202,7 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
 
           assert '<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>' in s
           assert 'Struttura reale: Campo | Ora | Match | Ris' in s
-          print('VERIFICA OK: KO usa la stessa struttura DOM dei Gironi')
+          print('VERIFICA OK: un’unica cella contiene Ora + Minuti')
 
       - name: Commit corrected Bove.html
         run: |
@@ -215,6 +213,6 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
           if git diff --cached --quiet; then
             echo "Nessuna modifica necessaria"
           else
-            git commit -m "Copy Gironi layout exactly to KO phases"
+            git commit -m "Combine KO hour and minutes into one cell"
             git push
           fi
