@@ -1,4 +1,4 @@
-name: Fix KO layout
+name: Fix KO layout from Gironi
 
 on:
   push:
@@ -15,97 +15,206 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix KO six-column layout
+
+      - name: Copy Gironi table structure to KO
         shell: python
         run: |
           from pathlib import Path
           import re, subprocess
 
-          p=Path('Bove.html')
-          text=p.read_text(encoding='utf-8')
-          original=text
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          original = s
 
-          # Remove the broken four-column KO sizing rules.
-          text=re.sub(r'/\* Final KO cell geometry \*/.*?(?=/\* ============================\s*\n\s*NUOVE CELLE PARTITE KO)', '', text, flags=re.S)
-          text=re.sub(r'table:has\(> tbody#Q\) th:nth-child\(1\).*?table:has\(> tbody#finaleBox\) td:nth-child\(4\)\{width:75px !important;\}\s*', '', text, flags=re.S)
-          text=re.sub(r'table:has\(> tbody#Q\) td\.db-cell,.*?table:has\(> tbody#S\) td\.db-cell input \{.*?\}', '', text, flags=re.S)
+          # Remove the previous KO-specific geometry block completely.
+          start = s.find('/* ========================================================\n   LAYOUT FASE FINALE KO')
+          if start != -1:
+              end = s.find('/* Frecce Qualificazione */', start)
+              if end == -1:
+                  raise SystemExit('KO CSS end marker not found')
+              s = s[:start] + s[end:]
 
-          # Headers must describe the six real body columns.
-          text=re.sub(
-              r'(<thead>\s*<tr>\s*<th colspan="4">\s*(?:QUARTI DI FINALE|SEMIFINALI|FINALE)\s*</th>\s*</tr>\s*)<tr>.*?</tr>(\s*</thead>)',
-              lambda m: m.group(1)+'<tr><th>Campo</th><th>Ora</th><th>Minuti</th><th>Match</th><th>Ris.1</th><th>Ris.2</th></tr>'+m.group(2),
-              text, flags=re.S)
+          # KO must use the same 4 real cells as the Gironi:
+          # Campo | Ora | Match | Ris
+          s = re.sub(
+              r'<th colspan="\d+">\s*QUARTI DI FINALE',
+              '<th colspan="4">\n                            QUARTI DI FINALE',
+              s
+          )
+          s = re.sub(
+              r'<th colspan="\d+">\s*SEMIFINALI',
+              '<th colspan="4">\n                            SEMIFINALI',
+              s
+          )
+          s = re.sub(
+              r'<th colspan="\d+">\s*FINALE',
+              '<th colspan="4">\n                            FINALE',
+              s
+          )
 
-          # Render exactly six cells: Campo | Ora | Minuti | Match | Ris.1 | Ris.2.
-          new=r'''function renderMatchCard(titolo,match,type,index,risultato){
-    const res=String(risultato || "-");
-    const campKey={Q:"qCamp",S:"sTopCamp",F:"fTopCamp"}[type];
-    const timeKey={Q:"qTime",S:"sTopTime",F:"fTopTime"}[type];
-    const camp=Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
-    const time=Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
-    const parts=res.split("-");
-    const scoreA=parts[0]==="-" ? "" : (parts[0] || "");
-    const scoreB=parts.length>1 ? (parts[1] || "") : "";
-    const tp=String(time).split(":");
-    const ore=tp[0] || "";
-    const minuti=tp[1] || "";
-    const winner=getWinner(match,res);
-    const stato=winner ? "Terminata" : "Da giocare";
-    const esc=v=>String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+          old_header = re.compile(
+              r'<th>Campo</th>\s*<th>(?:Ore|Ora)</th>\s*<th>(?:Minuti</th>\s*<th>)?Match</th>\s*<th>(?:Ris|Ris\.1)</th>(?:\s*<th>Ris\.2</th>)?',
+              re.S
+          )
+          s = old_header.sub('<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>', s)
+
+          # Replace renderMatchCard with the same 4-cell DOM pattern used by renderTables().
+          a = s.find('function renderMatchCard')
+          if a == -1:
+              raise SystemExit('renderMatchCard not found')
+          b = s.find('function applicaModelloTorneo', a)
+          if b == -1:
+              raise SystemExit('renderMatchCard end marker not found')
+
+          fn = r'''function renderMatchCard(titolo, match, type, index, risultato){
+
+    const risultatoStr = String(risultato || "-");
+    const partiRisultato = risultatoStr.split("-");
+    const risultato1 = partiRisultato[0] === "-" ? "" : (partiRisultato[0] || "");
+    const risultato2 = partiRisultato[1] || "";
+
+    const campKey = {Q:"qCamp", S:"sTopCamp", F:"fTopCamp"}[type];
+    const timeKey = {Q:"qTime", S:"sTopTime", F:"fTopTime"}[type];
+
+    const camp = Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
+    const time = Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
+
+    const winner = getWinner(match, risultatoStr);
+    const stato = winner ? "Terminata" : "Da giocare";
+    const safe = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
     return `
 <tr>
-    <td class="ko-field-cell"><input type="text" value="${esc(camp)}" onchange="updateKOField('${type}',${index},'camp',this.value)"></td>
-    <td class="ko-time-cell"><input type="text" value="${esc(ore)}" onchange="updateKOField('${type}',${index},'time',this.value + ':' + this.parentElement.nextElementSibling.querySelector('input').value)"></td>
-    <td class="ko-time-cell"><input type="text" value="${esc(minuti)}" onchange="updateKOField('${type}',${index},'time',this.parentElement.previousElementSibling.querySelector('input').value + ':' + this.value)"></td>
-    <td class="match-cell">
-        <div class="team-line">${formatCoppiaDisplay(match[0])}</div>
-        <div class="vs-line"><b>VS</b></div>
-        <div class="team-line">${formatCoppiaDisplay(match[1])}</div>
-        <div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>
-        ${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}
-    </td>
-    <td class="ko-score-cell"><input type="text" inputmode="numeric" value="${esc(scoreA)}" onchange="updateKOScore('${type}',${index},0,this.value)"></td>
-    <td class="ko-score-cell"><input type="text" inputmode="numeric" value="${esc(scoreB)}" onchange="updateKOScore('${type}',${index},1,this.value)"></td>
+<td>
+<input
+value="${safe(camp)}"
+oninput="updateKOField('${type}',${index},'camp',this.value)"
+style="width:45px">
+</td>
+
+<td>
+<input
+value="${safe(time)}"
+oninput="updateKOField('${type}',${index},'time',this.value)"
+>
+</td>
+
+<td class="match-cell">
+
+<div class="team-line">
+${formatCoppiaDisplay(match[0])}
+</div>
+
+<div class="vs-line">
+<b>VS</b>
+</div>
+
+<div class="team-line">
+${formatCoppiaDisplay(match[1])}
+</div>
+
+<div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>
+${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}
+
+</td>
+
+<td class="db-cell">
+
+<input
+value="${safe(risultato1)}"
+oninput="updateKOResult('${type}',${index},this.value,0)">
+
+<input
+value="${safe(risultato2)}"
+oninput="updateKOResult('${type}',${index},this.value,1)">
+
+</td>
+
 </tr>`;
 }
+
 '''
-          text,n=re.subn(r'function renderMatchCard\(titolo,match,type,index,risultato\)\{.*?\n\}\s*function applicaModelloTorneo\(',new+'\nfunction applicaModelloTorneo(',text,count=1,flags=re.S)
-          if n!=1: raise SystemExit('renderMatchCard non trovato')
+          s = s[:a] + fn + s[b:]
 
-          # Authoritative widths are the ones agreed for the KO table.
-          css=r'''
-/* KO FINAL — authoritative six-column layout */
-table:has(> tbody#Q), table:has(> tbody#S), table:has(> tbody#finaleBox){table-layout:fixed !important;width:445px !important;min-width:445px !important;max-width:445px !important;box-sizing:border-box !important;border-collapse:collapse !important;}
-table:has(> tbody#Q) th,table:has(> tbody#Q) td,table:has(> tbody#S) th,table:has(> tbody#S) td,table:has(> tbody#finaleBox) th,table:has(> tbody#finaleBox) td{box-sizing:border-box !important;padding:6px 3px !important;text-align:center !important;vertical-align:middle !important;}
-table:has(> tbody#Q) th:nth-child(1),table:has(> tbody#Q) td:nth-child(1),table:has(> tbody#S) th:nth-child(1),table:has(> tbody#S) td:nth-child(1),table:has(> tbody#finaleBox) th:nth-child(1),table:has(> tbody#finaleBox) td:nth-child(1){width:45px !important;}
-table:has(> tbody#Q) th:nth-child(2),table:has(> tbody#Q) td:nth-child(2),table:has(> tbody#S) th:nth-child(2),table:has(> tbody#S) td:nth-child(2),table:has(> tbody#finaleBox) th:nth-child(2),table:has(> tbody#finaleBox) td:nth-child(2){width:45px !important;}
-table:has(> tbody#Q) th:nth-child(3),table:has(> tbody#Q) td:nth-child(3),table:has(> tbody#S) th:nth-child(3),table:has(> tbody#S) td:nth-child(3),table:has(> tbody#finaleBox) th:nth-child(3),table:has(> tbody#finaleBox) td:nth-child(3){width:45px !important;}
-table:has(> tbody#Q) th:nth-child(4),table:has(> tbody#Q) td:nth-child(4),table:has(> tbody#S) th:nth-child(4),table:has(> tbody#S) td:nth-child(4),table:has(> tbody#finaleBox) th:nth-child(4),table:has(> tbody#finaleBox) td:nth-child(4){width:220px !important;}
-table:has(> tbody#Q) th:nth-child(5),table:has(> tbody#Q) td:nth-child(5),table:has(> tbody#S) th:nth-child(5),table:has(> tbody#S) td:nth-child(5),table:has(> tbody#finaleBox) th:nth-child(5),table:has(> tbody#finaleBox) td:nth-child(5){width:45px !important;}
-table:has(> tbody#Q) th:nth-child(6),table:has(> tbody#Q) td:nth-child(6),table:has(> tbody#S) th:nth-child(6),table:has(> tbody#S) td:nth-child(6),table:has(> tbody#finaleBox) th:nth-child(6),table:has(> tbody#finaleBox) td:nth-child(6){width:45px !important;}
-table:has(> tbody#Q) .ko-field-cell input,table:has(> tbody#Q) .ko-time-cell input,table:has(> tbody#Q) .ko-score-cell input,table:has(> tbody#S) .ko-field-cell input,table:has(> tbody#S) .ko-time-cell input,table:has(> tbody#S) .ko-score-cell input,table:has(> tbody#finaleBox) .ko-field-cell input,table:has(> tbody#finaleBox) .ko-time-cell input,table:has(> tbody#finaleBox) .ko-score-cell input{width:39px !important;min-width:39px !important;max-width:39px !important;height:32px !important;margin:0 auto !important;box-sizing:border-box !important;}
+          # KO tables now inherit the normal table geometry, exactly like Gironi.
+          # Only remove the horizontal overflow from the KO containers.
+          css = r'''
+/* ========================================================
+   KO — COPIA FEDELE DEL LAYOUT DEI GIRONI
+   Struttura reale: Campo | Ora | Match | Ris
+   ======================================================== */
+.koBox, .finalContainer { overflow-x:hidden !important; }
+.koBox table, .finalContainer table {
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    table-layout:auto !important;
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+}
+.koBox table th, .koBox table td,
+.finalContainer table th, .finalContainer table td {
+    padding:8px 4px !important;
+    box-sizing:border-box !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+}
+.koBox table td:nth-child(1), .finalContainer table td:nth-child(1) { width:53px !important; }
+.koBox table td:nth-child(2), .finalContainer table td:nth-child(2) { width:101px !important; }
+.koBox table td:nth-child(3), .finalContainer table td:nth-child(3) { width:120px !important; }
+.koBox table td:nth-child(4), .finalContainer table td:nth-child(4) { width:188px !important; }
+.koBox table td:nth-child(1) input, .finalContainer table td:nth-child(1) input {
+    width:45px !important; min-width:45px !important; max-width:45px !important;
+}
+.koBox table td:nth-child(2) input, .finalContainer table td:nth-child(2) input {
+    width:100% !important; max-width:none !important;
+}
+.koBox table td.db-cell, .finalContainer table td.db-cell {
+    width:188px !important;
+    white-space:nowrap !important;
+}
+.koBox table td.db-cell input, .finalContainer table td.db-cell input {
+    width:50% !important; max-width:none !important; min-width:0 !important;
+    box-sizing:border-box !important;
+}
+.koBox table td.match-cell .team-line, .finalContainer table td.match-cell .team-line {
+    display:block !important;
+    width:100% !important;
+    line-height:1.3 !important;
+    white-space:normal !important;
+    margin:2px 0 !important;
+}
 '''
-          text=text.replace('</style>',css+'\n</style>',1)
+          s = s.replace('</style>', css + '\n</style>', 1)
 
-          if text==original: raise SystemExit('Nessuna modifica applicata')
-          p.write_text(text,encoding='utf-8')
+          if s == original:
+              raise SystemExit('Nessuna modifica applicata')
 
-          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',text,flags=re.S|re.I)
-          for i,script in enumerate(scripts):
-              f=Path(f'/tmp/bove-{i}.js'); f.write_text(script,encoding='utf-8')
-              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+          p.write_text(s, encoding='utf-8')
+
+          # Syntax check every inline script.
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
+          for i, script in enumerate(scripts):
+              f = Path(f'/tmp/bove-{i}.js')
+              f.write_text(script, encoding='utf-8')
+              r = subprocess.run(['node','--check',str(f)], capture_output=True, text=True)
               if r.returncode:
-                  print(r.stderr); raise SystemExit(f'Syntax error script {i}')
+                  print(r.stderr)
+                  raise SystemExit(f'Syntax error nello script {i}')
 
-          assert '<th>Campo</th><th>Ora</th><th>Minuti</th><th>Match</th><th>Ris.1</th><th>Ris.2</th>' in text
-          assert 'width:220px !important' in text
-          assert 'function renderMatchCard(titolo,match,type,index,risultato)' in text
-          print('KO six-column fix validated')
-      - name: Commit fix
+          assert '<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>' in s
+          assert 'Struttura reale: Campo | Ora | Match | Ris' in s
+          print('VERIFICA OK: KO usa la stessa struttura DOM dei Gironi')
+
+      - name: Commit corrected Bove.html
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Bove.html
           git diff --cached --check
-          git commit -m "Fix KO six-column alignment"
-          git push
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica necessaria"
+          else
+            git commit -m "Copy Gironi layout exactly to KO phases"
+            git push
+          fi
