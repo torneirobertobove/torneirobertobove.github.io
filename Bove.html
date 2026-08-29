@@ -10333,10 +10333,11 @@ function renderKO(){
     let semifinali=[];
 
     if(state.rules.usaQuarti===true){
+
         /* Quarti attivi: non saltarli mai automaticamente. */
         if(teams.length<8){
             q.innerHTML=`<tr><td colspan="5">Servono 8 squadre qualificate per i Quarti di Finale.</td></tr>`;
-return;
+            return;
         }
 
         const quarti=[
@@ -10347,9 +10348,22 @@ return;
         ];
 
         const vincitori=[];
+
         quarti.forEach((match,index)=>{
-            q.innerHTML+=renderMatchCard("QUARTO "+(index+1),match,"Q",index,state.qRes[index]);
-            const vincitore=getWinner(match,state.qRes[index]);
+
+            q.innerHTML+=renderMatchCard(
+                "QUARTO "+(index+1),
+                match,
+                "Q",
+                index,
+                state.qRes[index]
+            );
+
+            const vincitore=getWinner(
+                match,
+                state.qRes[index]
+            );
+
             if(vincitore) vincitori.push(vincitore);
         });
 
@@ -10359,43 +10373,133 @@ return;
                 [vincitori[2],vincitori[3]]
             ];
         }
+
     }else{
+
         if(teams.length>=4){
+
             semifinali=[
                 [teams[0],teams[3]],
                 [teams[1],teams[2]]
             ];
+
         }else if(teams.length===2){
+
             semifinali=[teams];
+
         }
     }
 
     let finalisti=[];
 
     if(state.rules.usaSemifinali===true && semifinali.length>0){
+
         semifinali.forEach((match,index)=>{
-            s.innerHTML+=renderMatchCard("SEMIFINALE "+(index+1),match,"S",index,state.sTopRes[index]);
-            const vincitore=getWinner(match,state.sTopRes[index]);
+
+            s.innerHTML+=renderMatchCard(
+                "SEMIFINALE "+(index+1),
+                match,
+                "S",
+                index,
+                state.sTopRes[index]
+            );
+
+            const vincitore=getWinner(
+                match,
+                state.sTopRes[index]
+            );
+
             if(vincitore) finalisti.push(vincitore);
         });
+
     }else{
+
         finalisti=semifinali.flat();
+
     }
 
-    if(finalisti.length===2)
+    if(finalisti.length===2){
         state.finalTop=[...finalisti];
+    }
 
     if(state.rules.usaFinale!==true || finalisti.length!==2)
         return;
 
-    f.innerHTML=renderMatchCard("🏆 FINALE",finalisti,"F",0,state.fTopRes);
+    /* =====================================================
+       FINALE
+       La tabella contiene SOLO la partita.
+       NESSUN vincitore viene inserito dentro finaleBox.
+       ===================================================== */
 
-    const campione=getWinner(finalisti,state.fTopRes);
+    f.innerHTML=renderMatchCard(
+        "🏆 FINALE",
+        finalisti,
+        "F",
+        0,
+        state.fTopRes
+    );
+
+    /* =====================================================
+       CONTENITORE CAMPIONE
+       Viene creato FUORI dalla card della finale,
+       come card fratella dentro .groups.
+       ===================================================== */
+
+    const campione=getWinner(
+        finalisti,
+        state.fTopRes
+    );
+
+    const finaleCard=f.closest(".card");
+    const groups=finaleCard ? finaleCard.parentElement : null;
+
+    let winnerCard=document.getElementById("winnerCardKO");
+
+    /* Se il contenitore esiste ma non è dentro .groups,
+       lo spostiamo nella posizione corretta. */
+    if(winnerCard && groups && winnerCard.parentElement!==groups){
+        groups.appendChild(winnerCard);
+    }
+
+    /* Se non esiste, lo creiamo come nuovo contenitore
+       allo stesso livello della card della finale. */
+    if(!winnerCard && groups){
+
+        winnerCard=document.createElement("div");
+
+        winnerCard.id="winnerCardKO";
+        winnerCard.className="card winner-card-ko";
+
+        groups.appendChild(winnerCard);
+    }
+
     if(campione){
+
         state.campioneTop=campione;
-        f.innerHTML+=`<div class="winner-box top-win">🏆 CAMPIONE TORNEO:<br>${formatCoppiaDisplay(campione)}</div>`;
+
+        if(winnerCard){
+
+            winnerCard.innerHTML=`
+                <div class="winner-box top-win">
+                    🏆 CAMPIONE TORNEO:<br>
+                    ${formatCoppiaDisplay(campione)}
+                </div>
+            `;
+
+        }
+
+    }else{
+
+        state.campioneTop=null;
+
+        if(winnerCard){
+            winnerCard.innerHTML="";
+        }
     }
 }
+
+
+
                    
 function renderMatchCard(titolo, match, type, index, risultato) {
     const res = String(risultato || "-").split("-");
