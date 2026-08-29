@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'Bove.html'
+      - 'KO_LAYOUT_TRIGGER.txt'
       - '.github/workflows/fix-ko-layout.yml'
 
 permissions:
@@ -26,7 +27,6 @@ jobs:
           s = p.read_text(encoding='utf-8')
           original = s
 
-          # Remove the previous KO-specific geometry block completely.
           start = s.find('/* ========================================================\n   LAYOUT FASE FINALE KO')
           if start != -1:
               end = s.find('/* Frecce Qualificazione */', start)
@@ -34,31 +34,13 @@ jobs:
                   raise SystemExit('KO CSS end marker not found')
               s = s[:start] + s[end:]
 
-          # KO must use the same 4 real cells as the Gironi:
-          # Campo | Ora | Match | Ris
-          s = re.sub(
-              r'<th colspan="\d+">\s*QUARTI DI FINALE',
-              '<th colspan="4">\n                            QUARTI DI FINALE',
-              s
-          )
-          s = re.sub(
-              r'<th colspan="\d+">\s*SEMIFINALI',
-              '<th colspan="4">\n                            SEMIFINALI',
-              s
-          )
-          s = re.sub(
-              r'<th colspan="\d+">\s*FINALE',
-              '<th colspan="4">\n                            FINALE',
-              s
-          )
+          s = re.sub(r'<th colspan="\d+">\s*QUARTI DI FINALE', '<th colspan="4">\n                            QUARTI DI FINALE', s)
+          s = re.sub(r'<th colspan="\d+">\s*SEMIFINALI', '<th colspan="4">\n                            SEMIFINALI', s)
+          s = re.sub(r'<th colspan="\d+">\s*FINALE', '<th colspan="4">\n                            FINALE', s)
 
-          old_header = re.compile(
-              r'<th>Campo</th>\s*<th>(?:Ore|Ora)</th>\s*<th>(?:Minuti</th>\s*<th>)?Match</th>\s*<th>(?:Ris|Ris\.1)</th>(?:\s*<th>Ris\.2</th>)?',
-              re.S
-          )
+          old_header = re.compile(r'<th>Campo</th>\s*<th>(?:Ore|Ora)</th>\s*<th>(?:Minuti</th>\s*<th>)?Match</th>\s*<th>(?:Ris|Ris\.1)</th>(?:\s*<th>Ris\.2</th>)?', re.S)
           s = old_header.sub('<th>Campo</th><th>Ora</th><th>Match</th><th>Ris</th>', s)
 
-          # Replace renderMatchCard with the same 4-cell DOM pattern used by renderTables().
           a = s.find('function renderMatchCard')
           if a == -1:
               raise SystemExit('renderMatchCard not found')
@@ -86,58 +68,31 @@ jobs:
     return `
 <tr>
 <td>
-<input
-value="${safe(camp)}"
-oninput="updateKOField('${type}',${index},'camp',this.value)"
-style="width:45px">
+<input value="${safe(camp)}" oninput="updateKOField('${type}',${index},'camp',this.value)" style="width:45px">
 </td>
 
 <td>
-<input
-value="${safe(time)}"
-oninput="updateKOField('${type}',${index},'time',this.value)"
->
+<input value="${safe(time)}" oninput="updateKOField('${type}',${index},'time',this.value)">
 </td>
 
 <td class="match-cell">
-
-<div class="team-line">
-${formatCoppiaDisplay(match[0])}
-</div>
-
-<div class="vs-line">
-<b>VS</b>
-</div>
-
-<div class="team-line">
-${formatCoppiaDisplay(match[1])}
-</div>
-
+<div class="team-line">${formatCoppiaDisplay(match[0])}</div>
+<div class="vs-line"><b>VS</b></div>
+<div class="team-line">${formatCoppiaDisplay(match[1])}</div>
 <div style="font-size:12px;opacity:.7;margin-top:4px;">${stato}</div>
 ${winner ? `<div class="winner-box">🏆 Passa: ${formatCoppiaDisplay(winner)}</div>` : ""}
-
 </td>
 
 <td class="db-cell">
-
-<input
-value="${safe(risultato1)}"
-oninput="updateKOResult('${type}',${index},this.value,0)">
-
-<input
-value="${safe(risultato2)}"
-oninput="updateKOResult('${type}',${index},this.value,1)">
-
+<input value="${safe(risultato1)}" oninput="updateKOResult('${type}',${index},this.value,0)">
+<input value="${safe(risultato2)}" oninput="updateKOResult('${type}',${index},this.value,1)">
 </td>
-
 </tr>`;
 }
 
 '''
           s = s[:a] + fn + s[b:]
 
-          # KO tables now inherit the normal table geometry, exactly like Gironi.
-          # Only remove the horizontal overflow from the KO containers.
           css = r'''
 /* ========================================================
    KO — COPIA FEDELE DEL LAYOUT DEI GIRONI
@@ -163,27 +118,11 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
 .koBox table td:nth-child(2), .finalContainer table td:nth-child(2) { width:101px !important; }
 .koBox table td:nth-child(3), .finalContainer table td:nth-child(3) { width:120px !important; }
 .koBox table td:nth-child(4), .finalContainer table td:nth-child(4) { width:188px !important; }
-.koBox table td:nth-child(1) input, .finalContainer table td:nth-child(1) input {
-    width:45px !important; min-width:45px !important; max-width:45px !important;
-}
-.koBox table td:nth-child(2) input, .finalContainer table td:nth-child(2) input {
-    width:100% !important; max-width:none !important;
-}
-.koBox table td.db-cell, .finalContainer table td.db-cell {
-    width:188px !important;
-    white-space:nowrap !important;
-}
-.koBox table td.db-cell input, .finalContainer table td.db-cell input {
-    width:50% !important; max-width:none !important; min-width:0 !important;
-    box-sizing:border-box !important;
-}
-.koBox table td.match-cell .team-line, .finalContainer table td.match-cell .team-line {
-    display:block !important;
-    width:100% !important;
-    line-height:1.3 !important;
-    white-space:normal !important;
-    margin:2px 0 !important;
-}
+.koBox table td:nth-child(1) input, .finalContainer table td:nth-child(1) input { width:45px !important; min-width:45px !important; max-width:45px !important; }
+.koBox table td:nth-child(2) input, .finalContainer table td:nth-child(2) input { width:100% !important; max-width:none !important; }
+.koBox table td.db-cell, .finalContainer table td.db-cell { width:188px !important; white-space:nowrap !important; }
+.koBox table td.db-cell input, .finalContainer table td.db-cell input { width:50% !important; max-width:none !important; min-width:0 !important; box-sizing:border-box !important; }
+.koBox table td.match-cell .team-line, .finalContainer table td.match-cell .team-line { display:block !important; width:100% !important; line-height:1.3 !important; white-space:normal !important; margin:2px 0 !important; }
 '''
           s = s.replace('</style>', css + '\n</style>', 1)
 
@@ -192,7 +131,6 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
 
           p.write_text(s, encoding='utf-8')
 
-          # Syntax check every inline script.
           scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, flags=re.S|re.I)
           for i, script in enumerate(scripts):
               f = Path(f'/tmp/bove-{i}.js')
@@ -215,6 +153,6 @@ oninput="updateKOResult('${type}',${index},this.value,1)">
           if git diff --cached --quiet; then
             echo "Nessuna modifica necessaria"
           else
-            git commit -m "Copy Gironi layout exactly to KO phases"
+            git commit -m "Fix KO layout to match Gironi"
             git push
           fi
