@@ -1,0 +1,41 @@
+name: Fix altezza righe gironi
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-gironi-height.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inserisci fix CSS senza modificare altro
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* FIX DEFINITIVO ALTEZZA RIGHE GIRONI */'
+          css = '''\n/* FIX DEFINITIVO ALTEZZA RIGHE GIRONI */\n#Arows tr,\n#Brows tr,\n#Crows tr,\n#Drows tr,\n#Erows tr,\n#Frows tr {\n    height: 102px !important;\n    min-height: 102px !important;\n    max-height: 102px !important;\n}\n'''
+          if marker not in s:
+              pos = s.find('</style>')
+              if pos == -1:
+                  raise SystemExit('Tag </style> non trovato')
+              s = s[:pos] + css + s[pos:]
+              p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Salva modifica e rimuovi workflow temporaneo
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git rm .github/workflows/fix-gironi-height.yml
+          git commit -m 'Fix altezza righe gironi a 102px'
+          git push
