@@ -1,4 +1,4 @@
-name: Move minutes next to hour
+name: Fix minutes layout
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reorder only the minutes cell
+      - name: Put minutes immediately after hour
         shell: python
         run: |
           from pathlib import Path
@@ -22,69 +22,34 @@ jobs:
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
 
-          td_re = re.compile(r'<td\\b[^>]*>.*?</td>', re.I | re.S)
-          minute_re = re.compile(r'(minut|minute|mins?)', re.I)
+          # The knockout tables already have dedicated time columns 2 (hour) and 3 (minutes).
+          # The previous CSS hid column 3, making the minutes appear detached from the hour.
+          # Restore column 3 and rebalance only these table columns so team names get the space.
+          s2 = s
+          s2 = re.sub(
+              r'(table:has\(> tbody#Q\) th:nth-child\(3\), table:has\(> tbody#S\) th:nth-child\(3\), table:has\(> tbody#finaleBox\) th:nth-child\(3\),\s*\.koBox table th:nth-child\(3\), \.finalContainer table th:nth-child\(3\)) \{ width: 0px !important; display: none !important; \}',
+              r'\1 { width: 45px !important; display: table-cell !important; }',
+              s2
+          )
+          s2 = re.sub(
+              r'(table:has\(> tbody#Q\) th:nth-child\(4\), table:has\(> tbody#Q\) td:nth-child\(4\),\s*table:has\(> tbody#S\) th:nth-child\(4\), table:has\(> tbody#S\) td:nth-child\(4\),\s*table:has\(> tbody#finaleBox\) th:nth-child\(4\), table:has\(> tbody#finaleBox\) td:nth-child\(4\),\s*\.koBox table th:nth-child\(4\), \.koBox table td:nth-child\(4\),\s*\.finalContainer table th:nth-child\(4\), \.finalContainer table td:nth-child\(4\)) \{\s*width: 125px !important;\s*\}',
+              r'\1 { width: 150px !important; }',
+              s2,
+              flags=re.S
+          )
 
-          moved = 0
-
-          def fix_row(m):
-              global moved
-              row = m.group(0)
-              cells = td_re.findall(row)
-              if len(cells) < 5:
-                  return row
-
-              # Find the cell that represents minutes from its visible text or input attributes.
-              idx = None
-              for i, cell in enumerate(cells):
-                  if minute_re.search(re.sub(r'<[^>]+>', ' ', cell)) or minute_re.search(cell):
-                      # Do not treat a generic table row as a match unless the row contains a match cell.
-                      if 'match-cell' in row or 'db-cell' in row:
-                          idx = i
-                          break
-
-              # Minutes belongs immediately after the hour cell (column 3).
-              if idx is not None and idx != 2 and idx > 0:
-                  cell = cells.pop(idx)
-                  cells.insert(2, cell)
-                  moved += 1
-                  return td_re.sub(lambda _: cells.pop(0), row, count=len(cells)) if False else row[:m.start() - m.start()] + ''.join(cells) + row[row.rfind('</tr>'):]
-              return row
-
-          # Safer row replacement preserving <tr ...> and </tr> exactly.
-          tr_re = re.compile(r'<tr\\b[^>]*>.*?</tr>', re.I | re.S)
-          def replace_row(m):
-              nonlocal_dummy = None
-              row = m.group(0)
-              cells = td_re.findall(row)
-              if len(cells) < 5 or ('match-cell' not in row and 'db-cell' not in row):
-                  return row
-              idx = None
-              for i, cell in enumerate(cells):
-                  if minute_re.search(cell):
-                      idx = i
-                      break
-              if idx is None or idx == 2 or idx <= 0:
-                  return row
-              start = row.find('>') + 1
-              end = row.rfind('</tr>')
-              cell = cells.pop(idx)
-              cells.insert(2, cell)
-              return row[:start] + ''.join(cells) + row[end:]
-
-          s2 = tr_re.sub(replace_row, s)
           if s2 == s:
-              raise SystemExit('Nessuna cella minuti identificabile da spostare: nessuna modifica eseguita.')
+              raise SystemExit('Layout rules non trovate: nessuna modifica eseguita.')
 
           p.write_text(s2, encoding='utf-8')
 
-      - name: Remove temporary workflows and commit
+      - name: Remove temporary workflow and commit
         shell: bash
         run: |
-          rm -f .github/workflows/move-minutes-next-to-hour.yml .github/workflows/inspect-ris-layout.yml
+          rm -f .github/workflows/move-minutes-next-to-hour.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Bove.html .github/workflows/move-minutes-next-to-hour.yml .github/workflows/inspect-ris-layout.yml
+          git add Bove.html .github/workflows/move-minutes-next-to-hour.yml
           git diff --cached --quiet && exit 0
-          git commit -m 'Move minutes cell next to hour'
+          git commit -m 'Move minutes next to hour in match tables'
           git push
