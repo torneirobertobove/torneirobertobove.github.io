@@ -24,10 +24,11 @@ jobs:
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
 
-          # 1) In user mode allow ONLY Regole and Stampa.
+          # In user mode there are currently no menu functions available.
+          # Hide the entire admin menu and its hamburger. Admin mode is untouched.
           start = s.find('        /*\n        MENU UTENTE: consentite solo le funzioni di consultazione.')
           if start == -1:
-              start = s.find('        /*\n        Per un utente normale:')
+              start = s.find('        /*\n        MENU UTENTE: consentite solo le funzioni di consultazione.')
           if start == -1:
               raise SystemExit('Blocco user menu non trovato')
 
@@ -41,188 +42,77 @@ jobs:
           end2 += len('        );')
 
           replacement = '''        /*
-        MENU UTENTE: consentite solo le funzioni di consultazione.
+        MENU UTENTE:
+        nessuna funzione amministrativa deve essere mostrata.
+        Regole, Stampa, Formato, Squadre, Salva, Reset e Torna ad Admin
+        restano completamente nascosti per gli utenti normali.
         */
 
-        if(menu){
-            menu.querySelectorAll("button").forEach(function(button){
-                const testo = (button.textContent || "").trim();
-                const consentito = /Regole/i.test(testo) || /Stampa/i.test(testo);
+        const hamburger = document.querySelector(".menu-button");
+        const menu = document.getElementById("menuComandi");
 
-                if(consentito){
-                    button.classList.add("user-menu-allowed");
-                    button.disabled = false;
-                    button.style.removeProperty("opacity");
-                    button.style.setProperty("display", "block", "important");
-                    button.style.setProperty("visibility", "visible", "important");
-                    button.style.setProperty("pointer-events", "auto", "important");
-                }else{
-                    button.classList.remove("user-menu-allowed");
-                    button.disabled = true;
-                    button.style.setProperty("display", "none", "important");
-                    button.style.setProperty("visibility", "hidden", "important");
-                    button.style.setProperty("pointer-events", "none", "important");
-                }
+        if(hamburger){
+            hamburger.style.setProperty("display", "none", "important");
+            hamburger.disabled = true;
+            hamburger.style.pointerEvents = "none";
+        }
+
+        if(menu){
+            menu.classList.remove("show");
+            menu.style.setProperty("display", "none", "important");
+            menu.style.setProperty("visibility", "hidden", "important");
+            menu.style.setProperty("opacity", "0", "important");
+            menu.style.setProperty("pointer-events", "none", "important");
+
+            menu.querySelectorAll("button, a").forEach(function(button){
+                button.disabled = true;
+                button.style.setProperty("display", "none", "important");
+                button.style.setProperty("visibility", "hidden", "important");
+                button.style.setProperty("pointer-events", "none", "important");
             });
         }
 
         console.log(
-            "=== ACCESSO USER: SOLO REGOLE E STAMPA ==="
+            "=== ACCESSO USER: MENU AMMINISTRATIVO NASCOSTO ==="
         );'''
 
           s = s[:start] + replacement + s[end2:]
 
-          # 2) Never let bloccaGestionale disable the hamburger or the two allowed user buttons.
+          # Ensure the blocking function also leaves the user menu inaccessible.
           s = re.sub(
               r'if\(\s*!el\.classList\.contains\("back"\).*?\n\s*\}',
-              '''if(\n            !el.classList.contains("back") &&\n            !el.classList.contains("menu-button") &&\n            !el.classList.contains("user-menu-allowed")\n        ){\n\n            el.disabled = true;\n            el.style.opacity = "0.6";\n\n        }''',
+              '''if(\n            !el.classList.contains("back") &&\n            !el.classList.contains("menu-button")\n        ){\n\n            el.disabled = true;\n            el.style.opacity = "0.6";\n\n        }''',
               s,
               count=1,
               flags=re.S
           )
 
-          # 3) Replace the previous user-mode CSS with one single, stable layout.
-          css = r'''<style id="bove-user-menu-stable">
-          /* USER MODE: hamburger and a compact, opaque dropdown. */
-          body.user-mode .menu-container {
-              position: fixed !important;
-              top: 12px !important;
-              right: 12px !important;
-              left: auto !important;
-              z-index: 10000 !important;
-          }
+          # Remove previous conflicting user-menu style blocks.
+          s = re.sub(r'<style id="bove-user-menu-stable">.*?</style>\s*', '', s, flags=re.S)
+          s = re.sub(r'<style id="bove-user-menu-fix">.*?</style>\s*', '', s, flags=re.S)
+          s = re.sub(r'<style>\s*/\* BOVE USER MENU FINAL FIX \*/.*?</style>\s*', '', s, count=1, flags=re.S)
+          s = re.sub(r'<style>\s*/\* USER MODE - MENU DI CONSULTAZIONE \*/.*?</style>\s*', '', s, count=1, flags=re.S)
+          s = re.sub(r'<style>\s*/\* USER MODE - NASCONDE LE FUNZIONI AMMINISTRATIVE \*/.*?</style>\s*', '', s, count=1, flags=re.S)
 
-          body.user-mode .menu-button {
-              width: 42px !important;
-              height: 42px !important;
-              min-width: 42px !important;
-              min-height: 42px !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-              cursor: pointer !important;
-              position: relative !important;
-              z-index: 10001 !important;
-          }
-
-          body.user-mode #menuComandi {
-              position: absolute !important;
-              top: 50px !important;
-              right: 0 !important;
-              left: auto !important;
-              width: 220px !important;
-              max-width: calc(100vw - 24px) !important;
-              padding: 10px !important;
-              margin: 0 !important;
-              display: none !important;
-              flex-direction: column !important;
-              gap: 8px !important;
-              box-sizing: border-box !important;
-              background: #111827 !important;
-              border: 1px solid #475569 !important;
-              border-radius: 12px !important;
-              box-shadow: 0 12px 30px rgba(0,0,0,.55) !important;
-              opacity: 0 !important;
-              visibility: hidden !important;
-              transform: translateY(-6px) !important;
-              pointer-events: none !important;
-              transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important;
-              z-index: 10000 !important;
-          }
-
+          css = '''<style id="bove-user-menu-hidden">
+          /* USER: nessun menu amministrativo visibile o cliccabile. */
+          body.user-mode .menu-button,
+          body.user-mode #menuComandi,
           body.user-mode #menuComandi.show {
-              display: flex !important;
-              opacity: 1 !important;
-              visibility: visible !important;
-              transform: translateY(0) !important;
-              pointer-events: auto !important;
-          }
-
-          body.user-mode #menuComandi button.user-menu-allowed {
-              display: block !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-              width: 100% !important;
-              min-height: 42px !important;
-              padding: 10px 12px !important;
-              margin: 0 !important;
-              box-sizing: border-box !important;
-              background: #0f172a !important;
-              color: #fff !important;
-              border: 1px solid #475569 !important;
-              border-radius: 8px !important;
-              text-align: left !important;
-              cursor: pointer !important;
-          }
-
-          body.user-mode #menuComandi button.user-menu-allowed:hover {
-              background: #1e293b !important;
+              display: none !important;
+              visibility: hidden !important;
+              opacity: 0 !important;
+              pointer-events: none !important;
           }
           </style>'''
+          s = re.sub(r'<style id="bove-user-menu-hidden">.*?</style>\s*', '', s, flags=re.S)
+          s = s.replace('</head>', css + '\n</head>', 1)
 
-          s = re.sub(
-              r'<style id="bove-user-menu-stable">.*?</style>\s*',
-              '', s, flags=re.S
-          )
-          s = re.sub(
-              r'<style id="bove-user-menu-fix">.*?</style>\s*',
-              '', s, flags=re.S
-          )
-          s = re.sub(
-              r'<style>\s*/\* BOVE USER MENU FINAL FIX \*/.*?</style>\s*',
-              '', s, count=1, flags=re.S
-          )
-
-          # Remove the old broad user-mode menu CSS block, if present.
-          s = re.sub(
-              r'<style>\s*/\* USER MODE - MENU DI CONSULTAZIONE \*/.*?</style>\s*',
-              '', s, count=1, flags=re.S
-          )
-          s = re.sub(
-              r'<style>\s*/\* USER MODE - NASCONDE LE FUNZIONI AMMINISTRATIVE \*/.*?</style>\s*',
-              '', s, count=1, flags=re.S
-          )
-
-          # Put the stable CSS immediately before </head> so it wins over older rules.
-          if 'id="bove-user-menu-stable"' not in s:
-              s = s.replace('</head>', css + '\n</head>', 1)
-
-          # 4) One definitive toggleMenu for both admin and user mode.
-          toggle = r'''<script id="bove-user-menu-toggle">
-          window.toggleMenu = function(){
-              const menu = document.getElementById("menuComandi");
-              const hamburger = document.querySelector(".menu-button");
-              if(!menu) return;
-
-              if(document.body.classList.contains("user-mode")){
-                  // Re-apply the two allowed buttons every time the menu opens.
-                  menu.querySelectorAll("button").forEach(function(button){
-                      const testo = (button.textContent || "").trim();
-                      const allowed = /Regole/i.test(testo) || /Stampa/i.test(testo);
-                      button.classList.toggle("user-menu-allowed", allowed);
-                      button.disabled = !allowed;
-                      button.style.setProperty("display", allowed ? "block" : "none", "important");
-                      button.style.setProperty("visibility", allowed ? "visible" : "hidden", "important");
-                      button.style.setProperty("pointer-events", allowed ? "auto" : "none", "important");
-                  });
-
-                  menu.classList.toggle("show");
-                  return;
-              }
-
-              menu.classList.toggle("show");
-          };
-          </script>'''
-
+          # Remove any previously injected replacement toggle.
           s = re.sub(r'<script id="bove-user-menu-toggle">.*?</script>\s*', '', s, flags=re.S)
-          s = s.replace('</body>', toggle + '\n</body>', 1)
 
           p.write_text(s, encoding='utf-8')
-          print('Bove.html user menu repaired')
+          print('Bove.html: user menu hidden')
 
       - name: Commit repair
         shell: bash
@@ -234,5 +124,5 @@ jobs:
             echo "No changes"
             exit 0
           fi
-          git commit -m "Stabilize Bove user hamburger menu"
+          git commit -m "Hide admin menu for users"
           git push
