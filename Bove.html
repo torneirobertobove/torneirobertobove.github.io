@@ -10155,7 +10155,6 @@ function renderKO(){
 
     if(state.rules.usaQuarti===true){
 
-        /* Quarti attivi: non saltarli mai automaticamente. */
         if(teams.length<8){
             q.innerHTML=`<tr><td colspan="5">Servono 8 squadre qualificate per i Quarti di Finale.</td></tr>`;
             return;
@@ -10246,11 +10245,6 @@ function renderKO(){
     if(state.rules.usaFinale!==true || finalisti.length!==2)
         return;
 
-    /* =====================================================
-       FINALE
-       La tabella contiene SOLO la partita.
-       ===================================================== */
-
     f.innerHTML=renderMatchCard(
         "🏆 FINALE",
         finalisti,
@@ -10259,26 +10253,31 @@ function renderKO(){
         state.fTopRes
     );
 
-    /* =====================================================
-       CONTENITORE CAMPIONE
-       ===================================================== */
-
-    const campione=getWinner(
-        finalisti,
-        state.fTopRes
-    );
+    /* --- UNICO PUNTO MODIFICATO: Controllo sicuro del vincitore --- */
+    let campione = getWinner(finalisti, state.fTopRes);
+    
+    if (!campione && finalisti.length === 2) {
+        const resSplit = String(state.fTopRes || "").split("-");
+        if(resSplit.length === 2) {
+            const g1 = parseInt(resSplit[0]);
+            const g2 = parseInt(resSplit[1]);
+            if(!isNaN(g1) && !isNaN(g2)) {
+                if(g1 > g2) campione = finalisti[0];
+                else if(g2 > g1) campione = finalisti[1];
+            }
+        }
+    }
+    /* ------------------------------------------------------------- */
 
     const finaleCard=f.closest(".card");
     const groups=finaleCard ? finaleCard.parentElement : null;
 
     let winnerCard=document.getElementById("winnerCardKO");
 
-    /* Se il contenitore esiste ma non è dentro .groups, lo spostiamo. */
     if(winnerCard && groups && winnerCard.parentElement!==groups){
         groups.appendChild(winnerCard);
     }
 
-    /* Se non esiste, lo creiamo. */
     if(!winnerCard && groups){
         winnerCard=document.createElement("div");
         winnerCard.id="winnerCardKO";
@@ -10290,7 +10289,7 @@ function renderKO(){
         state.campioneTop=campione;
 
         if(winnerCard){
-            winnerCard.style.display="block";
+            winnerCard.style.display = "block";
             winnerCard.innerHTML=`
                 <div class="winner-box top-win">
                     🏆 CAMPIONE TORNEO:<br>
@@ -10298,11 +10297,12 @@ function renderKO(){
                 </div>
             `;
         }
+
     }else{
         state.campioneTop=null;
 
         if(winnerCard){
-            winnerCard.style.display="none";
+            winnerCard.style.display = "none";
             winnerCard.innerHTML="";
         }
     }
