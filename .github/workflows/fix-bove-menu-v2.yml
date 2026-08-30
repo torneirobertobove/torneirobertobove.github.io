@@ -1,0 +1,148 @@
+name: Fix Bove user menu v2
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix-menu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace unstable menu fix
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("Bove.html")
+          text = path.read_text(encoding="utf-8")
+
+          start = text.find("<!-- BOVE USER MENU FINAL FIX -->")
+          end_marker = "<!-- /BOVE USER MENU FINAL FIX -->"
+          end = text.find(end_marker)
+
+          if start < 0 or end < 0:
+              raise SystemExit("Final menu fix marker not found")
+
+          end += len(end_marker)
+
+          patch = r'''<!-- BOVE USER MENU FINAL FIX -->
+          <style id="bove-user-menu-final-fix">
+          body.user-mode #menuComandi {
+              background:#111827 !important;
+              border:1px solid #334155 !important;
+              opacity:1 !important;
+          }
+
+          body.user-mode #menuComandi button:nth-child(2),
+          body.user-mode #menuComandi button:nth-child(4) {
+              display:block !important;
+              visibility:visible !important;
+              opacity:1 !important;
+              pointer-events:auto !important;
+          }
+
+          body.user-mode #menuComandi button:nth-child(1),
+          body.user-mode #menuComandi button:nth-child(3),
+          body.user-mode #menuComandi button:nth-child(5),
+          body.user-mode #menuComandi button:nth-child(6),
+          body.user-mode #menuComandi button:nth-child(7) {
+              display:none !important;
+              visibility:hidden !important;
+              pointer-events:none !important;
+          }
+          </style>
+
+          <script>
+          (function(){
+              "use strict";
+
+              function applyBoveUserMenu(){
+                  if(!document.body.classList.contains("user-mode")) return;
+
+                  const menu = document.getElementById("menuComandi");
+                  const hamburger = document.querySelector(".menu-button");
+                  if(!menu) return;
+
+                  if(hamburger){
+                      hamburger.disabled = false;
+                      hamburger.style.setProperty("display","flex","important");
+                      hamburger.style.setProperty("visibility","visible","important");
+                      hamburger.style.setProperty("opacity","1","important");
+                      hamburger.style.setProperty("pointer-events","auto","important");
+                  }
+
+                  const buttons = [...menu.querySelectorAll("button")];
+
+                  buttons.forEach((button,index)=>{
+                      const allowed = index === 1 || index === 3;
+
+                      button.disabled = !allowed;
+
+                      if(allowed){
+                          button.style.setProperty("display","block","important");
+                          button.style.setProperty("visibility","visible","important");
+                          button.style.setProperty("opacity","1","important");
+                          button.style.setProperty("pointer-events","auto","important");
+                      }else{
+                          button.style.setProperty("display","none","important");
+                          button.style.setProperty("visibility","hidden","important");
+                          button.style.setProperty("opacity","0","important");
+                          button.style.setProperty("pointer-events","none","important");
+                      }
+                  });
+
+                  menu.style.setProperty("background","#111827","important");
+                  menu.style.setProperty("border","1px solid #334155","important");
+              }
+
+              window.toggleMenu = function(){
+                  const menu = document.getElementById("menuComandi");
+                  if(!menu) return;
+
+                  applyBoveUserMenu();
+                  menu.classList.toggle("show");
+                  applyBoveUserMenu();
+              };
+
+              function start(){
+                  applyBoveUserMenu();
+
+                  // verifyAccess() è asincrona: ripristina il menu dopo il suo completamento.
+                  setTimeout(applyBoveUserMenu, 100);
+                  setTimeout(applyBoveUserMenu, 500);
+                  setTimeout(applyBoveUserMenu, 1500);
+
+                  // Mantiene il menu corretto senza MutationObserver ricorsivo.
+                  window.setInterval(applyBoveUserMenu, 2000);
+              }
+
+              if(document.readyState === "loading"){
+                  document.addEventListener("DOMContentLoaded",start,{once:true});
+              }else{
+                  start();
+              }
+          })();
+          </script>
+          <!-- /BOVE USER MENU FINAL FIX -->'''
+
+          text = text[:start] + patch + text[end:]
+          path.write_text(text, encoding="utf-8")
+          print("Menu fix v2 applicato")
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix Bove user menu mutation loop"
+          git push
