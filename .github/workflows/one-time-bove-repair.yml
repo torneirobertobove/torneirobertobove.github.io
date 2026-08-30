@@ -1,4 +1,4 @@
-name: One-time Bove repair
+name: One-time Bove UI repair
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Repair Bove loadState
+      - name: Apply clean player-board UI
         shell: python
         run: |
           from pathlib import Path
@@ -24,69 +24,78 @@ jobs:
           s = p.read_text(encoding='utf-8')
           original = s
 
-          old = '''                    state.iscritti =
-                        Array.isArray(iscritti)
-                        ? iscritti
-                        : [];
+          marker = '<!-- BOVE_PLAYER_BOARD_CLEAN_UI_V2 -->'
+          if marker in s:
+              raise SystemExit('UI patch already present')
 
+          patch = r'''
+<!-- BOVE_PLAYER_BOARD_CLEAN_UI_V2 -->
+<style>
+#userBackButton,
+#userPrintButton {
+  display:none !important;
+}
+.menu-button {
+  display:flex !important;
+  width:36px !important;
+  height:36px !important;
+  padding:0 !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:22px !important;
+}
+#idTorneoDisplay {
+  font-size:.8rem !important;
+  line-height:1.1 !important;
+  opacity:.7 !important;
+  margin-top:3px !important;
+  font-weight:500 !important;
+  text-align:center !important;
+}
+</style>
+<script>
+(function(){
+  function cleanPlayerBoard(){
+    var back=document.getElementById('userBackButton');
+    var print=document.getElementById('userPrintButton');
+    if(back) back.style.display='none';
+    if(print) print.style.display='none';
 
-                    console.log(
-                        "ISCRITTI APPROVATI CARICATI:",
-                        state.iscritti
-                    );'''
+    var menu=document.querySelector('.menu-button');
+    if(menu) menu.style.display='flex';
 
-          new = '''                    state.iscritti =
-                        Array.isArray(iscritti)
-                        ? iscritti
-                        : [];
+    var titolo=document.getElementById('titoloTorneo');
+    var id=(new URLSearchParams(window.location.search)).get('idTorneo');
 
+    if(titolo && id){
+      var box=document.getElementById('idTorneoDisplay');
+      if(!box){
+        box=document.createElement('div');
+        box.id='idTorneoDisplay';
+        titolo.insertAdjacentElement('afterend',box);
+      }
+      box.textContent='ID torneo: '+id;
+    }
+  }
 
-                    if(
-                        state.iscritti.length > 0 &&
-                        (!Array.isArray(state.partecipanti) ||
-                         state.partecipanti.length === 0)
-                    ){
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',cleanPlayerBoard);
+  }else{
+    cleanPlayerBoard();
+  }
 
-                        state.partecipanti =
-                            state.iscritti.slice();
+  window.addEventListener('load',cleanPlayerBoard);
+})();
+</script>
+'''
 
-                    }
+          if '</body>' not in s:
+              raise SystemExit('Tag </body> non trovato')
 
-
-                    console.log(
-                        "ISCRITTI APPROVATI CARICATI:",
-                        state.iscritti
-                    );'''
-
-          if old not in s:
-              raise SystemExit('Target sincronizzazione iscritti non trovato')
-          s = s.replace(old, new, 1)
-
-          marker = '''                console.log(
-                    "GIRONI GENERATI:",
-                    state.A,
-                    state.B,
-                    state.C,
-                    state.D
-                );'''
-
-          insertion = marker + '''
-
-
-                if(
-                    typeof generaPartiteGironi === "function"
-                ){
-
-                    generaPartiteGironi();
-
-                }'''
-
-          if marker not in s:
-              raise SystemExit('Target generazione gironi non trovato')
-          s = s.replace(marker, insertion, 1)
-
+          s = s.replace('</body>', patch + '\n</body>', 1)
           p.write_text(s, encoding='utf-8')
-          print('Bove.html corretto:', s != original)
+
+          print('Bove.html modificato:', s != original)
 
       - name: Validate JavaScript
         shell: bash
@@ -101,12 +110,12 @@ jobs:
           PY
           node --check /tmp/bove-js.js
 
-      - name: Commit and remove one-time workflow
+      - name: Commit Bove and remove temporary workflow
         shell: bash
         run: |
           git config user.name 'Bove Repair'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
           git rm .github/workflows/one-time-bove-repair.yml
-          git commit -m 'Repair Bove approved registrations and tournament generation'
+          git commit -m 'Clean player board controls and show tournament ID'
           git push
