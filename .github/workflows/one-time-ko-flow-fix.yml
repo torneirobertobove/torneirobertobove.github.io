@@ -1,4 +1,4 @@
-name: One-time KO flow fix
+name: Fix KO geometry directly
 
 on:
   push:
@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   fix:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,163 +17,213 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Fix updateRes Q/S/F progression
-        shell: python
+      - name: Apply exact KO geometry repair
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
           import re
 
           p = Path('Bove.html')
-          text = p.read_text(encoding='utf-8')
+          s = p.read_text(encoding='utf-8')
+          original = s
 
-          replacement = r'''function updateRes(g,i,pos,val){
-
-    const map={
-        A:"Ares",
-        B:"Bres",
-        C:"Cres",
-        D:"Dres",
-        E:"Eres",
-        F:"Fres",
-        G:"Gres"
-    };
-
-    i=Number(i);
-    pos=Number(pos);
-
-    if(!Number.isInteger(i)||i<0)
-        return;
-
-    if(pos!==0&&pos!==1)
-        return;
-
-    const gruppo=String(g||"").toUpperCase();
-
-    if(map[gruppo]){
-
-        const chiave=map[gruppo];
-
-        if(!Array.isArray(state[chiave]))
-            state[chiave]=[];
-
-        let s=state[chiave];
-
-        if(s[i]===undefined||s[i]===null||s[i]==="")
-            s[i]="-";
-
-        let p=String(s[i]).split("-");
-
-        if(p.length!==2)
-            p=["",""];
-
-        p[pos]=String(val??"").trim();
-
-        s[i]=(p[0]===""&&p[1]==="")
-            ? "-"
-            : p[0]+"-"+p[1];
-
-    }
-    else if(gruppo==="Q"){
-
-        if(!Array.isArray(state.qRes))
-            state.qRes=Array(4).fill("-");
-
-        while(state.qRes.length<4)
-            state.qRes.push("-");
-
-        let p=String(state.qRes[i]??"-").split("-");
-
-        if(p.length!==2)
-            p=["",""];
-
-        p[pos]=String(val??"").trim();
-
-        state.qRes[i]=(p[0]===""&&p[1]==="")
-            ? "-"
-            : p[0]+"-"+p[1];
-
-    }
-    else if(gruppo==="S"){
-
-        if(!Array.isArray(state.sTopRes))
-            state.sTopRes=Array(2).fill("-");
-
-        while(state.sTopRes.length<2)
-            state.sTopRes.push("-");
-
-        let p=String(state.sTopRes[i]??"-").split("-");
-
-        if(p.length!==2)
-            p=["",""];
-
-        p[pos]=String(val??"").trim();
-
-        state.sTopRes[i]=(p[0]===""&&p[1]==="")
-            ? "-"
-            : p[0]+"-"+p[1];
-
-    }
-    else if(gruppo==="F"){
-
-        let p=String(state.fTopRes??"-").split("-");
-
-        if(p.length!==2)
-            p=["",""];
-
-        p[pos]=String(val??"").trim();
-
-        state.fTopRes=(p[0]===""&&p[1]==="")
-            ? "-"
-            : p[0]+"-"+p[1];
-
-    }
-    else{
-        return;
-    }
-
-    if(typeof renderClass==="function")
-        renderClass();
-
-    if(typeof renderKO==="function")
-        renderKO();
-
-    if(typeof updateAndSync==="function")
-        updateAndSync();
-
-}
-'''
-
-          pattern = r'function updateRes\(g,i,pos,val\)\s*\{.*?\n\s*\}\s*\n\s*function updateCamp\('
-          text, n = re.subn(
-              pattern,
-              replacement + '\nfunction updateCamp(',
-              text,
+          # This late style was overriding the KO hour and match columns to 50.5px.
+          s, removed = re.subn(
+              r'\n<style>\s*/\* BOVE MINUTES ADJACENT TO HOUR - REPAIR ONLY \*/.*?</style>\s*</head>',
+              '\n</head>',
+              s,
               count=1,
-              flags=re.S
+              flags=re.S,
           )
 
-          if n != 1:
-              raise SystemExit('ERRORE: updateRes non trovata')
+          # The KO header is five real columns, not six.
+          for title in ('QUARTI DI FINALE', 'SEMIFINALI', 'FINALE'):
+              s, n = re.subn(
+                  r'(<th\s+colspan=")6("\s*>\s*' + re.escape(title) + r'\s*</th>)',
+                  r'\g<1>5\g<2>',
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
+              if n != 1:
+                  raise SystemExit(f'Header titolo non trovato: {title}')
 
-          p.write_text(text, encoding='utf-8')
+          s = s.replace(
+              '<th colspan="2">Ris</th>',
+              '<th>Ris 1</th>\n                        <th>Ris 2</th>'
+          )
 
-      - name: Validate
-        shell: python
+          # Exact compact desktop geometry. The five widths sum to 439.03px,
+          # so table-layout:fixed has no spare pixels to redistribute into gaps.
+          block = re.compile(
+              r'(table:has\(> tbody#Q\),\s*table:has\(> tbody#S\),\s*table:has\(> tbody#finaleBox\),\s*\.koBox table,\s*\.finalContainer table\s*\{).*?\n\}',
+              re.S,
+          )
+          s, n = block.subn(
+              r'''\1
+    table-layout: fixed !important;
+    width: 439.03px !important;
+    min-width: 439.03px !important;
+    max-width: 439.03px !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    margin: 10px auto !important;
+    box-sizing: border-box !important;
+}''',
+              s,
+              count=2,
+          )
+          if n != 2:
+              raise SystemExit(f'Blocchi layout KO trovati: {n}, attesi 2')
+
+          # Mobile: the KO tables use the full card width and five adjacent columns.
+          mobile = r'''
+/* BOVE KO MOBILE COMPACT — DO NOT ALTER GIRONI */
+@media (max-width:599px) {
+    .finalContainer,
+    .finalContainer .groups,
+    .finalContainer .card,
+    .koBox {
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        box-sizing:border-box !important;
+        overflow-x:hidden !important;
+    }
+
+    .finalContainer table,
+    .koBox table,
+    table:has(> tbody#Q),
+    table:has(> tbody#S),
+    table:has(> tbody#finaleBox) {
+        width:100% !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        table-layout:fixed !important;
+        margin:8px 0 !important;
+        border-spacing:0 !important;
+    }
+
+    .finalContainer table th,
+    .finalContainer table td,
+    .koBox table th,
+    .koBox table td,
+    table:has(> tbody#Q) th,
+    table:has(> tbody#Q) td,
+    table:has(> tbody#S) th,
+    table:has(> tbody#S) td,
+    table:has(> tbody#finaleBox) th,
+    table:has(> tbody#finaleBox) td {
+        padding:5px 1px !important;
+        min-width:0 !important;
+        box-sizing:border-box !important;
+        overflow:hidden !important;
+    }
+
+    /* 12% Campo / 24% Ora / 32% Match / 16% Ris1 / 16% Ris2 */
+    .finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1),
+    .koBox table th:nth-child(1), .koBox table td:nth-child(1),
+    table:has(> tbody#Q) th:nth-child(1), table:has(> tbody#Q) td:nth-child(1),
+    table:has(> tbody#S) th:nth-child(1), table:has(> tbody#S) td:nth-child(1),
+    table:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1) { width:12% !important; }
+
+    .finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2),
+    .koBox table th:nth-child(2), .koBox table td:nth-child(2),
+    table:has(> tbody#Q) th:nth-child(2), table:has(> tbody#Q) td:nth-child(2),
+    table:has(> tbody#S) th:nth-child(2), table:has(> tbody#S) td:nth-child(2),
+    table:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2) { width:24% !important; }
+
+    .finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3),
+    .koBox table th:nth-child(3), .koBox table td:nth-child(3),
+    table:has(> tbody#Q) th:nth-child(3), table:has(> tbody#Q) td:nth-child(3),
+    table:has(> tbody#S) th:nth-child(3), table:has(> tbody#S) td:nth-child(3),
+    table:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3) { width:32% !important; }
+
+    .finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
+    .finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5),
+    .koBox table th:nth-child(4), .koBox table td:nth-child(4),
+    .koBox table th:nth-child(5), .koBox table td:nth-child(5),
+    table:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),
+    table:has(> tbody#Q) th:nth-child(5), table:has(> tbody#Q) td:nth-child(5),
+    table:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),
+    table:has(> tbody#S) th:nth-child(5), table:has(> tbody#S) td:nth-child(5),
+    table:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4),
+    table:has(> tbody#finaleBox) th:nth-child(5), table:has(> tbody#finaleBox) td:nth-child(5) { width:16% !important; }
+
+    .campo-cell input,
+    .score-cell input,
+    .orario-cell input[type="time"] {
+        min-width:0 !important;
+        max-width:100% !important;
+        box-sizing:border-box !important;
+        margin:0 auto !important;
+    }
+
+    .campo-cell input { width:100% !important; height:28px !important; padding:2px !important; font-size:12px !important; }
+    .orario-cell input[type="time"] { width:100% !important; height:28px !important; padding:0 !important; font-size:11px !important; }
+    .score-cell input { width:100% !important; height:28px !important; padding:2px !important; font-size:12px !important; }
+
+    .match-cell,
+    table:has(> tbody#Q) .match-cell,
+    table:has(> tbody#S) .match-cell,
+    table:has(> tbody#finaleBox) .match-cell {
+        width:auto !important;
+        min-width:0 !important;
+        max-width:none !important;
+        padding-left:2px !important;
+        padding-right:2px !important;
+    }
+
+    .match-cell .team-line {
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        font-size:11px !important;
+        line-height:15px !important;
+        white-space:normal !important;
+        overflow-wrap:anywhere !important;
+        word-break:break-word !important;
+        overflow:hidden !important;
+        margin:1px 0 !important;
+    }
+
+    .match-cell .vs-line { margin:1px 0 !important; line-height:15px !important; }
+}
+'''
+          if 'BOVE KO MOBILE COMPACT — DO NOT ALTER GIRONI' not in s:
+              s = s.replace('</style>', mobile + '\n</style>', 1)
+
+          if s == original:
+              raise SystemExit('Nessuna modifica applicata')
+
+          p.write_text(s, encoding='utf-8')
+          print('KO geometry source repair written')
+          print('removed late override:', removed)
+          PY
+
+      - name: Validate source
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
-          t=Path('Bove.html').read_text(encoding='utf-8')
-          required=['function updateRes(g,i,pos,val){','gruppo==="Q"','gruppo==="S"','gruppo==="F"','function renderKO(){','function getWinner(match,res){']
-          for x in required:
-              if x not in t:
-                  raise SystemExit('MANCANTE: '+x)
-          print('KO FLOW FIX VALIDATO')
+          import re
+          s=Path('Bove.html').read_text(encoding='utf-8')
+          assert 'BOVE KO MOBILE COMPACT — DO NOT ALTER GIRONI' in s
+          assert 'BOVE MINUTES ADJACENT TO HOUR - REPAIR ONLY' not in s
+          assert '<th>Ris 1</th>' in s and '<th>Ris 2</th>' in s
+          assert s.count('function renderMatchCard') == 1
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
+          Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/bove.js
+          git diff --check
 
-      - name: Commit and remove one-time workflow
+      - name: Commit Bove
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git rm .github/workflows/one-time-ko-flow-fix.yml
-          git commit -m 'fix: enable automatic KO winner progression'
+          git commit -m 'Fix KO result spacing and mobile layout'
           git push origin HEAD:main
