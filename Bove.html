@@ -10056,34 +10056,75 @@ oninput="updateRes('${tag}',${i},1,this.value)">
 }
    
 function getFinalQualified(){
+
     ensureRules();
 
-    let qualificate=[];
-    const lettereGironi=["A","B","C","D","E","F","G"];
+    const qualificate = [];
+    const lettereGironi = ["A","B","C","D","E","F","G"];
 
-    lettereGironi.forEach(tag=>{
-        const squadre=state[tag];
-        if(!Array.isArray(squadre) || squadre.length===0)
+    lettereGironi.forEach(tag => {
+
+        const squadre = state[tag];
+
+        if(!Array.isArray(squadre) || squadre.length === 0)
             return;
 
-        let classifica=calc(
+        const risultati =
+            Array.isArray(state[tag+"res"])
+                ? state[tag+"res"]
+                : [];
+
+        /*
+         * NON qualificare nessuno finché non sono stati
+         * inseriti tutti i risultati del girone.
+         */
+        const numeroPartite =
+            squadre.length * (squadre.length - 1) / 2;
+
+        if(
+            risultati.length < numeroPartite ||
+            risultati.slice(0, numeroPartite).some(r => 
+                r === "-" ||
+                r === "" ||
+                r == null
+            )
+        ){
+            console.log(
+                "Girone", tag,
+                "non ancora completato: nessuna qualificata."
+            );
+            return;
+        }
+
+        const classifica = calc(
             squadre,
-            Array.isArray(state[tag+"res"]) ? state[tag+"res"] : []
+            risultati
         );
 
-        if(!Array.isArray(classifica) || classifica.length===0)
+        if(!Array.isArray(classifica) || classifica.length === 0)
             return;
 
-        let q=Number(state.rules.qualificatePerGirone);
-        if(!Number.isFinite(q) || q<1) q=1;
+        let q = Number(state.rules.qualificatePerGirone);
 
-        /* Con i quarti attivi servono 8 squadre reali.
-           Nei gironi da 4 vengono quindi considerate tutte e 4. */
-        if(state.rules.usaQuarti===true && squadre.length===4)
-            q=4;
+        if(!Number.isFinite(q) || q < 1)
+            q = 1;
 
-        classifica.forEach((x,i)=>{
-            if(i<q){
+        /*
+         * Con i quarti attivi e girone da 4,
+         * tutte le 4 squadre vengono considerate
+         * SOLO DOPO che il girone è completo.
+         */
+        if(
+            state.rules.usaQuarti === true &&
+            squadre.length === 4
+        ){
+            q = 4;
+        }
+
+        classifica.forEach((x,i) => {
+
+            if(i < q){
+
                 qualificate.push({
                     nome:x.n,
                     pt:x.pt,
@@ -10093,19 +10134,29 @@ function getFinalQualified(){
                     girone:tag,
                     posizione:i+1
                 });
+
             }
+
         });
+
     });
 
-    let limite=Number(state.rules.numeroQualificateFinali);
+    let limite =
+        Number(state.rules.numeroQualificateFinali);
 
-    if(state.rules.usaQuarti===true && qualificate.length>=8)
-        limite=8;
+    if(
+        state.rules.usaQuarti === true &&
+        qualificate.length >= 8
+    ){
+        limite = 8;
+    }
 
-    if(!limite || limite<1)
-        limite=qualificate.length;
+    if(!limite || limite < 1)
+        limite = qualificate.length;
 
-    return qualificate.slice(0,limite).map(x=>x.nome);
+    return qualificate
+        .slice(0,limite)
+        .map(x => x.nome);
 }
 
 
