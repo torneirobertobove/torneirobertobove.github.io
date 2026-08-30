@@ -63,7 +63,7 @@ jobs:
           '''
           s = s[:a] + fn + s[b:]
 
-          # 2-6: exact five-column KO headers; keep section-title rows intact.
+          # Exact five-column KO headers; keep section-title rows intact.
           header = '''<tr>
                           <th>Campo</th>
                           <th>Ora</th>
@@ -78,7 +78,7 @@ jobs:
                   raise SystemExit(f'Header KO non trovato: {title}')
               s = s.replace(f'<th colspan="4">\n                            {title}', f'<th colspan="5">\n                            {title}', 1)
 
-          # 12: winner-box must be valid inside a tbody.
+          # Winner-box must be valid inside a tbody.
           s = s.replace('''f.innerHTML += `
         <div class="winner-box top-win">
             🏆 CAMPIONE TORNEO:<br>
@@ -91,8 +91,7 @@ jobs:
         </div></td></tr>
         `;''', 1)
 
-          # FIX ORA: on mobile the native time input was clipping the final digit.
-          # Keep the 105px ORA column, but give the actual time control enough width.
+          # Keep the native time control readable.
           old_time_css = '''width: 82px !important;
               min-width: 82px !important;
               max-width: 82px !important;'''
@@ -101,7 +100,7 @@ jobs:
               max-width: 92px !important;'''
           s = s.replace(old_time_css, new_time_css)
 
-          # 7-11, 17: fixed 462px geometry and the exact five column widths.
+          # Desktop KO geometry.
           css = r'''
 /* BOVE KO FINAL LAYOUT - DO NOT ALTER GIRONI */
 .koBox table,
@@ -144,6 +143,138 @@ jobs:
           if 'BOVE KO FINAL LAYOUT' not in s:
               s = s.replace('</style>', css + '\n</style>', 1)
 
+          # Mobile KO geometry: use the available card width and a fixed
+          # percentage grid so the five columns stay adjacent and compact.
+          # This deliberately does NOT modify the Gironi tables.
+          mobile_css = r'''
+/* BOVE KO MOBILE COMPACT - DO NOT ALTER GIRONI */
+@media (max-width:599px) {
+    .koBox,
+    .finalContainer {
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        overflow-x:hidden !important;
+        box-sizing:border-box !important;
+    }
+
+    .koBox table,
+    .finalContainer table,
+    table:has(> tbody#Q),
+    table:has(> tbody#S),
+    table:has(> tbody#finaleBox) {
+        width:100% !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        table-layout:fixed !important;
+        margin:8px 0 !important;
+        border-spacing:0 !important;
+    }
+
+    .koBox table th,
+    .koBox table td,
+    .finalContainer table th,
+    .finalContainer table td,
+    table:has(> tbody#Q) th,
+    table:has(> tbody#Q) td,
+    table:has(> tbody#S) th,
+    table:has(> tbody#S) td,
+    table:has(> tbody#finaleBox) th,
+    table:has(> tbody#finaleBox) td {
+        padding:6px 2px !important;
+        min-width:0 !important;
+        box-sizing:border-box !important;
+        overflow:hidden !important;
+    }
+
+    /* 12% Campo / 21% Ora / 35% Match / 16% Ris1 / 16% Ris2 */
+    .koBox table th:nth-child(1), .koBox table td:nth-child(1),
+    .finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1),
+    table:has(> tbody#Q) th:nth-child(1), table:has(> tbody#Q) td:nth-child(1),
+    table:has(> tbody#S) th:nth-child(1), table:has(> tbody#S) td:nth-child(1),
+    table:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1) { width:12% !important; max-width:none !important; }
+
+    .koBox table th:nth-child(2), .koBox table td:nth-child(2),
+    .finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2),
+    table:has(> tbody#Q) th:nth-child(2), table:has(> tbody#Q) td:nth-child(2),
+    table:has(> tbody#S) th:nth-child(2), table:has(> tbody#S) td:nth-child(2),
+    table:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2) { width:21% !important; max-width:none !important; }
+
+    .koBox table th:nth-child(3), .koBox table td:nth-child(3),
+    .finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3),
+    table:has(> tbody#Q) th:nth-child(3), table:has(> tbody#Q) td:nth-child(3),
+    table:has(> tbody#S) th:nth-child(3), table:has(> tbody#S) td:nth-child(3),
+    table:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3) { width:35% !important; max-width:none !important; }
+
+    .koBox table th:nth-child(4), .koBox table td:nth-child(4),
+    .finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
+    table:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),
+    table:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),
+    table:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4),
+    .koBox table th:nth-child(5), .koBox table td:nth-child(5),
+    .finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5),
+    table:has(> tbody#Q) th:nth-child(5), table:has(> tbody#Q) td:nth-child(5),
+    table:has(> tbody#S) th:nth-child(5), table:has(> tbody#S) td:nth-child(5),
+    table:has(> tbody#finaleBox) th:nth-child(5), table:has(> tbody#finaleBox) td:nth-child(5) { width:16% !important; max-width:none !important; }
+
+    .campo-cell input {
+        width:100% !important;
+        min-width:0 !important;
+        max-width:none !important;
+        height:28px !important;
+        padding:2px !important;
+        font-size:12px !important;
+    }
+
+    .orario-cell input[type="time"] {
+        width:100% !important;
+        min-width:0 !important;
+        max-width:none !important;
+        height:28px !important;
+        padding:0 !important;
+        font-size:11px !important;
+    }
+
+    .score-cell input {
+        width:42px !important;
+        min-width:0 !important;
+        max-width:100% !important;
+        height:28px !important;
+        padding:2px !important;
+        font-size:12px !important;
+    }
+
+    .match-cell {
+        width:auto !important;
+        min-width:0 !important;
+        max-width:none !important;
+        padding-left:3px !important;
+        padding-right:3px !important;
+        overflow:hidden !important;
+    }
+
+    .match-cell .team-line {
+        width:100% !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        white-space:normal !important;
+        overflow:hidden !important;
+        overflow-wrap:anywhere !important;
+        word-break:break-word !important;
+        font-size:12px !important;
+        line-height:16px !important;
+        margin:1px 0 !important;
+    }
+
+    .match-cell .vs-line {
+        margin:2px 0 !important;
+        line-height:16px !important;
+    }
+}
+'''
+          if 'BOVE KO MOBILE COMPACT' not in s:
+              s = s.replace('</style>', mobile_css + '\n</style>', 1)
+
           if s == original:
               raise SystemExit('Nessuna modifica KO applicata')
           p.write_text(s, encoding='utf-8')
@@ -157,6 +288,7 @@ jobs:
           import re
           s=Path('Bove.html').read_text(encoding='utf-8')
           assert 'BOVE KO FINAL LAYOUT' in s
+          assert 'BOVE KO MOBILE COMPACT' in s
           assert '<th>Ris 1</th>' in s and '<th>Ris 2</th>' in s
           assert s.count('class="score-cell"') >= 2
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
@@ -171,5 +303,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Bove.html
           git diff --cached --check
-          git commit -m "Fix mobile time input width in KO layout"
+          git commit -m "Fix compact mobile geometry for KO phase"
           git push origin HEAD:main
