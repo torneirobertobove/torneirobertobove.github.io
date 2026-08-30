@@ -1,9 +1,9 @@
-name: One-time Bove UI repair
+name: One-time Bove repair
 
 on:
-  pull_request_target:
-    types: [opened, synchronize]
-    branches: [main]
+  push:
+    paths:
+      - '.github/workflows/one-time-bove-repair.yml'
 
 permissions:
   contents: write
@@ -13,53 +13,80 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 1
 
-      - name: Apply clean player-board UI
+      - name: Repair Bove loadState
         shell: python
         run: |
           from pathlib import Path
+          import re
+
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
-          marker = '<!-- BOVE_PLAYER_BOARD_CLEAN_UI_V2 -->'
-          if marker in s:
-              print('UI patch already present')
-              raise SystemExit(0)
-          patch = r'''<!-- BOVE_PLAYER_BOARD_CLEAN_UI_V2 -->
-<style>
-#userBackButton,#userPrintButton{display:none !important;}
-.menu-button{display:flex !important;width:36px !important;height:36px !important;padding:0 !important;align-items:center !important;justify-content:center !important;font-size:22px !important;}
-#idTorneoDisplay{font-size:.8rem !important;line-height:1.1 !important;opacity:.7 !important;margin-top:3px !important;font-weight:500 !important;text-align:center !important;}
-</style>
-<script>
-(function(){
- function cleanPlayerBoard(){
-  var back=document.getElementById('userBackButton');
-  var print=document.getElementById('userPrintButton');
-  if(back)back.style.display='none';
-  if(print)print.style.display='none';
-  var menu=document.querySelector('.menu-button');
-  if(menu)menu.style.display='flex';
-  var titolo=document.getElementById('titoloTorneo');
-  var id=(new URLSearchParams(window.location.search)).get('idTorneo');
-  if(titolo&&id){
-   var box=document.getElementById('idTorneoDisplay');
-   if(!box){box=document.createElement('div');box.id='idTorneoDisplay';titolo.insertAdjacentElement('afterend',box);}
-   box.textContent='ID torneo: '+id;
-  }
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',cleanPlayerBoard);else cleanPlayerBoard();
- window.addEventListener('load',cleanPlayerBoard);
-})();
-</script>
-'''
-          if '</body>' not in s:
-              raise SystemExit('Tag </body> non trovato')
-          s=s.replace('</body>',patch+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
-          print('UI patch applicata')
+          original = s
+
+          old = '''                    state.iscritti =
+                        Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        state.iscritti
+                    );'''
+
+          new = '''                    state.iscritti =
+                        Array.isArray(iscritti)
+                        ? iscritti
+                        : [];
+
+
+                    if(
+                        state.iscritti.length > 0 &&
+                        (!Array.isArray(state.partecipanti) ||
+                         state.partecipanti.length === 0)
+                    ){
+
+                        state.partecipanti =
+                            state.iscritti.slice();
+
+                    }
+
+
+                    console.log(
+                        "ISCRITTI APPROVATI CARICATI:",
+                        state.iscritti
+                    );'''
+
+          if old not in s:
+              raise SystemExit('Target sincronizzazione iscritti non trovato')
+          s = s.replace(old, new, 1)
+
+          marker = '''                console.log(
+                    "GIRONI GENERATI:",
+                    state.A,
+                    state.B,
+                    state.C,
+                    state.D
+                );'''
+
+          insertion = marker + '''
+
+
+                if(
+                    typeof generaPartiteGironi === "function"
+                ){
+
+                    generaPartiteGironi();
+
+                }'''
+
+          if marker not in s:
+              raise SystemExit('Target generazione gironi non trovato')
+          s = s.replace(marker, insertion, 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('Bove.html corretto:', s != original)
 
       - name: Validate JavaScript
         shell: bash
@@ -70,16 +97,16 @@ jobs:
           s=Path('Bove.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
           Path('/tmp/bove-js.js').write_text('\n\n'.join(scripts),encoding='utf-8')
-          print('Script blocks:',len(scripts))
+          print('Script blocks:', len(scripts))
           PY
           node --check /tmp/bove-js.js
 
-      - name: Commit to main and remove temporary workflow
+      - name: Commit and remove one-time workflow
         shell: bash
         run: |
           git config user.name 'Bove Repair'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
           git rm .github/workflows/one-time-bove-repair.yml
-          git commit -m 'Clean player board controls and show tournament ID'
-          git push origin HEAD:main
+          git commit -m 'Repair Bove approved registrations and tournament generation'
+          git push
