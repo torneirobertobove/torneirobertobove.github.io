@@ -459,16 +459,6 @@ table.standing .trend-up, table.standing .trend-down,
 
 window.addEventListener("DOMContentLoaded", () => {
 
-
-
-
-
-
-
-
-
-
-
 async function verifyAccess(){
 
 ```
@@ -514,7 +504,7 @@ console.log(
 if(error || !profilo){
 
     console.warn(
-        "Profilo amministratore non trovato"
+        "Profilo non trovato"
     );
 
     bloccaGestionale();
@@ -531,21 +521,18 @@ if(profilo.ruolo !== "admin"){
         profilo
     );
 
-    bloccaGestionale();
-
 
     /*
     ============================
     UTENTE / VISITATORE
     ============================
 
-    Mantiene l'hamburger esistente.
-    Non crea più:
-    - Indietro
-    - Stampa
-
-    Nasconde le funzioni amministrative.
+    Blocca il gestionale,
+    ma mantiene visibile
+    il pulsante hamburger.
     */
+
+    bloccaGestionale();
 
 
     const hamburger =
@@ -556,129 +543,67 @@ if(profilo.ruolo !== "admin"){
         document.getElementById("menuComandi");
 
 
-    /*
-    * Mantiene visibile l'hamburger.
-    */
-
     if(hamburger){
 
-        hamburger.style.setProperty(
-            "display",
-            "flex",
-            "important"
-        );
+        hamburger.style.display = "flex";
+        hamburger.disabled = false;
+        hamburger.style.opacity = "1";
 
     }
 
 
     /*
-    * Rimuove eventuali vecchi pulsanti
-    * creati dalle versioni precedenti.
+    Rimuove eventuali vecchi pulsanti.
     */
 
-    document
-        .getElementById("userBackButton")
-        ?.remove();
+    const userBackButton =
+        document.getElementById("userBackButton");
+
+    if(userBackButton){
+
+        userBackButton.remove();
+
+    }
 
 
-    document
-        .getElementById("userPrintButton")
-        ?.remove();
+    const userPrintButton =
+        document.getElementById("userPrintButton");
+
+    if(userPrintButton){
+
+        userPrintButton.remove();
+
+    }
 
 
     /*
-    * Funzione che nasconde tutti
-    * i comandi amministrativi.
+    Nasconde TUTTE le funzioni
+    amministrative dal menu.
     */
 
-    const nascondiFunzioniAdmin = () => {
+    if(menu){
 
-        if(!menu){
-            return;
-        }
-
-
-        menu
-            .querySelectorAll("button")
-            .forEach(button => {
-
-                const testo =
-                    (
-                        button.innerText ||
-                        button.textContent ||
-                        ""
-                    )
-                    .trim()
-                    .toLowerCase();
+        const pulsantiAdmin =
+            menu.querySelectorAll("button");
 
 
-                if(
-                    testo.includes("formato") ||
-                    testo.includes("regole") ||
-                    testo.includes("squadre") ||
-                    testo.includes("stampa") ||
-                    testo.includes("salva") ||
-                    testo.includes("reset completo") ||
-                    testo.includes("torna ad admin")
-                ){
+        pulsantiAdmin.forEach(function(button){
 
-                    button.style.setProperty(
-                        "display",
-                        "none",
-                        "important"
-                    );
+            button.style.setProperty(
+                "display",
+                "none",
+                "important"
+            );
 
-                }
+            button.disabled = true;
 
-            });
-
-    };
-
-
-    /*
-    * Prima applicazione immediata.
-    */
-
-    nascondiFunzioniAdmin();
-
-
-    /*
-    * Protezione definitiva:
-    * se altri script modificano il menu,
-    * i comandi admin vengono nuovamente nascosti.
-    */
-
-    if(
-        menu &&
-        !window.__boveUserMenuObserver
-    ){
-
-        window.__boveUserMenuObserver =
-            new MutationObserver(() => {
-
-                nascondiFunzioniAdmin();
-
-            });
-
-
-        window.__boveUserMenuObserver.observe(
-            menu,
-            {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: [
-                    "style",
-                    "class"
-                ]
-            }
-        );
+        });
 
     }
 
 
     console.log(
-        "=== MENU USER CONFIGURATO ==="
+        "=== MENU USER PULITO ==="
     );
 
 
@@ -700,6 +625,7 @@ verifyAccess();
 
 // chiude DOMContentLoaded
 });
+
 
 
 function bloccaGestionale(){
