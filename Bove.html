@@ -471,138 +471,134 @@ window.addEventListener("DOMContentLoaded", () => {
 
 async function verifyAccess(){
 
-    const { data: { session } } =
-        await sb.auth.getSession();
+```
+const { data: { session } } =
+    await sb.auth.getSession();
 
 
-    if(!session){
+if(!session){
 
-        console.warn(
-            "Nessun utente autenticato"
-        );
-
-        bloccaGestionale();
-
-        return;
-
-    }
-
-
-    const userId =
-        session.user.id;
-
-
-    const { data: profilo, error } =
-        await sb
-        .from("profili")
-        .select("nome, ruolo")
-        .eq(
-            "user_id",
-            userId
-        )
-        .single();
-
-
-    console.log(
-        "RISULTATO PROFILO:",
-        profilo,
-        error
+    console.warn(
+        "Nessun utente autenticato"
     );
 
+    bloccaGestionale();
 
-    if(error || !profilo){
+    return;
 
-        console.warn(
-            "Profilo amministratore non trovato"
+}
+
+
+const userId =
+    session.user.id;
+
+
+const { data: profilo, error } =
+    await sb
+    .from("profili")
+    .select("nome, ruolo")
+    .eq(
+        "user_id",
+        userId
+    )
+    .single();
+
+
+console.log(
+    "RISULTATO PROFILO:",
+    profilo,
+    error
+);
+
+
+if(error || !profilo){
+
+    console.warn(
+        "Profilo amministratore non trovato"
+    );
+
+    bloccaGestionale();
+
+    return;
+
+}
+
+
+if(profilo.ruolo !== "admin"){
+
+    console.warn(
+        "Utente senza permessi admin:",
+        profilo
+    );
+
+    bloccaGestionale();
+
+
+    /*
+    ============================
+    UTENTE / VISITATORE
+    ============================
+
+    Mantiene l'hamburger esistente.
+    Non crea più:
+    - Indietro
+    - Stampa
+
+    Nasconde le funzioni amministrative.
+    */
+
+
+    const hamburger =
+        document.querySelector(".menu-button");
+
+
+    const menu =
+        document.getElementById("menuComandi");
+
+
+    /*
+    * Mantiene visibile l'hamburger.
+    */
+
+    if(hamburger){
+
+        hamburger.style.setProperty(
+            "display",
+            "flex",
+            "important"
         );
-
-        bloccaGestionale();
-
-        return;
 
     }
 
 
-    if(profilo.ruolo !== "admin"){
+    /*
+    * Rimuove eventuali vecchi pulsanti
+    * creati dalle versioni precedenti.
+    */
 
-        console.warn(
-            "Utente senza permessi admin:",
-            profilo
-        );
-
-        bloccaGestionale();
-
-
-        /*
-        ============================
-        UTENTE / VISITATORE
-        ============================
-
-        Mantiene l'hamburger esistente.
-        NON crea più:
-        - Indietro
-        - Stampa
-
-        Il menu resta quindi disponibile
-        per le sole funzioni personali.
-        */
+    document
+        .getElementById("userBackButton")
+        ?.remove();
 
 
-        const hamburger =
-            document.querySelector(".menu-button");
+    document
+        .getElementById("userPrintButton")
+        ?.remove();
 
 
-        const menu =
-            document.getElementById("menuComandi");
+    /*
+    * Funzione che nasconde tutti
+    * i comandi amministrativi.
+    */
 
+    const nascondiFunzioniAdmin = () => {
 
-        if(hamburger){
-
-            hamburger.style.display =
-                "flex";
-
+        if(!menu){
+            return;
         }
 
 
-        /*
-        * Rimuove eventuali vecchi pulsanti
-        * creati dalle versioni precedenti.
-        */
-
-        const userBackButton =
-            document.getElementById(
-                "userBackButton"
-            );
-
-
-        if(userBackButton){
-
-            userBackButton.remove();
-
-        }
-
-
-        const userPrintButton =
-            document.getElementById(
-                "userPrintButton"
-            );
-
-
-        if(userPrintButton){
-
-            userPrintButton.remove();
-
-        }
-
-
-        /*
-        * Nasconde dal menu le funzioni
-        * esclusivamente amministrative.
-        */
-
-        if(menu){
-
-            menu
+        menu
             .querySelectorAll("button")
             .forEach(button => {
 
@@ -612,42 +608,95 @@ async function verifyAccess(){
                         button.textContent ||
                         ""
                     )
-                    .trim();
+                    .trim()
+                    .toLowerCase();
 
 
                 if(
-                    /📖\s*Regole/i.test(testo) ||
-                    /📝\s*Squadre/i.test(testo) ||
-                    /🖨️\s*Stampa/i.test(testo) ||
-                    /⬅️\s*Torna ad Admin/i.test(testo)
+                    testo.includes("formato") ||
+                    testo.includes("regole") ||
+                    testo.includes("squadre") ||
+                    testo.includes("stampa") ||
+                    testo.includes("salva") ||
+                    testo.includes("reset completo") ||
+                    testo.includes("torna ad admin")
                 ){
 
-                    button.style.display =
-                        "none";
+                    button.style.setProperty(
+                        "display",
+                        "none",
+                        "important"
+                    );
 
                 }
 
             });
 
-        }
+    };
 
 
-        return;
+    /*
+    * Prima applicazione immediata.
+    */
+
+    nascondiFunzioniAdmin();
+
+
+    /*
+    * Protezione definitiva:
+    * se altri script modificano il menu,
+    * i comandi admin vengono nuovamente nascosti.
+    */
+
+    if(
+        menu &&
+        !window.__boveUserMenuObserver
+    ){
+
+        window.__boveUserMenuObserver =
+            new MutationObserver(() => {
+
+                nascondiFunzioniAdmin();
+
+            });
+
+
+        window.__boveUserMenuObserver.observe(
+            menu,
+            {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: [
+                    "style",
+                    "class"
+                ]
+            }
+        );
 
     }
 
 
     console.log(
-        "ACCESSO ADMIN:",
-        profilo.nome
+        "=== MENU USER CONFIGURATO ==="
     );
+
+
+    return;
 
 }
 
 
+console.log(
+    "ACCESSO ADMIN:",
+    profilo.nome
+);
+```
+
+}
+
 // avvia controllo accesso amministratore
 verifyAccess();
-
 
 // chiude DOMContentLoaded
 });
