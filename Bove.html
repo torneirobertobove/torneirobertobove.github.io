@@ -461,170 +461,181 @@ window.addEventListener("DOMContentLoaded", () => {
 
 async function verifyAccess(){
 
-```
-const { data: { session } } =
-    await sb.auth.getSession();
+    const result = await sb.auth.getSession();
+
+    const session =
+        result &&
+        result.data &&
+        result.data.session
+            ? result.data.session
+            : null;
 
 
-if(!session){
+    if(!session){
 
-    console.warn(
-        "Nessun utente autenticato"
-    );
+        console.warn(
+            "Nessun utente autenticato"
+        );
 
-    bloccaGestionale();
+        bloccaGestionale();
 
-    return;
-
-}
-
-
-const userId =
-    session.user.id;
-
-
-const { data: profilo, error } =
-    await sb
-    .from("profili")
-    .select("nome, ruolo")
-    .eq(
-        "user_id",
-        userId
-    )
-    .single();
-
-
-console.log(
-    "RISULTATO PROFILO:",
-    profilo,
-    error
-);
-
-
-if(error || !profilo){
-
-    console.warn(
-        "Profilo non trovato"
-    );
-
-    bloccaGestionale();
-
-    return;
-
-}
-
-
-if(profilo.ruolo !== "admin"){
-
-    console.warn(
-        "Utente senza permessi admin:",
-        profilo
-    );
-
-
-    /*
-    ============================
-    UTENTE / VISITATORE
-    ============================
-
-    Blocca il gestionale,
-    ma mantiene visibile
-    il pulsante hamburger.
-    */
-
-    bloccaGestionale();
-
-
-    const hamburger =
-        document.querySelector(".menu-button");
-
-
-    const menu =
-        document.getElementById("menuComandi");
-
-
-    if(hamburger){
-
-        hamburger.style.display = "flex";
-        hamburger.disabled = false;
-        hamburger.style.opacity = "1";
+        return;
 
     }
 
 
-    /*
-    Rimuove eventuali vecchi pulsanti.
-    */
-
-    const userBackButton =
-        document.getElementById("userBackButton");
-
-    if(userBackButton){
-
-        userBackButton.remove();
-
-    }
+    const userId = session.user.id;
 
 
-    const userPrintButton =
-        document.getElementById("userPrintButton");
-
-    if(userPrintButton){
-
-        userPrintButton.remove();
-
-    }
+    const resultProfilo =
+        await sb
+            .from("profili")
+            .select("nome, ruolo")
+            .eq("user_id", userId)
+            .single();
 
 
-    /*
-    Nasconde TUTTE le funzioni
-    amministrative dal menu.
-    */
+    const profilo =
+        resultProfilo.data;
 
-    if(menu){
-
-        const pulsantiAdmin =
-            menu.querySelectorAll("button");
-
-
-        pulsantiAdmin.forEach(function(button){
-
-            button.style.setProperty(
-                "display",
-                "none",
-                "important"
-            );
-
-            button.disabled = true;
-
-        });
-
-    }
+    const error =
+        resultProfilo.error;
 
 
     console.log(
-        "=== MENU USER PULITO ==="
+        "RISULTATO PROFILO:",
+        profilo,
+        error
     );
 
 
-    return;
+    if(error || !profilo){
+
+        console.warn(
+            "Profilo non trovato"
+        );
+
+        bloccaGestionale();
+
+        return;
+
+    }
+
+
+    if(
+        String(profilo.ruolo)
+            .toLowerCase()
+            .trim() !== "admin"
+    ){
+
+        console.warn(
+            "Utente senza permessi admin:",
+            profilo
+        );
+
+
+        bloccaGestionale();
+
+
+        const hamburger =
+            document.querySelector(".menu-button");
+
+
+        const menu =
+            document.getElementById("menuComandi");
+
+
+        if(hamburger){
+
+            hamburger.style.setProperty(
+                "display",
+                "flex",
+                "important"
+            );
+
+            hamburger.disabled = false;
+
+            hamburger.style.opacity = "1";
+
+        }
+
+
+        /*
+        Rimuove eventuali vecchi pulsanti
+        creati dalle versioni precedenti.
+        */
+
+        const userBackButton =
+            document.getElementById("userBackButton");
+
+        if(userBackButton){
+
+            userBackButton.remove();
+
+        }
+
+
+        const userPrintButton =
+            document.getElementById("userPrintButton");
+
+        if(userPrintButton){
+
+            userPrintButton.remove();
+
+        }
+
+
+        /*
+        Per un utente normale:
+        nasconde tutte le funzioni
+        presenti nel menu amministrativo.
+        */
+
+        if(menu){
+
+            const pulsanti =
+                menu.querySelectorAll("button");
+
+
+            pulsanti.forEach(function(button){
+
+                button.style.setProperty(
+                    "display",
+                    "none",
+                    "important"
+                );
+
+                button.disabled = true;
+
+            });
+
+        }
+
+
+        console.log(
+            "=== ACCESSO USER: GESTIONALE BLOCCATO E MENU ADMIN NASCOSTO ==="
+        );
+
+
+        return;
+
+    }
+
+
+    /*
+    ============================
+    ADMIN
+    ============================
+
+    Lascia tutto disponibile.
+    */
+
+    console.log(
+        "ACCESSO ADMIN:",
+        profilo.nome
+    );
 
 }
-
-
-console.log(
-    "ACCESSO ADMIN:",
-    profilo.nome
-);
-```
-
-}
-
-// avvia controllo accesso amministratore
-verifyAccess();
-
-// chiude DOMContentLoaded
-});
 
 
 
