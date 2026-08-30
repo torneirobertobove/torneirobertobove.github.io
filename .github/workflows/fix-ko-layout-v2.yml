@@ -1,7 +1,8 @@
-name: Fix KO layout v2
+name: Fix KO layout v3
 
 on:
   push:
+    branches: [main]
     paths:
       - 'Bove.html'
       - '.github/workflows/fix-ko-layout-v2.yml'
@@ -19,7 +20,7 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Apply only KO layout repair
+      - name: Repair KO source geometry
         shell: python
         run: |
           from pathlib import Path
@@ -29,137 +30,67 @@ jobs:
           s = p.read_text(encoding='utf-8')
           original = s
 
-          # 1-11: keep KO match rows at exactly five cells and make the
-          # existing renderMatchCard compatible with those five cells.
-          a = s.find('function renderMatchCard')
-          b = s.find('function applicaModelloTorneo', a)
-          if a == -1 or b == -1:
-              raise SystemExit('renderMatchCard markers not found')
+          # Remove the late override that was forcing KO columns 2 and 3 to 50.5px.
+          s = re.sub(
+              r'\n<style>\s*/\* BOVE MINUTES ADJACENT TO HOUR - REPAIR ONLY \*/.*?</style>\s*</head>',
+              '\n</head>',
+              s,
+              count=1,
+              flags=re.S,
+          )
 
-          fn = r'''function renderMatchCard(titolo, match, type, index, risultato) {
-              const res = String(risultato || "-").split("-");
-              const risultato1 = res[0] === "-" ? "" : (res[0] || "");
-              const risultato2 = res[1] || "";
-              const campKey = {Q:"qCamp", S:"sTopCamp", F:"fTopCamp"}[type];
-              const timeKey = {Q:"qTime", S:"sTopTime", F:"fTopTime"}[type];
-              const camp = Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
-              const time = Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
-              const winner = getWinner(match, risultato);
-              const stato = winner ? "Terminata" : "Da giocare";
-              const safe = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
-              return `
-          <tr>
-              <td class="campo-cell"><input value="${safe(camp)}" oninput="updateKOField('${type}', ${index}, 'camp', this.value)" style="width:45px"></td>
-              <td class="orario-cell"><input type="time" value="${safe(time)}" oninput="updateKOField('${type}', ${index}, 'time', this.value)"></td>
-              <td class="match-cell">
-                  <div class="team-line">${formatCoppiaDisplay(match[0])}</div>
-                  <div class="vs-line"><b>VS</b></div>
-                  <div class="team-line">${formatCoppiaDisplay(match[1])}</div>
-              </td>
-              <td class="score-cell"><input value="${safe(risultato1)}" oninput="updateKOResult('${type}', ${index}, this.value, 0)"></td>
-              <td class="score-cell"><input value="${safe(risultato2)}" oninput="updateKOResult('${type}', ${index}, this.value, 1)"></td>
-          </tr>`;
-          }
-          '''
-          s = s[:a] + fn + s[b:]
-
-          # Exact five-column KO headers; keep section-title rows intact.
-          header = '''<tr>
-                          <th>Campo</th>
-                          <th>Ora</th>
-                          <th>Match</th>
-                          <th>Ris 1</th>
-                          <th>Ris 2</th>
-                      </tr>'''
+          # The KO tables are five real columns: Campo, Ora, Match, Ris1, Ris2.
+          # Fix the two header rows in all three stages.
           for title in ('QUARTI DI FINALE', 'SEMIFINALI', 'FINALE'):
-              pattern = re.compile(r'(<th\s+colspan="\d+"\s*>\s*' + re.escape(title) + r'\s*</th>\s*</tr>\s*)<tr>.*?</tr>', re.S)
-              s, n = pattern.subn(r'\1' + header, s, count=1)
+              s, n = re.subn(
+                  r'(<th\s+colspan=")6("\s*>\s*' + re.escape(title) + r'\s*</th>)',
+                  r'\g<1>5\g<2>',
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
               if n != 1:
-                  raise SystemExit(f'Header KO non trovato: {title}')
-              s = s.replace(f'<th colspan="4">\n                            {title}', f'<th colspan="5">\n                            {title}', 1)
+                  raise SystemExit(f'Titolo KO non trovato: {title}')
 
-          # Winner-box must be valid inside a tbody.
-          s = s.replace('''f.innerHTML += `
-        <div class="winner-box top-win">
-            🏆 CAMPIONE TORNEO:<br>
-            ${campione}
-        </div>
-        `;''', '''f.innerHTML += `
-        <tr><td colspan="5"><div class="winner-box top-win">
-            🏆 CAMPIONE TORNEO:<br>
-            ${campione}
-        </div></td></tr>
-        `;''', 1)
+          s = s.replace(
+              '<th colspan="2">Ris</th>',
+              '<th>Ris 1</th>\n                        <th>Ris 2</th>'
+          )
 
-          # Keep the native time control readable.
-          old_time_css = '''width: 82px !important;
-              min-width: 82px !important;
-              max-width: 82px !important;'''
-          new_time_css = '''width: 92px !important;
-              min-width: 92px !important;
-              max-width: 92px !important;'''
-          s = s.replace(old_time_css, new_time_css)
+          # Exact desktop geometry: 53 + 82.03 + 180 + 62 + 62 = 439.03px.
+          s = re.sub(
+              r'(table:has\(> tbody#Q\),\s*table:has\(> tbody#S\),\s*table:has\(> tbody#finaleBox\),\s*\.koBox table,\s*\.finalContainer table\s*\{).*?\n\}',
+              r'''\1
+    table-layout: fixed !important;
+    width: 439.03px !important;
+    min-width: 439.03px !important;
+    max-width: 439.03px !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    margin: 10px auto !important;
+    box-sizing: border-box !important;
+}''',
+              s,
+              count=2,
+              flags=re.S,
+          )
 
-          # Desktop KO geometry.
-          css = r'''
-/* BOVE KO FINAL LAYOUT - DO NOT ALTER GIRONI */
-.koBox table,
-.finalContainer table {
-    width:462px !important;
-    min-width:462px !important;
-    max-width:462px !important;
-    table-layout:fixed !important;
-    border-collapse:collapse !important;
-    border-spacing:0 !important;
-    box-sizing:border-box !important;
-}
-.koBox table th,
-.koBox table td,
-.finalContainer table th,
-.finalContainer table td {
-    box-sizing:border-box !important;
-    padding:8px 4px !important;
-    text-align:center !important;
-    vertical-align:middle !important;
-    overflow:hidden !important;
-}
-.koBox table th:nth-child(1), .koBox table td:nth-child(1),
-.finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1) { width:53px !important; }
-.koBox table th:nth-child(2), .koBox table td:nth-child(2),
-.finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2) { width:105px !important; }
-.koBox table th:nth-child(3), .koBox table td:nth-child(3),
-.finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3) { width:180px !important; }
-.koBox table th:nth-child(4), .koBox table td:nth-child(4),
-.finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4) { width:62px !important; }
-.koBox table th:nth-child(5), .koBox table td:nth-child(5),
-.finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5) { width:62px !important; }
-.campo-cell input { width:45px !important; max-width:45px !important; box-sizing:border-box !important; }
-.orario-cell input { width:92px !important; max-width:92px !important; box-sizing:border-box !important; }
-.score-cell input { width:42px !important; max-width:42px !important; box-sizing:border-box !important; }
-.match-cell { overflow:hidden !important; word-break:break-word !important; overflow-wrap:anywhere !important; }
-.team-line { min-height:22px; line-height:22px; }
-.vs-line { min-height:22px; line-height:22px; text-align:center; }
-'''
-          if 'BOVE KO FINAL LAYOUT' not in s:
-              s = s.replace('</style>', css + '\n</style>', 1)
-
-          # Mobile KO geometry: use the available card width and a fixed
-          # percentage grid so the five columns stay adjacent and compact.
-          # This deliberately does NOT modify the Gironi tables.
-          mobile_css = r'''
-/* BOVE KO MOBILE COMPACT - DO NOT ALTER GIRONI */
+          mobile = r'''
+/* BOVE KO MOBILE COMPACT V3 — DO NOT ALTER GIRONI */
 @media (max-width:599px) {
-    .koBox,
-    .finalContainer {
+    .finalContainer,
+    .finalContainer .groups,
+    .finalContainer .card,
+    .koBox {
         width:100% !important;
         max-width:100% !important;
         min-width:0 !important;
-        overflow-x:hidden !important;
         box-sizing:border-box !important;
+        overflow-x:hidden !important;
     }
 
-    .koBox table,
     .finalContainer table,
+    .koBox table,
     table:has(> tbody#Q),
     table:has(> tbody#S),
     table:has(> tbody#finaleBox) {
@@ -171,137 +102,123 @@ jobs:
         border-spacing:0 !important;
     }
 
-    .koBox table th,
-    .koBox table td,
     .finalContainer table th,
     .finalContainer table td,
+    .koBox table th,
+    .koBox table td,
     table:has(> tbody#Q) th,
     table:has(> tbody#Q) td,
     table:has(> tbody#S) th,
     table:has(> tbody#S) td,
     table:has(> tbody#finaleBox) th,
     table:has(> tbody#finaleBox) td {
-        padding:6px 2px !important;
+        padding:5px 1px !important;
         min-width:0 !important;
         box-sizing:border-box !important;
         overflow:hidden !important;
     }
 
-    /* 12% Campo / 21% Ora / 35% Match / 16% Ris1 / 16% Ris2 */
-    .koBox table th:nth-child(1), .koBox table td:nth-child(1),
+    /* 12% Campo / 24% Ora / 32% Match / 16% Ris1 / 16% Ris2 */
     .finalContainer table th:nth-child(1), .finalContainer table td:nth-child(1),
+    .koBox table th:nth-child(1), .koBox table td:nth-child(1),
     table:has(> tbody#Q) th:nth-child(1), table:has(> tbody#Q) td:nth-child(1),
     table:has(> tbody#S) th:nth-child(1), table:has(> tbody#S) td:nth-child(1),
-    table:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1) { width:12% !important; max-width:none !important; }
+    table:has(> tbody#finaleBox) th:nth-child(1), table:has(> tbody#finaleBox) td:nth-child(1) { width:12% !important; }
 
-    .koBox table th:nth-child(2), .koBox table td:nth-child(2),
     .finalContainer table th:nth-child(2), .finalContainer table td:nth-child(2),
+    .koBox table th:nth-child(2), .koBox table td:nth-child(2),
     table:has(> tbody#Q) th:nth-child(2), table:has(> tbody#Q) td:nth-child(2),
     table:has(> tbody#S) th:nth-child(2), table:has(> tbody#S) td:nth-child(2),
-    table:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2) { width:21% !important; max-width:none !important; }
+    table:has(> tbody#finaleBox) th:nth-child(2), table:has(> tbody#finaleBox) td:nth-child(2) { width:24% !important; }
 
-    .koBox table th:nth-child(3), .koBox table td:nth-child(3),
     .finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3),
+    .koBox table th:nth-child(3), .koBox table td:nth-child(3),
     table:has(> tbody#Q) th:nth-child(3), table:has(> tbody#Q) td:nth-child(3),
     table:has(> tbody#S) th:nth-child(3), table:has(> tbody#S) td:nth-child(3),
-    table:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3) { width:35% !important; max-width:none !important; }
+    table:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nth-child(3) { width:32% !important; }
 
-    .koBox table th:nth-child(4), .koBox table td:nth-child(4),
     .finalContainer table th:nth-child(4), .finalContainer table td:nth-child(4),
-    table:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),
-    table:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),
-    table:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4),
-    .koBox table th:nth-child(5), .koBox table td:nth-child(5),
     .finalContainer table th:nth-child(5), .finalContainer table td:nth-child(5),
+    .koBox table th:nth-child(4), .koBox table td:nth-child(4),
+    .koBox table th:nth-child(5), .koBox table td:nth-child(5),
+    table:has(> tbody#Q) th:nth-child(4), table:has(> tbody#Q) td:nth-child(4),
     table:has(> tbody#Q) th:nth-child(5), table:has(> tbody#Q) td:nth-child(5),
+    table:has(> tbody#S) th:nth-child(4), table:has(> tbody#S) td:nth-child(4),
     table:has(> tbody#S) th:nth-child(5), table:has(> tbody#S) td:nth-child(5),
-    table:has(> tbody#finaleBox) th:nth-child(5), table:has(> tbody#finaleBox) td:nth-child(5) { width:16% !important; max-width:none !important; }
+    table:has(> tbody#finaleBox) th:nth-child(4), table:has(> tbody#finaleBox) td:nth-child(4),
+    table:has(> tbody#finaleBox) th:nth-child(5), table:has(> tbody#finaleBox) td:nth-child(5) { width:16% !important; }
 
-    .campo-cell input {
-        width:100% !important;
-        min-width:0 !important;
-        max-width:none !important;
-        height:28px !important;
-        padding:2px !important;
-        font-size:12px !important;
-    }
-
+    .campo-cell input,
+    .score-cell input,
     .orario-cell input[type="time"] {
-        width:100% !important;
-        min-width:0 !important;
-        max-width:none !important;
-        height:28px !important;
-        padding:0 !important;
-        font-size:11px !important;
-    }
-
-    .score-cell input {
-        width:42px !important;
         min-width:0 !important;
         max-width:100% !important;
-        height:28px !important;
-        padding:2px !important;
-        font-size:12px !important;
+        box-sizing:border-box !important;
+        margin:0 auto !important;
     }
 
-    .match-cell {
+    .campo-cell input { width:100% !important; height:28px !important; padding:2px !important; font-size:12px !important; }
+    .orario-cell input[type="time"] { width:100% !important; height:28px !important; padding:0 !important; font-size:11px !important; }
+    .score-cell input { width:100% !important; height:28px !important; padding:2px !important; font-size:12px !important; }
+
+    .match-cell,
+    table:has(> tbody#Q) .match-cell,
+    table:has(> tbody#S) .match-cell,
+    table:has(> tbody#finaleBox) .match-cell {
         width:auto !important;
         min-width:0 !important;
         max-width:none !important;
-        padding-left:3px !important;
-        padding-right:3px !important;
-        overflow:hidden !important;
+        padding-left:2px !important;
+        padding-right:2px !important;
     }
 
     .match-cell .team-line {
         width:100% !important;
         max-width:100% !important;
         min-width:0 !important;
+        font-size:11px !important;
+        line-height:15px !important;
         white-space:normal !important;
-        overflow:hidden !important;
         overflow-wrap:anywhere !important;
         word-break:break-word !important;
-        font-size:12px !important;
-        line-height:16px !important;
+        overflow:hidden !important;
         margin:1px 0 !important;
     }
 
-    .match-cell .vs-line {
-        margin:2px 0 !important;
-        line-height:16px !important;
-    }
+    .match-cell .vs-line { margin:1px 0 !important; line-height:15px !important; }
 }
 '''
-          if 'BOVE KO MOBILE COMPACT' not in s:
-              s = s.replace('</style>', mobile_css + '\n</style>', 1)
+          if 'BOVE KO MOBILE COMPACT V3' not in s:
+              s = s.replace('</style>', mobile + '\n</style>', 1)
 
           if s == original:
-              raise SystemExit('Nessuna modifica KO applicata')
-          p.write_text(s, encoding='utf-8')
-          print('KO layout patch applied')
+              raise SystemExit('Nessuna modifica applicata')
 
-      - name: Validate JavaScript and HTML markers
+          p.write_text(s, encoding='utf-8')
+          print('KO V3 source repair applied')
+
+      - name: Validate
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
           s=Path('Bove.html').read_text(encoding='utf-8')
-          assert 'BOVE KO FINAL LAYOUT' in s
-          assert 'BOVE KO MOBILE COMPACT' in s
+          assert 'BOVE KO MOBILE COMPACT V3' in s
+          assert 'BOVE MINUTES ADJACENT TO HOUR - REPAIR ONLY' not in s
           assert '<th>Ris 1</th>' in s and '<th>Ris 2</th>' in s
-          assert s.count('class="score-cell"') >= 2
+          assert s.count('function renderMatchCard') == 1
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
-          Path('/tmp/bove-js.js').write_text('\n\n'.join(scripts),encoding='utf-8')
-          print('script blocks:',len(scripts))
+          Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
           PY
-          node --check /tmp/bove-js.js
+          node --check /tmp/bove.js
 
-      - name: Commit Bove layout repair
+      - name: Commit repaired Bove
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Bove.html
           git diff --cached --check
-          git commit -m "Fix compact mobile geometry for KO phase"
+          git commit -m "Fix KO result column spacing and mobile geometry"
           git push origin HEAD:main
