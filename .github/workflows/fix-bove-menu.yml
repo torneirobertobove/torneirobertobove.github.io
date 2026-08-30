@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch Bove.html
+      - name: Repair Bove user menu
         shell: python
         run: |
           from pathlib import Path
@@ -23,10 +23,9 @@ jobs:
           path = Path("Bove.html")
           text = path.read_text(encoding="utf-8")
 
-          marker = "<!-- BOVE USER MENU FINAL FIX -->"
-          if marker in text:
-              print("Patch gia presente")
-              raise SystemExit(0)
+          start = text.find("<!-- BOVE USER MENU FINAL FIX -->")
+          end_marker = "<!-- /BOVE USER MENU FINAL FIX -->"
+          end = text.find(end_marker)
 
           patch = r'''<!-- BOVE USER MENU FINAL FIX -->
           <style id="bove-user-menu-final-fix">
@@ -51,6 +50,8 @@ jobs:
           body.user-mode #menuComandi button:nth-child(7) {
               display:none !important;
               visibility:hidden !important;
+              opacity:0 !important;
+              pointer-events:none !important;
           }
           </style>
 
@@ -74,10 +75,8 @@ jobs:
                   }
 
                   const buttons = [...menu.querySelectorAll("button")];
-
                   buttons.forEach((button,index)=>{
                       const allowed = index === 1 || index === 3;
-
                       button.disabled = !allowed;
 
                       if(allowed){
@@ -88,18 +87,18 @@ jobs:
                       }else{
                           button.style.setProperty("display","none","important");
                           button.style.setProperty("visibility","hidden","important");
+                          button.style.setProperty("opacity","0","important");
                           button.style.setProperty("pointer-events","none","important");
                       }
                   });
 
                   menu.style.setProperty("background","#111827","important");
-                  menu.style.setProperty("opacity","1","important");
+                  menu.style.setProperty("border","1px solid #334155","important");
               }
 
               window.toggleMenu = function(){
                   const menu = document.getElementById("menuComandi");
                   if(!menu) return;
-
                   applyBoveUserMenu();
                   menu.classList.toggle("show");
                   applyBoveUserMenu();
@@ -107,17 +106,10 @@ jobs:
 
               function start(){
                   applyBoveUserMenu();
-
-                  const observer = new MutationObserver(function(){
-                      applyBoveUserMenu();
-                  });
-
-                  observer.observe(document.body,{
-                      subtree:true,
-                      childList:true,
-                      attributes:true,
-                      attributeFilter:["style","class","disabled"]
-                  });
+                  setTimeout(applyBoveUserMenu,100);
+                  setTimeout(applyBoveUserMenu,500);
+                  setTimeout(applyBoveUserMenu,1500);
+                  window.setInterval(applyBoveUserMenu,2000);
               }
 
               if(document.readyState === "loading"){
@@ -127,23 +119,25 @@ jobs:
               }
           })();
           </script>
-          <!-- /BOVE USER MENU FINAL FIX -->
-          '''
+          <!-- /BOVE USER MENU FINAL FIX -->'''
 
-          if "</head>" in text:
-              text = text.replace("</head>", patch + "\n</head>", 1)
+          if start >= 0 and end >= 0:
+              end += len(end_marker)
+              text = text[:start] + patch + text[end:]
           else:
-              text += "\n" + patch
+              if "</head>" in text:
+                  text = text.replace("</head>", patch + "\n</head>", 1)
+              else:
+                  text += "\n" + patch
 
           path.write_text(text, encoding="utf-8")
-          print("Patch inserita")
 
-      - name: Commit fix
+      - name: Commit repair
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Bove.html
           git diff --cached --quiet && exit 0
-          git commit -m "Fix Bove user hamburger menu"
+          git commit -m "Repair Bove user menu"
           git push
