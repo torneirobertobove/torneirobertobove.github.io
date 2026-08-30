@@ -1,0 +1,107 @@
+name: Fix Q S result cell spacing
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-score-spacing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compact only Ris 1 and Ris 2 in Quarti and Semifinali
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* Q/S — RISULTATI AVVICINATI — 2026-08-30 */'
+
+          if marker not in s:
+              css = r'''
+/* Q/S — RISULTATI AVVICINATI — 2026-08-30 */
+
+/* SOLO QUARTI E SEMIFINALI: le due celle Ris 1 / Ris 2 devono stare vicine. */
+table:has(> tbody#Q),
+table:has(> tbody#S) {
+    width: 405.03px !important;
+    min-width: 405.03px !important;
+    max-width: 405.03px !important;
+}
+
+table:has(> tbody#Q) th:nth-child(4),
+table:has(> tbody#Q) td:nth-child(4),
+table:has(> tbody#S) th:nth-child(4),
+table:has(> tbody#S) td:nth-child(4),
+table:has(> tbody#Q) th:nth-child(5),
+table:has(> tbody#Q) td:nth-child(5),
+table:has(> tbody#S) th:nth-child(5),
+table:has(> tbody#S) td:nth-child(5) {
+    width: 45px !important;
+    min-width: 45px !important;
+    max-width: 45px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+}
+
+table:has(> tbody#Q) .score-cell input,
+table:has(> tbody#S) .score-cell input {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+}
+
+@media(max-width:599px) {
+    table:has(> tbody#Q),
+    table:has(> tbody#S) {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+    }
+
+    table:has(> tbody#Q) th:nth-child(4),
+    table:has(> tbody#Q) td:nth-child(4),
+    table:has(> tbody#S) th:nth-child(4),
+    table:has(> tbody#S) td:nth-child(4),
+    table:has(> tbody#Q) th:nth-child(5),
+    table:has(> tbody#Q) td:nth-child(5),
+    table:has(> tbody#S) th:nth-child(5),
+    table:has(> tbody#S) td:nth-child(5) {
+        width: 12% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding-left: 1px !important;
+        padding-right: 1px !important;
+    }
+}
+'''
+              s = s.replace('</style>', css + '\n</style>', 1)
+              p.write_text(s, encoding='utf-8')
+          else:
+              print('Q/S score spacing fix already present')
+
+      - name: Commit spacing fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No change needed"
+          else
+            git commit -m "Bring Q and S result cells closer"
+            git push
+          fi
