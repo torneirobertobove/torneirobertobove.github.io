@@ -19,6 +19,24 @@ jobs:
           from pathlib import Path
           import re
           p=Path('Bove.html'); text=p.read_text(encoding='utf-8')
+
+          # FIX USER MENU: assegna una classe al body quando il profilo non e' admin.
+          marker='document.body.classList.add("bove-user-mode");'
+          if marker not in text:
+              needle='''    if(
+        String(profilo.ruolo)
+            .toLowerCase()
+            .trim() !== "admin"
+    ){'''
+              replacement=needle+'\n\n        document.body.classList.add("bove-user-mode");'
+              if needle not in text: raise SystemExit('Blocco ruolo user non trovato')
+              text=text.replace(needle,replacement,1)
+
+          # FIX USER MENU: CSS con specificita' maggiore del vecchio .menu-dropdown button { display:block !important }.
+          css='''\n<style id="bove-user-menu-final-fix">\nbody.bove-user-mode #menuComandi button {\n    display: none !important;\n    visibility: hidden !important;\n    pointer-events: none !important;\n}\nbody.bove-user-mode .menu-button {\n    display: flex !important;\n    visibility: visible !important;\n    pointer-events: auto !important;\n    opacity: 1 !important;\n}\n</style>\n'''
+          if 'id="bove-user-menu-final-fix"' not in text:
+              text=text.replace('</head>',css+'</head>',1)
+
           if 'id="boveSalvaTorneoBtn"' not in text:
               pat=r'(<div id="menuComandi"\s+class="menu-dropdown">.*?)(\n\s*</div>)'
               ins=r'''\1
@@ -76,12 +94,15 @@ async function resetTorneoPersistente(){
       - name: Validate and commit
         shell: bash
         run: |
+          grep -q 'body.bove-user-mode #menuComandi button' Bove.html
+          grep -q 'document.body.classList.add("bove-user-mode");' Bove.html
           grep -q 'id="boveSalvaTorneoBtn"' Bove.html
           grep -q 'function salvaTorneoPersistente()' Bove.html
           grep -q 'function resetTorneoPersistente()' Bove.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/one-time-save-reset.yml
+          git rm .github/workflows/fix-user-menu.yml || true
           git add Bove.html
-          git commit -m 'Add permanent tournament save and complete reset'
+          git commit -m 'Fix user menu visibility and finalize tournament controls'
           git push origin HEAD:main
