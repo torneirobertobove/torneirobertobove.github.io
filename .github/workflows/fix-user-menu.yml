@@ -1,0 +1,109 @@
+name: fix-user-menu
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix user hamburger menu
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+
+          marker = '/* USER MENU FIX v3 */'
+          if marker in s:
+              print('FIX GIA APPLICATO')
+              raise SystemExit(0)
+
+          pattern = re.compile(
+              r'(if\\(menu\\)\\{\\s*\\n\\s*const pulsanti\\s*=\\s*menu\\.querySelectorAll\\("button"\\);\\s*\\n\\s*pulsanti\\.forEach\\(function\\(button\\)\\{).*?(\\n\\s*\\}\\);\\s*\\n\\s*\\n\\s*\\}\\s*\\n\\s*\\n\\s*console\\.log\\(\\s*"=== ACCESSO USER: GESTIONALE BLOCCATO E MENU ADMIN NASCOSTO ===")',
+              re.S
+          )
+
+          replacement = r'''if(menu){
+
+            const pulsanti =
+                menu.querySelectorAll("button");
+
+            pulsanti.forEach(function(button){
+
+                const testo =
+                    (button.textContent || "")
+                        .trim()
+                        .toLowerCase();
+
+                const visibile =
+                    testo.includes("regole") ||
+                    testo.includes("stampa");
+
+                button.style.setProperty(
+                    "display",
+                    visibile ? "block" : "none",
+                    "important"
+                );
+
+                button.disabled = !visibile;
+                button.style.opacity = "1";
+
+            });
+
+        }
+
+        console.log(
+            "=== ACCESSO USER: MENU CON REGOLE E STAMPA ==="'''
+
+          s2, n = pattern.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit('Blocco menu user non trovato')
+          s = s2
+
+          css = r'''
+
+/* USER MENU FIX v3 */
+.menu-dropdown.show {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    pointer-events: auto !important;
+    background: #111827 !important;
+    color: #ffffff !important;
+    z-index: 10000 !important;
+}
+
+.menu-dropdown.show button {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+'''
+          s = s.replace('</style>', css + '\n</style>', 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('FIX APPLICATO')
+          PY
+
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            echo "Nessuna modifica"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          git commit -m "Fix user hamburger menu visibility"
+          git push
