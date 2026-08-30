@@ -14,24 +14,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Insert renderClass only
+      - name: Patch user menu and classification renderer
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
 
-          if 'function renderClass(' in s:
-              print('renderClass already present; no change')
-              raise SystemExit(0)
+          # USER MENU FIX: the existing menu CSS declares display:block !important.
+          # Put a stronger rule at the very end of <head> so it wins.
+          css = '''\n<style id="bove-user-menu-final-fix">\nbody.user-mode #menuComandi button,\nbody.user-mode #menuComandi a {\n    display: none !important;\n    visibility: hidden !important;\n    pointer-events: none !important;\n}\nbody.user-mode .menu-button {\n    display: flex !important;\n    visibility: visible !important;\n    pointer-events: auto !important;\n    opacity: 1 !important;\n}\n</style>\n'''
+          if 'id="bove-user-menu-final-fix"' not in s:
+              if '</head>' not in s:
+                  raise SystemExit('</head> non trovato')
+              s = s.replace('</head>', css + '</head>', 1)
 
-          marker = 'function render(){'
-          pos = s.find(marker)
-          if pos == -1:
-              raise SystemExit('function render() non trovata')
+          # Ensure the user branch sets the body class.
+          if 'document.body.classList.add("user-mode");' not in s:
+              needle = '''    if(
+        String(profilo.ruolo)
+            .toLowerCase()
+            .trim() !== "admin"
+    ){'''
+              if needle not in s:
+                  raise SystemExit('blocco ruolo user non trovato')
+              s = s.replace(
+                  needle,
+                  needle + '\n\n        document.body.classList.add("user-mode");',
+                  1
+              )
 
-          fn = r'''function renderClass(){
+          # Classification repair, only if still missing.
+          if 'function renderClass(' not in s:
+              marker = 'function render(){'
+              pos = s.find(marker)
+              if pos == -1:
+                  raise SystemExit('function render() non trovata')
+
+              fn = r'''function renderClass(){
 
     ensureRules();
 
@@ -80,10 +102,10 @@ jobs:
 }
 
 '''
+              s = s[:pos] + fn + s[pos:]
 
-          s = s[:pos] + fn + s[pos:]
           p.write_text(s, encoding='utf-8')
-          print('renderClass inserita: SI')
+          print('Bove patch completata')
 
       - name: Validate JavaScript
         shell: bash
@@ -92,6 +114,8 @@ jobs:
           from pathlib import Path
           import re
           s=Path('Bove.html').read_text(encoding='utf-8')
+          assert 'id="bove-user-menu-final-fix"' in s
+          assert 'body.user-mode #menuComandi button' in s
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
           Path('/tmp/bove.js').write_text('\n\n'.join(scripts),encoding='utf-8')
           print('script blocks:',len(scripts))
@@ -105,5 +129,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
           git rm .github/workflows/repair-classification.yml
-          git commit -m 'Restore renderClass classification function'
+          git rm .github/workflows/fix-user-menu.yml || true
+          git rm .github/workflows/one-time-save-reset.yml || true
+          git commit -m 'Fix user menu visibility after access check'
           git push
