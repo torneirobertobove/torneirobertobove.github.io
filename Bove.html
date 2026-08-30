@@ -6574,9 +6574,8 @@ async function updateAndSync(){
 
 
 
-     async function loadState(){
+async function loadState(){
 
-```
 const params = new URLSearchParams(window.location.search);
 const idParam = params.get("idTorneo");
 const torneoParam = params.get("torneo");
@@ -6588,52 +6587,55 @@ window.__BOVE_REMOTE_NOT_FOUND__ = false;
 
 try{
 
+    /* TORNEO REMOTO: nessun dato locale puo entrare nello stato. */
     if(torneoRemoto){
 
-        const lettere = ["A","B","C","D","E","F","G"];
+        const lettere=["A","B","C","D","E","F","G"];
 
         lettere.forEach(g=>{
-            state[g] = [];
-            state[g+"res"] = [];
-            state[g+"time"] = [];
-            state[g+"camp"] = [];
+            state[g]=[];
+            state[g+"res"]=[];
+            state[g+"time"]=[];
+            state[g+"camp"]=[];
         });
 
-        state.coppie = [];
-        state.partecipanti = [];
-        state.iscritti = [];
+        state.coppie=[];
+        state.partecipanti=[];
+        state.iscritti=[];
 
-        state.qRes = Array(4).fill("-");
-        state.qCamp = [];
-        state.qTime = [];
+        state.qRes=Array(4).fill("-");
+        state.qCamp=[];
+        state.qTime=[];
 
-        state.sTopRes = Array(2).fill("-");
-        state.sCamp = [];
-        state.sTime = [];
+        state.sTopRes=Array(2).fill("-");
+        state.sCamp=[];
+        state.sTime=[];
 
-        state.fTopRes = "-";
-        state.fCamp = "";
-        state.fTime = "";
+        state.fTopRes="-";
+        state.fCamp="";
+        state.fTime="";
 
-        state.finalTop = [];
-        state.campioneTop = null;
+        state.finalTop=[];
+        state.campioneTop=null;
     }
 
+    /* TORNEO PASSATO VIA URL */
     if(torneoParam && !idParam){
 
         try{
 
-            configurazione = JSON.parse(
-                decodeURIComponent(torneoParam)
-            );
+            configurazione =
+                JSON.parse(
+                    decodeURIComponent(torneoParam)
+                );
 
-            state = {
+            state={
                 ...state,
                 ...configurazione,
-                rules: {
+                rules:{
                     ...state.rules,
-                    ...(configurazione.configurazione?.rules || {}),
-                    ...(configurazione.rules || {})
+                    ...(configurazione.configurazione?.rules||{}),
+                    ...(configurazione.rules||{})
                 }
             };
 
@@ -6649,22 +6651,20 @@ try{
 
             if(configurazione.configurazione){
 
-                const cfg = configurazione.configurazione;
+                const cfg =
+                    configurazione.configurazione;
 
-                if(cfg.rules){
-                    state.rules = {
+                if(cfg.rules)
+                    state.rules={
                         ...state.rules,
                         ...cfg.rules
                     };
-                }
 
-                if(Array.isArray(cfg.coppie)){
-                    state.coppie = cfg.coppie;
-                }
+                if(Array.isArray(cfg.coppie))
+                    state.coppie=cfg.coppie;
 
-                if(Array.isArray(cfg.partecipanti)){
-                    state.partecipanti = cfg.partecipanti;
-                }
+                if(Array.isArray(cfg.partecipanti))
+                    state.partecipanti=cfg.partecipanti;
             }
 
         }
@@ -6678,12 +6678,13 @@ try{
         }
     }
 
-    if(idParam && typeof sb !== "undefined"){
+    /* SUPABASE: fonte unica per il torneo identificato dall'ID. */
+    if(idParam && typeof sb!=="undefined"){
 
         try{
 
             const {
-                data: tornei,
+                data:tornei,
                 error
             } = await sb
                 .from("tornei")
@@ -6723,9 +6724,9 @@ try{
                 state.dataTorneo =
                     torneo.data ?? "";
 
-                state.rules = {
+                state.rules={
                     ...state.rules,
-                    ...(configurazione.rules || {})
+                    ...(configurazione.rules||{})
                 };
 
                 if(configurazione.configurazione){
@@ -6733,22 +6734,19 @@ try{
                     const cfg =
                         configurazione.configurazione;
 
-                    if(cfg.rules){
-                        state.rules = {
+                    if(cfg.rules)
+                        state.rules={
                             ...state.rules,
                             ...cfg.rules
                         };
-                    }
 
-                    if(Array.isArray(cfg.coppie)){
+                    if(Array.isArray(cfg.coppie))
                         configurazione.coppie =
                             cfg.coppie;
-                    }
 
-                    if(Array.isArray(cfg.partecipanti)){
+                    if(Array.isArray(cfg.partecipanti))
                         configurazione.partecipanti =
                             cfg.partecipanti;
-                    }
                 }
 
                 state.coppie =
@@ -6764,13 +6762,13 @@ try{
             }
             else{
 
-                state.idTorneo = null;
-                state.nomeTorneo = "";
-                state.dataTorneo = "";
+                state.idTorneo=null;
+                state.nomeTorneo="";
+                state.dataTorneo="";
 
-                state.coppie = [];
-                state.partecipanti = [];
-                state.iscritti = [];
+                state.coppie=[];
+                state.partecipanti=[];
+                state.iscritti=[];
 
                 window.__BOVE_REMOTE_NOT_FOUND__ = true;
 
@@ -6791,11 +6789,12 @@ try{
 
         }
 
+        /* Iscrizioni: SOLO quelle con torneo_id corrente. */
         try{
 
             const {
-                data: iscritti,
-                error: erroreIscritti
+                data:iscritti,
+                error:erroreIscritti
             } = await sb
                 .from("iscrizioni")
                 .select("*")
@@ -6814,7 +6813,7 @@ try{
                     erroreIscritti
                 );
 
-                state.iscritti = [];
+                state.iscritti=[];
 
             }
             else{
@@ -6834,14 +6833,16 @@ try{
                 err
             );
 
-            state.iscritti = [];
+            state.iscritti=[];
 
         }
+
     }
 
+    /* Recupero degli array presenti nella configurazione REMOTA/URL. */
     if(configurazione){
 
-        const arrayDaRecuperare = [
+        const arrayDaRecuperare=[
             "A","B","C","D","E","F","G",
             "Ares","Bres","Cres","Dres","Eres","Fres","Gres",
             "Atime","Btime","Ctime","Dtime","Etime","Ftime","Gtime",
@@ -6863,13 +6864,15 @@ try{
 
                 if(
                     Array.isArray(configurazione[k]) ||
-                    k === "fTopRes"
+                    k==="fTopRes"
                 ){
 
-                    state[k] = configurazione[k];
+                    state[k]=configurazione[k];
 
                 }
+
             }
+
         });
 
         if(configurazione.configurazione){
@@ -6877,48 +6880,48 @@ try{
             const cfg =
                 configurazione.configurazione;
 
-            if(cfg.rules){
-                state.rules = {
+            if(cfg.rules)
+                state.rules={
                     ...state.rules,
                     ...cfg.rules
                 };
-            }
 
-            if(Array.isArray(cfg.coppie)){
-                state.coppie = cfg.coppie;
-            }
+            if(Array.isArray(cfg.coppie))
+                state.coppie=cfg.coppie;
 
-            if(Array.isArray(cfg.partecipanti)){
-                state.partecipanti =
+            if(Array.isArray(cfg.partecipanti))
+                state.partecipanti=
                     cfg.partecipanti;
-            }
+
         }
+
     }
 
-    if(typeof ensureRules === "function"){
+    if(typeof ensureRules==="function")
         ensureRules();
-    }
 
-    const strutture = {
-        8: {
-            numeroGironi: 2,
-            squadrePerGirone: 4
+    /* Formato reale: solo le coppie del torneo corrente. */
+
+    const strutture={
+        8:{
+            numeroGironi:2,
+            squadrePerGirone:4
         },
-        12: {
-            numeroGironi: 3,
-            squadrePerGirone: 4
+        12:{
+            numeroGironi:3,
+            squadrePerGirone:4
         },
-        16: {
-            numeroGironi: 4,
-            squadrePerGirone: 4
+        16:{
+            numeroGironi:4,
+            squadrePerGirone:4
         },
-        20: {
-            numeroGironi: 5,
-            squadrePerGirone: 4
+        20:{
+            numeroGironi:5,
+            squadrePerGirone:4
         },
-        24: {
-            numeroGironi: 6,
-            squadrePerGirone: 4
+        24:{
+            numeroGironi:6,
+            squadrePerGirone:4
         }
     };
 
@@ -6950,7 +6953,7 @@ try{
         console.log(
             "FORMATO RICAVATO DALLE COPPIE:",
             {
-                coppie: numeroCoppie,
+                coppie:numeroCoppie,
                 numeroSquadre:
                     state.rules.numeroSquadre,
                 numeroGironi:
@@ -6959,17 +6962,18 @@ try{
                     state.rules.squadrePerGirone
             }
         );
+
     }
 
-    const lettere = [
+    const lettere=[
         "A","B","C","D","E","F","G"
     ];
 
     const numeroGironi =
-        Number(state.rules.numeroGironi) || 2;
+        Number(state.rules.numeroGironi)||2;
 
     const perGirone =
-        Number(state.rules.squadrePerGirone) || 4;
+        Number(state.rules.squadrePerGirone)||4;
 
     const gironiAttivi =
         lettere.slice(
@@ -6984,24 +6988,22 @@ try{
                 state[g]
                     .filter(
                         x =>
-                            x !== null &&
-                            x !== undefined &&
-                            String(x).trim() !== ""
+                            x!==null &&
+                            x!==undefined &&
+                            String(x).trim()!==""
                     )
-                    .length === perGirone
+                    .length===perGirone
         );
 
     if(
         Array.isArray(state.coppie) &&
-        state.coppie.length ===
-            numeroGironi * perGirone &&
+        state.coppie.length===
+            numeroGironi*perGirone &&
         !completi
     ){
 
         lettere.forEach(
-            g => {
-                state[g] = [];
-            }
+            g=>state[g]=[]
         );
 
         state.coppie.forEach(
@@ -7009,47 +7011,51 @@ try{
 
                 const n =
                     Math.floor(
-                        i / perGirone
+                        i/perGirone
                     );
 
-                if(n < numeroGironi){
+                if(
+                    n<numeroGironi
+                ){
 
                     state[
                         lettere[n]
                     ].push(c);
 
                 }
+
             }
         );
 
         console.log(
             "GIRONI RICOSTRUITI DALLE COPPIE:",
             {
-                A: state.A.length,
-                B: state.B.length,
-                C: state.C.length,
-                D: state.D.length,
-                E: state.E.length,
-                F: state.F.length,
-                G: state.G.length
+                A:state.A.length,
+                B:state.B.length,
+                C:state.C.length,
+                D:state.D.length,
+                E:state.E.length,
+                F:state.F.length,
+                G:state.G.length
             }
         );
+
     }
 
     lettere.forEach(
         (g,i)=>{
 
-            if(i >= numeroGironi){
-                state[g] = [];
-            }
-            else if(!Array.isArray(state[g])){
-                state[g] = [];
-            }
+            if(i>=numeroGironi)
+                state[g]=[];
+
+            else if(!Array.isArray(state[g]))
+                state[g]=[];
+
         }
     );
 
     if(
-        typeof generaPartiteGironi === "function"
+        typeof generaPartiteGironi==="function"
     ){
 
         const presenti =
@@ -7058,16 +7064,18 @@ try{
                     Array.isArray(state[g]) &&
                     state[g].some(
                         s =>
-                            s !== null &&
-                            s !== undefined &&
-                            String(s).trim() !== ""
+                            s!==null &&
+                            s!==undefined &&
+                            String(s).trim()!==""
                     )
             );
 
-        if(presenti){
+        if(presenti)
             generaPartiteGironi();
-        }
+
     }
+
+    /* MAI riversare un torneo remoto nel localStorage globale. */
 
     if(
         !torneoRemoto &&
@@ -7075,7 +7083,7 @@ try{
         gironiAttivi.some(
             g =>
                 Array.isArray(state[g]) &&
-                state[g].length > 0
+                state[g].length>0
         )
     ){
 
@@ -7083,12 +7091,13 @@ try{
             "torneoState",
             JSON.stringify(state)
         );
+
     }
 
     console.log(
         "=== LOADSTATE FINALE ===",
         {
-            idTorneo: state.idTorneo,
+            idTorneo:state.idTorneo,
             coppie:
                 Array.isArray(state.coppie)
                     ? state.coppie.length
@@ -7134,7 +7143,7 @@ try{
         }
     );
 
-    if(typeof render === "function"){
+    if(typeof render==="function"){
 
         try{
 
@@ -7149,22 +7158,23 @@ try{
             );
 
         }
+
     }
 
     if(
-        params.get("apriRegole") === "true"
+        params.get("apriRegole")==="true"
     ){
 
         setTimeout(
             ()=>{
                 if(
-                    typeof openRules === "function"
-                ){
+                    typeof openRules==="function"
+                )
                     openRules();
-                }
             },
             300
         );
+
     }
 
     return state;
@@ -7182,10 +7192,9 @@ catch(e){
 }
 finally{
 
-    window.__BOVE_LOADING__ = false;
+    window.__BOVE_LOADING__=false;
 
 }
-
 
 }
               
