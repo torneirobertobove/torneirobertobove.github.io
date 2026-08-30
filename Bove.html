@@ -8111,6 +8111,26 @@ return true;
     }
 
 }
+                    
+  function updateKOField(type,index,field,valore){
+    ensureRules();
+
+    const keyMap={
+        Q:{camp:"qCamp",time:"qTime"},
+        S:{camp:"sTopCamp",time:"sTopTime"},
+        F:{camp:"fTopCamp",time:"fTopTime"}
+    };
+
+    if(!keyMap[type] || !["camp","time"].includes(field))
+        return;
+
+    const key=keyMap[type][field];
+    if(!Array.isArray(state[key]))
+        state[key]=[];
+
+    state[key][index]=String(valore ?? "").trim();
+    updateAndSync();
+}
 // Funzione di esempio da inserire nel tuo script JS principale
 function aggiornaVincitoreDinamico() {
     // 1. Legge i nomi delle due squadre finaliste
@@ -8160,27 +8180,8 @@ document.querySelectorAll('#finaleBox input').forEach(input => {
     input.addEventListener('input', aggiornaVincitoreDinamico);
 });
                     
-  function updateKOField(type,index,field,valore){
-    ensureRules();
 
-    const keyMap={
-        Q:{camp:"qCamp",time:"qTime"},
-        S:{camp:"sTopCamp",time:"sTopTime"},
-        F:{camp:"fTopCamp",time:"fTopTime"}
-    };
-
-    if(!keyMap[type] || !["camp","time"].includes(field))
-        return;
-
-    const key=keyMap[type][field];
-    if(!Array.isArray(state[key]))
-        state[key]=[];
-
-    state[key][index]=String(valore ?? "").trim();
-    updateAndSync();
-}
-
-function updateKOResult(type,index,valore,pos){
+ function updateKOResult(type,index,valore,pos){
 
     ensureRules();
 
@@ -8233,9 +8234,40 @@ function updateKOResult(type,index,valore,pos){
 
     renderKO();
 
+    // === AGGIUNTA DINAMICA DEL VINCITORE DELLA FINALE ===
+    if(type === "F") {
+        const team1 = document.querySelector('#finaleBox tr .team-line:nth-child(1)')?.innerText.trim() || '';
+        const team2 = document.querySelector('#finaleBox tr .team-line:nth-child(3)')?.innerText.trim() || '';
+        const resSplit = String(state.fTopRes || "").split("-");
+        
+        const gol1 = parseInt(resSplit[0]);
+        const gol2 = parseInt(resSplit[1]);
+        
+        const winnerCard = document.getElementById('winnerCardKO');
+        if(winnerCard) {
+            if(!isNaN(gol1) && !isNaN(gol2) && resSplit.length === 2 && resSplit[0] !== "" && resSplit[1] !== "") {
+                let vincitore = gol1 > gol2 ? team1 : (gol2 > gol1 ? team2 : "");
+                if(vincitore) {
+                    winnerCard.style.display = 'block';
+                    winnerCard.innerHTML = `
+                        <div class="winner-box top-win">
+                            🏆 CAMPIONE TORNEO:<br>
+                            <span style="font-size: 1.1em; font-weight: normal; color: #e2e8f0;">${vincitore}</span>
+                        </div>
+                    `;
+                } else {
+                    winnerCard.style.display = 'none'; // Gestisce eventuale pareggio in attesa di rigori
+                }
+            } else {
+                winnerCard.style.display = 'none';
+            }
+        }
+    }
+    // ====================================================
+
     updateAndSync();
-}
-                   
+}     
+                    
 function getWinner(match,res){
 
     ensureRules();
