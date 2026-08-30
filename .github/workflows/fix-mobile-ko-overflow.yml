@@ -1,0 +1,88 @@
+name: Fix mobile KO overflow
+
+on:
+  push:
+    paths:
+      - 'Bove.html'
+      - '.github/workflows/fix-mobile-ko-overflow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply mobile KO container fix
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* MOBILE KO OVERFLOW FIX — 2026-08-30 */'
+
+          if marker not in s:
+              css = r'''
+/* MOBILE KO OVERFLOW FIX — 2026-08-30 */
+@media (max-width: 599px) {
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .ko {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+    }
+
+    .koBox,
+    .finalContainer {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .koBox table,
+    .finalContainer table,
+    table:has(> tbody#Q),
+    table:has(> tbody#S),
+    table:has(> tbody#finaleBox) {
+        width: 462px !important;
+        min-width: 462px !important;
+        max-width: 462px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+'''
+              s = s.replace('</style>', css + '\n</style>', 1)
+              p.write_text(s, encoding='utf-8')
+          else:
+              print('Mobile KO fix already present')
+
+      - name: Commit mobile KO fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Bove.html
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No Bove.html change needed"
+          else
+            git commit -m "Fix KO and final containers on mobile"
+            git push
+          fi
