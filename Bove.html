@@ -10256,7 +10256,7 @@ function renderKO(){
         state.fTopRes
     );
 
-    /* --- UNICO PUNTO MODIFICATO: Controllo sicuro del vincitore --- */
+    /* --- GESTIONE CAMPIONE E POSIZIONAMENTO SICURO SOTTO LA FINALE --- */
     let campione = getWinner(finalisti, state.fTopRes);
     
     if (!campione && finalisti.length === 2) {
@@ -10270,33 +10270,29 @@ function renderKO(){
             }
         }
     }
-    /* ------------------------------------------------------------- */
 
-    const finaleCard=f.closest(".card");
-    const groups=finaleCard ? finaleCard.parentElement : null;
+    let winnerCard = document.getElementById("winnerCardKO");
 
-    let winnerCard=document.getElementById("winnerCardKO");
-
-    if(winnerCard && groups && winnerCard.parentElement!==groups){
-        groups.appendChild(winnerCard);
-    }
-
-    if(!winnerCard && groups){
-        winnerCard=document.createElement("div");
-        winnerCard.id="winnerCardKO";
-        winnerCard.className="card winner-card-ko";
-        groups.appendChild(winnerCard);
+    // Se non esiste, lo creiamo e lo posizioniamo subito sotto la finale (f)
+    if (!winnerCard && f.parentNode) {
+        winnerCard = document.createElement("div");
+        winnerCard.id = "winnerCardKO";
+        winnerCard.className = "card winner-card-ko";
+        f.parentNode.insertBefore(winnerCard, f.nextSibling);
+    } else if (winnerCard && f.parentNode && winnerCard.previousElementSibling !== f) {
+        // Se esiste già ma è altrove, lo spostiamo nel posto giusto
+        f.parentNode.insertBefore(winnerCard, f.nextSibling);
     }
 
     if(campione){
         state.campioneTop=campione;
 
         if(winnerCard){
-            winnerCard.style.display = "block";
+            winnerCard.style.cssText = "display: block !important; margin-top: 15px;";
             winnerCard.innerHTML=`
-                <div class="winner-box top-win">
+                <div class="winner-box top-win" style="background: rgba(251,191,36,.2); color: #fbbf24; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 1.3em;">
                     🏆 CAMPIONE TORNEO:<br>
-                    ${formatCoppiaDisplay(campione)}
+                    <span style="font-size: 1.1em; font-weight: normal; color: #e2e8f0;">${formatCoppiaDisplay(campione)}</span>
                 </div>
             `;
         }
@@ -10305,12 +10301,11 @@ function renderKO(){
         state.campioneTop=null;
 
         if(winnerCard){
-            winnerCard.style.display = "none";
+            winnerCard.style.cssText = "display: none !important;";
             winnerCard.innerHTML="";
         }
     }
 }
-
                    
 function renderMatchCard(titolo, match, type, index, risultato) {
     const res = String(risultato || "-").split("-");
