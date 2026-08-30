@@ -3,6 +3,7 @@ name: fix-user-menu
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix user hamburger menu
+      - name: Repair Bove user menu
         run: |
           python3 <<'PY'
           from pathlib import Path
@@ -22,88 +23,174 @@ jobs:
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
 
-          marker = '/* USER MENU FIX v3 */'
-          if marker in s:
-              print('FIX GIA APPLICATO')
-              raise SystemExit(0)
+          # 1) Replace the entire user-menu portion of verifyAccess.
+          start = s.find('        /*\n        Per un utente normale:')
+          if start == -1:
+              start = s.find('        /*\n        Per un utente normale il menu resta utilizzabile.')
+          if start == -1:
+              raise SystemExit('Blocco user menu di verifyAccess non trovato')
 
-          pattern = re.compile(
-              r'(if\\(menu\\)\\{\\s*\\n\\s*const pulsanti\\s*=\\s*menu\\.querySelectorAll\\("button"\\);\\s*\\n\\s*pulsanti\\.forEach\\(function\\(button\\)\\{).*?(\\n\\s*\\}\\);\\s*\\n\\s*\\n\\s*\\}\\s*\\n\\s*\\n\\s*console\\.log\\(\\s*"=== ACCESSO USER: GESTIONALE BLOCCATO E MENU ADMIN NASCOSTO ===")',
-              re.S
-          )
+          end_marker = '        console.log(\n            "=== ACCESSO USER:'
+          end = s.find(end_marker, start)
+          if end == -1:
+              raise SystemExit('Fine blocco user menu non trovata')
 
-          replacement = r'''if(menu){
+          end2 = s.find('        );', end)
+          if end2 == -1:
+              raise SystemExit('Fine console.log user non trovata')
+          end2 += len('        );')
 
-            const pulsanti =
-                menu.querySelectorAll("button");
+          replacement = '''        /*
+        Per un utente normale il menu resta utilizzabile.
+        Sono disponibili solo le funzioni di consultazione:
+        - Regole
+        - Stampa
+        Tutte le funzioni amministrative restano nascoste.
+        */
+
+        if(menu){
+
+            const pulsanti = menu.querySelectorAll("button");
 
             pulsanti.forEach(function(button){
 
-                const testo =
-                    (button.textContent || "")
-                        .trim()
-                        .toLowerCase();
+                const testo = (button.textContent || "").trim();
+                const consentito =
+                    /Regole/i.test(testo) ||
+                    /Stampa/i.test(testo);
 
-                const visibile =
-                    testo.includes("regole") ||
-                    testo.includes("stampa");
-
-                button.style.setProperty(
-                    "display",
-                    visibile ? "block" : "none",
-                    "important"
-                );
-
-                button.disabled = !visibile;
-                button.style.opacity = "1";
+                if(consentito){
+                    button.classList.add("user-menu-allowed");
+                    button.style.setProperty("display", "block", "important");
+                    button.disabled = false;
+                    button.style.opacity = "1";
+                    button.style.pointerEvents = "auto";
+                }else{
+                    button.classList.remove("user-menu-allowed");
+                    button.style.setProperty("display", "none", "important");
+                    button.disabled = true;
+                }
 
             });
 
+            menu.style.pointerEvents = "auto";
+            menu.style.opacity = "1";
         }
 
         console.log(
-            "=== ACCESSO USER: MENU CON REGOLE E STAMPA ==="'''
+            "=== ACCESSO USER: MENU CONSULTAZIONE ATTIVO ==="
+        );'''
 
-          s2, n = pattern.subn(replacement, s, count=1)
-          if n != 1:
-              raise SystemExit('Blocco menu user non trovato')
-          s = s2
+          s = s[:start] + replacement + s[end2:]
 
-          css = r'''
+          # 2) Make bloccaGestionale leave the allowed menu buttons enabled.
+          old = '''        if(
+            !el.classList.contains("back") &&
+            el.innerText !== "Stampa" &&
+            !el.classList.contains("menu-button")
+        ){
 
-/* USER MENU FIX v3 */
-.menu-dropdown.show {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: translateY(0) !important;
-    pointer-events: auto !important;
-    background: #111827 !important;
-    color: #ffffff !important;
-    z-index: 10000 !important;
+            el.disabled = true;
+            el.style.opacity = "0.6";
+
+        }'''
+          new = '''        if(
+            !el.classList.contains("back") &&
+            !el.classList.contains("menu-button") &&
+            !el.classList.contains("user-menu-allowed")
+        ){
+
+            el.disabled = true;
+            el.style.opacity = "0.6";
+
+        }'''
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          # 3) Remove old user-mode CSS that hid every menu button.
+          s = re.sub(
+              r'/\* USER MODE - NASCONDE LE FUNZIONI AMMINISTRATIVE \*/.*?body\.user-mode \.menu-button \{.*?\}\s*',
+              '''/* USER MODE - MENU DI CONSULTAZIONE */
+body.user-mode #menuComandi {
+    display: none;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
 }
 
-.menu-dropdown.show button {
+body.user-mode #menuComandi.show {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+body.user-mode #menuComandi button.user-menu-allowed {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+}
+
+body.user-mode .menu-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+''',
+              s,
+              count=1,
+              flags=re.S
+          )
+
+          # 4) Remove the previous emergency style block if still present.
+          s = re.sub(
+              r'<style id="bove-user-menu-fix">.*?</style>\s*',
+              '', s, count=1, flags=re.S
+          )
+
+          # 5) Add a final defensive rule immediately before </head>.
+          marker = '/* BOVE USER MENU FINAL FIX */'
+          if marker not in s:
+              css = '''<style>
+/* BOVE USER MENU FINAL FIX */
+body.user-mode .menu-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+body.user-mode #menuComandi.show {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+body.user-mode #menuComandi button.user-menu-allowed {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
 }
-'''
-          s = s.replace('</style>', css + '\n</style>', 1)
+</style>\n'''
+              s = s.replace('</head>', css + '</head>', 1)
 
           p.write_text(s, encoding='utf-8')
-          print('FIX APPLICATO')
+          print('Bove.html repaired successfully')
           PY
 
-      - name: Commit fix
+      - name: Commit repair
         run: |
-          if git diff --quiet; then
-            echo "Nessuna modifica"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Bove.html
-          git commit -m "Fix user hamburger menu visibility"
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Fix user hamburger menu"
           git push
