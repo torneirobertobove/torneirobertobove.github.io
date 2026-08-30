@@ -6157,9 +6157,54 @@ state.rules.locked=false;
 
 
 }
+
+                    
 async function updateAndSync(){
 
     try{
+
+        /*
+        ==========================================
+        CONTROLLO TORNEO REMOTO
+        ==========================================
+        */
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const idTorneoUrl =
+            params.get("idTorneo");
+
+        const remoto =
+            !!idTorneoUrl;
+
+
+        /*
+        * Se siamo dentro un torneo remoto
+        * che loadState() ha verificato come
+        * inesistente/cancellato, NON bisogna:
+        *
+        * - creare un nuovo ID
+        * - salvare uno stato vuoto
+        * - fare upsert su Supabase
+        */
+
+        if(
+            remoto &&
+            window.__BOVE_REMOTE_NOT_FOUND__ === true
+        ){
+
+            console.warn(
+                "UPDATE AND SYNC BLOCCATO: torneo remoto non trovato:",
+                idTorneoUrl
+            );
+
+            return false;
+
+        }
+
 
         const inputNome =
             document.getElementById(
@@ -6189,22 +6234,33 @@ async function updateAndSync(){
 
 
         /*
-         * IMPORTANTE:
-         * se siamo dentro un torneo remoto indicato
-         * dalla URL e il torneo è stato cancellato,
-         * NON generare un nuovo ID con Date.now().
-         */
+        ==========================================
+        CREAZIONE ID SOLO PER NUOVO TORNEO LOCALE
+        ==========================================
+        */
 
-        const remoto =
-            !!new URLSearchParams(
-                window.location.search
-            ).get("idTorneo");
+        if(!state.idTorneo){
 
+            /*
+            * Se esiste idTorneo nella URL,
+            * NON creare mai un nuovo ID.
+            *
+            * Questo controllo è ulteriore rispetto
+            * a __BOVE_REMOTE_NOT_FOUND__.
+            */
 
-        if(
-            !state.idTorneo &&
-            !remoto
-        ){
+            if(remoto){
+
+                console.warn(
+                    "UPDATE AND SYNC BLOCCATO: ID remoto mancante.",
+                    "ID URL:",
+                    idTorneoUrl
+                );
+
+                return false;
+
+            }
+
 
             state.idTorneo =
                 Date.now();
@@ -6213,9 +6269,10 @@ async function updateAndSync(){
 
 
         /*
-            PROTEZIONE CONTRO STATO VUOTO
+        ==========================================
+        PROTEZIONE CONTRO STATO VUOTO
+        ==========================================
         */
-
 
         let precedente =
             localStorage.getItem(
@@ -6268,6 +6325,7 @@ async function updateAndSync(){
                 }
 
             }
+
             catch(e){
 
                 console.warn(
@@ -6281,13 +6339,10 @@ async function updateAndSync(){
 
 
         /*
-            COPIA COMPLETA DELLO STATO
-
-            Non viene modificato lo state originale.
-            La copia serve per garantire che tutto
-            il torneo venga salvato.
+        ==========================================
+        COPIA COMPLETA DELLO STATO
+        ==========================================
         */
-
 
         const snapshot =
             JSON.parse(
@@ -6296,9 +6351,10 @@ async function updateAndSync(){
 
 
         /*
-            SALVATAGGIO STATO LOCALE
+        ==========================================
+        SALVATAGGIO STATO LOCALE
+        ==========================================
         */
-
 
         if(statoDaSalvare){
 
@@ -6313,9 +6369,10 @@ async function updateAndSync(){
 
 
         /*
-            SALVATAGGIO SQUADRE
+        ==========================================
+        SALVATAGGIO SQUADRE
+        ==========================================
         */
-
 
         if(
 
@@ -6341,9 +6398,10 @@ async function updateAndSync(){
 
 
         /*
-            SUPABASE
+        ==========================================
+        SUPABASE
+        ==========================================
         */
-
 
         if(
 
@@ -6361,8 +6419,7 @@ async function updateAndSync(){
 
         ){
 
-            const {error}=
-
+            const {error} =
                 await sb
                 .from("tornei")
                 .upsert(
@@ -6380,13 +6437,12 @@ async function updateAndSync(){
                             "attivo",
 
                         /*
-                            IMPORTANTE:
-                            salva tutto lo snapshot,
-                            non solo una parte dello state.
+                        * Salva tutto lo snapshot.
                         */
 
                         configurazione:
                             snapshot
+
                     },
                     {
                         onConflict:"id"
@@ -6409,9 +6465,10 @@ async function updateAndSync(){
 
 
         /*
-            VERIFICA DEL SALVATAGGIO LOCALE
+        ==========================================
+        VERIFICA SALVATAGGIO LOCALE
+        ==========================================
         */
-
 
         if(statoDaSalvare){
 
@@ -6472,6 +6529,12 @@ async function updateAndSync(){
         }
 
 
+        /*
+        ==========================================
+        LOG FINALE
+        ==========================================
+        */
+
         console.log(
             "=== UPDATE AND SYNC COMPLETATO ==="
         );
@@ -6508,6 +6571,8 @@ async function updateAndSync(){
     }
 
 }
+
+
                    
 
    async function loadState(){
