@@ -533,89 +533,60 @@ async function verifyAccess(){
             profilo
         );
 
-
         bloccaGestionale();
-
-        // Modalita utente: il menu amministrativo deve essere invisibile.
         document.body.classList.add("user-mode");
 
-        const hamburger =
-            document.querySelector(".menu-button");
-
-
-        const menu =
-            document.getElementById("menuComandi");
-
+        const hamburger = document.querySelector(".menu-button");
+        const menu = document.getElementById("menuComandi");
 
         if(hamburger){
-
-            hamburger.style.setProperty(
-                "display",
-                "flex",
-                "important"
-            );
-
             hamburger.disabled = false;
-
-            hamburger.style.opacity = "1";
-
+            hamburger.style.setProperty("display", "flex", "important");
+            hamburger.style.setProperty("visibility", "visible", "important");
+            hamburger.style.setProperty("opacity", "1", "important");
+            hamburger.style.setProperty("pointer-events", "auto", "important");
         }
-
-
-        /*
-        Rimuove eventuali vecchi pulsanti
-        creati dalle versioni precedenti.
-        */
-
-        const userBackButton =
-            document.getElementById("userBackButton");
-
-        if(userBackButton){
-
-            userBackButton.remove();
-
-        }
-
-
-        const userPrintButton =
-            document.getElementById("userPrintButton");
-
-        if(userPrintButton){
-
-            userPrintButton.remove();
-
-        }
-
-
-        /*
-        Per un utente normale:
-        nasconde tutte le funzioni
-        presenti nel menu amministrativo.
-        */
 
         if(menu){
+            const buttons = [...menu.querySelectorAll("button")];
 
-            const pulsanti =
-                menu.querySelectorAll("button");
+            buttons.forEach(function(button, index){
+                const testo = (button.textContent || "").trim();
+                const isPrint = /stampa/i.test(testo);
+                const isExit = index === buttons.length - 1 || /uscita/i.test(testo);
+                const allowed = isPrint || isExit;
 
-
-            pulsanti.forEach(function(button){
+                button.classList.toggle("user-print", isPrint);
+                button.classList.toggle("user-exit", isExit && !isPrint);
+                button.disabled = !allowed;
 
                 button.style.setProperty(
                     "display",
-                    "none",
+                    allowed ? "block" : "none",
+                    "important"
+                );
+                button.style.setProperty(
+                    "visibility",
+                    allowed ? "visible" : "hidden",
+                    "important"
+                );
+                button.style.setProperty(
+                    "pointer-events",
+                    allowed ? "auto" : "none",
                     "important"
                 );
 
-                button.disabled = true;
-
+                if(isExit && !isPrint){
+                    button.textContent = "🚪 Uscita";
+                    button.onclick = function(){
+                        window.location.href = "index.html";
+                    };
+                }
             });
-
         }
 
-
         console.log(
-            "=== ACCESSO USER: GESTIONALE BLOCCATO E MENU ADMIN NASCOSTO ==="
+            "=== ACCESSO USER: SOLO STAMPA E USCITA ==="
         );
 
 
@@ -709,106 +680,87 @@ table:has(> tbody#finaleBox) th:nth-child(3), table:has(> tbody#finaleBox) td:nt
 .koBox table th:nth-child(3), .koBox table td:nth-child(3),
 .finalContainer table th:nth-child(3), .finalContainer table td:nth-child(3) { width:50.5px !important; }
 </style>
-<!-- BOVE USER MENU FINAL FIX -->
-<style id="bove-user-menu-final-fix">
+<style id="bove-user-menu-stable">
+body.user-mode .menu-container {
+    position: fixed !important;
+    top: 75px !important;
+    right: 20px !important;
+    left: auto !important;
+    z-index: 99999 !important;
+}
+body.user-mode .menu-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
 body.user-mode #menuComandi {
-    background:#111827 !important;
-    border:1px solid #334155 !important;
-    opacity:1 !important;
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    top: 45px !important;
+    right: 0 !important;
+    width: 220px !important;
+    padding: 10px !important;
+    background: #111827 !important;
+    border: 1px solid #334155 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,.5) !important;
+    flex-direction: column !important;
+    gap: 8px !important;
 }
-
-body.user-mode #menuComandi button:nth-child(2),
-body.user-mode #menuComandi button:nth-child(4) {
-    display:block !important;
-    visibility:visible !important;
-    opacity:1 !important;
-    pointer-events:auto !important;
+body.user-mode #menuComandi.show {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
-
-body.user-mode #menuComandi button:nth-child(1),
-body.user-mode #menuComandi button:nth-child(3),
-body.user-mode #menuComandi button:nth-child(5),
-body.user-mode #menuComandi button:nth-child(6),
-body.user-mode #menuComandi button:nth-child(7) {
-    display:none !important;
-    visibility:hidden !important;
-    pointer-events:none !important;
+body.user-mode #menuComandi button {
+    display: none !important;
+}
+body.user-mode #menuComandi button.user-print,
+body.user-mode #menuComandi button.user-exit {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    box-sizing: border-box !important;
 }
 </style>
+<script id="bove-user-menu-toggle">
+window.toggleMenu = function(){
+    const menu = document.getElementById("menuComandi");
+    if(!menu) return;
 
-<script>
-(function(){
-    "use strict";
-
-    function applyBoveUserMenu(){
-        if(!document.body.classList.contains("user-mode")) return;
-
-        const menu = document.getElementById("menuComandi");
-        const hamburger = document.querySelector(".menu-button");
-        if(!menu) return;
-
-        if(hamburger){
-            hamburger.disabled = false;
-            hamburger.style.setProperty("display","flex","important");
-            hamburger.style.setProperty("visibility","visible","important");
-            hamburger.style.setProperty("opacity","1","important");
-            hamburger.style.setProperty("pointer-events","auto","important");
-        }
-
+    if(document.body.classList.contains("user-mode")){
         const buttons = [...menu.querySelectorAll("button")];
+        buttons.forEach(function(button, index){
+            const text = (button.textContent || "").trim();
+            const print = /stampa/i.test(text);
+            const exit = button.classList.contains("user-exit") || index === buttons.length - 1 || /uscita/i.test(text);
+            const allowed = print || exit;
 
-        buttons.forEach((button,index)=>{
-            const allowed = index === 1 || index === 3;
-
+            button.classList.toggle("user-print", print);
+            button.classList.toggle("user-exit", exit && !print);
             button.disabled = !allowed;
+            button.style.setProperty("display", allowed ? "block" : "none", "important");
+            button.style.setProperty("visibility", allowed ? "visible" : "hidden", "important");
+            button.style.setProperty("pointer-events", allowed ? "auto" : "none", "important");
 
-            if(allowed){
-                button.style.setProperty("display","block","important");
-                button.style.setProperty("visibility","visible","important");
-                button.style.setProperty("opacity","1","important");
-                button.style.setProperty("pointer-events","auto","important");
-            }else{
-                button.style.setProperty("display","none","important");
-                button.style.setProperty("visibility","hidden","important");
-                button.style.setProperty("opacity","0","important");
-                button.style.setProperty("pointer-events","none","important");
+            if(exit && !print){
+                button.textContent = "🚪 Uscita";
+                button.onclick = function(){ window.location.href = "index.html"; };
             }
         });
-
-        menu.style.setProperty("background","#111827","important");
-        menu.style.setProperty("border","1px solid #334155","important");
     }
 
-    window.toggleMenu = function(){
-        const menu = document.getElementById("menuComandi");
-        if(!menu) return;
-
-        applyBoveUserMenu();
-        menu.classList.toggle("show");
-        applyBoveUserMenu();
-    };
-
-    function start(){
-        applyBoveUserMenu();
-
-        // verifyAccess() è asincrona: ripristina il menu dopo il suo completamento.
-        setTimeout(applyBoveUserMenu, 100);
-        setTimeout(applyBoveUserMenu, 500);
-        setTimeout(applyBoveUserMenu, 1500);
-
-        // Mantiene il menu corretto senza MutationObserver ricorsivo.
-        window.setInterval(applyBoveUserMenu, 2000);
-    }
-
-    if(document.readyState === "loading"){
-        document.addEventListener("DOMContentLoaded",start,{once:true});
-    }else{
-        start();
-    }
-})();
+    menu.classList.toggle("show");
+};
 </script>
-<!-- /BOVE USER MENU FINAL FIX -->
-
 </head>
 
 
