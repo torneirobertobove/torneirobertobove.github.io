@@ -6509,7 +6509,8 @@ async function updateAndSync(){
 
 }
                    
-async function loadState(){
+
+   async function loadState(){
 
     const params = new URLSearchParams(window.location.search);
     const idParam = params.get("idTorneo");
@@ -6518,6 +6519,7 @@ async function loadState(){
     let configurazione = null;
 
     window.__BOVE_LOADING__ = true;
+    window.__BOVE_REMOTE_NOT_FOUND__ = false;
 
     try{
 
@@ -6620,9 +6622,9 @@ async function loadState(){
             try{
 
                 /*
-                 * NON usare .single():
-                 * dopo la cancellazione il torneo può non esistere
-                 * e .single() genera PGRST116 / 406.
+                 * NON usare .single().
+                 * Se il torneo non esiste, la query restituisce
+                 * semplicemente un array vuoto senza PGRST116 / 406.
                  */
 
                 const {
@@ -6631,7 +6633,10 @@ async function loadState(){
                 } = await sb
                     .from("tornei")
                     .select("*")
-                    .eq("id",Number(idParam))
+                    .eq(
+                        "id",
+                        Number(idParam)
+                    )
                     .limit(1);
 
                 if(error){
@@ -6644,7 +6649,8 @@ async function loadState(){
                 }
 
                 const torneo =
-                    Array.isArray(tornei) && tornei.length > 0
+                    Array.isArray(tornei) &&
+                    tornei.length > 0
                         ? tornei[0]
                         : null;
 
@@ -6680,10 +6686,11 @@ async function loadState(){
                             };
 
                         if(Array.isArray(cfg.coppie))
-                            configurazione.coppie=cfg.coppie;
+                            configurazione.coppie =
+                                cfg.coppie;
 
                         if(Array.isArray(cfg.partecipanti))
-                            configurazione.partecipanti=
+                            configurazione.partecipanti =
                                 cfg.partecipanti;
                     }
 
@@ -6701,13 +6708,22 @@ async function loadState(){
                 else{
 
                     /*
-                     * Il torneo remoto non esiste più.
-                     * NON creare un nuovo ID.
+                     * TORNEO REMOTO NON ESISTE.
+                     *
+                     * È fondamentale NON creare un nuovo torneo.
+                     * updateAndSync() userà questo flag per bloccare
+                     * qualsiasi salvataggio automatico.
                      */
 
                     state.idTorneo=null;
                     state.nomeTorneo="";
                     state.dataTorneo="";
+
+                    state.coppie=[];
+                    state.partecipanti=[];
+                    state.iscritti=[];
+
+                    window.__BOVE_REMOTE_NOT_FOUND__ = true;
 
                     console.warn(
                         "TORNEO REMOTO NON TROVATO:",
@@ -7155,7 +7171,6 @@ async function loadState(){
     }
 
 }
-   
 function handleFile(e){
     let r=new FileReader();
     r.onload=function(evt){
