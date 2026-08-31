@@ -21,11 +21,12 @@
 
     if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Data torneo non valida: usare YYYY-MM-DD");
 
-    const patch={id:currentId,nome,data,data_torneo:data,posti,descrizione,stato};
+    const patch={nome,data,data_torneo:data,posti,descrizione,stato};
 
     const {data:updated,error}=await db
       .from("tornei")
-      .upsert(patch,{onConflict:"id"})
+      .update(patch)
+      .eq("id",currentId)
       .select("*")
       .single();
 
@@ -40,10 +41,10 @@
       if(typeof w.salvaAdminState==="function") w.salvaAdminState();
     }
     if(typeof w.renderAdmin==="function") w.renderAdmin();
-    console.log("✅ modificaTorneoAdmin v2 salvata:",updated);
+    console.log("✅ modificaTorneoAdmin v3 salvata:",updated);
     return updated;
   };
 
   w.salvaTorneoAdmin=w.modificaTorneoAdmin;
-  console.log("✅ admin-edit-fix-v2 caricato");
+  console.log("✅ admin-edit-fix-v3 caricato");
 })();
