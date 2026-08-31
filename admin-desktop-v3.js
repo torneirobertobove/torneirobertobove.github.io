@@ -1,3 +1,4 @@
+/* Layout desktop: collega le funzioni admin già esistenti senza riscriverle. */
 (() => {
   'use strict';
 
@@ -28,8 +29,6 @@
     };
   }
 
-  // The original admin-functions.js owns the tournament data and CRUD logic.
-  // The desktop layer only presents that existing DOM and calls those functions.
   function tournamentRows() {
     const box = $('listaTorneiAdmin');
     return box ? [...box.querySelectorAll(':scope > .tournament-row')] : [];
@@ -51,27 +50,18 @@
     w.innerHTML = '';
     w.classList.remove('empty');
     if (node.parentNode) node.parentNode.removeChild(node);
-
     const panel = document.createElement('details');
     panel.className = 'desktop-workspace-panel';
     panel.open = true;
-
     const summary = document.createElement('summary');
     summary.textContent = title;
     panel.appendChild(summary);
-
     const body = document.createElement('div');
     body.className = 'desktop-workspace-body';
     body.appendChild(node);
     panel.appendChild(body);
     w.appendChild(panel);
     w.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function returnToLegacy(node) {
-    if (!legacyRoot || !node) return;
-    if (node.parentNode) node.parentNode.removeChild(node);
-    legacyRoot.appendChild(node);
   }
 
   function openCreate() {
@@ -94,23 +84,19 @@
     }, 120);
   }
 
-  function openLink() {
-    openManage('linkBoveGenerato');
-  }
+  function openLink() { openManage('linkBoveGenerato'); }
 
   function refresh() {
     if (!shell) return;
     const stats = shell.querySelector('.desktop-stats');
     const body = shell.querySelector('.desktop-tournament-body');
     if (!stats || !body) return;
-
     const rows = tournamentRows();
     const req = $('richiesteIscrizione');
     const approved = $('partecipantiAdmin');
     const pending = req ? req.querySelectorAll(':scope > .lista-item').length : 0;
     const ok = approved ? approved.querySelectorAll(':scope > .lista-item').length : 0;
     const active = rows.filter(r => !/chiuso/i.test(r.querySelector('.status')?.textContent || '')).length;
-
     stats.innerHTML = '';
     [['Tornei attivi',active,'● In corso'],['Iscritti',pending+ok,'Dati aggiornati'],['Da approvare',pending,'Richiedono attenzione'],['Tabelloni',rows.length,'Link disponibili']].forEach(x => {
       const s = document.createElement('div');
@@ -118,13 +104,8 @@
       s.innerHTML = `<div class="desktop-stat-label">${x[0]}</div><div class="desktop-stat-value">${x[1]}</div><div class="desktop-stat-note">${x[2]}</div>`;
       stats.appendChild(s);
     });
-
     body.innerHTML = '';
-    if (!rows.length) {
-      body.innerHTML = '<p class="desktop-muted">Nessun torneo creato.</p>';
-      return;
-    }
-
+    if (!rows.length) { body.innerHTML = '<p class="desktop-muted">Nessun torneo creato.</p>'; return; }
     rows.slice(0,8).forEach(r => {
       const row = document.createElement('div');
       row.className = 'desktop-tournament-row';
@@ -140,7 +121,6 @@
       st.className = 'desktop-status' + (/chiuso/i.test(status?.textContent || '') ? ' closed' : '');
       st.textContent = `● ${(status?.textContent || 'bozza').trim().replace(/^●\s*/, '')}`;
       info.appendChild(st);
-
       const actions = document.createElement('div');
       actions.className = 'desktop-actions';
       const id = getId(r);
@@ -165,17 +145,12 @@
   function mount() {
     const area = $('areaAdmin');
     if (!area || mounted || area.classList.contains('hidden')) return;
-
-    // Preserve the original functional DOM instead of deleting it. The desktop
-    // layer uses these same nodes so admin-functions.js keeps working unchanged.
     legacyRoot = document.createElement('div');
     legacyRoot.id = 'adminDesktopLegacyRoot';
     legacyRoot.style.display = 'none';
     while (area.firstChild) legacyRoot.appendChild(area.firstChild);
-
     pool = detailsMap(legacyRoot);
     mounted = true;
-
     shell = document.createElement('div');
     shell.className = 'desktop-app';
     shell.innerHTML = `
@@ -207,63 +182,24 @@
           <div class="desktop-workspace empty"></div>
         </section>
       </main>`;
-
     area.appendChild(shell);
     area.appendChild(legacyRoot);
-
     const top = shell.querySelector('.desktop-top-actions');
     const title = shell.querySelector('.desktop-title-actions');
     const quick = shell.querySelector('.desktop-quick');
-
-    top.append(
-      btn('↻ Aggiorna','',async()=>{
-        if(typeof window.caricaTorneiSupabase==='function') await window.caricaTorneiSupabase();
-        if(typeof window.caricaNewsAdmin==='function') await window.caricaNewsAdmin();
-        if(typeof window.caricaSponsorAdmin==='function') await window.caricaSponsorAdmin();
-        setTimeout(refresh,250);
-      }),
-      btn('⚙ Impostazioni','',openCreate),
-      btn('＋ Nuovo torneo','primary',openCreate)
-    );
+    top.append(btn('↻ Aggiorna','',async()=>{ if(typeof window.caricaTorneiSupabase==='function') await window.caricaTorneiSupabase(); setTimeout(refresh,250); }),btn('⚙ Impostazioni','',openCreate),btn('＋ Nuovo torneo','primary',openCreate));
     title.append(btn('＋ Crea torneo','primary',openCreate));
-
     const q1=btn('','',()=>openManage('richiesteIscrizione')); q1.innerHTML='<b>👥 Approva iscritti</b><span>Gestisci le richieste</span>';
     const q2=btn('','',()=>openManage('creaCoppieBox')); q2.innerHTML='<b>🔀 Accoppiamenti</b><span>Genera le sfide</span>';
-    const q3=btn('','',()=>{const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function') window.apriBoveConTorneo(id);else alert('Seleziona prima un torneo.');}); q3.innerHTML='<b>📋 Apri tabellone</b><span>Visualizza il torneo</span>';
+    const q3=btn('','',()=>{const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(id);else alert('Seleziona prima un torneo.');}); q3.innerHTML='<b>📋 Apri tabellone</b><span>Visualizza il torneo</span>';
     const q4=btn('','',()=>{if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();else openLink();}); q4.innerHTML='<b>🔗 Copia link</b><span>Link pubblico</span>';
     quick.append(q1,q2,q3,q4);
-
-    shell.querySelectorAll('.desktop-nav button').forEach(b=>b.addEventListener('click',()=>{
-      shell.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.toggle('active',x===b));
-      const t=b.dataset.target;
-      if(t==='dashboard') shell.querySelector('.desktop-tournaments')?.scrollIntoView({behavior:'smooth',block:'start'});
-      if(t==='iscritti') openManage('richiesteIscrizione');
-      if(t==='coppie') openManage('creaCoppieBox');
-      if(t==='config') openCreate();
-      if(t==='link') openLink();
-      if(t==='tabellone'){
-        const id=selectedId() || (tournamentRows()[0] && getId(tournamentRows()[0]));
-        if(id&&typeof window.apriBoveConTorneo==='function') window.apriBoveConTorneo(id);
-      }
-    }));
-
-    // Keep the original nodes available to the existing functions. Do not remove
-    // or replace their handlers.
+    shell.querySelectorAll('.desktop-nav button').forEach(b=>b.addEventListener('click',()=>{shell.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.toggle('active',x===b));const t=b.dataset.target;if(t==='dashboard')shell.querySelector('.desktop-tournaments')?.scrollIntoView({behavior:'smooth',block:'start'});if(t==='iscritti')openManage('richiesteIscrizione');if(t==='coppie')openManage('creaCoppieBox');if(t==='config')openCreate();if(t==='link')openLink();if(t==='tabellone'){const id=selectedId()||(tournamentRows()[0]&&getId(tournamentRows()[0]));if(id&&typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(id);}}));
     refresh();
-    window.__adminDesktopRender = refresh;
+    window.__adminDesktopRender=refresh;
   }
 
-  function watch(){
-    const area=$('areaAdmin');
-    if(area && !mounted && !area.classList.contains('hidden')) mount();
-  }
-
-  document.addEventListener('DOMContentLoaded',()=>{
-    watch();
-    setTimeout(watch,200);
-    setTimeout(watch,700);
-    setTimeout(watch,1500);
-    setTimeout(watch,2500);
-  });
+  function watch(){const area=$('areaAdmin');if(area&&!mounted&&!area.classList.contains('hidden'))mount();}
+  document.addEventListener('DOMContentLoaded',()=>{watch();setTimeout(watch,200);setTimeout(watch,700);setTimeout(watch,1500);setTimeout(watch,2500);});
   document.addEventListener('click',()=>setTimeout(watch,50));
 })();
