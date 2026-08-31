@@ -27,9 +27,11 @@
     };
   }
 
+  // The existing admin-functions.js renders tournaments as .tournament-row.
+  // Keep the new layout wired to those existing DOM nodes/functions.
   function tournamentRows() {
     const box = $('listaTorneiAdmin');
-    return box ? [...box.querySelectorAll(':scope > .lista-item')] : [];
+    return box ? [...box.querySelectorAll(':scope > .tournament-row')] : [];
   }
 
   function getId(row) {
@@ -99,7 +101,7 @@
     const approved = $('partecipantiAdmin');
     const pending = req ? req.querySelectorAll(':scope > .lista-item').length : 0;
     const ok = approved ? approved.querySelectorAll(':scope > .lista-item').length : 0;
-    const active = rows.filter(r => !/chiuso/i.test(r.querySelector('.badge')?.textContent || '')).length;
+    const active = rows.filter(r => !/chiuso/i.test(r.querySelector('.status')?.textContent || '')).length;
 
     stats.innerHTML = '';
     [['Tornei attivi',active,'● In corso'],['Iscritti',pending+ok,'Dati aggiornati'],['Da approvare',pending,'Richiedono attenzione'],['Tabelloni',rows.length,'Link disponibili']].forEach(x => {
@@ -120,15 +122,15 @@
       row.className = 'desktop-tournament-row';
       const info = document.createElement('div');
       info.className = 'desktop-t-info';
-      const name = r.querySelector('b')?.textContent.trim() || 'Torneo senza nome';
+      const name = r.querySelector('strong')?.textContent.trim() || 'Torneo senza nome';
       const text = r.innerText.split('\n').map(v=>v.trim()).filter(Boolean);
-      const date = text.find(v=>v.includes('📅')) || '📅 -';
-      const places = text.find(v=>v.includes('👥')) || '👥 -';
-      const badge = r.querySelector('.badge');
-      info.innerHTML = `<strong>${name}</strong><small>${date.replace('📅','').trim()} · ${places.replace('👥','').trim()}</small>`;
+      const date = text.find(v=>/^\d{4}-\d{2}-\d{2}/.test(v)) || '—';
+      const places = text.find(v=>/squadre$/i.test(v)) || '—';
+      const status = r.querySelector('.status');
+      info.innerHTML = `<strong>${name}</strong><small>${date} · ${places}</small>`;
       const st = document.createElement('span');
-      st.className = 'desktop-status' + (/chiuso/i.test(badge?.textContent || '') ? ' closed' : '');
-      st.textContent = `● ${(badge?.textContent || 'bozza').trim()}`;
+      st.className = 'desktop-status' + (/chiuso/i.test(status?.textContent || '') ? ' closed' : '');
+      st.textContent = `● ${(status?.textContent || 'bozza').trim().replace(/^●\s*/, '')}`;
       info.appendChild(st);
 
       const actions = document.createElement('div');
