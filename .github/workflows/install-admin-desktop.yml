@@ -1,13 +1,38 @@
-name: Disable legacy admin desktop injector
+name: Remove legacy admin desktop injection
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  disabled:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, '[legacy-cleaned]') }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Legacy admin desktop injection disabled; admin.html owns the approved dashboard layout."
+      - uses: actions/checkout@v4
+      - name: Remove legacy desktop assets from admin.html
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('admin.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'\s*<!-- ADMIN-DESKTOP-V2 -->\s*', '\n', s)
+          s=re.sub(r'\s*<link rel="stylesheet" href="admin-desktop\.css(?:\?v=[^"]+)?">\s*', '\n', s)
+          s=re.sub(r'\s*<script src="admin-desktop-(?:v2\.js|js|v3\.js)(?:\?v=[^"]+)?"></script>\s*', '\n', s)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Verify legacy assets are absent
+        run: |
+          ! grep -q "ADMIN-DESKTOP-V2\|admin-desktop.css\|admin-desktop-v3.js" admin.html
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git diff --cached --quiet || git commit -m "fix: clean legacy admin assets [legacy-cleaned]"
+          git push
