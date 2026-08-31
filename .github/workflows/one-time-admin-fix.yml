@@ -1,62 +1,49 @@
-name: Apply real desktop layout
+name: One-time admin fix
+
 on:
   push:
     paths:
       - '.github/workflows/one-time-admin-fix.yml'
+
 permissions:
   contents: write
+
 jobs:
-  apply:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inject desktop layout without changing admin functions
+      - name: Fix create torneo
         shell: python
         run: |
           from pathlib import Path
-          p=Path('admin.html')
-          s=p.read_text(encoding='utf-8')
-          marker='<!-- ADMIN_DESKTOP_LAYOUT_V1 -->'
-          if marker in s:
-              print('Desktop layout already present')
-              raise SystemExit(0)
-          block=r'''<!-- ADMIN_DESKTOP_LAYOUT_V1 -->
-          <script>
-          (function(){
-            let done=false;
-            function apply(){
-              if(done)return;
-              const area=document.getElementById('areaAdmin');
-              if(!area||area.classList.contains('hidden'))return;
-              const children=[...area.children];
-              const title=children.find(e=>e.tagName==='H1');
-              const details=children.filter(e=>e.tagName==='DETAILS');
-              const gestione=document.getElementById('gestioneTorneoAdmin');
-              if(!title||details.length<4||!gestione)return;
-              done=true;
-              const nuovo=details[0], tornei=details[1], news=details[2], sponsor=details[3];
-              nuovo.id='desktopNuovoTorneo'; tornei.id='desktopTornei'; news.id='desktopNews'; sponsor.id='desktopSponsor';
-              const st=document.createElement('style');
-              st.textContent=`html,body{background:#070b11!important;color:#eef3f8!important;overflow-x:hidden!important}body{padding:0!important;margin:0!important;min-height:100vh!important}.btn-indietro{display:none!important}.container{max-width:none!important;width:100%!important;margin:0!important;padding:0!important}#areaAdmin{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;display:grid!important;grid-template-columns:240px minmax(0,1fr)!important;grid-template-rows:68px minmax(0,1fr)!important;min-height:100vh!important;background:#070b11!important}#areaAdmin>h1{display:none!important}#adminDesktopSidebar{grid-column:1;grid-row:1 / 3;background:#0d131c;border-right:1px solid #293646;padding:20px 14px;display:flex;flex-direction:column;gap:7px}#adminDesktopBrand{padding:3px 8px 20px;margin-bottom:10px;border-bottom:1px solid #293646;font-weight:800;letter-spacing:1px}#adminDesktopBrand small{display:block;color:#7f8b9a;font-size:10px;margin-top:4px}.adminDesktopNavBtn{width:100%;margin:0;padding:12px;border:1px solid transparent;border-radius:9px;background:transparent;color:#cbd5e1;text-align:left;font-weight:700;cursor:pointer}.adminDesktopNavBtn:hover,.adminDesktopNavBtn.active{background:#1b2735;border-color:#344456;color:#fff}#adminDesktopTopbar{grid-column:2;grid-row:1;background:#0d131c;border-bottom:1px solid #293646;padding:0 22px;display:flex;align-items:center}#adminDesktopTopbar strong{font-size:16px}#adminDesktopTopbar span{display:block;color:#7f8b9a;font-size:11px;margin-top:4px}#adminDesktopWorkspace{grid-column:2;grid-row:2;min-width:0;padding:22px;overflow:auto}#adminDesktopWorkspace>details,#adminDesktopWorkspace>#gestioneTorneoAdmin{max-width:1200px;margin:0 auto 14px;background:#111923;border:1px solid #293646;border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}#adminDesktopWorkspace summary{color:#fff;font-weight:800;cursor:pointer}#adminDesktopWorkspace input,#adminDesktopWorkspace select,#adminDesktopWorkspace textarea{background:#0a1017;color:#fff;border:1px solid #303d4c;border-radius:8px}#adminDesktopWorkspace button{border-radius:8px}@media(max-width:850px){#areaAdmin{display:block!important}#adminDesktopSidebar{border-right:0;border-bottom:1px solid #293646;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#adminDesktopTopbar{height:64px}#adminDesktopWorkspace{padding:12px}}`;
-              document.head.appendChild(st);
-              const sidebar=document.createElement('aside');sidebar.id='adminDesktopSidebar';sidebar.innerHTML='<div id="adminDesktopBrand">🎾 ADMIN<small>PADEL MANAGER</small></div>';
-              const top=document.createElement('header');top.id='adminDesktopTopbar';top.innerHTML='<div><strong>Gestione amministrazione</strong><span>Configurazione e gestione tornei</span></div>';
-              const work=document.createElement('main');work.id='adminDesktopWorkspace';
-              function nav(icon,label,target){const b=document.createElement('button');b.type='button';b.className='adminDesktopNavBtn';b.textContent=icon+' '+label;b.onclick=()=>{document.querySelectorAll('.adminDesktopNavBtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const e=document.getElementById(target);if(e){if('open' in e)e.open=true;e.scrollIntoView({behavior:'smooth',block:'start'})}};sidebar.appendChild(b);return b}
-              const first=nav('➕','Nuovo torneo','desktopNuovoTorneo');nav('📋','Tornei creati','desktopTornei');nav('👥','Gestione torneo','gestioneTorneoAdmin');nav('📰','News','desktopNews');nav('🏆','Sponsor','desktopSponsor');first.classList.add('active');
-              area.innerHTML='';area.appendChild(sidebar);area.appendChild(top);area.appendChild(work);work.appendChild(nuovo);work.appendChild(tornei);work.appendChild(gestione);work.appendChild(news);work.appendChild(sponsor);
-              console.log('ADMIN DESKTOP V1 APPLICATO — MOTORE ORIGINALE INVARIATO');
-            }
-            const mo=new MutationObserver(apply);mo.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});document.addEventListener('DOMContentLoaded',apply);setTimeout(apply,300);setTimeout(apply,1000);setTimeout(apply,2500);
-          })();
-          </script>
-          '''
-          s=s.replace('</body>',block+'\n</body>',1)
-          p.write_text(s,encoding='utf-8')
-      - name: Commit layout
+          import re
+
+          p = Path('admin-functions.js')
+          s = p.read_text(encoding='utf-8')
+
+          old = re.search(r'async function creaNuovoTorneo\(\).*?\nwindow\.creaNuovoTorneo=creaNuovoTorneo;', s, re.S)
+          if not old:
+              raise SystemExit('creaNuovoTorneo block not found')
+
+          new = r'''async function creaNuovoTorneo(override={}){const nome=String(override.nome??document.getElementById("adminNomeTorneo")?.value??"Nuovo Torneo").trim()||"Nuovo Torneo";const data=String(override.data??document.getElementById("adminDataTorneo")?.value??"").trim();const posti=Number(override.posti??document.getElementById("adminPosti")?.value)||8;const descrizione=String(override.descrizione??document.getElementById("adminDescrizione")?.value??"").trim();if(!data){console.error("creaNuovoTorneo: data torneo obbligatoria");return null}const id=Date.now(),numeroGironi=Math.ceil(posti/4);const configurazione={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"gironiFinale",formatoTorneo:"gironiFinale",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"italiana",formulaFinale:"eliminazione_diretta",w:3,d:1,l:0,qualificatePerGirone:2,numeroQualificateFinali:numeroGironi*2,usaQuarti:true,usaSemifinali:true,usaFinale:true,killerPoint:false,rigori:true,tempoSupplementare:true,garaAndataRitorno:false,start:"20:00",duration:30}};const t={id,nome,data,posti,descrizione,formula:"gironiFinale",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione};const r=await sb.from("tornei").insert({id,nome,data,data_torneo:data,ora_inizio:"20:00",posti,descrizione,formula:"gironiFinale",stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione});if(r.error){console.error(r.error);alert("Errore salvataggio torneo su Supabase: "+r.error.message);return null}adminState.tornei.unshift(t);adminState.torneoSelezionato=id;salvaAdminState();renderAdmin();return t}
+window.creaNuovoTorneo=creaNuovoTorneo;'''
+          s = s[:old.start()] + new + s[old.end():]
+
+          old2 = re.search(r'async function creaTorneoAdmin\(dati=\{\}\).*?\nwindow\.creaTorneoAdmin=creaTorneoAdmin;', s, re.S)
+          if not old2:
+              raise SystemExit('creaTorneoAdmin block not found')
+
+          new2 = r'''async function creaTorneoAdmin(dati={}){if(!dati||typeof dati!=="object")return null;return creaNuovoTorneo({nome:dati.nome,data:dati.data,descrizione:dati.descrizione,posti:dati.posti})}
+window.creaTorneoAdmin=creaTorneoAdmin;'''
+          s = s[:old2.start()] + new2 + s[old2.end():]
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add admin.html
-          git commit -m "Apply real desktop layout to admin" || exit 0
+          git add admin-functions.js
+          git diff --cached --quiet || git commit -m "Fix admin torneo creation [create-torneo-fix]"
           git push
