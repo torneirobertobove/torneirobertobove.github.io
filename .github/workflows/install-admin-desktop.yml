@@ -19,14 +19,19 @@ jobs:
           from pathlib import Path
           p=Path('admin.html')
           s=p.read_text(encoding='utf-8')
-          if '<!-- ADMIN-DESKTOP-V2 -->' not in s:
-              injection='''\n<!-- ADMIN-DESKTOP-V2 -->\n<link rel="stylesheet" href="admin-desktop.css">\n<script src="admin-desktop-v3.js"></script>\n'''
+          marker='<!-- ADMIN-DESKTOP-V2 -->'
+          injection='''\n<!-- ADMIN-DESKTOP-V2 -->\n<link rel="stylesheet" href="admin-desktop.css?v=3">\n<script src="admin-desktop-v3.js?v=3"></script>\n'''
+          if marker not in s:
               s=s.replace('</head>', injection+'</head>',1)
           else:
-              s=s.replace('<script src="admin-desktop.js"></script>','<script src="admin-desktop-v3.js"></script>')
-              s=s.replace('<script src="admin-desktop-v2.js"></script>','<script src="admin-desktop-v3.js"></script>')
+              import re
+              s=re.sub(r'<link rel="stylesheet" href="admin-desktop\.css(?:\?v=[^"]+)?">', '<link rel="stylesheet" href="admin-desktop.css?v=3">', s)
+              s=re.sub(r'<script src="admin-desktop-(?:v2\.js|js|v3\.js)(?:\?v=[^"]+)?"></script>', '<script src="admin-desktop-v3.js?v=3"></script>', s)
           p.write_text(s,encoding='utf-8')
           PY
+      - name: Verify desktop installation
+        run: |
+          grep -n "ADMIN-DESKTOP-V2\|admin-desktop-v3.js" admin.html
       - name: Commit installed layout
         run: |
           git config user.name "github-actions[bot]"
