@@ -1,0 +1,39 @@
+name: Install admin organization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-organization-v1.js'
+      - '.github/workflows/install-admin-organization.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: ${{ !contains(github.event.head_commit.message, '[admin-organization]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install organization script
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<!-- ADMIN_ORGANIZATION_V1 -->'
+          if marker in s:
+              print('Organization script already installed')
+              raise SystemExit(0)
+          block='\\n<!-- ADMIN_ORGANIZATION_V1 -->\\n<script src="admin-organization-v1.js?v=1"></script>\\n'
+          s=s.replace('</body>',block+'</body>')
+          p.write_text(s,encoding='utf-8')
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Install admin organization [admin-organization]'
+          git push
