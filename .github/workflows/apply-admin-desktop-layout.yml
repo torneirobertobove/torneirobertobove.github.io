@@ -1,0 +1,129 @@
+name: Apply Admin Desktop Layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin.html'
+      - '.github/workflows/apply-admin-desktop-layout.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-layout:
+    if: ${{ !contains(github.event.head_commit.message, '[admin-desktop]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply desktop layout without touching JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+
+          marker = '/* ADMIN DESKTOP LAYOUT v1 */'
+          if marker in s:
+              print('Desktop layout already present')
+              raise SystemExit(0)
+
+          css = r'''
+
+          /* ADMIN DESKTOP LAYOUT v1 */
+          @media (min-width: 901px) {
+              body {
+                  padding: 28px;
+              }
+
+              .container {
+                  max-width: 1280px;
+              }
+
+              #areaAdmin {
+                  display: grid;
+                  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                  gap: 18px;
+                  align-items: start;
+              }
+
+              #areaAdmin > h1 {
+                  grid-column: 1 / -1;
+                  margin: 0 0 2px;
+                  padding: 4px 4px 10px;
+                  font-size: 28px;
+                  letter-spacing: .2px;
+              }
+
+              #areaAdmin > details {
+                  margin: 0;
+                  min-width: 0;
+              }
+
+              #areaAdmin > details:nth-of-type(3),
+              #areaAdmin > details:nth-of-type(4) {
+                  min-width: 0;
+              }
+
+              #gestioneTorneoAdmin {
+                  grid-column: 1 / -1;
+                  min-width: 0;
+              }
+
+              #gestioneTorneoAdmin > details {
+                  margin: 0;
+              }
+
+              #areaAdmin > details:nth-of-type(3),
+              #areaAdmin > details:nth-of-type(4) {
+                  width: 100%;
+              }
+
+              #listaTorneiAdmin,
+              #richiesteIscrizione,
+              #partecipantiAdmin,
+              #listaCoppieAdmin,
+              #listaNewsAdmin,
+              #listaSponsorAdmin {
+                  min-width: 0;
+              }
+
+              #gestioneTorneoAdmin > details > div {
+                  min-width: 0;
+              }
+
+              .lista-item {
+                  transition: transform .15s ease, background .15s ease;
+              }
+
+              .lista-item:hover {
+                  transform: translateY(-1px);
+                  background: rgba(0,0,0,.32);
+              }
+          }
+
+          @media (min-width: 1200px) {
+              #areaAdmin {
+                  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+              }
+          }
+          '''
+
+          s = s.replace('</style>', css + '\n</style>', 1)
+          p.write_text(s, encoding='utf-8')
+          print('Desktop layout injected; JavaScript untouched')
+          PY
+
+      - name: Commit desktop layout
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Apply new admin desktop layout [admin-desktop]'
+          git push
