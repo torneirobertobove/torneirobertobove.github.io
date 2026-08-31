@@ -203,3 +203,36 @@
   document.addEventListener('DOMContentLoaded',()=>{watch();setTimeout(watch,200);setTimeout(watch,700);setTimeout(watch,1500);setTimeout(watch,2500);});
   document.addEventListener('click',()=>setTimeout(watch,50));
 })();
+
+// Compatibilita' dei pulsanti del nuovo layout: non sostituisce le funzioni esistenti.
+window.creaTorneoAdmin = window.creaTorneoAdmin || (async function(payload){
+  if(payload && typeof payload === 'object'){
+    if($('adminNomeTorneo')) $('adminNomeTorneo').value = payload.nome || '';
+    if($('adminDataTorneo')) $('adminDataTorneo').value = payload.data || '';
+    if($('adminDescrizione')) $('adminDescrizione').value = payload.descrizione || '';
+    if($('adminPosti')) $('adminPosti').value = String(payload.posti || 8);
+  }
+  if(typeof window.creaNuovoTorneo !== 'function') throw new Error('creaNuovoTorneo non disponibile');
+  await window.creaNuovoTorneo();
+  return window.getTorneoAdminCorrente ? window.getTorneoAdminCorrente() : null;
+});
+
+window.modificaTorneoAdmin = window.modificaTorneoAdmin || (async function(id, patch){
+  if(typeof window.sb === 'undefined') throw new Error('Client Supabase non disponibile');
+  const update = {};
+  if(patch && patch.nome !== undefined) update.nome = patch.nome;
+  if(patch && patch.data !== undefined) update.data = patch.data;
+  if(patch && patch.descrizione !== undefined) update.descrizione = patch.descrizione;
+  if(patch && patch.posti !== undefined) update.posti = Number(patch.posti);
+  if(patch && patch.stato !== undefined) update.stato = patch.stato;
+  if(!Object.keys(update).length) return window.adminState?.tornei?.find(t=>String(t.id)===String(id)) || null;
+  const {data,error}=await window.sb.from('tornei').update(update).eq('id',id).select('*').single();
+  if(error) throw error;
+  if(window.adminState && Array.isArray(window.adminState.tornei)){
+    const i=window.adminState.tornei.findIndex(t=>String(t.id)===String(id));
+    if(i>=0) window.adminState.tornei[i]={...window.adminState.tornei[i],...data};
+  }
+  if(typeof window.salvaAdminState==='function') window.salvaAdminState();
+  if(typeof window.renderAdmin==='function') window.renderAdmin();
+  return data;
+});
