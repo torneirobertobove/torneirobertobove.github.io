@@ -4,6 +4,7 @@
   let mounted = false;
   let pool = {};
   let shell = null;
+  let legacyRoot = null;
 
   const $ = id => document.getElementById(id);
 
@@ -27,8 +28,8 @@
     };
   }
 
-  // The existing admin-functions.js renders tournaments as .tournament-row.
-  // Keep the new layout wired to those existing DOM nodes/functions.
+  // The original admin-functions.js owns the tournament data and CRUD logic.
+  // The desktop layer only presents that existing DOM and calls those functions.
   function tournamentRows() {
     const box = $('listaTorneiAdmin');
     return box ? [...box.querySelectorAll(':scope > .tournament-row')] : [];
@@ -49,6 +50,7 @@
     if (!w || !node) return;
     w.innerHTML = '';
     w.classList.remove('empty');
+    if (node.parentNode) node.parentNode.removeChild(node);
 
     const panel = document.createElement('details');
     panel.className = 'desktop-workspace-panel';
@@ -64,6 +66,12 @@
     panel.appendChild(body);
     w.appendChild(panel);
     w.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function returnToLegacy(node) {
+    if (!legacyRoot || !node) return;
+    if (node.parentNode) node.parentNode.removeChild(node);
+    legacyRoot.appendChild(node);
   }
 
   function openCreate() {
@@ -144,6 +152,9 @@
         btn('🔗','',()=>{
           if (id && typeof window.selezionaTorneoAdmin === 'function') window.selezionaTorneoAdmin(id);
           setTimeout(()=>{ if(typeof window.generaLinkBove==='function') window.generaLinkBove(); openLink(); },220);
+        }),
+        btn('Elimina','danger',()=>{
+          if (id && typeof window.eliminaTorneoAdmin === 'function') window.eliminaTorneoAdmin(id);
         })
       );
       row.append(info,actions);
@@ -155,7 +166,14 @@
     const area = $('areaAdmin');
     if (!area || mounted || area.classList.contains('hidden')) return;
 
-    pool = detailsMap(area);
+    // Preserve the original functional DOM instead of deleting it. The desktop
+    // layer uses these same nodes so admin-functions.js keeps working unchanged.
+    legacyRoot = document.createElement('div');
+    legacyRoot.id = 'adminDesktopLegacyRoot';
+    legacyRoot.style.display = 'none';
+    while (area.firstChild) legacyRoot.appendChild(area.firstChild);
+
+    pool = detailsMap(legacyRoot);
     mounted = true;
 
     shell = document.createElement('div');
@@ -190,9 +208,8 @@
         </section>
       </main>`;
 
-    area.classList.add('desktop-mode');
-    area.innerHTML = '';
     area.appendChild(shell);
+    area.appendChild(legacyRoot);
 
     const top = shell.querySelector('.desktop-top-actions');
     const title = shell.querySelector('.desktop-title-actions');
@@ -212,7 +229,7 @@
 
     const q1=btn('','',()=>openManage('richiesteIscrizione')); q1.innerHTML='<b>👥 Approva iscritti</b><span>Gestisci le richieste</span>';
     const q2=btn('','',()=>openManage('creaCoppieBox')); q2.innerHTML='<b>🔀 Accoppiamenti</b><span>Genera le sfide</span>';
-    const q3=btn('','',()=>{const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(id);else alert('Seleziona prima un torneo.');}); q3.innerHTML='<b>📋 Apri tabellone</b><span>Visualizza il torneo</span>';
+    const q3=btn('','',()=>{const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function') window.apriBoveConTorneo(id);else alert('Seleziona prima un torneo.');}); q3.innerHTML='<b>📋 Apri tabellone</b><span>Visualizza il torneo</span>';
     const q4=btn('','',()=>{if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();else openLink();}); q4.innerHTML='<b>🔗 Copia link</b><span>Link pubblico</span>';
     quick.append(q1,q2,q3,q4);
 
@@ -230,11 +247,8 @@
       }
     }));
 
-    Object.values(pool).forEach(n=>{ if(n && n.parentNode) n.remove(); });
-    [
-      $('listaTorneiAdmin'),$('richiesteIscrizione'),$('partecipantiAdmin'),$('listaCoppieAdmin'),$('listaNewsAdmin'),$('listaSponsorAdmin')
-    ].filter(Boolean).forEach(el=>new MutationObserver(()=>setTimeout(refresh,80)).observe(el,{childList:true,subtree:true}));
-
+    // Keep the original nodes available to the existing functions. Do not remove
+    // or replace their handlers.
     refresh();
     window.__adminDesktopRender = refresh;
   }
