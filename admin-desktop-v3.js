@@ -11,7 +11,7 @@
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `desktop-btn ${cls || ''}`.trim();
-    b.textContent = label;
+    if (label) b.textContent = label;
     if (fn) b.addEventListener('click', fn);
     return b;
   }
@@ -38,24 +38,54 @@
     return m ? m[1] : null;
   }
 
-  function workspace(target) {
+  function selectedId() {
+    try { return typeof adminState !== 'undefined' ? adminState.torneoSelezionato : null; } catch (_) { return null; }
+  }
+
+  function workspace(title, node) {
     const w = shell?.querySelector('.desktop-workspace');
-    if (!w) return;
+    if (!w || !node) return;
     w.innerHTML = '';
     w.classList.remove('empty');
 
-    let node = null;
-    if (target === 'create') node = pool.create;
-    if (target === 'tornei') node = pool.tournaments;
-    if (target === 'manage') node = pool.manage;
-    if (target === 'news') node = pool.news;
-    if (target === 'sponsors') node = pool.sponsors;
+    const panel = document.createElement('details');
+    panel.className = 'desktop-workspace-panel';
+    panel.open = true;
 
-    if (!node) { w.classList.add('empty'); return; }
-    w.appendChild(node);
-    node.open = true;
-    node.classList.remove('hidden');
-    w.scrollIntoView({behavior:'smooth', block:'start'});
+    const summary = document.createElement('summary');
+    summary.textContent = title;
+    panel.appendChild(summary);
+
+    const body = document.createElement('div');
+    body.className = 'desktop-workspace-body';
+    body.appendChild(node);
+    panel.appendChild(body);
+    w.appendChild(panel);
+    w.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function openCreate() {
+    if (!pool.create) return;
+    workspace('⚙️ Configurazione torneo', pool.create);
+    pool.create.open = true;
+  }
+
+  function openManage(section) {
+    if (!pool.manage) return;
+    if (selectedId() == null) {
+      const first = tournamentRows()[0];
+      const id = first && getId(first);
+      if (id && typeof window.selezionaTorneoAdmin === 'function') window.selezionaTorneoAdmin(id);
+    }
+    setTimeout(() => {
+      workspace('⚙️ Gestione torneo', pool.manage);
+      pool.manage.classList.remove('hidden');
+      if (section) setTimeout(() => $(section)?.scrollIntoView({behavior:'smooth', block:'start'}), 120);
+    }, 120);
+  }
+
+  function openLink() {
+    openManage('linkBoveGenerato');
   }
 
   function refresh() {
@@ -107,11 +137,11 @@
       actions.append(
         btn('Gestisci','',()=>{
           if (id && typeof window.selezionaTorneoAdmin === 'function') window.selezionaTorneoAdmin(id);
-          setTimeout(()=>workspace('manage'),300);
+          setTimeout(()=>openManage(),180);
         }),
         btn('🔗','',()=>{
           if (id && typeof window.selezionaTorneoAdmin === 'function') window.selezionaTorneoAdmin(id);
-          setTimeout(()=>{ if(typeof window.generaLinkBove==='function') window.generaLinkBove(); },350);
+          setTimeout(()=>{ if(typeof window.generaLinkBove==='function') window.generaLinkBove(); openLink(); },220);
         })
       );
       row.append(info,actions);
@@ -158,42 +188,53 @@
         </section>
       </main>`;
 
+    area.classList.add('desktop-mode');
     area.innerHTML = '';
     area.appendChild(shell);
 
     const top = shell.querySelector('.desktop-top-actions');
     const title = shell.querySelector('.desktop-title-actions');
     const quick = shell.querySelector('.desktop-quick');
-    const create = () => workspace('create');
 
-    top.append(btn('↻ Aggiorna','',async()=>{ if(typeof window.caricaTorneiSupabase==='function') await window.caricaTorneiSupabase(); setTimeout(refresh,300); }),btn('⚙ Impostazioni','',create),btn('＋ Nuovo torneo','primary',create));
-    title.append(btn('＋ Crea torneo','primary',create));
+    top.append(
+      btn('↻ Aggiorna','',async()=>{
+        if(typeof window.caricaTorneiSupabase==='function') await window.caricaTorneiSupabase();
+        if(typeof window.caricaNewsAdmin==='function') await window.caricaNewsAdmin();
+        if(typeof window.caricaSponsorAdmin==='function') await window.caricaSponsorAdmin();
+        setTimeout(refresh,250);
+      }),
+      btn('⚙ Impostazioni','',openCreate),
+      btn('＋ Nuovo torneo','primary',openCreate)
+    );
+    title.append(btn('＋ Crea torneo','primary',openCreate));
 
-    const q1=btn('','',()=>workspace('manage')); q1.innerHTML='<b>👥 Approva iscritti</b><span>Gestisci le richieste</span>';
-    const q2=btn('','',()=>workspace('manage')); q2.innerHTML='<b>🔀 Accoppiamenti</b><span>Genera le sfide</span>';
+    const q1=btn('','',()=>openManage('richiesteIscrizione')); q1.innerHTML='<b>👥 Approva iscritti</b><span>Gestisci le richieste</span>';
+    const q2=btn('','',()=>openManage('creaCoppieBox')); q2.innerHTML='<b>🔀 Accoppiamenti</b><span>Genera le sfide</span>';
     const q3=btn('','',()=>{const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(id);else alert('Seleziona prima un torneo.');}); q3.innerHTML='<b>📋 Apri tabellone</b><span>Visualizza il torneo</span>';
-    const q4=btn('','',()=>{if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();else workspace('manage');}); q4.innerHTML='<b>🔗 Copia link</b><span>Link pubblico</span>';
+    const q4=btn('','',()=>{if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();else openLink();}); q4.innerHTML='<b>🔗 Copia link</b><span>Link pubblico</span>';
     quick.append(q1,q2,q3,q4);
 
     shell.querySelectorAll('.desktop-nav button').forEach(b=>b.addEventListener('click',()=>{
       shell.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.toggle('active',x===b));
       const t=b.dataset.target;
       if(t==='dashboard') shell.querySelector('.desktop-tournaments')?.scrollIntoView({behavior:'smooth',block:'start'});
-      if(t==='iscritti'){workspace('manage');setTimeout(()=>$('richiesteIscrizione')?.scrollIntoView({behavior:'smooth',block:'start'}),250);}
-      if(t==='coppie'){workspace('manage');setTimeout(()=>$('creaCoppieBox')?.scrollIntoView({behavior:'smooth',block:'start'}),250);}
-      if(t==='config') workspace('create');
-      if(t==='link'){workspace('manage');setTimeout(()=>$('linkBoveGenerato')?.scrollIntoView({behavior:'smooth',block:'start'}),250);}
-      if(t==='tabellone'){const r=tournamentRows()[0],id=r&&getId(r);if(id&&typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(id);}
+      if(t==='iscritti') openManage('richiesteIscrizione');
+      if(t==='coppie') openManage('creaCoppieBox');
+      if(t==='config') openCreate();
+      if(t==='link') openLink();
+      if(t==='tabellone'){
+        const id=selectedId() || (tournamentRows()[0] && getId(tournamentRows()[0]));
+        if(id&&typeof window.apriBoveConTorneo==='function') window.apriBoveConTorneo(id);
+      }
     }));
+
+    Object.values(pool).forEach(n=>{ if(n && n.parentNode) n.remove(); });
+    [
+      $('listaTorneiAdmin'),$('richiesteIscrizione'),$('partecipantiAdmin'),$('listaCoppieAdmin'),$('listaNewsAdmin'),$('listaSponsorAdmin')
+    ].filter(Boolean).forEach(el=>new MutationObserver(()=>setTimeout(refresh,80)).observe(el,{childList:true,subtree:true}));
 
     refresh();
     window.__adminDesktopRender = refresh;
-
-    // Le sezioni originali restano integre: vengono spostate nel workspace solo quando servono.
-    Object.values(pool).forEach(n=>{if(n)n.remove();});
-    [
-      $('listaTorneiAdmin'),$('richiesteIscrizione'),$('partecipantiAdmin'),$('listaCoppieAdmin'),$('listaNewsAdmin'),$('listaSponsorAdmin')
-    ].filter(Boolean).forEach(el=>new MutationObserver(()=>setTimeout(refresh,50)).observe(el,{childList:true,subtree:true}));
   }
 
   function watch(){
@@ -201,6 +242,12 @@
     if(area && !mounted && !area.classList.contains('hidden')) mount();
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{watch();setTimeout(watch,200);setTimeout(watch,700);setTimeout(watch,1500);setTimeout(watch,2500);});
+  document.addEventListener('DOMContentLoaded',()=>{
+    watch();
+    setTimeout(watch,200);
+    setTimeout(watch,700);
+    setTimeout(watch,1500);
+    setTimeout(watch,2500);
+  });
   document.addEventListener('click',()=>setTimeout(watch,50));
 })();
