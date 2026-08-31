@@ -1,8 +1,16 @@
 (function(){
   const w=window;
+  const getClient=()=>{
+    if(w.sb && typeof w.sb.from==="function") return w.sb;
+    if(typeof sb!=="undefined" && sb && typeof sb.from==="function"){
+      w.sb=sb;
+      return sb;
+    }
+    return null;
+  };
   w.creaTorneoAdmin=async function(dati={}){
-    const sb=w.sb;
-    if(!sb || typeof sb.from!=="function") throw new Error("Client Supabase non disponibile");
+    const sbClient=getClient();
+    if(!sbClient) throw new Error("Client Supabase non disponibile");
     dati=dati&&typeof dati==="object"?dati:{};
     const nome=String(dati.nome??w.document.getElementById("adminNomeTorneo")?.value??"Nuovo Torneo").trim()||"Nuovo Torneo";
     const data=String(dati.data??w.document.getElementById("adminDataTorneo")?.value??"").trim();
@@ -13,7 +21,7 @@
     const numeroGironi=Math.ceil(posti/4);
     const configurazione={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"gironiFinale",formatoTorneo:"gironiFinale",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"italiana",formulaFinale:"eliminazione_diretta",w:3,d:1,l:0,qualificatePerGirone:2,numeroQualificateFinali:numeroGironi*2,usaQuarti:true,usaSemifinali:true,usaFinale:true,killerPoint:false,rigori:true,tempoSupplementare:true,garaAndataRitorno:false,start:"20:00",duration:30}};
     const payload={id,nome,data,data_torneo:data,ora_inizio:"20:00",posti,descrizione,formula:"gironiFinale",stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione};
-    const {data:row,error}=await sb.from("tornei").insert(payload).select("*").single();
+    const {data:row,error}=await sbClient.from("tornei").insert(payload).select("*").single();
     if(error) throw error;
     const torneo=row||payload;
     if(w.adminState){
@@ -26,5 +34,5 @@
     return torneo;
   };
   w.creaNuovoTorneo=w.creaTorneoAdmin;
-  console.log("✅ admin-create-fix-v2 caricato");
+  console.log("✅ admin-create-fix-v3 caricato");
 })();
