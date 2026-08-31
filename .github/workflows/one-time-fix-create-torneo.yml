@@ -1,0 +1,50 @@
+name: One-time fix create torneo
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[create-torneo-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch admin-functions.js
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('admin-functions.js')
+          s = p.read_text(encoding='utf-8')
+
+          old = re.search(r'async function creaNuovoTorneo\(\).*?\nwindow\.creaNuovoTorneo=creaNuovoTorneo;', s, re.S)
+          if not old:
+              raise SystemExit('creaNuovoTorneo block not found')
+
+          new = r'''async function creaNuovoTorneo(override={}){const nome=String(override.nome??document.getElementById("adminNomeTorneo")?.value??"Nuovo Torneo").trim()||"Nuovo Torneo";const data=String(override.data??document.getElementById("adminDataTorneo")?.value??"").trim();const posti=Number(override.posti??document.getElementById("adminPosti")?.value)||8;const descrizione=String(override.descrizione??document.getElementById("adminDescrizione")?.value??"").trim();if(!data){console.error("creaNuovoTorneo: data torneo obbligatoria");return null}const id=Date.now(),numeroGironi=Math.ceil(posti/4);const configurazione={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"gironiFinale",formatoTorneo:"gironiFinale",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"italiana",formulaFinale:"eliminazione_diretta",w:3,d:1,l:0,qualificatePerGirone:2,numeroQualificateFinali:numeroGironi*2,usaQuarti:true,usaSemifinali:true,usaFinale:true,killerPoint:false,rigori:true,tempoSupplementare:true,garaAndataRitorno:false,start:"20:00",duration:30}};const t={id,nome,data,posti,descrizione,formula:"gironiFinale",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione};const r=await sb.from("tornei").insert({id,nome,data,data_torneo:data,ora_inizio:"20:00",posti,descrizione,formula:"gironiFinale",stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione});if(r.error){console.error(r.error);alert("Errore salvataggio torneo su Supabase: "+r.error.message);return null}adminState.tornei.unshift(t);adminState.torneoSelezionato=id;salvaAdminState();renderAdmin();return t}
+window.creaNuovoTorneo=creaNuovoTorneo;'''
+
+          s = s[:old.start()] + new + s[old.end():]
+
+          old2 = re.search(r'async function creaTorneoAdmin\(dati=\{\}\).*?\nwindow\.creaTorneoAdmin=creaTorneoAdmin;', s, re.S)
+          if not old2:
+              raise SystemExit('creaTorneoAdmin block not found')
+
+          new2 = r'''async function creaTorneoAdmin(dati={}){if(!dati||typeof dati!=="object")return null;return creaNuovoTorneo({nome:dati.nome,data:dati.data,descrizione:dati.descrizione,posti:dati.posti})}
+window.creaTorneoAdmin=creaTorneoAdmin;'''
+          s = s[:old2.start()] + new2 + s[old2.end():]
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin-functions.js
+          git diff --cached --quiet || git commit -m "Fix create torneo date handling [create-torneo-fix]"
+          git push
