@@ -1,15 +1,30 @@
-/* Admin desktop: SOLO AGGANCI. Non modifica il layout né le funzioni originali. */
+/* Admin desktop: agganci compatibili con funzioni originali */
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
 const fn=n=>typeof window[n]==='function'?window[n]:null;
-function selected(){try{if(window.adminState?.torneoSelezionato!=null)return adminState.torneoSelezionato;const b=$('listaTorneiAdmin')?.querySelector('button[onclick*="selezionaTorneoAdmin"]');const m=(b?.getAttribute('onclick')||'').match(/selezionaTorneoAdmin\(([^)]+)\)/);if(m&&fn('selezionaTorneoAdmin')){fn('selezionaTorneoAdmin')(m[1]);return m[1]}}catch(_){}return null}
-function manage(section){const id=selected();if(id==null){alert('Seleziona prima un torneo.');return null}$('workspace')&&( $('workspace').open=true);$('gestioneTorneoAdmin')?.classList.remove('hidden');if(section)setTimeout(()=>$ (section)?.scrollIntoView({behavior:'smooth',block:'start'}),100);return id}
-function call(names,...args){for(const n of names){const f=fn(n);if(f)return f(...args)}return undefined}
-function wire(){document.querySelectorAll('#areaAdmin button').forEach(b=>{if(b.dataset.adminHook==='1')return;b.dataset.adminHook='1';b.addEventListener('click',e=>{const text=(b.innerText||b.textContent||'').trim();const nav=b.dataset.nav;const action=b.dataset.action;if(b.type==='submit')e.preventDefault();if(nav){e.preventDefault();if(nav==='dashboard')return window.scrollTo({top:0,behavior:'smooth'});if(nav==='configPanel'){const p=$('configPanel');if(p){p.open=true;p.scrollIntoView({behavior:'smooth'});}return}if(nav==='linkBoveGenerato'){const id=selected();return call(['apriBoveConTorneo'],id)??manage('linkBoveGenerato')}return manage(nav)}if(action==='create'||/Nuovo torneo|Crea torneo/.test(text)){e.preventDefault();const p=$('configPanel');if(p){p.open=true;p.scrollIntoView({behavior:'smooth'});}return}if(b.id==='btnAggiorna'||/^↻ Aggiorna$/.test(text)){e.preventDefault();return Promise.resolve(call(['caricaTorneiSupabase'])).then(()=>Promise.resolve(call(['caricaRichiesteIscrizione']))).then(()=>call(['renderAdmin']))}if(b.id==='quickApprova'||/Approva iscritti/.test(text)){e.preventDefault();return manage('richiesteIscrizione')}if(b.id==='quickCoppie'||/Accoppiamenti/.test(text)){e.preventDefault();return manage('creaCoppieBox')}if(b.id==='quickTabellone'||/Apri tabellone|Tabellone/.test(text)){e.preventDefault();const id=manage('tabelloneAdmin')||selected();return call(['apriBoveConTorneo','apriTabellone'],id)}if(b.id==='quickLink'||/Copia link|Link pubblico/.test(text)){e.preventDefault();call(['generaLinkBove']);return manage('linkBoveGenerato')}})})
-if(!fn('creaTorneoAdmin')&&fn('creaNuovoTorneo'))window.creaTorneoAdmin=fn('creaNuovoTorneo');
-if(!fn('modificaTorneoAdmin'))window.modificaTorneoAdmin=(id,patch)=>{const t=window.adminState?.tornei?.find(x=>String(x.id)===String(id));if(t){if($('adminNomeTorneo'))$('adminNomeTorneo').value=patch?.nome??t.nome??'';if($('adminDataTorneo'))$('adminDataTorneo').value=patch?.data??t.data??'';if($('adminDescrizione'))$('adminDescrizione').value=patch?.descrizione??t.descrizione??'';if($('adminPosti'))$('adminPosti').value=patch?.posti??t.posti??8}const p=$('configPanel');if(p)p.open=true;return t};}
-function boot(){wire();[100,500,1200,2500].forEach(x=>setTimeout(wire,x))}
+const call=(names,...args)=>{for(const n of names){const f=fn(n);if(f)return f(...args)}};
+function id(){return window.adminState?.torneoSelezionato??window.getTorneoAdminCorrente?.()?.id??null}
+function selectedOrFirst(){return id()??window.adminState?.tornei?.[0]?.id??null}
+function open(id){const e=$(id);if(!e)return false;e.classList.remove('hidden');if('open'in e)e.open=true;e.scrollIntoView?.({behavior:'smooth',block:'start'});return true}
+function wire(root=document){root.querySelectorAll('button').forEach(b=>{if(b.dataset.adminHook)return;b.dataset.adminHook='1';b.addEventListener('click',e=>{if(!b.closest('#areaAdmin'))return;const t=(b.innerText||'').trim();const oc=b.getAttribute('onclick');if(oc)return; e.preventDefault();e.stopPropagation();
+if(b.id==='btnAggiorna'||t==='↻ Aggiorna')return Promise.resolve(call(['caricaTorneiSupabase'])).then(()=>call(['caricaRichiesteIscrizione'])).then(()=>call(['renderAdmin']));
+if(b.dataset.action==='create'||/Nuovo torneo/.test(t))return open('configPanel');
+if(t==='＋ Crea torneo'||t==='Crea torneo')return call(['creaNuovoTorneo']);
+if(b.id==='quickApprova'||/Approva iscritti/.test(t))return open('richiesteIscrizione')||open('gestioneTorneoAdmin');
+if(b.id==='quickCoppie'||/^🔀\s*Accoppiamenti/.test(t))return open('creaCoppieBox')||open('gestioneTorneoAdmin');
+if(b.id==='quickTabellone'||/Apri tabellone/.test(t))return call(['apriBoveConTorneo','apriTabellone'],selectedOrFirst());
+if(b.id==='quickLink'||/Copia link/.test(t))return call(['generaLinkBove','generaLinkPerId'],selectedOrFirst());
+if(/Regole/.test(t))return call(['apriRegoleNuovoTorneo','apriRegoleTorneoAdmin'],selectedOrFirst());
+if(t==='📢 Pubblica'||t==='Pubblica')return call(['pubblicaTorneo']);
+if(/Chiudi iscrizioni/.test(t))return call(['chiudiIscrizioniTorneo']);
+if(/Aggiorna iscritti/.test(t))return call(['caricaRichiesteIscrizione']);
+if(/Iscritti test/.test(t))return call(['creaIscrittiTest']);
+if(/Crea coppia/.test(t))return call(['creaCoppiaAdmin']);
+if(/Approva/.test(t))return call(['approvaGiocatore']);
+if(/Rifiuta/.test(t))return call(['rifiutaGiocatore']);
+});});}
+function boot(){wire();new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)wire(n)}))).observe(document.body,{childList:true,subtree:true});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 document.addEventListener('submit',e=>{if(e.target.closest?.('#areaAdmin'))e.preventDefault()},true);
 })();
