@@ -21,14 +21,17 @@
 
     if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Data torneo non valida: usare YYYY-MM-DD");
 
-    const patch={nome: nome, data: data, data_torneo: data, posti: posti, descrizione: descrizione, stato: stato};
+    const patch={id:currentId,nome,data,data_torneo:data,posti,descrizione,stato};
 
-    const {error}=await db.from("tornei").update(patch).eq("id",currentId);
+    const {data:updated,error}=await db
+      .from("tornei")
+      .upsert(patch,{onConflict:"id"})
+      .select("*")
+      .single();
+
     if(error) throw error;
-
-    const {data:updated,error:readError}=await db.from("tornei").select("*").eq("id",currentId).single();
-    if(readError) throw readError;
-    if(!updated) throw new Error("Torneo aggiornato ma non rileggibile");
+    if(!updated) throw new Error("Torneo non aggiornato");
+    if(String(updated.id)!==String(currentId)) throw new Error("ID torneo aggiornato non corrispondente");
 
     if(w.adminState){
       if(!Array.isArray(w.adminState.tornei)) w.adminState.tornei=[];
