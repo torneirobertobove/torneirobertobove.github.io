@@ -1,0 +1,36 @@
+name: Install approved admin desktop shell
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: ${{ !contains(github.event.head_commit.message, '[admin-desktop-installed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject desktop assets into admin.html
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- ADMIN-DESKTOP-V2 -->'
+          if marker not in s:
+              injection = '''\n<!-- ADMIN-DESKTOP-V2 -->\n<link rel="stylesheet" href="admin-desktop.css">\n<script src="admin-desktop.js"></script>\n'''
+              s = s.replace('</head>', injection + '</head>', 1)
+              p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit installed layout
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html admin-desktop.css admin-desktop.js
+          git diff --cached --quiet || git commit -m "feat: install approved admin desktop layout [admin-desktop-installed]"
+          git push
