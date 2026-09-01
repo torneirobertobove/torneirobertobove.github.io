@@ -34,7 +34,7 @@
       var compat=document.createElement('script');compat.id='admin-legacy-navigation-loader';compat.src='admin-legacy-navigation.js?v=4';compat.async=false;document.head.appendChild(compat);
     }
     if(!document.getElementById('admin-function-fixes-loader')){
-      var fixes=document.createElement('script');fixes.id='admin-function-fixes-loader';fixes.src='admin-function-fixes-v1.js?v=2';fixes.async=false;document.head.appendChild(fixes);
+      var fixes=document.createElement('script');fixes.id='admin-function-fixes-loader';fixes.src='admin-function-fixes-v1.js?v=3';fixes.async=false;document.head.appendChild(fixes);
     }
     installLegacyNavigation();
     setInterval(installLegacyNavigation,100);
