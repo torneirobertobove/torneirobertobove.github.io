@@ -1,0 +1,44 @@
+name: Install random pairing option
+
+on:
+  push:
+    paths:
+      - '.github/workflows/install-random-pairing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add random pairing script to admin.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- ADMIN_RANDOM_PAIRING_V1 -->'
+          if marker in s:
+              print('Random pairing already installed')
+          else:
+              tag = '''<!-- ADMIN_RANDOM_PAIRING_V1 -->\n<script src="admin-random-pairs.js?v=1"></script>\n'''
+              marker_body = '<script src="admin-organization-v1.js?v=2"></script>'
+              if marker_body in s:
+                  s = s.replace(marker_body, marker_body + '\n' + tag, 1)
+              else:
+                  s = s.replace('</body>', tag + '\n</body>', 1)
+              p.write_text(s, encoding='utf-8')
+
+      - name: Remove installer workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/install-random-pairing.yml
+          git add admin.html admin-random-pairs.js
+          git commit -m "Enable random pairing after registrations close"
+          git push
