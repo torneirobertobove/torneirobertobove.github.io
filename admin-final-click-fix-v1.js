@@ -24,10 +24,19 @@ function show(k){
 window.openAdminPage=show;
 window.goAdminPage=show;
 window.adminGoPage=show;
+function fixNewsPanel(a){
+ const principale=a.querySelector('section.org-page[data-page="news"]');
+ if(!principale)return;
+ a.querySelectorAll('#newsPanel').forEach(el=>{if(el!==principale)el.remove()});
+ if(principale.id!=='newsPanel')principale.id='newsPanel';
+ principale.hidden=false;
+ principale.removeAttribute('aria-hidden');
+}
 function install(){
  const a=A();if(!a)return;
+ fixNewsPanel(a);
  let cal=document.getElementById('adminCalendar');if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.setAttribute('aria-hidden','true');cal.style.display='none';a.appendChild(cal)}
- if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active #configPanel,#areaAdmin.admin-organized .org-page.org-active #newsPanel,#areaAdmin.admin-organized .org-page.org-active #sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
+ if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active#newsPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active#configPanel,#areaAdmin.admin-organized .org-page.org-active#sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
  const nav=a.querySelector('.sidebar .nav');if(nav){nav.querySelectorAll('button').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.dataset.orgPage=k;b.dataset.internalPage=k;b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)}}})}
  a.querySelectorAll('[data-page="configurazione"],[data-page="link"],[data-page="config"],[data-page="links"]').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.page);if(pages.includes(k)&&!b.closest('.sidebar'))b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)}})
 }
