@@ -2,15 +2,12 @@
 (function(){
   function cleanDuplicateAdminScripts(){
     var scripts=Array.prototype.slice.call(document.scripts||[]);
-    var seenDesktop=false;
+    var seen={};
     scripts.forEach(function(s){
       var src=s.getAttribute('src')||'';
-      if(/admin-desktop-v3\.js(?:\?|$)/.test(src)){
-        if(seenDesktop){s.remove();}
-        else{seenDesktop=true;}
-      }
-      if(/admin-organization-v1\.js\?v=1(?:&|$)/.test(src)){
-        s.remove();
+      var key=src.replace(/\?[^#]*/,'');
+      if(/admin-desktop-v3\.js$/.test(key)||/admin-organization-v1\.js$/.test(key)){
+        if(seen[key])s.remove();else seen[key]=s;
       }
     });
   }
@@ -43,18 +40,18 @@
   function load(){
     cleanDuplicateAdminScripts();
     if(!document.getElementById('admin-desktop-v4-loader')){
-      var s=document.createElement('script');s.id='admin-desktop-v4-loader';s.src='admin-desktop-v4.js?v=5';s.async=false;document.head.appendChild(s);
+      var s=document.createElement('script');s.id='admin-desktop-v4-loader';s.src='admin-desktop-v4.js?v=6';s.async=false;document.head.appendChild(s);
     }
     if(!document.getElementById('admin-legacy-navigation-loader')){
-      var compat=document.createElement('script');compat.id='admin-legacy-navigation-loader';compat.src='admin-legacy-navigation.js?v=5';compat.async=false;document.head.appendChild(compat);
+      var compat=document.createElement('script');compat.id='admin-legacy-navigation-loader';compat.src='admin-legacy-navigation.js?v=6';compat.async=false;document.head.appendChild(compat);
     }
     if(!document.getElementById('admin-function-fixes-loader')){
-      var fixes=document.createElement('script');fixes.id='admin-function-fixes-loader';fixes.src='admin-function-fixes-v1.js?v=5';fixes.async=false;document.head.appendChild(fixes);
+      var fixes=document.createElement('script');fixes.id='admin-function-fixes-loader';fixes.src='admin-function-fixes-v1.js?v=6';fixes.async=false;document.head.appendChild(fixes);
     }
     installLegacyNavigation();
-    setInterval(installLegacyNavigation,100);
+    setInterval(function(){cleanDuplicateAdminScripts();installLegacyNavigation();},100);
     var area=document.getElementById('areaAdmin');
-    if(area){var observer=new MutationObserver(installLegacyNavigation);observer.observe(area,{childList:true,subtree:true});}
+    if(area){var observer=new MutationObserver(function(){cleanDuplicateAdminScripts();installLegacyNavigation();});observer.observe(area,{childList:true,subtree:true});}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',load); else load();
 })();
