@@ -10,24 +10,16 @@ function show(k){
  const a=A();if(!a)return false;
  a.classList.add('admin-organized');
  a.querySelectorAll('.org-page').forEach(p=>p.classList.toggle('org-active',p.dataset.page===k));
- a.querySelectorAll('.admin-page').forEach(p=>{
-   const pk=key(p.dataset.page||p.dataset.orgPage||p.id.replace(/^admin-page-/,'')||'');
-   if(!p.closest('.org-page'))p.classList.toggle('active',pk===k);
- });
+ a.querySelectorAll('.admin-page').forEach(p=>{const pk=key(p.dataset.page||p.dataset.orgPage||p.id.replace(/^admin-page-/,'')||'');if(!p.closest('.org-page'))p.classList.toggle('active',pk===k)});
  a.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.toggle('active',key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page)===k));
  const b=a.querySelector('.breadcrumb b');if(b){const n={dashboard:'Tornei',iscritti:'Iscritti',coppie:'Accoppiamenti',tabellone:'Tabellone',config:'Configurazione',news:'News',sponsor:'Sponsor',links:'Link pubblici'}[k];b.textContent=n||k}
- if(k==='news'){
-   const news=a.querySelector('section#newsPanel[data-page="news"]');
-   if(news){news.hidden=false;news.style.setProperty('display','block','important')}
- }
+ if(k==='news'){const news=a.querySelector('section#newsPanel[data-page="news"]');if(news){news.hidden=false;news.style.setProperty('display','block','important')}}
  if(k==='tabellone'&&typeof window.__adminDesktopRender==='function')window.__adminDesktopRender();
  if(k==='iscritti'&&typeof window.caricaRichiesteIscrizione==='function')window.caricaRichiesteIscrizione();
  try{history.replaceState(null,'','#'+k)}catch{}
  return true;
 }
-window.openAdminPage=show;
-window.goAdminPage=show;
-window.adminGoPage=show;
+window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;
 function install(){
  const a=A();if(!a)return;
  let cal=document.getElementById('adminCalendar');if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.setAttribute('aria-hidden','true');cal.style.display='none';a.appendChild(cal)}
@@ -39,9 +31,9 @@ function install(){
    const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
    if(!b.getAttribute('onclick')){
      if(t.includes('crea coppia'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');
-     else if(t==='×'||t.includes('chiudi'))b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
-     else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
      else if(t.includes('crea torneo'))b.setAttribute('onclick','window.creaNuovoTorneo&&window.creaNuovoTorneo();');
+     else if(t==='×')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
+     else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
    }
  });
 }
