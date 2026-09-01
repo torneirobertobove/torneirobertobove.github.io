@@ -40,34 +40,34 @@ function style(){
 #areaAdmin .admin-page-shell[data-page="dashboard"] .stats{display:grid}
 #areaAdmin .admin-page-shell[data-page="dashboard"] .grid{display:grid}
 
-/* CALENDARIO TORNEI: ANNO → MESE → GIORNO */
+/* CALENDARIO TORNEI: ANNO → 12 MESI ALLINEATI → GIORNI */
 #listaTorneiAdmin{padding:0!important;display:block!important}
-#listaTorneiAdmin .calendar-year{margin:0 0 14px;border:1px solid rgba(255,255,255,.10);border-radius:16px;overflow:hidden;background:rgba(18,23,29,.78);box-shadow:0 14px 34px rgba(0,0,0,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#listaTorneiAdmin .calendar-year{margin:0 0 16px;border:1px solid rgba(255,255,255,.10);border-radius:16px;overflow:hidden;background:rgba(18,23,29,.78);box-shadow:0 14px 34px rgba(0,0,0,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 #listaTorneiAdmin .calendar-year>summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,rgba(77,163,255,.10),rgba(255,255,255,.02));border-bottom:1px solid rgba(255,255,255,.07);font-size:15px;font-weight:850;color:#fff}
 #listaTorneiAdmin .calendar-year>summary::-webkit-details-marker{display:none}
 #listaTorneiAdmin .calendar-year>summary:after{content:'＋';color:#9ca8b5;font-size:17px}
 #listaTorneiAdmin .calendar-year[open]>summary:after{content:'−'}
-#listaTorneiAdmin .calendar-year-body{padding:10px}
-#listaTorneiAdmin .calendar-month{margin:0 0 10px;border:1px solid rgba(255,255,255,.08);border-radius:13px;overflow:hidden;background:rgba(8,12,17,.30)}
-#listaTorneiAdmin .calendar-month:last-child{margin-bottom:0}
-#listaTorneiAdmin .calendar-month>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;font-weight:800;color:#e8edf2}
+#listaTorneiAdmin .calendar-year-body{padding:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:start}
+#listaTorneiAdmin .calendar-month{margin:0!important;min-width:0;border:1px solid rgba(255,255,255,.08);border-radius:13px;overflow:hidden;background:rgba(8,12,17,.30);height:100%}
+#listaTorneiAdmin .calendar-month>summary{list-style:none;cursor:pointer;min-height:44px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;font-weight:800;color:#e8edf2}
 #listaTorneiAdmin .calendar-month>summary::-webkit-details-marker{display:none}
 #listaTorneiAdmin .calendar-month>summary:after{content:'＋';color:#7f8b97}
 #listaTorneiAdmin .calendar-month[open]>summary:after{content:'−'}
-#listaTorneiAdmin .calendar-month-body{padding:8px}
-#listaTorneiAdmin .calendar-day{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 10px;border:1px solid rgba(255,255,255,.065);border-radius:11px;background:rgba(255,255,255,.025);margin-bottom:7px}
+#listaTorneiAdmin .calendar-month-body{padding:8px;min-height:44px}
+#listaTorneiAdmin .calendar-month-empty{padding:10px 6px;text-align:center;color:#66717d;font-size:10px}
+#listaTorneiAdmin .calendar-day{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:center;gap:10px;padding:9px 8px;border:1px solid rgba(255,255,255,.065);border-radius:10px;background:rgba(255,255,255,.025);margin-bottom:6px}
 #listaTorneiAdmin .calendar-day:last-child{margin-bottom:0}
 #listaTorneiAdmin .calendar-day:hover{background:rgba(77,163,255,.07);border-color:rgba(77,163,255,.17)}
-#listaTorneiAdmin .calendar-date{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;border-right:1px solid rgba(255,255,255,.08);padding-right:12px}
-#listaTorneiAdmin .calendar-date strong{font-size:22px;line-height:1;color:#fff}
-#listaTorneiAdmin .calendar-date span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#8f9aa6;margin-top:5px}
+#listaTorneiAdmin .calendar-date{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:42px;border-right:1px solid rgba(255,255,255,.08);padding-right:8px}
+#listaTorneiAdmin .calendar-date strong{font-size:18px;line-height:1;color:#fff}
+#listaTorneiAdmin .calendar-date span{font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#8f9aa6;margin-top:4px}
 #listaTorneiAdmin .calendar-tournament{min-width:0}
 #listaTorneiAdmin .calendar-tournament .tournament-row{margin:0!important;padding:0!important;border:0!important;background:transparent!important;display:block!important;transform:none!important;box-shadow:none!important}
-#listaTorneiAdmin .calendar-tournament .t-info strong{display:block;font-size:13px;color:#fff}
-#listaTorneiAdmin .calendar-tournament .t-info small{display:block;margin-top:4px;color:#8f9aa6;font-size:11px}
-#listaTorneiAdmin .calendar-tournament .status{margin-top:6px}
-#listaTorneiAdmin .calendar-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-#listaTorneiAdmin .calendar-actions .btn{padding:7px 9px!important;font-size:10px!important}
+#listaTorneiAdmin .calendar-tournament .t-info strong{display:block;font-size:12px;color:#fff}
+#listaTorneiAdmin .calendar-tournament .t-info small{display:block;margin-top:3px;color:#8f9aa6;font-size:10px}
+#listaTorneiAdmin .calendar-tournament .status{margin-top:5px;font-size:9px;padding:4px 7px}
+#listaTorneiAdmin .calendar-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
+#listaTorneiAdmin .calendar-actions .btn{padding:6px 8px!important;font-size:9px!important}
 #listaTorneiAdmin .calendar-day.selected{border-color:rgba(77,163,255,.28);background:rgba(77,163,255,.10);box-shadow:inset 3px 0 #4da3ff}
 #listaTorneiAdmin .calendar-empty{padding:28px 16px;text-align:center;color:#8f9aa6;font-size:12px;border:1px dashed rgba(255,255,255,.10);border-radius:12px;background:rgba(255,255,255,.018)}
 #areaAdmin .compact-group{border:1px solid rgba(255,255,255,.10);border-radius:14px;margin:12px 0;overflow:hidden;background:rgba(16,20,25,.76);box-shadow:0 10px 26px rgba(0,0,0,.12)}
@@ -78,8 +78,9 @@ function style(){
 #areaAdmin .compact-group-body{padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.07)}
 #areaAdmin .page-nav-note{font-size:11px;color:#8f9aa6;margin:0 0 12px}
 #areaAdmin .tabellone-launch{margin-top:4px;padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(20,25,31,.68);box-shadow:0 10px 28px rgba(0,0,0,.12)}
-@media(max-width:800px){#listaTorneiAdmin .calendar-day{grid-template-columns:58px minmax(0,1fr)}#listaTorneiAdmin .calendar-actions{grid-column:2;justify-content:flex-start}.admin-view-title{align-items:flex-start!important;flex-direction:column!important}}
-@media(max-width:560px){#listaTorneiAdmin .calendar-day{grid-template-columns:52px minmax(0,1fr);gap:10px;padding:10px 8px}#listaTorneiAdmin .calendar-date{padding-right:8px}#listaTorneiAdmin .calendar-date strong{font-size:19px}.calendar-actions .btn{flex:1}}
+@media(max-width:1000px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-view-title{align-items:flex-start!important;flex-direction:column!important}}
+@media(max-width:480px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:1fr}#listaTorneiAdmin .calendar-day{grid-template-columns:52px minmax(0,1fr);gap:8px;padding:9px 7px}}
 `;
  document.head.appendChild(s);
 }
@@ -169,23 +170,28 @@ function dateKey(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padSta
 function groupTournaments(){
  const box=$('listaTorneiAdmin');if(!box)return;const rows=[...box.querySelectorAll(':scope > .tournament-row')];if(!rows.length)return;if(rows.some(r=>r.closest('.calendar-year')))return;
  const years=new Map();
- rows.forEach(row=>{const d=parseDate(row);const year=d?String(d.getFullYear()):'Senza data';const month=d?String(d.getMonth()+1).padStart(2,'0'):'00';if(!years.has(year))years.set(year,new Map());const months=years.get(year);if(!months.has(month))months.set(month,[]);months.get(month).push({row,date:d})});
+ [2026,2027,2028].forEach(y=>{const months=new Map();for(let m=1;m<=12;m++)months.set(String(m).padStart(2,'0'),[]);years.set(String(y),months)});
+ let noDate=[];
+ rows.forEach(row=>{const d=parseDate(row);if(!d){noDate.push({row,date:null});return}const year=String(d.getFullYear());if(!years.has(year)){years.set(year,new Map());for(let m=1;m<=12;m++)years.get(year).set(String(m).padStart(2,'0'),[])}years.get(year).get(String(d.getMonth()+1).padStart(2,'0')).push({row,date:d})});
  box.innerHTML='';
  [...years.entries()].sort((a,b)=>b[0].localeCompare(a[0])).forEach(([year,months],yi)=>{
-  const yd=document.createElement('details');yd.className='calendar-year';yd.open=yi===0;const ys=document.createElement('summary');ys.textContent=year==='Senza data'?year:`Anno ${year}`;const yb=document.createElement('div');yb.className='calendar-year-body';
-  [...months.entries()].sort((a,b)=>b[0].localeCompare(a[0])).forEach(([month,items],mi)=>{
-   const md=document.createElement('details');md.className='calendar-month';md.open=yi===0&&mi===0;const ms=document.createElement('summary');ms.textContent=month==='00'?'Senza data':monthName(+month)+' '+year;const mb=document.createElement('div');mb.className='calendar-month-body';
-   items.sort((a,b)=>(b.date?.getTime()||0)-(a.date?.getTime()||0)).forEach(({row,date})=>{
+  const yd=document.createElement('details');yd.className='calendar-year';yd.open=yi===0;const ys=document.createElement('summary');ys.textContent=`Anno ${year}`;const yb=document.createElement('div');yb.className='calendar-year-body';
+  [...months.entries()].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([month,items],mi)=>{
+   const md=document.createElement('details');md.className='calendar-month';md.open=items.length>0&&yi===0&&mi===new Date().getMonth();const ms=document.createElement('summary');ms.textContent=monthName(+month);const mb=document.createElement('div');mb.className='calendar-month-body';
+   if(!items.length){const empty=document.createElement('div');empty.className='calendar-month-empty';empty.textContent='Nessun torneo';mb.appendChild(empty)}
+   items.sort((a,b)=>(a.date?.getTime()||0)-(b.date?.getTime()||0)).forEach(({row,date})=>{
     const day=document.createElement('div');day.className='calendar-day';if(row.classList.contains('selected'))day.classList.add('selected');
-    const dateBox=document.createElement('div');dateBox.className='calendar-date';dateBox.innerHTML=date?`<strong>${String(date.getDate()).padStart(2,'0')}</strong><span>${dayName(date)} · ${monthName(date.getMonth()+1).slice(0,3)}</span>`:'<strong>—</strong><span>DATA</span>';
+    const dateBox=document.createElement('div');dateBox.className='calendar-date';dateBox.innerHTML=`<strong>${String(date.getDate()).padStart(2,'0')}</strong><span>${dayName(date)}</span>`;
     const info=document.createElement('div');info.className='calendar-tournament';const tinfo=row.querySelector('.t-info');if(tinfo)info.appendChild(tinfo);else info.appendChild(row);
     const actions=row.querySelector('.actions');const actionBox=document.createElement('div');actionBox.className='calendar-actions';if(actions)[...actions.children].forEach(x=>actionBox.appendChild(x));
-    day.append(dateBox,info,actionBox);mb.appendChild(day);
+    day.append(dateBox,info);if(actionBox.children.length)day.appendChild(actionBox);mb.appendChild(day);
    });
    md.append(ms,mb);yb.appendChild(md);
   });
   yd.append(ys,yb);box.appendChild(yd);
  });
+ if(noDate.length){
+  const yd=document.createElement('details');yd.className='calendar-year';const ys=document.createElement('summary');ys.textContent='Senza data';const yb=document.createElement('div');yb.className='calendar-year-body';const md=document.createElement('details');md.className='calendar-month';md.open=true;const ms=document.createElement('summary');ms.textContent='Senza data';const mb=document.createElement('div');mb.className='calendar-month-body';noDate.forEach(({row})=>{const wrap=document.createElement('div');wrap.className='calendar-day';const dateBox=document.createElement('div');dateBox.className='calendar-date';dateBox.innerHTML='<strong>—</strong><span>DATA</span>';const info=document.createElement('div');info.className='calendar-tournament';const tinfo=row.querySelector('.t-info');if(tinfo)info.appendChild(tinfo);else info.appendChild(row);wrap.append(dateBox,info);mb.appendChild(wrap)});md.append(ms,mb);yb.appendChild(md);yd.append(ys,yb);box.appendChild(yd)}
  box.dataset.calendarV8='1';
 }
 function scheduleGrouping(){clearTimeout(groupingTimer);groupingTimer=setTimeout(()=>{const box=$('listaTorneiAdmin');if(box&&!box.querySelector('.calendar-year'))groupTournaments()},160)}
