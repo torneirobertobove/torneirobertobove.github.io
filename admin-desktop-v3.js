@@ -39,8 +39,6 @@ function style(){
 #areaAdmin .admin-page-shell[data-page="dashboard"] .page-title{display:flex}
 #areaAdmin .admin-page-shell[data-page="dashboard"] .stats{display:grid}
 #areaAdmin .admin-page-shell[data-page="dashboard"] .grid{display:grid}
-
-/* CALENDARIO TORNEI: ANNO → 12 MESI ALLINEATI → GIORNI */
 #listaTorneiAdmin{padding:0!important;display:block!important}
 #listaTorneiAdmin .calendar-year{margin:0 0 16px;border:1px solid rgba(255,255,255,.10);border-radius:16px;overflow:hidden;background:rgba(18,23,29,.78);box-shadow:0 14px 34px rgba(0,0,0,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 #listaTorneiAdmin .calendar-year>summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,rgba(77,163,255,.10),rgba(255,255,255,.02));border-bottom:1px solid rgba(255,255,255,.07);font-size:15px;font-weight:850;color:#fff}
@@ -78,6 +76,9 @@ function style(){
 #areaAdmin .compact-group-body{padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.07)}
 #areaAdmin .page-nav-note{font-size:11px;color:#8f9aa6;margin:0 0 12px}
 #areaAdmin .tabellone-launch{margin-top:4px;padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(20,25,31,.68);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+/* FIX CONFIGURAZIONE: evita che la vecchia navigazione mostri la pagina duplicata */
+#areaAdmin #page-configurazione{display:none!important}
+#areaAdmin .admin-page-shell[data-page="config"] input,#areaAdmin .admin-page-shell[data-page="config"] select,#areaAdmin .admin-page-shell[data-page="config"] textarea{position:relative;z-index:30;pointer-events:auto}
 @media(max-width:1000px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-view-title{align-items:flex-start!important;flex-direction:column!important}}
 @media(max-width:480px){#listaTorneiAdmin .calendar-year-body{grid-template-columns:1fr}#listaTorneiAdmin .calendar-day{grid-template-columns:52px minmax(0,1fr);gap:8px;padding:9px 7px}}
@@ -106,10 +107,10 @@ function moveExisting(){
   [isc,cop,tab,cfg,news,sp,link].forEach(backButton);
   const direct=[...content.children].filter(e=>e.classList.contains('page-title')||e.classList.contains('stats')||e.classList.contains('grid'));
   direct.forEach(e=>dash.querySelector('.page-inner').appendChild(e));
-  const cp=$('configPanel');if(cp)cfg.querySelector('.page-inner').appendChild(cp);
-  const ws=$('workspace');if(ws)isc.querySelector('.page-inner').appendChild(ws);
-  const np=$('newsPanel');if(np)news.querySelector('.page-inner').appendChild(np);
-  const spn=$('sponsorPanel');if(spn)sp.querySelector('.page-inner').appendChild(spn);
+  const cp=$('configPanel');if(cp&&cp.parentElement!==cfg.querySelector('.page-inner'))cfg.querySelector('.page-inner').appendChild(cp);
+  const ws=$('workspace');if(ws&&ws.parentElement!==isc.querySelector('.page-inner'))isc.querySelector('.page-inner').appendChild(ws);
+  const np=$('newsPanel');if(np&&np.parentElement!==news.querySelector('.page-inner'))news.querySelector('.page-inner').appendChild(np);
+  const spn=$('sponsorPanel');if(spn&&spn.parentElement!==sp.querySelector('.page-inner'))sp.querySelector('.page-inner').appendChild(spn);
   const publicPanels=[...content.querySelectorAll('details.panel')].filter(x=>x!==cp&&x!==ws&&!x.id);
   publicPanels.forEach(p=>{if(/Link pubblico/i.test(p.textContent)){p.classList.add('public-link-panel');link.querySelector('.page-inner').appendChild(p)}});
   prepareWorkspace();addTabelloneLauncher(tab);addCompactGroups();
@@ -124,7 +125,7 @@ function prepareWorkspace(){
 function addCompactGroups(){
  const g=$('gestioneTorneoAdmin');if(!g||g.dataset.compactV8)return;g.dataset.compactV8='1';
  const req=$('richiesteIscrizione'),part=$('partecipantiAdmin');
- [req,part].forEach((box,i)=>{if(!box||box.parentElement?.dataset?.compactGroup)return;const parent=box.parentElement;const title=i===0?'👥 Richieste iscrizione':'✅ Partecipanti approvati';const d=document.createElement('details');d.className='compact-group';const s=document.createElement('summary');s.textContent=title;const body=document.createElement('div');body.className='compact-group-body';parent.insertBefore(d,box);d.append(s,body);body.appendChild(box);});
+ [req,part].forEach((box,i)=>{if(!box||box.parentElement?.dataset?.compactGroup)return;const parent=box.parentElement;const title=i===0?'👥 Richieste iscrizione':'✅ Partecipanti approvati';const d=document.createElement('details');d.className='compact-group';d.dataset.compactGroup='1';const s=document.createElement('summary');s.textContent=title;const body=document.createElement('div');body.className='compact-group-body';parent.insertBefore(d,box);d.append(s,body);body.appendChild(box);});
 }
 function addTabelloneLauncher(tab){
  if(tab.querySelector('.tabellone-launch'))return;const box=document.createElement('div');box.className='tabellone-launch';
@@ -132,31 +133,26 @@ function addTabelloneLauncher(tab){
  box.querySelector('button').addEventListener('click',()=>{const id=selectedId()||firstId();const f=fn('apriBoveConTorneo')||fn('apriTabellone');if(f)f(id);else if(id)window.open('Bove.html?idTorneo='+encodeURIComponent(id),'_blank')});
  tab.querySelector('.page-inner').appendChild(box);
 }
-function routeFromUrl(){const p=new URLSearchParams(location.search).get('page');return PAGES.includes(p)?p:'dashboard'}
+function normalizePage(raw){
+ const maps={dashboard:'dashboard',iscritti:'iscritti',coppie:'coppie',tabellone:'tabellone',news:'news',sponsor:'sponsor',link:'link',config:'config',configurazione:'config',richiesteIscrizione:'iscritti',creaCoppieBox:'coppie',linkBoveGenerato:'tabellone',configPanel:'config'};
+ return maps[raw]||raw;
+}
+function routeFromUrl(){const p=normalizePage(new URLSearchParams(location.search).get('page'));return PAGES.includes(p)?p:'dashboard'}
 function nav(){
- const maps={dashboard:'dashboard',richiesteIscrizione:'iscritti',creaCoppieBox:'coppie',linkBoveGenerato:'tabellone',configPanel:'config'};
- document.querySelectorAll('#areaAdmin .nav button').forEach(b=>{if(b.dataset.v8hook)return;b.dataset.v8hook='1';b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();const raw=b.dataset.nav||b.dataset.page;const page=maps[raw]||raw;if(PAGES.includes(page))navigate(page)})});
- $('quickApprova')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();navigate('iscritti')});
- $('quickCoppie')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();navigate('coppie')});
- $('quickTabellone')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();navigate('tabellone')});
- $('quickLink')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();navigate('link')});
- document.querySelectorAll('#areaAdmin [data-action="create"]').forEach(b=>{if(b.dataset.v8create)return;b.dataset.v8create='1';b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();navigate('config')})});
- const sidebar=document.querySelectorAll('#areaAdmin .nav')[1];
- if(sidebar&&!sidebar.querySelector('[data-nav="news"]')){
-  const n=document.createElement('button');n.type='button';n.dataset.nav='news';n.innerHTML='📰 <span>News</span>';sidebar.appendChild(n);
-  const sp=document.createElement('button');sp.type='button';sp.dataset.nav='sponsor';sp.innerHTML='🏷️ <span>Sponsor</span>';sidebar.appendChild(sp);
-  const l=document.createElement('button');l.type='button';l.dataset.nav='link';l.innerHTML='🔗 <span>Link pubblici</span>';sidebar.appendChild(l);
- }
- document.querySelectorAll('#areaAdmin .nav button').forEach(b=>{if(!b.dataset.v8hook){b.dataset.v8hook='1';b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();const raw=b.dataset.nav||b.dataset.page;const page=maps[raw]||raw;if(PAGES.includes(page))navigate(page)})}});
+ const bind=b=>{if(b.dataset.v8hook)return;b.dataset.v8hook='1';b.addEventListener('click',e=>{const raw=b.dataset.nav||b.dataset.page;const page=normalizePage(raw);if(!PAGES.includes(page))return;e.preventDefault();e.stopImmediatePropagation();navigate(page)},true)};
+ document.querySelectorAll('#areaAdmin .nav button,#areaAdmin [data-page]').forEach(bind);
+ const legacy=document.querySelectorAll('#areaAdmin [data-nav]');legacy.forEach(bind);
 }
 function navigate(page){
- if(!PAGES.includes(page))page='dashboard';moveExisting();
+ page=normalizePage(page);if(!PAGES.includes(page))page='dashboard';moveExisting();
  const current=routeFromUrl();const target='admin.html?page='+encodeURIComponent(page);if(current!==page)history.pushState({page},'',target);
  PAGES.forEach(p=>$('admin-page-'+p)?.classList.toggle('active',p===page));
  const area=$('areaAdmin');if(area){area.className=area.className.replace(/\badmin-page-\S+/g,'');area.classList.add('admin-page-'+page)}
  const top=area?.querySelector('.topbar .breadcrumb b');if(top)top.textContent=LABELS[page];
- document.querySelectorAll('#areaAdmin .nav button').forEach(b=>{const raw=b.dataset.nav||b.dataset.page;const maps={dashboard:'dashboard',richiesteIscrizione:'iscritti',creaCoppieBox:'coppie',linkBoveGenerato:'tabellone',configPanel:'config'};b.classList.toggle('active',(maps[raw]||raw)===page)});
- if(page==='iscritti')call(['caricaRichiesteIscrizione']);if(page==='coppie')call(['renderCoppie']);if(page==='config')$('configPanel')?.setAttribute('open','');else $('configPanel')?.removeAttribute('open');
+ document.querySelectorAll('#areaAdmin .nav button').forEach(b=>{const raw=b.dataset.nav||b.dataset.page;b.classList.toggle('active',normalizePage(raw)===page)});
+ if(page==='iscritti')call(['caricaRichiesteIscrizione']);
+ if(page==='coppie')call(['renderCoppie']);
+ if(page==='config'){$('configPanel')?.setAttribute('open','');setTimeout(()=>{const input=$('adminNomeTorneo');if(input){input.focus();input.select()}},40)}else $('configPanel')?.removeAttribute('open');
 }
 function parseDate(row){
  const raw=(row.dataset?.data||row.dataset?.date||row.querySelector('.t-info small')?.textContent||'').trim();
@@ -166,7 +162,6 @@ function parseDate(row){
 }
 function monthName(m){return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][m-1]||''}
 function dayName(d){return ['DOM','LUN','MAR','MER','GIO','VEN','SAB'][d.getDay()]||''}
-function dateKey(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'Senza data'}
 function groupTournaments(){
  const box=$('listaTorneiAdmin');if(!box)return;const rows=[...box.querySelectorAll(':scope > .tournament-row')];if(!rows.length)return;if(rows.some(r=>r.closest('.calendar-year')))return;
  const years=new Map();
@@ -190,8 +185,7 @@ function groupTournaments(){
   });
   yd.append(ys,yb);box.appendChild(yd);
  });
- if(noDate.length){
-  const yd=document.createElement('details');yd.className='calendar-year';const ys=document.createElement('summary');ys.textContent='Senza data';const yb=document.createElement('div');yb.className='calendar-year-body';const md=document.createElement('details');md.className='calendar-month';md.open=true;const ms=document.createElement('summary');ms.textContent='Senza data';const mb=document.createElement('div');mb.className='calendar-month-body';noDate.forEach(({row})=>{const wrap=document.createElement('div');wrap.className='calendar-day';const dateBox=document.createElement('div');dateBox.className='calendar-date';dateBox.innerHTML='<strong>—</strong><span>DATA</span>';const info=document.createElement('div');info.className='calendar-tournament';const tinfo=row.querySelector('.t-info');if(tinfo)info.appendChild(tinfo);else info.appendChild(row);wrap.append(dateBox,info);mb.appendChild(wrap)});md.append(ms,mb);yb.appendChild(md);yd.append(ys,yb);box.appendChild(yd)}
+ if(noDate.length){const yd=document.createElement('details');yd.className='calendar-year';const ys=document.createElement('summary');ys.textContent='Senza data';const yb=document.createElement('div');yb.className='calendar-year-body';const md=document.createElement('details');md.className='calendar-month';md.open=true;const ms=document.createElement('summary');ms.textContent='Senza data';const mb=document.createElement('div');mb.className='calendar-month-body';noDate.forEach(({row})=>{const wrap=document.createElement('div');wrap.className='calendar-day';const dateBox=document.createElement('div');dateBox.className='calendar-date';dateBox.innerHTML='<strong>—</strong><span>DATA</span>';const info=document.createElement('div');info.className='calendar-tournament';const tinfo=row.querySelector('.t-info');if(tinfo)info.appendChild(tinfo);else info.appendChild(row);wrap.append(dateBox,info);mb.appendChild(wrap)});md.append(ms,mb);yb.appendChild(md);yd.append(ys,yb);box.appendChild(yd)}
  box.dataset.calendarV8='1';
 }
 function scheduleGrouping(){clearTimeout(groupingTimer);groupingTimer=setTimeout(()=>{const box=$('listaTorneiAdmin');if(box&&!box.querySelector('.calendar-year'))groupTournaments()},160)}
