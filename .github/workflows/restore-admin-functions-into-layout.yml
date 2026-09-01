@@ -1,0 +1,51 @@
+name: Restore original admin engine into current layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-admin-functions-into-layout.yml'
+      - 'admin.html'
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: ${{ !contains(github.event.head_commit.message, '[admin-engine-restored]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove runtime overrides that replace the original engine
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('<script src="admin-function-fixes-v1.js?v=12"></script>\n', '')
+          s = s.replace('<script src="admin-organization-v1.js?v=12"></script>\n', '')
+          s = s.replace('<!-- FINAL_ADMIN_RUNTIME_FIX -->\n', '')
+          s = s.replace('<script src="admin-desktop-v3.js?v=12"></script>\n', '')
+          marker = '<script>\n(function(){\n  function fix(){\n    var a=document.getElementById(\'areaAdmin\'); if(!a)return;'
+          start = s.find(marker)
+          if start != -1:
+              end_marker = '\n</script>'
+              end = s.find(end_marker, start)
+              if end != -1:
+                  s = s[:start] + s[end + len(end_marker):]
+          p.write_text(s, encoding='utf-8')
+      - name: Commit restored engine integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Restore original admin engine into current layout [admin-engine-restored]'
+          git push
+      - name: Remove one-time workflow
+        if: success()
+        shell: bash
+        run: |
+          git rm .github/workflows/restore-admin-functions-into-layout.yml || true
+          git commit -m 'Remove one-time admin engine restore workflow [admin-engine-restored]' || true
+          git push || true
