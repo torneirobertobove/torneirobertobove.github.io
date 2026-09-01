@@ -32,7 +32,7 @@
     if(!document.getElementById('admin-legacy-navigation-loader')){
       var compat=document.createElement('script');
       compat.id='admin-legacy-navigation-loader';
-      compat.src='admin-legacy-navigation.js?v=1';
+      compat.src='admin-legacy-navigation.js?v=2';
       compat.async=false;
       document.head.appendChild(compat);
     }
