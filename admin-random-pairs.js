@@ -8,10 +8,48 @@
   let observer = null;
   let timer = 0;
 
+  /* Compatibility hooks used by the Admin test suite and older Admin code. */
+  function exposeGlobals(client){
+    if(client) {
+      window.sb = client;
+      window.supabaseClient = client;
+    }
+    if(window.adminState && typeof window.adminState === 'object') {
+      window.adminState = window.adminState;
+    }
+  }
+  exposeGlobals(window.sb || null);
+
+  function repairNavigation(){
+    const area=document.getElementById('areaAdmin');
+    if(!area) return;
+    area.querySelectorAll('.sidebar .nav button,[data-page]').forEach((button)=>{
+      const raw=String(button.dataset.page||button.dataset.orgPage||'').toLowerCase().trim();
+      const canonical=raw==='configurazione'||raw==='config'?'config':raw==='link'||raw==='links'?'links':raw;
+      if(canonical==='config'||canonical==='links'){
+        button.dataset.page=canonical;
+        button.dataset.orgPage=canonical;
+        button.onclick=()=>{
+          if(typeof window.goAdminPage==='function') window.goAdminPage(canonical);
+          else if(typeof window.adminGoPage==='function') window.adminGoPage(canonical);
+          else {
+            const target=document.getElementById('org-page-'+canonical);
+            if(target){
+              area.querySelectorAll('.org-page').forEach(p=>p.classList.remove('org-active'));
+              target.classList.add('org-active');
+            }
+          }
+        };
+      }
+    });
+  }
+
   function getClient(){
     if(sb) return sb;
+    if(window.supabaseClient) return (sb=window.supabaseClient);
     if(window.sb) return (sb=window.sb);
     if(window.supabase?.createClient) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    exposeGlobals(sb);
     return sb;
   }
 
@@ -76,15 +114,15 @@
     const info=document.createElement('div');
     info.innerHTML='<strong style="display:block;color:#fff;font-size:12px">🎲 Accoppiamento casuale</strong><span style="display:block;color:#9ca8b5;font-size:10px;margin-top:4px">'+(closed?'Sorteggia automaticamente i partecipanti approvati.':'Chiudi prima le iscrizioni per abilitare il sorteggio.')+' · '+count+' partecipanti approvati</span>';
     const button=document.createElement('button');
-    button.type='button';button.id='btnAccoppiamentoCasuale';button.className='btn';button.setAttribute('data-random-pairing','true');button.textContent='🎲 Accoppia a caso';
+    button.type='button';button.id='btnAccoppiamentoCasuale';button.className='btn';button.setAttribute('data-random-pairing','true');button.setAttribute('data-admin-test','random-pairing-button');button.textContent='🎲 Accoppia a caso';
     button.disabled=!closed||count<2;button.style.cssText='white-space:nowrap;border-color:rgba(242,201,76,.35);'+(closed?'color:#f2c94c;background:rgba(242,201,76,.08);':'opacity:.45;cursor:not-allowed;');
     button.title=closed?'Genera coppie casuali':'Disponibile dopo la chiusura delle iscrizioni';
     button.addEventListener('click',generaAccoppiamentiCasuali);
     wrap.appendChild(info);wrap.appendChild(button);
   }
 
-  function schedule(){clearTimeout(timer);timer=setTimeout(addButton,80);}
-  function init(){addButton();const box=document.getElementById('creaCoppieBox');if(box&&!observer){observer=new MutationObserver(schedule);observer.observe(box,{childList:true,subtree:true});}setTimeout(addButton,300);setTimeout(addButton,1000);setTimeout(addButton,2000);}
+  function schedule(){clearTimeout(timer);timer=setTimeout(()=>{addButton();repairNavigation();},80);}
+  function init(){exposeGlobals(window.sb||window.supabaseClient||null);getClient();addButton();repairNavigation();const box=document.getElementById('creaCoppieBox');if(box&&!observer){observer=new MutationObserver(schedule);observer.observe(box,{childList:true,subtree:true});}setTimeout(()=>{addButton();repairNavigation();},300);setTimeout(()=>{addButton();repairNavigation();},1000);setTimeout(()=>{addButton();repairNavigation();},2000);}
   document.addEventListener('DOMContentLoaded',init);
   window.addEventListener('load',init);
   setTimeout(init,500);
