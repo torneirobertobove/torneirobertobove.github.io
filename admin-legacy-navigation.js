@@ -1,4 +1,4 @@
-/* Legacy navigation aliases: keep config/links internal while exposing legacy selectors. */
+/* Legacy navigation aliases: keep config/links internal while exposing legacy selectors only on sidebar navigation. */
 (function(){
   'use strict';
 
@@ -6,12 +6,26 @@
     var area=document.getElementById('areaAdmin');
     if(!area) return;
 
+    var nav=area.querySelector('.sidebar .nav');
+    if(!nav) return;
+
+    /* Remove legacy selector values from content controls/sections; keep canonical keys internally. */
+    area.querySelectorAll('[data-page="configurazione"],[data-page="link"]').forEach(function(el){
+      if(!nav.contains(el)){
+        var canonical=el.dataset.orgPage || (el.dataset.page==='link'?'links':'config');
+        el.dataset.page=canonical;
+        if(canonical==='config') el.dataset.internalPage='config';
+        if(canonical==='links') el.dataset.internalPage='links';
+        el.removeAttribute('data-legacy-page');
+      }
+    });
+
     function ensure(internal, legacy, matcher){
-      var buttons=[].slice.call(area.querySelectorAll('[data-page],[data-org-page]'));
+      var buttons=[].slice.call(nav.querySelectorAll('button'));
       var found=buttons.find(function(el){
         var raw=String(el.dataset.page||el.dataset.orgPage||'').toLowerCase().trim();
         var text=(el.textContent||'').trim();
-        return (raw===internal || raw===legacy) && (!matcher || matcher(text));
+        return (raw===internal || raw===legacy || (internal==='config' && /configurazione|impostazioni/i.test(text)) || (internal==='links' && /link/i.test(text))) && (!matcher || matcher(text));
       });
 
       if(found){
@@ -22,8 +36,6 @@
         return;
       }
 
-      var nav=area.querySelector('.sidebar .nav');
-      if(!nav) return;
       var button=document.createElement('button');
       button.type='button';
       button.dataset.page=legacy;
@@ -38,7 +50,7 @@
       nav.appendChild(button);
     }
 
-    ensure('config','configurazione',function(t){return /configurazione|impostazioni|nuovo torneo|crea torneo/i.test(t);});
+    ensure('config','configurazione',function(t){return /configurazione|impostazioni/i.test(t);});
     ensure('links','link',function(t){return /link/i.test(t);});
   }
 
