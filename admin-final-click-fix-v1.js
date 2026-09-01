@@ -34,6 +34,16 @@ function install(){
  if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active#newsPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active #configPanel,#areaAdmin.admin-organized .org-page.org-active #newsPanel,#areaAdmin.admin-organized .org-page.org-active #sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
  const nav=a.querySelector('.sidebar .nav');if(nav){nav.querySelectorAll('button').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.dataset.orgPage=k;b.dataset.internalPage=k;b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}})}
  a.querySelectorAll('[data-page="configurazione"],[data-page="link"],[data-page="config"],[data-page="links"]').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.page);if(pages.includes(k)&&!b.closest('.sidebar'))b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)}})
+ const buttons=[...a.querySelectorAll('button')];
+ buttons.forEach(b=>{
+   const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+   if(!b.getAttribute('onclick')){
+     if(t.includes('crea coppia'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');
+     else if(t==='×'||t.includes('chiudi'))b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
+     else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
+     else if(t.includes('crea torneo'))b.setAttribute('onclick','window.creaNuovoTorneo&&window.creaNuovoTorneo();');
+   }
+ });
 }
 function boot(){install();show(key(location.hash.slice(1))||'dashboard');setTimeout(install,100);setTimeout(install,500);setTimeout(install,1200)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
