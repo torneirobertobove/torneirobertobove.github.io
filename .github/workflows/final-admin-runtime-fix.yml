@@ -1,0 +1,38 @@
+name: Final Admin Runtime Fix
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject canonical admin runtime loader
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          # Remove stale duplicate loader references and normalize the active runtime scripts.
+          import re
+          s = re.sub(r'<script[^>]+admin-function-fixes-v1\.js\?v=[^"\']+[^>]*></script>\s*', '', s, flags=re.I)
+          s = re.sub(r'<script[^>]+admin-organization-v1\.js\?v=[^"\']+[^>]*></script>\s*', '', s, flags=re.I)
+          s = re.sub(r'<script[^>]+admin-desktop-v3\.js\?v=[^"\']+[^>]*></script>\s*', '', s, flags=re.I)
+          marker = '<!-- FINAL_ADMIN_RUNTIME_FIX -->'
+          loader = '''\n<!-- FINAL_ADMIN_RUNTIME_FIX -->\n<script src="admin-function-fixes-v1.js?v=12"></script>\n<script src="admin-organization-v1.js?v=12"></script>\n<script src="admin-desktop-v3.js?v=12"></script>\n<script>\n(function(){\n  function fix(){\n    var a=document.getElementById('areaAdmin'); if(!a)return;\n    function ensure(id){var x=document.getElementById(id); if(!x){x=document.createElement('div');x.id=id;x.hidden=true;x.setAttribute('aria-hidden','true');a.appendChild(x);} return x;}\n    ensure('listaIscrittiAdmin'); ensure('tabelloneAdmin'); ensure('newsPanel'); ensure('sponsorPanel');\n    var cal=document.getElementById('adminCalendar')||a.querySelector('[data-admin-calendar],.admin-calendar,#calendarioAdmin');\n    if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.className='admin-calendar';a.appendChild(cal);}\n    if(typeof window.creaCoppieAdmin!=='function'){window.creaCoppieAdmin=function(){\n      var names=['generaAccoppiamentiCasuali','generaCoppieAdmin','generaCoppie','generaCoppieCasuali'];\n      for(var i=0;i<names.length;i++) if(typeof window[names[i]]==='function') return window[names[i]]();\n      if(typeof window.openAdminPage==='function') return window.openAdminPage('coppie');\n      return false;\n    };}\n    a.querySelectorAll('button').forEach(function(b){\n      var t=(b.textContent||'').replace(/\\s+/g,' ').trim().toLowerCase();\n      if(t.indexOf('accoppia a caso')>=0) b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');\n    });\n  }\n  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix); else fix();\n  [100,500,1200,2500,5000].forEach(function(ms){setTimeout(fix,ms)});\n})();\n</script>\n'''
+          if marker in s:
+              s = s.split(marker)[0] + loader
+          else:
+              s = s.replace('</body>', loader + '</body>')
+          p.write_text(s, encoding='utf-8')
+      - name: Commit normalized admin
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git diff --cached --quiet || git commit -m "chore: activate final admin runtime loader"
+          git push
