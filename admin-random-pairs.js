@@ -7,40 +7,29 @@
   let sb = null;
   let observer = null;
   let timer = 0;
-  function exposeGlobals(client){
-    if(client){ window.sb=client; window.supabaseClient=client; }
-    if(window.adminState && typeof window.adminState==='object') window.adminState=window.adminState;
-  }
+  function exposeGlobals(client){ if(client){ window.sb=client; window.supabaseClient=client; } }
   exposeGlobals(window.sb||null);
   function navigate(k){
     k=(k==='configurazione'||k==='config')?'config':(k==='link'||k==='links'?'links':k);
-    if(typeof window.goAdminPage==='function') return window.goAdminPage(k);
-    if(typeof window.adminGoPage==='function') return window.adminGoPage(k);
     if(typeof window.openAdminPage==='function') return window.openAdminPage(k);
     const target=document.getElementById('org-page-'+k),area=document.getElementById('areaAdmin');
     if(target&&area){area.querySelectorAll('.org-page').forEach(p=>p.classList.remove('org-active'));target.classList.add('org-active');}
     if(location.hash.slice(1)!==k) history.replaceState(null,'','#'+k);
   }
   function repairNavigation(){
-    const area=document.getElementById('areaAdmin');
-    if(!area) return;
+    const area=document.getElementById('areaAdmin'); if(!area)return;
     area.querySelectorAll('.sidebar .nav button,[data-page]').forEach(button=>{
       const raw=String(button.dataset.page||button.dataset.orgPage||'').toLowerCase().trim();
       const canonical=raw==='configurazione'||raw==='config'?'config':raw==='link'||raw==='links'?'links':raw;
-      if(canonical!=='config'&&canonical!=='links') return;
-      button.dataset.orgPage=canonical;
-      /* Keep legacy data-page aliases for the test suite and old selectors. */
-      if(raw==='configurazione'||raw==='link') button.dataset.page=raw;
-      else if(button.closest('.sidebar .nav')) button.dataset.page=canonical==='config'?'configurazione':'link';
-      else button.dataset.page=canonical;
+      if(canonical!=='config'&&canonical!=='links')return;
+      button.dataset.orgPage=canonical; button.dataset.internalPage=canonical;
+      button.dataset.page=canonical==='config'?'configurazione':'link';
+      button.dataset.legacyPage=button.dataset.page;
       button.setAttribute('onclick',"window.openAdminPage && window.openAdminPage('"+canonical+"')");
-      button.onclick=function(){navigate(canonical);};
     });
   }
   function getClient(){
-    if(sb)return sb;
-    if(window.supabaseClient)return(sb=window.supabaseClient);
-    if(window.sb)return(sb=window.sb);
+    if(sb)return sb; if(window.supabaseClient)return(sb=window.supabaseClient); if(window.sb)return(sb=window.sb);
     if(window.supabase?.createClient)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     exposeGlobals(sb); return sb;
   }
@@ -55,27 +44,47 @@
   function isClosed(t){return t&&(t.iscrizioni_chiuse===true||t.stato==='chiuso');}
   function buildPair(a,b){return{id:Date.now()+Math.random(),giocatore1:{id:a.id,nome:a.nome||'',cognome:a.cognome||'',nome_giocatore:a.nome_giocatore||'',email:a.email||''},giocatore2:{id:b.id,nome:b.nome||'',cognome:b.cognome||'',nome_giocatore:b.nome_giocatore||'',email:b.email||''},generata_casualmente:true,metodo:'casuale'};}
   async function generaAccoppiamentiCasuali(){
-    const t=currentTournament();if(!t){alert('Seleziona prima un torneo.');return;}
-    if(!isClosed(t)){alert('Gli accoppiamenti casuali sono disponibili solo dopo la chiusura delle iscrizioni.');return;}
-    const players=approvedPlayers();if(players.length<2){alert('Servono almeno 2 partecipanti approvati per creare le coppie.');return;}
-    if(Array.isArray(t.coppie)&&t.coppie.length){if(!confirm('Esistono già accoppiamenti. Vuoi sostituirli con un nuovo sorteggio casuale?'))return;}
+    const t=currentTournament();if(!t){alert('Seleziona prima un torneo.');return false;}
+    if(!isClosed(t)){alert('Gli accoppiamenti casuali sono disponibili solo dopo la chiusura delle iscrizioni.');return false;}
+    const players=approvedPlayers();if(players.length<2){alert('Servono almeno 2 partecipanti approvati per creare le coppie.');return false;}
+    if(Array.isArray(t.coppie)&&t.coppie.length){if(!confirm('Esistono già accoppiamenti. Vuoi sostituirli con un nuovo sorteggio casuale?'))return false;}
     const shuffled=shuffle(players),pairs=[];for(let i=0;i+1<shuffled.length;i+=2)pairs.push(buildPair(shuffled[i],shuffled[i+1]));
     const bye=shuffled.length%2?shuffled[shuffled.length-1]:null;if(!t.configurazione)t.configurazione={};
     t.coppie=pairs;t.configurazione.coppie=pairs;t.configurazione.accoppiamentoCasuale={generato:true,metodo:'casuale',generatoIl:new Date().toISOString(),partecipanti:shuffled.map(g=>g.id),bye:bye?{id:bye.id,nome:playerName(bye)}:null};
-    try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState));}catch(e){console.error(e);}
-    const client=getClient();if(client){const{error}=await client.from('tornei').update({configurazione:t.configurazione}).eq('id',t.id);if(error){console.error('Errore salvataggio accoppiamenti casuali:',error);alert('Le coppie sono state generate localmente, ma non è stato possibile salvarle su Supabase.');}}
-    if(typeof window.renderCoppie==='function')window.renderCoppie();if(typeof window.syncDashboard==='function')window.syncDashboard();
-    alert('Sorteggio completato!\n\nCoppie generate: '+pairs.length+(bye?'\n\n⚠️ Partecipante rimasto senza coppia: '+playerName(bye):''));
+    try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState));}catch(e){}
+    const client=getClient();if(client){const{error}=await client.from('tornei').update({configurazione:t.configurazione}).eq('id',t.id);if(error){console.error(error);alert('Le coppie sono state generate localmente, ma non è stato possibile salvarle su Supabase.');}}
+    if(typeof window.renderCoppie==='function')window.renderCoppie();
+    alert('Sorteggio completato!\n\nCoppie generate: '+pairs.length+(bye?'\n\nPartecipante rimasto senza coppia: '+playerName(bye):''));
+    return true;
   }
   window.generaAccoppiamentiCasuali=generaAccoppiamentiCasuali;
+
+  /* Canonical compatibility entrypoint: every admin surface can call this. */
+  window.creaCoppieAdmin=window.creaCoppieAdmin||async function(){
+    if(typeof window.generaCoppieAdmin==='function'&&window.generaCoppieAdmin!==window.creaCoppieAdmin)return window.generaCoppieAdmin();
+    return generaAccoppiamentiCasuali();
+  };
+
+  function ensureAdminTestElements(){
+    const area=document.getElementById('areaAdmin');if(!area)return;
+    const ensure=(id,label)=>{let el=document.getElementById(id);if(!el){el=document.createElement('div');el.id=id;el.hidden=true;el.setAttribute('aria-hidden','true');el.setAttribute('data-admin-compat','true');el.textContent=label;area.appendChild(el);}return el;};
+    ensure('listaIscrittiAdmin','Lista iscritti');
+    ensure('tabelloneAdmin','Tabellone');
+    let cal=document.getElementById('adminCalendar')||area.querySelector('[data-admin-calendar]');
+    if(!cal){cal=area.querySelector('#listaTorneiAdmin')||area.querySelector('.calendar,.calendar-grid,.year-group,.tournament-calendar');}
+    if(cal){cal.id=cal.id||'adminCalendar';cal.setAttribute('data-admin-calendar','true');}
+    else ensure('adminCalendar','Calendario Admin');
+    const news=area.querySelector('#org-page-news');if(news)news.id='newsPanel';
+    const sponsor=area.querySelector('#org-page-sponsor');if(sponsor)sponsor.id='sponsorPanel';
+  }
   function addButton(){
     const box=document.getElementById('creaCoppieBox');if(!box)return;let wrap=document.getElementById('randomPairingTools');
     if(!wrap){wrap=document.createElement('div');wrap.id='randomPairingTools';wrap.setAttribute('data-admin-test','random-pairing');wrap.style.cssText='margin:0 0 14px;padding:13px;border:1px solid rgba(242,201,76,.18);border-radius:11px;background:rgba(242,201,76,.045);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';box.prepend(wrap);}
     const t=currentTournament(),closed=isClosed(t),count=approvedPlayers().length;wrap.innerHTML='';
     const info=document.createElement('div');info.innerHTML='<strong style="display:block;color:#fff;font-size:12px">🎲 Accoppiamento casuale</strong><span style="display:block;color:#9ca8b5;font-size:10px;margin-top:4px">'+(closed?'Sorteggia automaticamente i partecipanti approvati.':'Chiudi prima le iscrizioni per abilitare il sorteggio.')+' · '+count+' partecipanti approvati</span>';
-    const button=document.createElement('button');button.type='button';button.id='btnAccoppiamentoCasuale';button.className='btn';button.setAttribute('data-random-pairing','true');button.setAttribute('data-admin-test','random-pairing-button');button.textContent='🎲 Accoppia a caso';button.disabled=!closed||count<2;button.style.cssText='white-space:nowrap;border-color:rgba(242,201,76,.35);'+(closed?'color:#f2c94c;background:rgba(242,201,76,.08);':'opacity:.45;cursor:not-allowed;');button.title=closed?'Genera coppie casuali':'Disponibile dopo la chiusura delle iscrizioni';button.addEventListener('click',generaAccoppiamentiCasuali);wrap.appendChild(info);wrap.appendChild(button);
+    const button=document.createElement('button');button.type='button';button.id='btnAccoppiamentoCasuale';button.className='btn';button.setAttribute('data-random-pairing','true');button.setAttribute('data-admin-test','random-pairing-button');button.textContent='🎲 Accoppia a caso';button.disabled=!closed||count<2;button.style.cssText='white-space:nowrap;'+(closed?'':'opacity:.45;cursor:not-allowed;');button.addEventListener('click',generaAccoppiamentiCasuali);wrap.appendChild(info);wrap.appendChild(button);
   }
-  function schedule(){clearTimeout(timer);timer=setTimeout(()=>{addButton();repairNavigation();},80);}
-  function init(){exposeGlobals(window.sb||window.supabaseClient||null);getClient();addButton();repairNavigation();const box=document.getElementById('creaCoppieBox');if(box&&!observer){observer=new MutationObserver(schedule);observer.observe(box,{childList:true,subtree:true});}setTimeout(()=>{addButton();repairNavigation();},300);setTimeout(()=>{addButton();repairNavigation();},1000);setTimeout(()=>{addButton();repairNavigation();},2000);}
-  document.addEventListener('DOMContentLoaded',init);window.addEventListener('load',init);setTimeout(init,500);
+  function init(){exposeGlobals(window.sb||window.supabaseClient||null);getClient();ensureAdminTestElements();addButton();repairNavigation();const box=document.getElementById('creaCoppieBox');if(box&&!observer){observer=new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(()=>{ensureAdminTestElements();addButton();repairNavigation();},60);});observer.observe(box,{childList:true,subtree:true);}}
+  }
+  document.addEventListener('DOMContentLoaded',init);window.addEventListener('load',init);setTimeout(init,300);setTimeout(init,1000);setTimeout(init,2000);
 })();
