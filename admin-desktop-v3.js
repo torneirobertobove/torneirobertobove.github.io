@@ -1,5 +1,19 @@
 /* Compatibility loader: active admin fixes live in admin-desktop-v4.js. */
 (function(){
+  function cleanDuplicateAdminScripts(){
+    var scripts=Array.prototype.slice.call(document.scripts||[]);
+    var seenDesktop=false;
+    scripts.forEach(function(s){
+      var src=s.getAttribute('src')||'';
+      if(/admin-desktop-v3\.js(?:\?|$)/.test(src)){
+        if(seenDesktop){s.remove();}
+        else{seenDesktop=true;}
+      }
+      if(/admin-organization-v1\.js\?v=1(?:&|$)/.test(src)){
+        s.remove();
+      }
+    });
+  }
   function installLegacyNavigation(){
     var area=document.getElementById('areaAdmin');
     if(!area) return;
@@ -27,6 +41,7 @@
     });
   }
   function load(){
+    cleanDuplicateAdminScripts();
     if(!document.getElementById('admin-desktop-v4-loader')){
       var s=document.createElement('script');s.id='admin-desktop-v4-loader';s.src='admin-desktop-v4.js?v=5';s.async=false;document.head.appendChild(s);
     }
