@@ -1,0 +1,53 @@
+name: Normalize admin entrypoint
+
+on:
+  push:
+    paths:
+      - '.github/workflows/normalize-admin-entrypoint.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove duplicate admin entry scripts
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Keep exactly one desktop stylesheet and one desktop bootstrap.
+          s = re.sub(r'\n?\s*<link\s+rel=["\']stylesheet["\']\s+href=["\']admin-desktop\.css\?v=[^"\']+["\']\s*/?>', '', s, flags=re.I)
+          s = re.sub(r'\n?\s*<script\s+src=["\']admin-desktop-v3\.js\?v=[^"\']+["\']\s*></script>', '', s, flags=re.I)
+
+          anchor = '</head>'
+          block = '''\n<!-- ADMIN ENTRYPOINT V8 -->\n<link rel="stylesheet" href="admin-desktop.css?v=8">\n<script src="admin-desktop-v3.js?v=8"></script>\n'''
+          s = s.replace(anchor, block + anchor, 1)
+
+          # Keep the canonical organization script once; the loader handles compatibility.
+          s = re.sub(r'\n?\s*<script\s+src=["\']admin-organization-v1\.js\?v=[^"\']+["\']\s*></script>', '', s, flags=re.I)
+          org = '<script src="admin-organization-v1.js?v=8"></script>\n'
+          pos = s.find('</head>')
+          s = s[:pos] + org + s[pos:] if pos >= 0 else s
+
+          # Remove obsolete marker left by the old duplicated desktop include.
+          s = s.replace('<!-- ADMIN-DESKTOP-V2 -->\n', '')
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit normalized admin
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Normalize admin script entrypoint"
+          git push
