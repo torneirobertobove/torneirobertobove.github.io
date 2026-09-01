@@ -1,4 +1,4 @@
-/* ADMIN RESTORE ORIGINAL FUNCTIONS V8 - restore the original working admin interface */
+/* ADMIN RESTORE ORIGINAL FUNCTIONS V9 - restore the original working admin interface */
 (()=>{
 'use strict';
 const A=()=>document.getElementById('areaAdmin');
@@ -10,10 +10,8 @@ function clean(){document.querySelectorAll('body *').forEach(el=>{if(el.children
 function restoreDom(){
  const a=A();if(!a)return false;
  a.classList.remove('admin-organized');
- const content=a.querySelector('.content');
- const ws=document.getElementById('workspace');
+ const content=a.querySelector('.content'),ws=document.getElementById('workspace');
  if(ws&&content&&!content.contains(ws))content.appendChild(ws);
- /* Put original operational panels back into their original workspace/container. */
  const parents=[
   ['gestioneTorneoAdmin','workspace'],['dettaglioTorneoAdmin','gestioneTorneoAdmin'],['richiesteIscrizione','gestioneTorneoAdmin'],['partecipantiAdmin','gestioneTorneoAdmin'],['schedaGiocatoreAdmin','gestioneTorneoAdmin'],
   ['creaCoppieBox','workspace'],['listaCoppieAdmin','workspace'],['configPanel','workspace'],['newsPanel','workspace'],['sponsorPanel','workspace']
@@ -36,8 +34,9 @@ function show(k){
 window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;
 window.apriRegoleNuovoTorneo=function(){
  restoreDom();
- if(typeof window.creaNuovoTorneo==='function'){try{return window.creaNuovoTorneo()}catch(e){console.error(e)}}
- const cfg=document.getElementById('configPanel');if(cfg){try{cfg.scrollIntoView({block:'start'})}catch{}return true}return false;
+ const cfg=document.getElementById('configPanel');
+ if(cfg){cfg.hidden=false;cfg.style.removeProperty('display');try{cfg.scrollIntoView({block:'start'})}catch{}const f=cfg.querySelector('#adminNomeTorneo,#adminDataTorneo');try{f?.focus()}catch{}return true}
+ return show('config');
 };
 function install(){
  const a=A();if(!a)return;
