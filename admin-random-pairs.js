@@ -7,13 +7,11 @@
   let sb = null;
   let observer = null;
   let timer = 0;
-
   function exposeGlobals(client){
     if(client){ window.sb=client; window.supabaseClient=client; }
     if(window.adminState && typeof window.adminState==='object') window.adminState=window.adminState;
   }
   exposeGlobals(window.sb||null);
-
   function navigate(k){
     k=(k==='configurazione'||k==='config')?'config':(k==='link'||k==='links'?'links':k);
     if(typeof window.goAdminPage==='function') return window.goAdminPage(k);
@@ -23,7 +21,6 @@
     if(target&&area){area.querySelectorAll('.org-page').forEach(p=>p.classList.remove('org-active'));target.classList.add('org-active');}
     if(location.hash.slice(1)!==k) history.replaceState(null,'','#'+k);
   }
-
   function repairNavigation(){
     const area=document.getElementById('areaAdmin');
     if(!area) return;
@@ -31,13 +28,15 @@
       const raw=String(button.dataset.page||button.dataset.orgPage||'').toLowerCase().trim();
       const canonical=raw==='configurazione'||raw==='config'?'config':raw==='link'||raw==='links'?'links':raw;
       if(canonical!=='config'&&canonical!=='links') return;
-      button.dataset.page=canonical;
       button.dataset.orgPage=canonical;
+      /* Keep legacy data-page aliases for the test suite and old selectors. */
+      if(raw==='configurazione'||raw==='link') button.dataset.page=raw;
+      else if(button.closest('.sidebar .nav')) button.dataset.page=canonical==='config'?'configurazione':'link';
+      else button.dataset.page=canonical;
       button.setAttribute('onclick',"window.openAdminPage && window.openAdminPage('"+canonical+"')");
       button.onclick=function(){navigate(canonical);};
     });
   }
-
   function getClient(){
     if(sb)return sb;
     if(window.supabaseClient)return(sb=window.supabaseClient);
@@ -45,7 +44,6 @@
     if(window.supabase?.createClient)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     exposeGlobals(sb); return sb;
   }
-
   function currentTournament(){
     if(typeof window.getTorneoAdminCorrente==='function')return window.getTorneoAdminCorrente();
     const state=window.adminState;if(!state?.tornei)return null;
@@ -56,7 +54,6 @@
   function shuffle(list){const a=list.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
   function isClosed(t){return t&&(t.iscrizioni_chiuse===true||t.stato==='chiuso');}
   function buildPair(a,b){return{id:Date.now()+Math.random(),giocatore1:{id:a.id,nome:a.nome||'',cognome:a.cognome||'',nome_giocatore:a.nome_giocatore||'',email:a.email||''},giocatore2:{id:b.id,nome:b.nome||'',cognome:b.cognome||'',nome_giocatore:b.nome_giocatore||'',email:b.email||''},generata_casualmente:true,metodo:'casuale'};}
-
   async function generaAccoppiamentiCasuali(){
     const t=currentTournament();if(!t){alert('Seleziona prima un torneo.');return;}
     if(!isClosed(t)){alert('Gli accoppiamenti casuali sono disponibili solo dopo la chiusura delle iscrizioni.');return;}
@@ -71,7 +68,6 @@
     alert('Sorteggio completato!\n\nCoppie generate: '+pairs.length+(bye?'\n\n⚠️ Partecipante rimasto senza coppia: '+playerName(bye):''));
   }
   window.generaAccoppiamentiCasuali=generaAccoppiamentiCasuali;
-
   function addButton(){
     const box=document.getElementById('creaCoppieBox');if(!box)return;let wrap=document.getElementById('randomPairingTools');
     if(!wrap){wrap=document.createElement('div');wrap.id='randomPairingTools';wrap.setAttribute('data-admin-test','random-pairing');wrap.style.cssText='margin:0 0 14px;padding:13px;border:1px solid rgba(242,201,76,.18);border-radius:11px;background:rgba(242,201,76,.045);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';box.prepend(wrap);}
