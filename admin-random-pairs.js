@@ -2,8 +2,6 @@
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://iybjvtmfaupgthqqsngd.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
   let client = null;
   let observer = null;
   let timer = 0;
@@ -19,13 +17,17 @@
     if (client) return client;
     if (window.supabaseClient) return (client = window.supabaseClient);
     if (window.sb) return (client = window.sb);
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      });
-      exposeGlobals(client);
-    }
-    return client;
+    /* admin-functions.js owns the single Supabase client as the global
+       lexical binding `sb`. Never call createClient here: doing so creates
+       a second GoTrueClient with the same storage key. */
+    try {
+      if (typeof sb !== 'undefined' && sb) {
+        client = sb;
+        exposeGlobals(client);
+        return client;
+      }
+    } catch (e) {}
+    return null;
   }
 
   function navigate(page) {
@@ -37,10 +39,10 @@
       return;
     }
     const area = document.getElementById('areaAdmin');
-    const target = document.getElementById('org-page-' + canonical);
+    const target = document.getElementById('org-page-' + canonical) || document.getElementById('page-' + canonical);
     if (area && target) {
-      area.querySelectorAll('.org-page').forEach(function (p) { p.classList.remove('org-active'); });
-      target.classList.add('org-active');
+      area.querySelectorAll('.org-page,.admin-page').forEach(function (p) { p.classList.remove('org-active', 'active'); });
+      target.classList.add(target.classList.contains('org-page') ? 'org-active' : 'active');
     }
     if (location.hash.slice(1) !== canonical) history.replaceState(null, '', '#' + canonical);
   }
@@ -147,9 +149,9 @@
       localStorage.setItem('padel_admin_state', JSON.stringify(window.adminState));
     } catch (e) {}
 
-    const sb = getClient();
-    if (sb) {
-      const result = await sb.from('tornei').update({ configurazione: torneo.configurazione }).eq('id', torneo.id);
+    const sbClient = getClient();
+    if (sbClient) {
+      const result = await sbClient.from('tornei').update({ configurazione: torneo.configurazione }).eq('id', torneo.id);
       if (result && result.error) {
         console.error(result.error);
         alert('Le coppie sono state generate localmente, ma non è stato possibile salvarle su Supabase.');
@@ -210,6 +212,98 @@
     if (sponsor) sponsor.id = 'sponsorPanel';
   }
 
+  function ensureWhatsAppUI() {
+    const area = document.getElementById('areaAdmin');
+    if (!area) return;
+
+    let nav = area.querySelector('.sidebar .nav[data-whatsapp-nav]');
+    if (!nav) {
+      nav = document.createElement('nav');
+      nav.className = 'nav';
+      nav.setAttribute('data-whatsapp-nav', 'true');
+      const section = document.createElement('div');
+      section.className = 'nav-section';
+      section.textContent = 'Comunicazioni';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('data-page', 'whatsapp');
+      button.innerHTML = '📲 <span>WhatsApp</span>';
+      nav.appendChild(button);
+      const sidebar = area.querySelector('.sidebar');
+      const bottom = area.querySelector('.sidebar-bottom');
+      if (sidebar) {
+        if (bottom) {
+          sidebar.insertBefore(section, bottom);
+          sidebar.insertBefore(nav, bottom);
+        } else {
+          sidebar.appendChild(section);
+          sidebar.appendChild(nav);
+        }
+      }
+    }
+
+    let page = document.getElementById('page-whatsapp');
+    if (!page) {
+      page = document.createElement('section');
+      page.id = 'page-whatsapp';
+      page.className = 'admin-page';
+      page.innerHTML = `
+        <div class="page-title">
+          <div>
+            <h1>📲 WhatsApp</h1>
+            <p>Invia rapidamente una comunicazione tramite WhatsApp.</p>
+          </div>
+        </div>
+        <div class="panel-box">
+          <div class="panel-head">
+            <h2>📲 Comunicazione WhatsApp</h2>
+            <p>Scrivi il messaggio e apri WhatsApp per inviarlo.</p>
+          </div>
+          <div class="panel-content">
+            <textarea id="messaggioWhatsAppAdmin" placeholder="Scrivi comunicazione..."></textarea>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn primary" id="btnInviaWhatsAppAdmin">📲 Invia WhatsApp</button>
+              <button type="button" class="btn" id="btnWhatsAppApprovati">👥 WhatsApp approvati</button>
+            </div>
+            <p class="notice" style="margin-top:12px">Si aprirà WhatsApp con il testo già compilato.</p>
+          </div>
+        </div>`;
+      const content = area.querySelector('.main .content') || area.querySelector('.content');
+      if (content) content.appendChild(page);
+    }
+
+    const source = document.getElementById('messaggioWhatsApp');
+    const target = document.getElementById('messaggioWhatsAppAdmin');
+    if (source && target && !target.dataset.bound) {
+      target.value = source.value || '';
+      target.addEventListener('input', function () { source.value = target.value; });
+      source.addEventListener('input', function () { if (target.value !== source.value) target.value = source.value; });
+      target.dataset.bound = '1';
+    }
+    const send = document.getElementById('btnInviaWhatsAppAdmin');
+    if (send && !send.dataset.bound) {
+      send.addEventListener('click', function () {
+        const msg = document.getElementById('messaggioWhatsAppAdmin')?.value.trim();
+        if (!msg) { alert('Scrivi un messaggio'); return; }
+        if (source) source.value = msg;
+        if (typeof window.inviaWhatsAppTutti === 'function') window.inviaWhatsAppTutti();
+        else window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+      });
+      send.dataset.bound = '1';
+    }
+    const approved = document.getElementById('btnWhatsAppApprovati');
+    if (approved && !approved.dataset.bound) {
+      approved.addEventListener('click', function () {
+        const msg = document.getElementById('messaggioWhatsAppAdmin')?.value.trim();
+        if (!msg) { alert('Scrivi un messaggio'); return; }
+        if (source) source.value = msg;
+        if (typeof window.inviaWhatsAppApprovati === 'function') window.inviaWhatsAppApprovati();
+        else if (typeof window.inviaWhatsAppTutti === 'function') window.inviaWhatsAppTutti();
+      });
+      approved.dataset.bound = '1';
+    }
+  }
+
   function addButton() {
     const box = document.getElementById('creaCoppieBox');
     if (!box) return;
@@ -245,6 +339,7 @@
     exposeGlobals(window.sb || window.supabaseClient || null);
     getClient();
     ensureAdminTestElements();
+    ensureWhatsAppUI();
     addButton();
     repairNavigation();
     const box = document.getElementById('creaCoppieBox');
@@ -253,6 +348,7 @@
         clearTimeout(timer);
         timer = setTimeout(function () {
           ensureAdminTestElements();
+          ensureWhatsAppUI();
           addButton();
           repairNavigation();
         }, 60);
