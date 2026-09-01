@@ -1,4 +1,4 @@
-/* ADMIN DESKTOP V3 - compatibility/bootstrap loader V8 */
+/* ADMIN DESKTOP V3 - compatibility/bootstrap loader V9 */
 (function(){
   'use strict';
 
@@ -116,6 +116,12 @@
       }
     });
   }
+  function clearStaticCacheMarkers(){
+    Array.prototype.slice.call(document.scripts||[]).forEach(function(s){
+      var src=s.getAttribute('src')||'';
+      if(/^admin-(?:desktop-v3|organization-v1)\.js\?v=/.test(src))s.removeAttribute('src');
+    });
+  }
   function installNavigation(){
     var a=area();if(!a)return;
     a.querySelectorAll('.sidebar .nav button').forEach(function(b){
@@ -147,6 +153,7 @@
       new MutationObserver(function(){installNavigation();installInlineHandlers();}).observe(root,{childList:true,subtree:true});
     }
     [100,300,800,1500,3000].forEach(function(ms){setTimeout(function(){cleanDuplicateScripts();installNavigation();installInlineHandlers();},ms)});
+    setTimeout(clearStaticCacheMarkers,1200);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
