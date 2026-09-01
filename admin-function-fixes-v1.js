@@ -1,13 +1,12 @@
-/* ADMIN FUNCTION FIXES V1
-   Concrete repairs for controls that can appear clickable but fail to produce
-   the expected action. Loaded after the admin modules so it can safely wrap
-   the public admin API without changing the existing UI structure.
+/* ADMIN FUNCTION FIXES V2
+   Concrete repairs for admin controls: reliable navigation/link generation,
+   clipboard fallback, and visible handling of rejected async actions.
 */
 (()=>{
   'use strict';
 
   const $=id=>document.getElementById(id);
-  const call=(name,...args)=>typeof window[name]==='function'?window[name](...args):undefined;
+  const STORAGE_LINK='padel_admin_generated_link';
 
   function selectTournament(id){
     if(window.adminState){
@@ -31,31 +30,54 @@
   }
 
   function buildTournamentLink(id){
-    return location.origin+location.pathname.replace(/[^/]*$/,'')+'Bove.html?idTorneo='+encodeURIComponent(id);
+    return location.origin+location.pathname.replace(/[^/]*$/,'')+'Bove.html?idTorneo='+encodeURIComponent(String(id));
   }
 
-  // FIX: the old implementation called openWorkspace("link"), while the
-  // organized admin page is keyed as "links". Generate + navigate together.
-  window.generaLinkPerId=function(id){
-    selectTournament(id);
+  function applyGeneratedLink(value){
     const input=$('linkBoveGenerato');
     const mirror=$('linkBoveGeneratoMirror');
-    const value=buildTournamentLink(id);
     if(input) input.value=value;
     if(mirror) mirror.value=value;
+    const target=input||mirror;
+    if(target) target.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+
+  // Generate the link first in state, then navigate. The target input can be
+  // rendered only after navigation, so the value is applied again afterwards.
+  window.generaLinkPerId=function(id){
+    if(id===undefined||id===null||String(id).trim()===''){
+      alert('Seleziona prima un torneo');
+      return false;
+    }
+    selectTournament(id);
+    const value=buildTournamentLink(id);
+    try{localStorage.setItem(STORAGE_LINK,value);}catch{}
     navigateLinks();
-    setTimeout(()=>{($('linkBoveGenerato')||$('linkBoveGeneratoMirror'))?.scrollIntoView({behavior:'smooth',block:'center'});},80);
+    applyGeneratedLink(value);
+    setTimeout(()=>applyGeneratedLink(value),0);
+    setTimeout(()=>applyGeneratedLink(value),150);
+    setTimeout(()=>applyGeneratedLink(value),500);
+    return value;
   };
 
-  // FIX: clipboard must have a fallback and must never silently fail when
-  // navigator.clipboard is unavailable (common on non-secure/local contexts).
-  window.copiaLinkBove=async function(){
-    const input=$('linkBoveGenerato');
-    if(!input?.value){
-      const id=window.adminState?.torneoSelezionato;
-      if(id!=null) window.generaLinkPerId(id);
+  window.generaLinkBove=function(){
+    const id=window.adminState?.torneoSelezionato;
+    if(id===undefined||id===null||String(id).trim()===''){
+      alert('Seleziona prima un torneo');
+      return false;
     }
-    const value=$('linkBoveGenerato')?.value||$('linkBoveGeneratoMirror')?.value||'';
+    return window.generaLinkPerId(id);
+  };
+
+  window.copiaLinkBove=async function(){
+    let value=$('linkBoveGenerato')?.value||$('linkBoveGeneratoMirror')?.value||'';
+    if(!value){
+      try{value=localStorage.getItem(STORAGE_LINK)||'';}catch{}
+    }
+    if(!value){
+      const id=window.adminState?.torneoSelezionato;
+      if(id!=null){window.generaLinkPerId(id);try{value=localStorage.getItem(STORAGE_LINK)||'';}catch{}}
+    }
     if(!value){alert('Seleziona prima un torneo e genera il link.');return false;}
 
     try{
@@ -74,13 +96,13 @@
       return true;
     }catch(e){
       console.error('Copia link non riuscita:',e);
-      if(input){input.focus();input.select();}
+      const input=$('linkBoveGenerato')||$('linkBoveGeneratoMirror');
+      if(input){input.value=value;input.focus();input.select();}
       alert('Il link è pronto: selezionalo e copialo manualmente.');
       return false;
     }
   };
 
-  // FIX: opening Bove must work with numeric ids and string ids alike.
   window.apriBoveConTorneo=function(id){
     if(id===undefined||id===null||String(id).trim()===''){
       alert('Seleziona prima un torneo');
@@ -92,8 +114,6 @@
     return true;
   };
 
-  // FIX: guarantee sidebar navigation for every admin page, including the
-  // legacy aliases required by older markup.
   function bindNavigation(){
     const area=$('areaAdmin');
     if(!area||area.__functionFixNavBound)return;
@@ -112,10 +132,48 @@
     });
   }
 
+  function bindCoppiaSafety(){
+    const area=$('areaAdmin');
+    if(!area||area.__functionFixCoppiaBound)return;
+    area.__functionFixCoppiaBound=true;
+    area.addEventListener('click',e=>{
+      const b=e.target.closest('#btnCreaCoppiaAdmin');
+      if(!b)return;
+      setTimeout(()=>{
+        b.disabled=false;
+      },400);
+    });
+  }
+
+  function wrapAsync(name){
+    if(typeof window[name]!=='function'||window[name].__functionFixWrapped)return;
+    const original=window[name];
+    const wrapped=async function(...args){
+      try{return await original.apply(this,args);}
+      catch(e){
+        console.error('Errore funzione admin '+name+':',e);
+        alert((e&&e.message)?('Operazione non riuscita: '+e.message):'Operazione non riuscita. Controlla i dati e riprova.');
+        return false;
+      }
+    };
+    wrapped.__functionFixWrapped=true;
+    wrapped.__original=original;
+    window[name]=wrapped;
+  }
+
+  function restoreGeneratedLink(){
+    let value='';
+    try{value=localStorage.getItem(STORAGE_LINK)||'';}catch{}
+    if(value) applyGeneratedLink(value);
+  }
+
   function boot(){
     bindNavigation();
-    setTimeout(bindNavigation,250);
-    setTimeout(bindNavigation,1000);
+    bindCoppiaSafety();
+    ['creaNuovoTorneo','selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest','creaNews','salvaSponsor'].forEach(wrapAsync);
+    restoreGeneratedLink();
+    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();['creaNuovoTorneo','selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest','creaNews','salvaSponsor'].forEach(wrapAsync)},250);
+    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();['creaNuovoTorneo','selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest','creaNews','salvaSponsor'].forEach(wrapAsync)},1000);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
