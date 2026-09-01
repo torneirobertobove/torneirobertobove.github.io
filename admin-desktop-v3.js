@@ -7,7 +7,6 @@
     var nav=area.querySelector('.sidebar .nav');
     if(!nav) return;
 
-    /* Only sidebar navigation buttons expose legacy data-page aliases. */
     area.querySelectorAll('[data-page="configurazione"],[data-page="link"]').forEach(function(el){
       if(!nav.contains(el)){
         var canonical=el.dataset.orgPage || (el.dataset.page==='link'?'links':'config');
@@ -42,16 +41,23 @@
     if(!document.getElementById('admin-desktop-v4-loader')){
       var s=document.createElement('script');
       s.id='admin-desktop-v4-loader';
-      s.src='admin-desktop-v4.js?v=2';
+      s.src='admin-desktop-v4.js?v=3';
       s.async=false;
       document.head.appendChild(s);
     }
     if(!document.getElementById('admin-legacy-navigation-loader')){
       var compat=document.createElement('script');
       compat.id='admin-legacy-navigation-loader';
-      compat.src='admin-legacy-navigation.js?v=2';
+      compat.src='admin-legacy-navigation.js?v=3';
       compat.async=false;
       document.head.appendChild(compat);
+    }
+    if(!document.getElementById('admin-function-fixes-loader')){
+      var fixes=document.createElement('script');
+      fixes.id='admin-function-fixes-loader';
+      fixes.src='admin-function-fixes-v1.js?v=1';
+      fixes.async=false;
+      document.head.appendChild(fixes);
     }
     installLegacyNavigation();
     setInterval(installLegacyNavigation,100);
