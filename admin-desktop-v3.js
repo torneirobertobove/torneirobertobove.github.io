@@ -7,6 +7,11 @@
     s.src='admin-desktop-v4.js?v=2';
     s.async=false;
     document.head.appendChild(s);
+    var compat=document.createElement('script');
+    compat.id='admin-legacy-navigation-loader';
+    compat.src='admin-legacy-navigation.js?v=1';
+    compat.async=false;
+    document.head.appendChild(compat);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',load); else load();
 })();
