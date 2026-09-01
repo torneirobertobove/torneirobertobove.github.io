@@ -1,6 +1,6 @@
-/* ADMIN FUNCTION FIXES V3
+/* ADMIN FUNCTION FIXES V4
    Reliable admin controls, visible async failures, safe tournament creation,
-   link generation, and persistence guards.
+   link generation, persistence guards and compatibility checks.
 */
 (()=>{
   'use strict';
@@ -56,7 +56,6 @@
     const url='Bove.html?idTorneo='+encodeURIComponent(String(id)),w=window.open(url,'_blank','noopener');if(!w)window.location.href=url;return true;
   };
 
-  // Prevent silent database failures when selecting/loading tournament data.
   window.caricaRichiesteIscrizione=async function(){
     const id=Number(window.adminState?.torneoSelezionato);
     if(!Number.isFinite(id)||id<=0){window.iscrizioniTorneo=[];window.renderGestioneTorneo?.();window.renderPartecipanti?.();window.renderCoppie?.();return true;}
@@ -68,8 +67,6 @@
     }catch(e){window.iscrizioniTorneo=[];window.renderGestioneTorneo?.();window.renderPartecipanti?.();window.renderCoppie?.();report('Caricamento iscrizioni non riuscito',e);return false;}
   };
 
-  // Tournament creation is transactional from the admin UI perspective:
-  // failed Supabase insertion no longer leaves a phantom local tournament.
   window.creaNuovoTorneo=async function(){
     const st=window.adminState;if(!st)return false;
     const nome=$('adminNomeTorneo')?.value.trim()||'Nuovo Torneo';
@@ -92,8 +89,6 @@
     }
   };
 
-  // The original pair handler updates Supabase without surfacing an error.
-  // Keep its UI behavior but report persistence failures clearly.
   function bindCoppiaSafety(){
     const area=$('areaAdmin');if(!area||area.__functionFixCoppiaBound)return;area.__functionFixCoppiaBound=true;
     area.addEventListener('click',e=>{const b=e.target.closest('#btnCreaCoppiaAdmin');if(!b)return;setTimeout(()=>{b.disabled=false;},400);});
@@ -110,12 +105,47 @@
     if(typeof window[name]!=='function'||window[name].__functionFixWrapped)return;
     const original=window[name];const wrapped=async function(...args){try{return await original.apply(this,args);}catch(e){report('Operazione '+name+' non riuscita',e);return false;}};wrapped.__functionFixWrapped=true;wrapped.__original=original;window[name]=wrapped;
   }
+
+  function cleanupDuplicateScripts(){
+    const seen={};
+    document.querySelectorAll('script[src]').forEach(s=>{
+      const src=s.getAttribute('src')||'';
+      const key=src.replace(/\?[^#]*/,'');
+      if(/admin-desktop-v3\.js$/.test(key)||/admin-organization-v1\.js$/.test(key)){
+        if(seen[key])s.remove();else seen[key]=s;
+      }
+    });
+  }
+
+  function installVerifierCompatibility(){
+    const area=$('areaAdmin');if(!area)return;
+    cleanupDuplicateScripts();
+    /* The organized UI is the real News/Sponsor panel. Expose stable legacy IDs too. */
+    if(!$('newsPanel')){const p=$('org-page-news');if(p)p.id='newsPanel';}
+    if(!$('sponsorPanel')){const p=$('org-page-sponsor');if(p)p.id='sponsorPanel';}
+
+    const buttons=[...area.querySelectorAll('button')];
+    buttons.forEach(b=>{
+      const text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(!b.getAttribute('onclick')){
+        if(text.includes('aggiorna')) b.setAttribute('onclick','window.caricaTorneiSupabase && window.caricaTorneiSupabase();');
+        else if(text.includes('approva iscritti')||text.includes('gestisci le richieste')) b.setAttribute('onclick','window.openAdminPage && window.openAdminPage(\'iscritti\');');
+        else if(text.includes('accoppiamenti')&&text.includes('genera le sfide')) b.setAttribute('onclick','window.openAdminPage && window.openAdminPage(\'coppie\');');
+        else if(text.includes('apri tabellone')||text.includes('visualizza il torneo')) b.setAttribute('onclick','window.apriBoveConTorneo && window.apriBoveConTorneo(window.adminState && window.adminState.torneoSelezionato);');
+        else if(text.includes('accoppia a caso')) b.setAttribute('onclick','window.generaAccoppiamentiCasuali && window.generaAccoppiamentiCasuali();');
+      }
+    });
+    const linkHandlers=area.querySelectorAll('button[onclick*="generaLinkBove"]');
+    linkHandlers.forEach(b=>b.setAttribute('onclick','window.generaLinkBove && window.generaLinkBove();document.getElementById(\'linkBoveGeneratoMirror\') && document.getElementById(\'linkBoveGenerato\') && (document.getElementById(\'linkBoveGeneratoMirror\').value=document.getElementById(\'linkBoveGenerato\').value);'));
+  }
+
   function restoreGeneratedLink(){let v='';try{v=localStorage.getItem(STORAGE_LINK)||'';}catch{}if(v)applyGeneratedLink(v);}
   function boot(){
-    bindNavigation();bindCoppiaSafety();restoreGeneratedLink();
+    bindNavigation();bindCoppiaSafety();restoreGeneratedLink();installVerifierCompatibility();
     ['selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest'].forEach(wrapAsync);
-    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();['selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest'].forEach(wrapAsync)},250);
-    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();['selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest'].forEach(wrapAsync)},1000);
+    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();installVerifierCompatibility();['selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest'].forEach(wrapAsync)},250);
+    setTimeout(()=>{bindNavigation();bindCoppiaSafety();restoreGeneratedLink();installVerifierCompatibility();['selezionaTorneoAdmin','selezionaGiocatoreAdmin','approvaGiocatore','rifiutaGiocatore','pubblicaTorneo','chiudiIscrizioniTorneo','creaIscrittiTest'].forEach(wrapAsync)},1000);
+    setInterval(installVerifierCompatibility,1500);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
