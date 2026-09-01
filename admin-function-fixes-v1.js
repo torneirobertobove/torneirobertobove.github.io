@@ -1,4 +1,4 @@
-/* ADMIN FUNCTION FIXES V8 - complete verifier compatibility + visible WhatsApp */
+/* ADMIN FUNCTION FIXES V9 - complete verifier compatibility + visible WhatsApp menu */
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id), STORAGE_LINK='padel_admin_generated_link';
@@ -20,8 +20,31 @@ function ensureCompatElements(){const area=$('areaAdmin');if(!area)return;let ne
 function compatibility(){const area=$('areaAdmin');if(!area)return;ensureCompatElements();const bs=[...area.querySelectorAll('button')];bs.forEach(b=>{const text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(!b.getAttribute('onclick')){if(text==='⚙️ configurazione'||text.includes('impostazioni'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('config')");else if(text==='🔗 link pubblici'||text.includes('link pubblici'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('links')");else if(text.includes('nuovo torneo')||text.includes('＋ crea torneo'))b.setAttribute('onclick','window.apriRegoleNuovoTorneo&&window.apriRegoleNuovoTorneo();');else if(text.includes('gestisci le richieste')||text.includes('approva iscritti'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('iscritti')");else if(text.includes('genera le sfide'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('coppie')");else if(text.includes('apri tabellone')||text.includes('visualizza il torneo'))b.setAttribute('onclick',"window.apriBoveConTorneo&&window.apriBoveConTorneo(window.adminState&&window.adminState.torneoSelezionato);");else if(text.includes('accoppia a caso'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');else if(text.includes('copia link'))b.setAttribute('onclick','window.copiaLinkBove&&window.copiaLinkBove();')}});area.querySelectorAll('button[onclick*="generaLinkBove"]').forEach(b=>b.setAttribute('onclick','window.generaLinkBove&&window.generaLinkBove();document.getElementById(\'linkBoveGeneratoMirror\')&&document.getElementById(\'linkBoveGenerato\')&&(document.getElementById(\'linkBoveGeneratoMirror\').value=document.getElementById(\'linkBoveGenerato\').value);'));let v='';try{v=localStorage.getItem(STORAGE_LINK)||''}catch{}if(v)applyGeneratedLink(v)}
 window.inviaWhatsAppTutti=function(){const msg=$('messaggioWhatsApp')?.value.trim();if(!msg){alert('Scrivi un messaggio');return false}window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank','noopener');return true};
 window.inviaWhatsAppApprovati=function(){return window.inviaWhatsAppTutti()};
+function ensureWhatsAppMenu(){
+ const area=$('areaAdmin'), navEl=area?.querySelector('.sidebar .nav');
+ if(!navEl)return;
+ let btn=navEl.querySelector('[data-page="whatsapp"]');
+ if(!btn){
+   btn=document.createElement('button');
+   btn.type='button';
+   btn.dataset.page='whatsapp';
+   btn.innerHTML='<span aria-hidden="true">📲</span><span>WhatsApp</span>';
+   navEl.appendChild(btn);
+ }
+ let page=$('page-whatsapp');
+ if(!page){
+   page=document.createElement('section');
+   page.id='page-whatsapp';
+   page.className='admin-page';
+   page.innerHTML='<div class="page-title"><div><h1>📲 WhatsApp</h1><p>Invia comunicazioni WhatsApp ai partecipanti del torneo.</p></div></div><div class="panel-box"><div class="panel-head"><h2>📲 Comunicazioni WhatsApp</h2><p>Scrivi il messaggio e apri WhatsApp per l\'invio.</p></div><div class="panel-content"><textarea id="whatsappMenuMessage" placeholder="Scrivi comunicazione..."></textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn primary" id="whatsappMenuAll">📲 Invia WhatsApp a tutti</button><button type="button" class="btn" id="whatsappMenuApproved">📲 Invia agli approvati</button></div></div></div>';
+   const content=area.querySelector('.content');
+   if(content)content.appendChild(page);else area.appendChild(page);
+   page.querySelector('#whatsappMenuAll').addEventListener('click',()=>{const old=$('messaggioWhatsApp');const m=$('whatsappMenuMessage');if(old&&m)old.value=m.value;return window.inviaWhatsAppTutti()});
+   page.querySelector('#whatsappMenuApproved').addEventListener('click',()=>{const old=$('messaggioWhatsApp');const m=$('whatsappMenuMessage');if(old&&m)old.value=m.value;return window.inviaWhatsAppApprovati()});
+ }
+}
 function restoreWhatsAppUI(){const area=$('messaggioWhatsAppArea');if(!area)return;const page=document.getElementById('page-iscritti');if(page&&!page.contains(area))page.appendChild(area);area.classList.remove('hidden');area.removeAttribute('hidden');area.style.display='block';area.style.marginTop='18px';area.style.padding='18px';area.style.border='1px solid var(--border)';area.style.borderRadius='17px';area.style.background='var(--panel)';area.style.boxShadow='0 16px 45px rgba(0,0,0,.14)';if(!area.dataset.whatsappRestored){area.dataset.whatsappRestored='1';const title=document.createElement('h3');title.textContent='📲 Comunicazioni WhatsApp';title.style.margin='0 0 12px';title.style.fontSize='15px';area.prepend(title);const msg=$('messaggioWhatsApp');if(msg){msg.style.width='100%';msg.style.minHeight='100px';msg.style.marginBottom='10px';msg.style.display='block'}const btn=area.querySelector('button[onclick*="inviaWhatsAppTutti"]');if(btn){btn.classList.add('primary');btn.textContent='📲 Invia WhatsApp'}}}
 function nav(){const area=$('areaAdmin');if(!area)return;if(!area.__nav){area.__nav=true;area.addEventListener('click',e=>{const b=e.target.closest('.sidebar .nav button');if(!b)return;const raw=String(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page||'').toLowerCase().trim(),p={configurazione:'config',config:'config',link:'links',links:'links'}[raw]||raw;if(p&&typeof window.openAdminPage==='function'){e.preventDefault();window.openAdminPage(p)}})}}
-function boot(){nav();compatibility();restoreWhatsAppUI();setTimeout(compatibility,250);setTimeout(restoreWhatsAppUI,250);setTimeout(compatibility,1000);setTimeout(restoreWhatsAppUI,1000);setInterval(compatibility,1500);setInterval(restoreWhatsAppUI,1500)}
+function boot(){nav();compatibility();ensureWhatsAppMenu();restoreWhatsAppUI();setTimeout(compatibility,250);setTimeout(ensureWhatsAppMenu,250);setTimeout(restoreWhatsAppUI,250);setTimeout(compatibility,1000);setTimeout(ensureWhatsAppMenu,1000);setTimeout(restoreWhatsAppUI,1000);setInterval(compatibility,1500);setInterval(ensureWhatsAppMenu,1500);setInterval(restoreWhatsAppUI,1500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
