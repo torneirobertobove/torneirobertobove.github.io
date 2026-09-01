@@ -5,6 +5,18 @@ const A=()=>document.getElementById('areaAdmin');
 const pages=['dashboard','iscritti','coppie','tabellone','config','news','sponsor','links'];
 const aliases={configurazione:'config',config:'config',link:'links',links:'links'};
 function key(v){v=String(v||'').toLowerCase().trim();return aliases[v]||v}
+function cleanStrayArtifacts(){
+ document.querySelectorAll('body *').forEach(el=>{
+   if(el.children.length===0){
+     const t=(el.textContent||'').trim();
+     if(t==='```'||t==='n/n/n/n')el.remove();
+   }
+ });
+ const mini=document.getElementById('adminEmailMini');
+ if(mini&&mini.previousSibling&&mini.previousSibling.nodeType===3){
+   mini.previousSibling.textContent=mini.previousSibling.textContent.replace(/^\s*●\s*/,'');
+ }
+}
 function show(k){
  k=key(k);if(!pages.includes(k))k='dashboard';
  const a=A();if(!a)return false;
@@ -17,6 +29,7 @@ function show(k){
  if(k==='tabellone'&&typeof window.__adminDesktopRender==='function')window.__adminDesktopRender();
  if(k==='iscritti'&&typeof window.caricaRichiesteIscrizione==='function')window.caricaRichiesteIscrizione();
  try{history.replaceState(null,'','#'+k)}catch{}
+ cleanStrayArtifacts();
  return true;
 }
 window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;
@@ -36,6 +49,7 @@ function install(){
      else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');
    }
  });
+ cleanStrayArtifacts();
 }
 function boot(){install();show(key(location.hash.slice(1))||'dashboard');setTimeout(install,100);setTimeout(install,500);setTimeout(install,1200)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
