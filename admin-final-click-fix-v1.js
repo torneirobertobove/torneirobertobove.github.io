@@ -1,4 +1,4 @@
-/* ADMIN FINAL CLICK FIX V3 */
+/* ADMIN FINAL CLICK FIX V4 */
 (()=>{
 'use strict';
 const A=()=>document.getElementById('areaAdmin');
@@ -23,16 +23,34 @@ function show(k){
 }
 window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;
 window.apriRegoleNuovoTorneo=function(){return show('config')};
+function routeButton(b,e){
+ const a=A();if(!a||!b||!a.contains(b))return false;
+ const d=b.dataset||{};let k=key(d.orgPage||d.internalPage||d.page||'');
+ const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+ if(!k){
+  if(t.includes('nuovo torneo')||t.includes('configurazione')||t.includes('impostazioni'))k='config';
+  else if(t.includes('tornei')&&t.includes('gestione'))k='dashboard';
+  else if(t.includes('iscritti'))k='iscritti';
+  else if(t.includes('accoppiamenti')||t.includes('coppie'))k='coppie';
+  else if(t.includes('tabellone'))k='tabellone';
+  else if(t.includes('news'))k='news';
+  else if(t.includes('sponsor'))k='sponsor';
+  else if(t.includes('link pubblici'))k='links';
+ }
+ if(!pages.includes(k))return false;
+ e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();show(k);return true;
+}
 function install(){
  const a=A();if(!a)return;
  let cal=document.getElementById('adminCalendar');if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.setAttribute('aria-hidden','true');cal.style.display='none';a.appendChild(cal)}
  if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active#newsPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active #configPanel,#areaAdmin.admin-organized .org-page.org-active #newsPanel,#areaAdmin.admin-organized .org-page.org-active #sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
  const nav=a.querySelector('.sidebar .nav');if(nav)nav.querySelectorAll('button').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.dataset.orgPage=k;b.dataset.internalPage=k;b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
- a.querySelectorAll('[data-page="configurazione"],[data-page="link"],[data-page="config"],[data-page="links"]').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.page);if(pages.includes(k)&&!b.closest('.sidebar')){b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
- const buttons=[...a.querySelectorAll('button')];buttons.forEach(b=>{const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();const hasPage=b.dataset.page||b.dataset.orgPage||b.dataset.internalPage;if(!b.getAttribute('onclick')&&!hasPage){if(t.includes('crea coppia'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');else if(t.includes('nuovo torneo')||t.includes('crea torneo'))b.setAttribute('onclick',"window.apriRegoleNuovoTorneo&&window.apriRegoleNuovoTorneo();");else if(t==='×')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();')}});
+ a.querySelectorAll('[data-page],[data-org-page],[data-internal-page]').forEach(b=>{if(b.tagName!=='BUTTON'||b.closest('.sidebar'))return;const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
+ const buttons=[...a.querySelectorAll('button')];buttons.forEach(b=>{const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();const hasPage=b.dataset.page||b.dataset.orgPage||b.dataset.internalPage;if(!b.getAttribute('onclick')&&!hasPage){if(t.includes('crea coppia'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');else if(t==='×')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();')}});
  cleanStrayArtifacts();
 }
 function boot(){install();show(key(location.hash.slice(1))||'dashboard');setTimeout(install,100);setTimeout(install,500);setTimeout(install,1200)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+document.addEventListener('click',e=>{const b=e.target&&e.target.closest?e.target.closest('button'):null;if(routeButton(b,e))return},true);
 new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
 })();
