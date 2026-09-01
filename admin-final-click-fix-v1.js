@@ -1,4 +1,4 @@
-/* ADMIN FINAL CLICK FIX V5 */
+/* ADMIN FINAL CLICK FIX V6 - navigation only; preserve original admin functions */
 (()=>{
 'use strict';
 const A=()=>document.getElementById('areaAdmin');
@@ -25,17 +25,16 @@ window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;window
 function install(){
  const a=A();if(!a)return;
  if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active #configPanel,#areaAdmin.admin-organized .org-page.org-active #newsPanel,#areaAdmin.admin-organized .org-page.org-active #sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
- a.querySelectorAll('.sidebar .nav button').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.dataset.orgPage=k;b.dataset.internalPage=k;b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
- a.querySelectorAll('button[data-page],button[data-org-page],button[data-internal-page]').forEach(b=>{if(b.closest('.sidebar'))return;const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)&&!/(crea|nuovo) torneo/i.test(b.textContent||'')){b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
+ a.querySelectorAll('.sidebar .nav button').forEach(b=>{
+   const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);
+   if(!pages.includes(k))return;
+   b.dataset.orgPage=k;b.dataset.internalPage=k;
+   b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};
+   b.removeAttribute('onclick');
+ });
  clean();
 }
 function boot(){install();show(key(location.hash.slice(1))||'dashboard');[100,500,1200,2500].forEach(ms=>setTimeout(install,ms))}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-document.addEventListener('click',e=>{
- const b=e.target?.closest?.('button');if(!b||!A()?.contains(b))return;
- if(b.closest('.sidebar'))return;
- const d=b.dataset||{};const k=key(d.orgPage||d.internalPage||d.page||'');
- if(k&&pages.includes(k)&&!/(crea|nuovo) torneo/i.test(b.textContent||'')){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();show(k)}
-},true);
 new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
 })();
