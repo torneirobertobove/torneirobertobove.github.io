@@ -55,7 +55,7 @@
     if(!document.getElementById('admin-function-fixes-loader')){
       var fixes=document.createElement('script');
       fixes.id='admin-function-fixes-loader';
-      fixes.src='admin-function-fixes-v1.js?v=1';
+      fixes.src='admin-function-fixes-v1.js?v=2';
       fixes.async=false;
       document.head.appendChild(fixes);
     }
