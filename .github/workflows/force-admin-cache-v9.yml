@@ -17,30 +17,23 @@ jobs:
           import re
           p=Path('admin.html')
           s=p.read_text(encoding='utf-8')
-          s=re.sub(r'admin-desktop-v3\.js\?v=[^\"\']+', 'admin-desktop-v3.js?v=13', s)
-          s=re.sub(r'admin-organization-v1\.js(?:\?v=[^\"\']+)?', 'admin-organization-v1.js?v=13', s)
-          s=re.sub(r'admin-random-pairs\.js(?:\?v=[^\"\']+)?', 'admin-random-pairs.js?v=2', s)
-          fixes=re.compile(r'\s*<script\s+src=[\"\']admin-function-fixes-v1\.js\?v=[^\"\']+[\"\']\s*></script>\s*', re.I)
-          matches=list(fixes.finditer(s))
-          if len(matches)>1:
-              first=matches[0]
-              s=s[:first.end()]+fixes.sub('',s[first.end():])
-          s=re.sub(r'admin-function-fixes-v1\.js\?v=[^\"\']+', 'admin-function-fixes-v1.js?v=13', s)
-          for name in ('admin-organization-v1.js','admin-desktop-v3.js','admin-function-fixes-v1.js','admin-random-pairs.js'):
-              pattern=re.compile(r'\s*<script\s+src=[\"\']'+re.escape(name)+r'\?v=[^\"\']+[\"\']\s*></script>\s*', re.I)
+          for name,ver in [('admin-desktop-v3.js','14'),('admin-organization-v1.js','14'),('admin-function-fixes-v1.js','14'),('admin-random-pairs.js','2')]:
+              s=re.sub(r'(?<![A-Za-z0-9_-])'+re.escape(name)+r'(?:\?v=[^"\']+)?',name+'?v='+ver,s)
+          for name,ver in [('admin-desktop-v3.js','14'),('admin-organization-v1.js','14'),('admin-function-fixes-v1.js','14'),('admin-random-pairs.js','2')]:
+              pat=re.compile(r'<script\s+src=["\']'+re.escape(name)+r'\?v=[^"\']+["\']\s*></script>',re.I)
               seen=False
               def keep(m):
                   nonlocal seen
-                  if seen: return ''
+                  if seen:return ''
                   seen=True
                   return m.group(0)
-              s=pattern.sub(keep,s)
-          p.write_text(s, encoding='utf-8')
+              s=pat.sub(keep,s)
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Commit admin normalization
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add admin.html
-          git diff --cached --quiet || git commit -m 'fix: bump random pairing runtime cache version'
+          git diff --cached --quiet || git commit -m 'fix: deploy admin interaction runtime v14'
           git push
