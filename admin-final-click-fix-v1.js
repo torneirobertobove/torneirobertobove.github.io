@@ -16,6 +16,10 @@ function show(k){
  });
  a.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.toggle('active',key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page)===k));
  const b=a.querySelector('.breadcrumb b');if(b){const n={dashboard:'Tornei',iscritti:'Iscritti',coppie:'Accoppiamenti',tabellone:'Tabellone',config:'Configurazione',news:'News',sponsor:'Sponsor',links:'Link pubblici'}[k];b.textContent=n||k}
+ if(k==='news'){
+   const news=a.querySelector('section#newsPanel[data-page="news"]');
+   if(news){news.hidden=false;news.style.setProperty('display','block','important')}
+ }
  if(k==='tabellone'&&typeof window.__adminDesktopRender==='function')window.__adminDesktopRender();
  if(k==='iscritti'&&typeof window.caricaRichiesteIscrizione==='function')window.caricaRichiesteIscrizione();
  try{history.replaceState(null,'','#'+k)}catch{}
