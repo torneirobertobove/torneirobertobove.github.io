@@ -152,76 +152,52 @@ function parseDate(row){
  const text=(row.querySelector('.t-info small')?.textContent||'')+' '+(row.dataset.date||'')+' '+(row.getAttribute('data-date')||'');
  let m=text.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
  if(m)return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
- m=text.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
- if(m)return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
- return null;
-}
-
-function statusText(row){
- const t=(row.querySelector('.status')?.textContent||'').trim().toLowerCase();
- if(t.includes('chius'))return 'chiuso';
- if(t.includes('corso')||t.includes('attiv'))return 'attivo';
- return 'aperto';
-}
-
-function testEventElement(ev){
- const d=document.createElement('div');d.className='calendar-event test-event';d.dataset.testEvent='1';d.dataset.date=ev.date;
- const date=new Date(ev.date+'T12:00:00');
- const day=String(date.getDate()).padStart(2,'0');
- const month=MONTHS[date.getMonth()].slice(0,3);
- const statusClass=ev.status==='chiuso'?'closed':ev.status==='attivo'?'':'test';
- const statusLabel=ev.status==='chiuso'?'Chiuso':ev.status==='attivo'?'In corso':'Iscrizioni aperte';
- d.innerHTML=`<div class="calendar-date"><strong>${day}</strong><span>${month}</span></div><div class="calendar-info"><div class="test-label">TORNEO TEST</div><strong>${ev.name}</strong><small>${date.getFullYear()} · ${MONTHS[date.getMonth()]} · giorno ${day}</small><span class="calendar-status ${statusClass}">${statusLabel}</span></div><div class="calendar-actions"><button type="button" class="btn">🧪 Test</button></div>`;
- d.querySelector('button').addEventListener('click',()=>{alert(`Torneo dimostrativo: ${ev.name}\nData: ${ev.date}`)});
- return d;
+ return '';
 }
 
 function rowElement(row,date){
- const wrap=document.createElement('div');wrap.className='calendar-event';
- const original=row;
- const dt=new Date(date+'T12:00:00');
- const day=String(dt.getDate()).padStart(2,'0');
- const mon=MONTHS[dt.getMonth()].slice(0,3);
- const name=original.querySelector('.t-info strong')?.textContent?.trim()||'Torneo';
- const small=original.querySelector('.t-info small')?.textContent?.trim()||`${dt.getFullYear()} · ${MONTHS[dt.getMonth()]}`;
- const status=statusText(original);
- const statusLabel=status==='chiuso'?'Chiuso':status==='attivo'?'In corso':'Iscrizioni aperte';
- wrap.dataset.realRow='1';
- wrap.innerHTML=`<div class="calendar-date"><strong>${day}</strong><span>${mon}</span></div><div class="calendar-info"><strong></strong><small></small><span class="calendar-status ${status==='chiuso'?'closed':''}">${statusLabel}</span></div><div class="calendar-actions"></div>`;
- wrap.querySelector('strong').textContent=name;
- wrap.querySelector('small').textContent=small;
- const actions=original.querySelector('.actions');
- if(actions)wrap.querySelector('.calendar-actions').appendChild(actions);
- else wrap.querySelector('.calendar-actions').appendChild(original);
- return wrap;
+ const el=document.createElement('div');el.className='calendar-event';
+ const day=date?new Date(date+'T12:00:00').getDate():'?';
+ el.innerHTML=`<div class="calendar-date"><strong>${day}</strong><span>giorno</span></div><div class="calendar-info"></div><div class="calendar-actions"></div>`;
+ const info=el.querySelector('.calendar-info');
+ info.appendChild(row.querySelector('.t-info')?.cloneNode(true)||document.createTextNode('Torneo'));
+ const actions=el.querySelector('.calendar-actions');
+ row.querySelectorAll('.actions .btn').forEach(b=>actions.appendChild(b.cloneNode(true)));
+ return el;
+}
+
+function testEventElement(event){
+ const el=document.createElement('div');el.className='calendar-event test-event';el.dataset.testEvent='1';
+ const d=new Date(event.date+'T12:00:00');
+ el.innerHTML=`<div class="calendar-date"><strong>${d.getDate()}</strong><span>giorno</span></div><div class="calendar-info"><div class="test-label">TEST</div><strong>${event.name}</strong><small>${event.date}</small><span class="calendar-status test">${event.status}</span></div><div class="calendar-actions"></div>`;
+ return el;
 }
 
 function catalog(){
- const box=$('listaTorneiAdmin');const select=$('orgTournamentSelect');
- if(!box)return;
+ const box=$('listaTorneiAdmin');if(!box)return;
  const rows=normalizeRows();
- const realData=[];
- rows.forEach((r,i)=>{const date=parseDate(r);if(date)realData.push({date,row:r,index:i})});
- const signature=JSON.stringify(realData.map(x=>[x.date,x.row.querySelector('.t-info strong')?.textContent||'',x.row.dataset.torneoId||'']))+'|'+TEST_EVENTS.length;
- if(signature===catalogSignature)return;
- catalogSignature=signature;
- const grouped=new Map();
- ['2026','2027','2028'].forEach(y=>grouped.set(y,new Map(MONTHS.map((m,i)=>[String(i+1).padStart(2,'0'),[]]))));
- realData.forEach(({date,row})=>{const [y,m]=date.split('-');if(!grouped.has(y))grouped.set(y,new Map(MONTHS.map((mm,i)=>[String(i+1).padStart(2,'0'),[]])));if(!grouped.get(y).has(m))grouped.get(y).set(m,[]);grouped.get(y).get(m).push({type:'real',row,date})});
- TEST_EVENTS.forEach(ev=>{const [y,m]=ev.date.split('-');if(grouped.has(y))grouped.get(y).get(m).push({type:'test',event:ev,date:ev.date})});
+ const items=[];
+ rows.forEach(r=>{const d=parseDate(r);if(d)items.push({type:'real',row:r,date:d});});
+ TEST_EVENTS.forEach(e=>items.push({type:'test',event:e,date:e.date}));
+ const byYear=new Map();
+ [2026,2027,2028].forEach(y=>byYear.set(y,[]));
+ items.forEach(x=>{const y=Number(x.date.slice(0,4));if(byYear.has(y))byYear.get(y).push(x)});
  box.innerHTML='';
- if(select)select.innerHTML='<option value="">Seleziona torneo...</option>';
- [...grouped.keys()].sort().forEach((y)=>{
-   const yd=document.createElement('details');yd.className='year-group';yd.open=y==='2026';yd.innerHTML=`<summary>${y}</summary><div class="year-body"></div>`;
-   const months=grouped.get(y);
-   [...months.keys()].sort().forEach(m=>{
-     const md=document.createElement('details');md.className='month-group';md.open=false;md.innerHTML=`<summary>${MONTHS[+m-1]}<span style="color:#66717d;font-weight:600">${months.get(m).length?` · ${months.get(m).length} torneo${months.get(m).length===1?'':'i'}`:''}</span></summary><div class="month-body"></div>`;
-     const list=months.get(m).sort((a,b)=>a.date.localeCompare(b.date));
-     if(!list.length){md.querySelector('.month-body').innerHTML='<div class="month-empty">Nessun torneo programmato</div>'}
-     list.forEach(item=>{
-       if(item.type==='test')md.querySelector('.month-body').appendChild(testEventElement(item.event));
+ const select=$('orgTournamentSelect');if(select)select.innerHTML='<option value="">Seleziona torneo...</option>';
+ [...byYear.entries()].forEach(([year,list])=>{
+   const yd=document.createElement('details');yd.className='year-group';yd.open=year===new Date().getFullYear();
+   yd.innerHTML=`<summary>${year}<span class="calendar-summary">${list.length} tornei</span></summary><div class="year-body"></div>`;
+   const months=new Map(MONTHS.map((m,i)=>[i,[]]));
+   list.forEach(item=>months.get(Number(item.date.slice(5,7))-1).push(item));
+   months.forEach((monthItems,mi)=>{
+     const md=document.createElement('details');md.className='month-group';md.open=monthItems.length>0;
+     md.innerHTML=`<summary>${MONTHS[mi]}<span class="calendar-summary">${monthItems.length}</span></summary><div class="month-body"></div>`;
+     const body=md.querySelector('.month-body');
+     if(!monthItems.length)body.innerHTML='<div class="month-empty">Nessun torneo programmato</div>';
+     monthItems.sort((a,b)=>a.date.localeCompare(b.date)).forEach(item=>{
+       if(item.type==='test')body.appendChild(testEventElement(item.event));
        else {
-         const el=rowElement(item.row,item.date);md.querySelector('.month-body').appendChild(el);
+         body.appendChild(rowElement(item.row,item.date));
          const id=item.row.dataset.torneoId||item.row.querySelector('[data-torneo-id]')?.dataset?.torneoId||'';
          if(select&&id){const o=document.createElement('option');o.value=id;o.textContent=`${item.row.querySelector('.t-info strong')?.textContent||'Torneo'} — ${item.date}`;select.appendChild(o)}
        }
@@ -237,8 +213,13 @@ function buildNav(){
  const base=navs[0];
  const map=[['dashboard','🏆 Tornei'],['iscritti','👥 Iscritti'],['coppie','🔀 Accoppiamenti'],['tabellone','📋 Tabellone'],['config','⚙️ Configurazione'],['news','📰 News'],['sponsor','⭐ Sponsor'],['links','🔗 Link pubblici']];
  base.innerHTML='';
- map.forEach(([k,label])=>{const b=document.createElement('button');b.type='button';b.dataset.orgPage=k;b.textContent=label;b.onclick=()=>go(k);base.appendChild(b)});
+ map.forEach(([k,label])=>{const b=document.createElement('button');b.type='button';b.dataset.orgPage=k;b.dataset.page=k;b.textContent=label;b.onclick=()=>go(k);base.appendChild(b)});
  navs[1]?.remove();
+ // Mantiene compatibilità con i pulsanti data-page della pagina originale.
+ document.querySelectorAll('#areaAdmin [data-page]').forEach(b=>{
+   if(b.dataset.page==='configurazione')b.dataset.page='config';
+   if(b.dataset.page==='link')b.dataset.page='links';
+ });
 }
 
 function tabellone(){
