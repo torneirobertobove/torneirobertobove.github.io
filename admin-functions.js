@@ -48,6 +48,12 @@ function aggiornaGiocatoriAdmin(){
   if(campo) campo.value=squadre*2;
 }
 
+function creaUrlBove(t,apriRegole=false){
+  if(!t?.id){ return ""; }
+  const payload=encodeURIComponent(JSON.stringify(t));
+  return "Bove.html?torneo="+payload+(apriRegole?"&apriRegole=true":"");
+}
+
 async function caricaTorneiSupabase(){
   try{
     const {data,error}=await sb.from("tornei").select("*").order("id",{ascending:false});
@@ -97,9 +103,9 @@ function apriRegoleNuovoTorneo(){
   const posti=Number(document.getElementById("adminPosti")?.value)||8;
   const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
   const tempId="temp_"+Date.now();
-  const torneoTemp={id:tempId,nome,data,posti,descrizione,formula:"italiana",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{rules:{numeroSquadre:posti,numeroGironi:Math.ceil(posti/4),squadrePerGirone:4,tipoTorneo:"italiana",formatoTorneo:"italiana",formulaGironi:"tuttiControTutti",formulaFinale:"eliminazioneDiretta",qualificatePerGirone:2,numeroQualificateFinali:Math.max(2,Math.ceil(posti/4)*2),usaQuarti:true,usaSemifinali:true,usaFinale:true}}};
+  const torneoTemp={id:tempId,nome,data,posti,descrizione,formula:"",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{rules:{numeroSquadre:posti,numeroGironi:Math.ceil(posti/4),squadrePerGirone:4}}};
   adminState.tornei.push(torneoTemp); adminState.torneoSelezionato=tempId; salvaAdminState();
-  window.open("Bove.html?idTorneo="+encodeURIComponent(tempId)+"&apriRegole=true","_blank");
+  window.open(creaUrlBove(torneoTemp,true),"_blank");
 }
 
 async function creaNuovoTorneo(){
@@ -109,13 +115,14 @@ async function creaNuovoTorneo(){
   const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
   const nuovoId=Date.now();
   const numeroGironi=Math.ceil(posti/4);
-  const nuovoTorneo={id:nuovoId,nome,data,posti,descrizione,formula:"italiana",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"italiana",formatoTorneo:"italiana",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"tuttiControTutti",formulaFinale:"eliminazioneDiretta",w:3,d:1,l:0,qualificatePerGirone:2,numeroQualificateFinali:numeroGironi*2,usaQuarti:true,usaSemifinali:true,usaFinale:true,killerPoint:false,rigori:true,tempoSupplementare:true,garaAndataRitorno:false,start:"20:00",duration:30,crit1:"df",crit2:"gf",crit3:"gs",mostraQuarti:true}}};
+  // Admin crea solo l'anagrafica. Formula e regole operative restano a Bove.
+  const nuovoTorneo={id:nuovoId,nome,data,posti,descrizione,formula:"",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{coppie:[],partecipanti:[],rules:{numeroSquadre:posti,numeroGironi,squadrePerGirone:4}}};
   adminState.tornei=adminState.tornei.filter(t=>!String(t.id).startsWith("temp_"));
   adminState.tornei.push(nuovoTorneo); adminState.torneoSelezionato=nuovoId; salvaAdminState();
-  const {error}=await sb.from("tornei").insert({id:nuovoId,nome,data,data_torneo:data,ora_inizio:"20:00",posti,descrizione,formula:"italiana",stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione:nuovoTorneo.configurazione});
+  const {error}=await sb.from("tornei").insert({id:nuovoId,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione:nuovoTorneo.configurazione});
   if(error){ console.error(error); alert("Errore salvataggio torneo su Supabase"); return; }
   renderAdmin();
-  window.open("Bove.html?idTorneo="+encodeURIComponent(nuovoId)+"&apriRegole=true","_blank");
+  window.open(creaUrlBove(nuovoTorneo,true),"_blank");
 }
 
 function renderListaTornei(){
@@ -138,8 +145,9 @@ async function selezionaTorneoAdmin(id){
 }
 
 function apriRegoleTorneoAdmin(id){
-  if(!adminState.tornei.some(t=>String(t.id)===String(id))){alert("Torneo non trovato");return;}
-  adminState.torneoSelezionato=id; salvaAdminState(); window.open("Bove.html?idTorneo="+encodeURIComponent(id)+"&apriRegole=true","_blank");
+  const torneo=adminState.tornei.find(t=>String(t.id)===String(id));
+  if(!torneo){alert("Torneo non trovato");return;}
+  adminState.torneoSelezionato=id; salvaAdminState(); window.open(creaUrlBove(torneo,true),"_blank");
 }
 
 async function eliminaTorneoAdmin(id){
@@ -180,7 +188,7 @@ function renderGestioneTorneo(){
   const t=getTorneoAdminCorrente(); if(!t){card.classList.add("hidden");box.innerHTML="";return;}
   card.classList.remove("hidden");
   const r=t.configurazione?.rules||t.rules||{};
-  box.innerHTML=`<div class="admin-detail"><h3>${escapeHtml(t.nome||"Torneo")}</h3><p>📅 ${escapeHtml(t.data||"-")} · 👥 ${t.posti||r.numeroSquadre||0} squadre · 🏆 ${escapeHtml(r.tipoTorneo||t.formula||"-")}</p><p>Stato: <b>${escapeHtml(t.stato||"bozza")}</b> · Pubblicato: ${t.pubblicato?'Sì':'No'} · Iscrizioni: ${t.iscrizioni_chiuse?'Chiuse':'aperte'}</p></div>`;
+  box.innerHTML=`<div class="admin-detail"><h3>${escapeHtml(t.nome||"Torneo")}</h3><p>📅 ${escapeHtml(t.data||"-")} · 👥 ${t.posti||r.numeroSquadre||0} squadre · 🏆 ${escapeHtml(r.tipoTorneo||t.formula||"da configurare in Bove")}</p><p>Stato: <b>${escapeHtml(t.stato||"bozza")}</b> · Pubblicato: ${t.pubblicato?'Sì':'No'} · Iscrizioni: ${t.iscrizioni_chiuse?'Chiuse':'aperte'}</p></div>`;
   const req=document.getElementById("richiesteIscrizione");
   if(req){req.innerHTML=window.iscrizioniTorneo.length?window.iscrizioniTorneo.map(g=>`<div class="lista-item"><b>${escapeHtml(g.nome_giocatore||g.nome||"Giocatore")}</b><br><small>${escapeHtml(g.email||"-")}</small><br><span class="badge">${escapeHtml(g.stato||"in attesa")}</span><br><button class="btn" onclick="selezionaGiocatoreAdmin(${g.id})">Gestisci</button></div>`).join(""):'<p class="notice">Nessuna richiesta di iscrizione.</p>';}
 }
@@ -239,10 +247,10 @@ function renderCoppie(){
 
 function inviaWhatsAppTutti(){const msg=document.getElementById("messaggioWhatsApp")?.value.trim();if(!msg){alert("Scrivi un messaggio");return;}window.open("https://api.whatsapp.com/send?text="+encodeURIComponent(msg),"_blank");}
 function inviaWhatsAppApprovati(){inviaWhatsAppTutti();}
-function generaLinkBove(){const t=getTorneoAdminCorrente();if(!t){alert("Seleziona prima un torneo");return;}const input=document.getElementById("linkBoveGenerato");if(input)input.value=location.origin+"/Bove.html?idTorneo="+encodeURIComponent(t.id);}
+function generaLinkBove(){const t=getTorneoAdminCorrente();if(!t){alert("Seleziona prima un torneo");return;}const input=document.getElementById("linkBoveGenerato");if(input)input.value=location.origin+"/"+creaUrlBove(t,false);}
 function generaLinkPerId(id){adminState.torneoSelezionato=id;salvaAdminState();generaLinkBove();openWorkspace("link");}
 function copiaLinkBove(){const input=document.getElementById("linkBoveGenerato");if(!input?.value){generaLinkBove();}if(input?.value)navigator.clipboard?.writeText(input.value).then(()=>alert("Link copiato negli appunti!"));}
-function apriBoveConTorneo(id){const n=Number(id);if(!Number.isFinite(n)||!n){alert("Seleziona prima un torneo");return;}window.open("Bove.html?idTorneo="+encodeURIComponent(n),"_blank");}
+function apriBoveConTorneo(id){const t=adminState.tornei.find(x=>String(x.id)===String(id));if(!t){alert("Seleziona prima un torneo");return;}window.open(creaUrlBove(t,false),"_blank");}
 
 async function creaNews(){const titolo=document.getElementById("newsTitolo")?.value.trim(),testo=document.getElementById("newsTesto")?.value.trim(),immagine=document.getElementById("newsImmagine")?.value.trim();if(!titolo||!testo){alert("Inserisci titolo e testo della news");return;}adminState.news.unshift({id:Date.now(),titolo,testo,immagine,data:new Date().toLocaleDateString("it-IT")});salvaAdminState();caricaNewsAdmin();["newsTitolo","newsTesto","newsImmagine"].forEach(id=>{const e=document.getElementById(id);if(e)e.value="";});}
 function caricaNewsAdmin(){const box=document.getElementById("listaNewsAdmin");if(!box)return;box.innerHTML=adminState.news.length?adminState.news.map(n=>`<div class="lista-item"><b>${escapeHtml(n.titolo)}</b><small> · ${escapeHtml(n.data||"")}</small><p>${escapeHtml(n.testo)}</p>${n.immagine?`<img src="${escapeHtml(n.immagine)}" style="max-width:100%;border-radius:8px">`:""}<button class="btn" onclick="eliminaNews(${n.id})">Elimina</button></div>`).join(""):"<p class=\"notice\">Nessuna news pubblicata.</p>";}
