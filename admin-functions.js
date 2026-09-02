@@ -50,8 +50,12 @@ function aggiornaGiocatoriAdmin(){
 
 function creaUrlBove(t,apriRegole=false){
   if(!t?.id){ return ""; }
-  const payload=encodeURIComponent(JSON.stringify(t));
-  return "Bove.html?torneo="+payload+(apriRegole?"&apriRegole=true":"");
+  if(String(t.id).startsWith("temp_")){
+    const payload=encodeURIComponent(JSON.stringify(t));
+    return "Bove.html?torneo="+payload+(apriRegole?"&apriRegole=true":"");
+  }
+  const id=encodeURIComponent(String(t.id));
+  return "Bove.html?idTorneo="+id+(apriRegole?"&apriRegole=true":"");
 }
 
 async function caricaTorneiSupabase(){
