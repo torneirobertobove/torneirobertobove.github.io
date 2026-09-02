@@ -1,38 +1,101 @@
-/* ADMIN FINAL CLICK FIX V3 */
-(()=>{
-'use strict';
-const A=()=>document.getElementById('areaAdmin');
-const pages=['dashboard','iscritti','coppie','tabellone','config','news','sponsor','links'];
-const aliases={configurazione:'config',config:'config',link:'links',links:'links'};
-function key(v){v=String(v||'').toLowerCase().trim();return aliases[v]||v}
-function cleanStrayArtifacts(){
- document.querySelectorAll('body *').forEach(el=>{if(el.children.length===0){const t=(el.textContent||'').trim();if(t==='```'||t==='n/n/n/n')el.remove()}});
- const mini=document.getElementById('adminEmailMini');if(mini&&mini.previousSibling&&mini.previousSibling.nodeType===3)mini.previousSibling.textContent=mini.previousSibling.textContent.replace(/^\s*●\s*/,'');
-}
-function show(k){
- k=key(k);if(!pages.includes(k))k='dashboard';const a=A();if(!a)return false;a.classList.add('admin-organized');
- a.querySelectorAll('.org-page').forEach(p=>p.classList.toggle('org-active',key(p.dataset.page||p.dataset.orgPage||p.id.replace(/^admin-page-/,'')||'')===k));
- a.querySelectorAll('.admin-page').forEach(p=>{const pk=key(p.dataset.page||p.dataset.orgPage||p.id.replace(/^admin-page-/,'')||'');if(!p.closest('.org-page'))p.classList.toggle('active',pk===k)});
- a.querySelectorAll('.sidebar .nav button').forEach(b=>b.classList.toggle('active',key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page)===k));
- const b=a.querySelector('.breadcrumb b');if(b){const n={dashboard:'Tornei',iscritti:'Iscritti',coppie:'Accoppiamenti',tabellone:'Tabellone',config:'Configurazione',news:'News',sponsor:'Sponsor',links:'Link pubblici'}[k];b.textContent=n||k}
- if(k==='news'){const news=a.querySelector('section#newsPanel[data-page="news"]');if(news){news.hidden=false;news.style.setProperty('display','block','important')}}
- if(k==='config'){const cfg=a.querySelector('#configPanel');if(cfg){cfg.hidden=false;cfg.style.setProperty('display','block','important')}}
- if(k==='tabellone'&&typeof window.__adminDesktopRender==='function')window.__adminDesktopRender();
- if(k==='iscritti'&&typeof window.caricaRichiesteIscrizione==='function')window.caricaRichiesteIscrizione();
- try{history.replaceState(null,'','#'+k)}catch{}cleanStrayArtifacts();return true;
-}
-window.openAdminPage=show;window.goAdminPage=show;window.adminGoPage=show;
-window.apriRegoleNuovoTorneo=function(){return show('config')};
-function install(){
- const a=A();if(!a)return;
- let cal=document.getElementById('adminCalendar');if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.setAttribute('aria-hidden','true');cal.style.display='none';a.appendChild(cal)}
- if(!document.getElementById('admin-final-click-style')){const s=document.createElement('style');s.id='admin-final-click-style';s.textContent='#areaAdmin.admin-organized .org-page{display:none!important}#areaAdmin.admin-organized .org-page.org-active{display:block!important}#areaAdmin.admin-organized .org-page.org-active#newsPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active #configPanel,#areaAdmin.admin-organized .org-page.org-active #newsPanel,#areaAdmin.admin-organized .org-page.org-active #sponsorPanel{display:block!important}#areaAdmin.admin-organized .org-page.org-active button,#areaAdmin.admin-organized .org-page.org-active input,#areaAdmin.admin-organized .org-page.org-active select,#areaAdmin.admin-organized .org-page.org-active textarea,#areaAdmin.admin-organized .org-page.org-active summary{pointer-events:auto!important}';document.head.appendChild(s)}
- const nav=a.querySelector('.sidebar .nav');if(nav)nav.querySelectorAll('button').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page);if(pages.includes(k)){b.dataset.orgPage=k;b.dataset.internalPage=k;b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
- a.querySelectorAll('[data-page="configurazione"],[data-page="link"],[data-page="config"],[data-page="links"]').forEach(b=>{const k=key(b.dataset.orgPage||b.dataset.page);if(pages.includes(k)&&!b.closest('.sidebar')){b.onclick=e=>{e.preventDefault();e.stopPropagation();show(k)};b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('"+k+"')")}});
- const buttons=[...a.querySelectorAll('button')];buttons.forEach(b=>{const t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();const hasPage=b.dataset.page||b.dataset.orgPage||b.dataset.internalPage;if(!b.getAttribute('onclick')&&!hasPage){if(t.includes('crea coppia'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');else if(t.includes('nuovo torneo')||t.includes('crea torneo'))b.setAttribute('onclick',"window.apriRegoleNuovoTorneo&&window.apriRegoleNuovoTorneo();");else if(t==='×')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();');else if(t==='annulla')b.setAttribute('onclick','this.closest(\'.modal,.dialog,[role="dialog"]\')?.remove();')}});
- cleanStrayArtifacts();
-}
-function boot(){install();show(key(location.hash.slice(1))||'dashboard');setTimeout(install,100);setTimeout(install,500);setTimeout(install,1200)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
+/* Admin navigation cleanup: one creation entry, no injected configuration menu. */
+(() => {
+  'use strict';
+
+  const pageAliases = { config: 'configurazione', configurazione: 'configurazione' };
+  const titles = {
+    dashboard: 'Tornei',
+    iscritti: 'Iscritti',
+    coppie: 'Accoppiamenti',
+    tabellone: 'Tabellone',
+    configurazione: 'Nuovo torneo',
+    news: 'News',
+    sponsor: 'Sponsor',
+    link: 'Link pubblici'
+  };
+
+  function show(page) {
+    page = pageAliases[page] || page || 'dashboard';
+    const target = document.getElementById('page-' + page);
+    if (!target) return false;
+
+    document.querySelectorAll('.admin-page').forEach(el => el.classList.remove('active'));
+    target.classList.add('active');
+    document.querySelectorAll('.sidebar .nav button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
+
+    const crumb = document.getElementById('breadcrumbTitle');
+    if (crumb) crumb.textContent = titles[page] || 'Gestione';
+
+    if (page === 'configurazione') {
+      const h = target.querySelector('h1');
+      const p = target.querySelector('.page-title p');
+      if (h) h.textContent = '＋ Nuovo torneo';
+      if (p) p.textContent = 'Inserisci i dati di base del torneo. Le regole e la formula saranno configurate in Bove.';
+      target.querySelectorAll('button').forEach(btn => {
+        if ((btn.textContent || '').toLowerCase().includes('regole')) btn.remove();
+      });
+    }
+
+    try { history.replaceState(null, '', '#' + page); } catch (_) {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+  }
+
+  function clean() {
+    const area = document.getElementById('areaAdmin');
+    if (!area) return;
+
+    // Configuration is a creation screen, not a sidebar section.
+    area.querySelectorAll('.sidebar .nav button[data-page="configurazione"]').forEach(btn => btn.remove());
+    area.querySelectorAll('.top-actions button[data-page="configurazione"]').forEach(btn => {
+      const text = (btn.textContent || '').toLowerCase();
+      if (text.includes('impostazioni') || text.includes('nuovo torneo')) btn.remove();
+    });
+
+    const sections = [...area.querySelectorAll('.nav-section')];
+    sections.forEach(section => {
+      if ((section.textContent || '').trim().toLowerCase() === 'sistema') {
+        const nav = section.nextElementSibling;
+        if (nav && nav.classList.contains('nav')) nav.remove();
+        section.remove();
+      }
+    });
+
+    const create = area.querySelector('#page-dashboard .page-title button[data-page="configurazione"]');
+    if (create) {
+      create.textContent = '＋ Nuovo torneo';
+      create.type = 'button';
+      create.onclick = e => { e.preventDefault(); e.stopPropagation(); show('configurazione'); };
+    }
+
+    const cfg = area.querySelector('#page-configurazione');
+    if (cfg) {
+      const h = cfg.querySelector('.page-title h1');
+      const p = cfg.querySelector('.page-title p');
+      if (h) h.textContent = '＋ Nuovo torneo';
+      if (p) p.textContent = 'Inserisci i dati di base del torneo. Le regole e la formula saranno configurate in Bove.';
+      cfg.querySelectorAll('button').forEach(btn => {
+        if ((btn.textContent || '').toLowerCase().includes('regole')) btn.remove();
+      });
+    }
+  }
+
+  window.openAdminPage = show;
+  window.goAdminPage = show;
+  window.adminGoPage = show;
+  window.apriRegoleNuovoTorneo = () => show('configurazione');
+
+  function boot() {
+    clean();
+    const hash = location.hash.slice(1).toLowerCase();
+    if (hash === 'config') show('configurazione');
+    else if (hash && document.getElementById('page-' + hash)) show(hash);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  new MutationObserver(clean).observe(document.documentElement, { childList: true, subtree: true });
 })();
