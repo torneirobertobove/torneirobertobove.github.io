@@ -1,4 +1,4 @@
-    /* ==========================================================================
+/* ==========================================================================
    PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (1-5 COMPLETO E CORRETTO)
    ========================================================================== */
 (() => {
@@ -386,7 +386,7 @@
   };
   window.inviaWhatsAppApprovati = function () { return window.inviaWhatsAppTutti(); };
 
-  // 5. News & Sponsor (Corretto ordinamento con 'created_at')
+  // 5. News & Sponsor
   async function caricaNewsAdmin() {
     try {
       const { data, error } = await window.sb.from("news").select("*").order("created_at", { ascending: false });
@@ -438,7 +438,7 @@
       window.salvaAdminState?.();
       renderSponsorAdmin();
     } catch (e) {
-      console.error("Errore caricamento sponsor (tabella eventualmente vuota o assente):", e);
+      console.error("Errore caricamento sponsor:", e);
     }
   }
   window.caricaSponsorAdmin = caricaSponsorAdmin;
