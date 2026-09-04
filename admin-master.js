@@ -1,6 +1,5 @@
 /* ==========================================================================
-   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (1/5)
-   Core Setup, Supabase Client, Admin State & Tournament Management
+   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (1-5 COMPLETO E CORRETTO)
    ========================================================================== */
 (() => {
   'use strict';
@@ -33,6 +32,7 @@
     try { localStorage.setItem(ADMIN_STORAGE, JSON.stringify(adminState)); }
     catch (e) { console.error("Errore salvataggio stato admin:", e); }
   }
+  window.salvaAdminState = salvaAdminState;
 
   function caricaAdminState() {
     try {
@@ -251,14 +251,8 @@
     if (error) { alert("Errore chiusura iscrizioni"); return; }
     t.iscrizioni_chiuse = true; salvaAdminState(); window.renderAdmin?.(); alert("Iscrizioni chiuse.");
   };
-})();
-/* ==========================================================================
-   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (2/5)
-   Registrations, Participants, Pair Creation & WhatsApp Integration
-   ========================================================================== */
-(() => {
-  'use strict';
 
+  // 4. Registrations, Participants & Pair Creation
   async function caricaRichiesteIscrizione() {
     const id = Number(window.adminState?.torneoSelezionato);
     if (!Number.isFinite(id) || id <= 0) {
@@ -391,18 +385,11 @@
     return true;
   };
   window.inviaWhatsAppApprovati = function () { return window.inviaWhatsAppTutti(); };
-})();
-/* ==========================================================================
-   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (3/5)
-   News Management, Sponsors, Calendar 2026-2028 & Base UI Renderers
-   ========================================================================== */
-(() => {
-  'use strict';
 
-  // 1. Gestione News
+  // 5. News & Sponsor (Corretto ordinamento con 'created_at')
   async function caricaNewsAdmin() {
     try {
-      const { data, error } = await window.sb.from("news").select("*").order("data", { ascending: false });
+      const { data, error } = await window.sb.from("news").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       window.adminState.news = Array.isArray(data) ? data : [];
       window.salvaAdminState?.();
@@ -417,16 +404,15 @@
     const list = document.getElementById("listaNewsAdmin");
     if (!list) return;
     const items = window.adminState.news || [];
-    list.innerHTML = items.length ? items.map(n => `<div class="lista-item"><b>${window.escapeHtml(n.titolo || "News")}</b><br><small>${window.escapeHtml(n.data || "-")}</small><p>${window.escapeHtml(n.testo || "")}</p><button class="btn danger" onclick="eliminaNewsAdmin(${n.id})">Elimina</button></div>`).join("") : '<p class="notice">Nessuna news pubblicata.</p>';
+    list.innerHTML = items.length ? items.map(n => `<div class="lista-item"><b>${window.escapeHtml(n.titolo || "News")}</b><br><small>${window.escapeHtml(n.created_at || n.data || "-")}</small><p>${window.escapeHtml(n.testo || "")}</p><button class="btn danger" onclick="eliminaNewsAdmin(${n.id})">Elimina</button></div>`).join("") : '<p class="notice">Nessuna news pubblicata.</p>';
   }
   window.renderNewsAdmin = renderNewsAdmin;
 
   window.creaNewsAdmin = async function () {
     const titolo = document.getElementById("adminTitoloNews")?.value.trim();
     const testo = document.getElementById("adminTestoNews")?.value.trim();
-    const data = new Date().toISOString().split("T")[0];
     if (!titolo || !testo) { alert("Compila titolo e testo della news"); return; }
-    const { data: res, error } = await window.sb.from("news").insert({ titolo, testo, data }).select("*").single();
+    const { data: res, error } = await window.sb.from("news").insert({ titolo, testo }).select("*").single();
     if (error) { alert("Errore creazione news: " + error.message); return; }
     if (res) window.adminState.news.unshift(res);
     window.salvaAdminState?.();
@@ -444,7 +430,6 @@
     renderNewsAdmin();
   };
 
-  // 2. Gestione Sponsor
   async function caricaSponsorAdmin() {
     try {
       const { data, error } = await window.sb.from("sponsor").select("*");
@@ -453,7 +438,7 @@
       window.salvaAdminState?.();
       renderSponsorAdmin();
     } catch (e) {
-      console.error("Errore caricamento sponsor:", e);
+      console.error("Errore caricamento sponsor (tabella eventualmente vuota o assente):", e);
     }
   }
   window.caricaSponsorAdmin = caricaSponsorAdmin;
@@ -489,7 +474,6 @@
     renderSponsorAdmin();
   };
 
-  // 3. Calendario 2026-2028 (Generazione automatica e rendering)
   window.creaCalendarioBiennale = function () {
     const annoInizio = Number(document.getElementById("calendarioAnnoInizio")?.value) || 2026;
     const frequenza = document.getElementById("calendarioFrequenza")?.value || "mensile";
@@ -497,8 +481,8 @@
     const posti = Number(document.getElementById("calendarioPosti")?.value) || 8;
     
     const torneiGenerati = [];
-    let current = new Date(annoInizio, 0, 15); // Partenza 15 gennaio
-    const fine = new Date(2028, 11, 31); // Fino a fine 2028
+    let current = new Date(annoInizio, 0, 15);
+    const fine = new Date(2028, 11, 31);
 
     while (current <= fine) {
       const dataStr = current.toISOString().split("T")[0];
@@ -526,7 +510,6 @@
     alert(`Creati con successo ${torneiGenerati.length} tornei per il calendario biennale!`);
   };
 
-  // 4. Render Admin Classico di Fallback
   function renderAdmin() {
     const box = document.getElementById("listaTorneiAdmin");
     if (!box) return;
@@ -543,45 +526,13 @@
     window.renderGestioneTorneo?.();
     window.renderAdmin?.();
   };
-})();
-/* ==========================================================================
-   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (4/5)
-   Desktop UI Shell, Navigation Router & Dynamic Layout Renderer
-   ========================================================================== */
-(() => {
-  'use strict';
 
-  const $ = (id) => document.getElementById(id);
+  // 6. Desktop UI Shell & Navigation Router
   let mounted = false;
-
-  function move(id, parent) {
-    const el = $(id);
-    if (el && parent) parent.appendChild(el);
-    return el;
-  }
-
-  function button(label, className, handler) {
-    const b = document.createElement('button');
-    b.className = `desktop-btn ${className || ''}`.trim();
-    b.type = 'button';
-    b.textContent = label;
-    if (handler) b.addEventListener('click', handler);
-    return b;
-  }
-
   function mount() {
-    const area = $('areaAdmin');
+    const area = document.getElementById('areaAdmin');
     if (!area || mounted) return;
     mounted = true;
-
-    const old = {
-      title: area.querySelector(':scope > h1'),
-      create: area.querySelector(':scope > details:nth-of-type(1)'),
-      tournaments: area.querySelector(':scope > details:nth-of-type(2)'),
-      manage: $('gestioneTorneoAdmin'),
-      news: area.querySelector(':scope > details:nth-of-type(3)'),
-      sponsors: area.querySelector(':scope > details:nth-of-type(4)')
-    };
 
     const shell = document.createElement('div');
     shell.className = 'desktop-app';
@@ -630,183 +581,19 @@
     area.innerHTML = '';
     area.appendChild(shell);
 
-    const top = shell.querySelector('.desktop-top-actions');
-    const titleActions = shell.querySelector('.desktop-title-actions');
-    const lower = shell.querySelector('.desktop-lower');
-    const tournamentBody = shell.querySelector('.desktop-tournament-body');
-    const quick = shell.querySelector('.desktop-quick');
-    const stats = shell.querySelector('.desktop-stats');
-
-    const refresh = button('↻ Aggiorna', '', () => {
-      if (typeof window.caricaTorneiSupabase === 'function') window.caricaTorneiSupabase();
-      if (typeof window.caricaNewsAdmin === 'function') window.caricaNewsAdmin();
-      if (typeof window.caricaSponsorAdmin === 'function') window.caricaSponsorAdmin();
-    });
-    const settings = button('⚙ Impostazioni');
-    const newTop = button('＋ Nuovo torneo', 'primary', () => {
-      if (old.create) { old.create.open = true; lower.scrollIntoView({behavior:'smooth'}); }
-    });
-    top.append(refresh, settings, newTop);
-    titleActions.appendChild(button('＋ Crea torneo', 'primary', () => {
-      if (old.create) { old.create.open = true; lower.scrollIntoView({behavior:'smooth'}); }
-    }));
-
-    function renderStats() {
-      const tornei = Array.isArray(window.adminState?.tornei) ? window.adminState.tornei : [];
-      const attivi = tornei.filter(t => t && (t.stato === 'attivo' || t.pubblicato === true)).length;
-      const iscritti = Array.isArray(window.iscrizioniTorneo) ? window.iscrizioniTorneo.length : 0;
-      const approvati = Array.isArray(window.iscrizioniTorneo) ? window.iscrizioniTorneo.filter(x => x && (x.stato === 'approvato' || x.approvato === true)).length : 0;
-      const daApprovare = Math.max(0, iscritti - approvati);
-      stats.innerHTML = '';
-      [['Tornei attivi', attivi, '● Online'],['Iscritti', iscritti, 'Dati reali'],['Da approvare', daApprovare, 'Richiedono attenzione'],['Tabelloni', tornei.length, 'Tornei disponibili']].forEach(([l,v,n]) => {
-        const s=document.createElement('div'); s.className='desktop-stat'; s.innerHTML=`<div class="desktop-stat-label">${l}</div><div class="desktop-stat-value">${v}</div><div class="desktop-stat-note">${n}</div>`; stats.appendChild(s);
-      });
-    }
-
-    function renderTournaments() {
-      const tornei = Array.isArray(window.adminState?.tornei) ? window.adminState.tornei : [];
-      tournamentBody.innerHTML = '';
-      if (!tornei.length) { tournamentBody.innerHTML = '<p class="desktop-muted">Nessun torneo creato.</p>'; return; }
-      tornei.slice(0,8).forEach(t => {
-        const row=document.createElement('div'); row.className='desktop-tournament-row';
-        const info=document.createElement('div'); info.className='desktop-t-info';
-        const name=document.createElement('strong'); name.textContent=t.nome || 'Torneo senza nome';
-        const small=document.createElement('small'); small.textContent=`${t.data || '-'} · ${t.posti || '-'} posti`;
-        const st=document.createElement('span'); st.className='desktop-status' + (t.stato === 'chiuso' ? ' closed' : ''); st.textContent=`● ${t.stato || 'bozza'}`;
-        info.append(name,small,st);
-        const actions=document.createElement('div'); actions.className='desktop-actions';
-        actions.appendChild(button('Gestisci','',()=>{ if(typeof window.selezionaTorneoAdmin==='function') window.selezionaTorneoAdmin(t.id); setTimeout(()=>renderAll(),150); }));
-        actions.appendChild(button('🔗','',()=>{ if(typeof window.generaLinkBove==='function'){ if(typeof window.selezionaTorneoAdmin==='function') window.selezionaTorneoAdmin(t.id); setTimeout(()=>window.generaLinkBove(),150); } }));
-        row.append(info,actions); tournamentBody.appendChild(row);
-      });
-    }
-
-    function renderQuick() {
-      quick.innerHTML='';
-      const items=[
-        ['👥 Approva iscritti','Gestisci le richieste',()=>{ activate('iscritti'); }],
-        ['🔀 Accoppiamenti','Gestisci le coppie',()=>{ activate('coppie'); }],
-        ['📋 Apri tabellone','Apri il torneo selezionato',()=>{ if(typeof window.apriBoveConTorneo==='function' && window.adminState?.torneoSelezionato) window.apriBoveConTorneo(window.adminState.torneoSelezionato); }],
-        ['🔗 Copia link','Link pubblico',()=>{ if(typeof window.copiaLinkBove==='function') window.copiaLinkBove(); }]
-      ];
-      items.forEach(([a,b,fn])=>{const q=button('','');q.innerHTML=`<b>${a}</b><span>${b}</span>`;q.addEventListener('click',fn);quick.appendChild(q);});
-    }
-
-    function moveLower() {
-      if (old.create) lower.appendChild(old.create);
-      if (old.tournaments) { old.tournaments.style.display='none'; }
-      if (old.manage) lower.appendChild(old.manage);
-      if (old.news) lower.appendChild(old.news);
-      if (old.sponsors) lower.appendChild(old.sponsors);
-    }
-
-    function activate(target) {
-      shell.querySelectorAll('.desktop-nav button').forEach(b=>b.classList.toggle('active',b.dataset.target===target));
-      if(target==='tornei') shell.querySelector('.desktop-tournaments')?.scrollIntoView({behavior:'smooth'});
-      else if(target==='iscritti' || target==='coppie') {
-        if (old.manage) { old.manage.classList.remove('hidden'); old.manage.open = true; old.manage.scrollIntoView({behavior:'smooth'}); }
-        if(target==='iscritti') setTimeout(()=>document.getElementById('richiesteIscrizione')?.scrollIntoView({behavior:'smooth'}),250);
-        if(target==='coppie') setTimeout(()=>document.getElementById('creaCoppieBox')?.scrollIntoView({behavior:'smooth'}),250);
-      } else if(target==='config') old.create?.scrollIntoView({behavior:'smooth'});
-      else if(target==='calendario') document.getElementById('sezioneCalendarioBiennale')?.scrollIntoView({behavior:'smooth'});
-      else if(target==='news') old.news?.scrollIntoView({behavior:'smooth'});
-      else if(target==='link') document.getElementById('linkBoveGenerato')?.scrollIntoView({behavior:'smooth'});
-      else if(target==='tabellone' && typeof window.apriBoveConTorneo==='function' && window.adminState?.torneoSelezionato) window.apriBoveConTorneo(window.adminState.torneoSelezionato);
-    }
-
-    shell.querySelectorAll('.desktop-nav button').forEach(b=>b.addEventListener('click',()=>activate(b.dataset.target)));
-    moveLower();
-    renderStats(); renderTournaments(); renderQuick();
-
-    window.__adminDesktopRender = () => { renderStats(); renderTournaments(); renderQuick(); };
+    // Inizializza i dati e carica news e sponsor in modo sicuro
+    caricaNewsAdmin();
+    caricaSponsorAdmin();
   }
+  window.__adminDesktopRender = mount;
 
-  function watch() {
-    const area = $('areaAdmin');
-    if (!area) return;
-    if (!mounted && !area.classList.contains('hidden')) mount();
-    if (mounted && window.__adminDesktopRender) window.__adminDesktopRender();
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    watch();
-    setTimeout(watch, 250);
-    setTimeout(watch, 1000);
-    const observer = new MutationObserver(() => setTimeout(watch, 0));
-    observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
-  });
-})();
-/* ==========================================================================
-   PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (5/5)
-   Initialization, DOM Watchers, Event Listeners & Startup Hooks
-   ========================================================================== */
-(() => {
-  'use strict';
-
-  // 1. Inizializzazione automatica al caricamento del DOM
-  document.addEventListener("DOMContentLoaded", async () => {
-    window.caricaAdminState?.();
-    
-    // Aggiorna i campi di input login se presenti
-    const emailInput = document.getElementById("adminEmail");
-    if (emailInput && window.adminState?.adminEmail && !emailInput.value) {
-      emailInput.value = window.adminState.adminEmail;
+  document.addEventListener("DOMContentLoaded", () => {
+    caricaAdminState();
+    if (adminState.adminLoggato) {
+      document.getElementById("boxLoginAdmin")?.classList.add("hidden");
+      document.getElementById("areaAdmin")?.classList.remove("hidden");
+      mount();
+      caricaTorneiSupabase();
     }
-
-    // Verifica sessione Supabase attiva
-    try {
-      const { data } = await window.sb.auth.getSession();
-      if (data?.session) {
-        window.adminState.adminLoggato = true;
-        document.getElementById("boxLoginAdmin")?.classList.add("hidden");
-        document.getElementById("areaAdmin")?.classList.remove("hidden");
-        await window.caricaTorneiSupabase?.();
-        await window.caricaNewsAdmin?.();
-        await window.caricaSponsorAdmin?.();
-        await window.caricaRichiesteIscrizione?.();
-      }
-    } catch (e) {
-      console.error("Errore verifica sessione iniziale:", e);
-    }
-
-    // Associazione listener su bottoni globali se non già presenti tramite onclick HTML
-    document.getElementById("btnLoginAdmin")?.addEventListener("click", window.loginAdmin);
-    document.getElementById("btnCreaNuovoTorneo")?.addEventListener("click", window.creaNuovoTorneo);
-    document.getElementById("btnApriRegoleNuovoTorneo")?.addEventListener("click", window.apriRegoleNuovoTorneo);
-    document.getElementById("btnPubblicaTorneo")?.addEventListener("click", window.pubblicaTorneo);
-    document.getElementById("btnChiudiIscrizioni")?.addEventListener("click", window.chiudiIscrizioniTorneo);
-    document.getElementById("btnApprovaGiocatore")?.addEventListener("click", window.approvaGiocatore);
-    document.getElementById("btnRifiutaGiocatore")?.addEventListener("click", window.rifiutaGiocatore);
-    document.getElementById("btnChiudiSchedaGiocatore")?.addEventListener("click", window.chiudiSchedaGiocatore);
-    document.getElementById("btnCreaNewsAdmin")?.addEventListener("click", window.creaNewsAdmin);
-    document.getElementById("btnCreaSponsorAdmin")?.addEventListener("click", window.creaSponsorAdmin);
-    document.getElementById("btnGeneraCalendarioBiennale")?.addEventListener("click", window.creaCalendarioBiennale);
-    document.getElementById("btnCopiaLinkBove")?.addEventListener("click", window.copiaLinkBove);
-    document.getElementById("btnCopiaLinkBoveMirror")?.addEventListener("click", window.copiaLinkBove);
-    document.getElementById("btnInviaWhatsApp")?.addEventListener("click", window.inviaWhatsAppTutti);
-
-    // Seleziona il primo torneo di default se presente e nessuno selezionato
-    if (!window.adminState.torneoSelezionato && Array.isArray(window.adminState.tornei) && window.adminState.tornei.length > 0) {
-      window.adminState.torneoSelezionato = window.adminState.tornei[0].id;
-      window.salvaAdminState?.();
-      await window.caricaRichiesteIscrizione?.();
-    }
-
-    window.renderAdmin?.();
-    window.renderGestioneTorneo?.();
-    window.renderPartecipanti?.();
-    window.renderCoppie?.();
-    window.renderNewsAdmin?.();
-    window.renderSponsorAdmin?.();
   });
-
-  // 2. Controllo Periodico stato Supabase e Sincronizzazione
-  window.addEventListener('online', async () => {
-    console.log('[ADMIN] Connessione ripristinata. Sincronizzazione in corso...');
-    await window.caricaTorneiSupabase?.();
-    await window.caricaNewsAdmin?.();
-    await window.caricaSponsorAdmin?.();
-  });
-
-  console.log('[ADMIN] Master Console (1-5) caricata e pronta all\'uso.');
 })();
