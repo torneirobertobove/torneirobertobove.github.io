@@ -1,4 +1,4 @@
- /* ==========================================================================
+/* ==========================================================================
    PADEL ADMIN MASTER CONSOLE - UNIFIED SCRIPT (1-5 COMPLETO E CORRETTO)
    ========================================================================== */
 (() => {
@@ -404,7 +404,7 @@
     const list = document.getElementById("listaNewsAdmin");
     if (!list) return;
     const items = window.adminState.news || [];
-    list.innerHTML = items.length ? items.map(n => `<div class="lista-item"><b>${window.escapeHtml(n.titolo || "News")}</b><br><small>${window.escapeHtml(n.created_at || n.data || "-")}</small><p>${window.escapeHtml(n.testo || "")}</p><button class="btn danger" onclick="eliminaNewsAdmin(${n.id})">Elimina</button></div>`).join("") : '<p class="notice">Nessuna news pubblicata.</p>';
+    list.innerHTML = items.length ? items.map(n => `<div class="lista-item"><b>${window.escapeHtml(n.titolo || "News")}</b><br><small>${window.escapeHtml(n.created_at || n.data || "-")}</small><p>${window.escapeHtml(n.testo || "")}</p><button class="btn danger" onclick="eliminaNewsAdmin(${JSON.stringify(n.id)})">Elimina</button></div>`).join("") : '<p class="notice">Nessuna news pubblicata.</p>';
   }
   window.renderNewsAdmin = renderNewsAdmin;
 
@@ -447,7 +447,7 @@
     const list = document.getElementById("listaSponsorAdmin");
     if (!list) return;
     const items = window.adminState.sponsor || [];
-    list.innerHTML = items.length ? items.map(s => `<div class="lista-item"><b>${window.escapeHtml(s.nome || "Sponsor")}</b><br><small>${window.escapeHtml(s.categoria || "-")}</small><br><button class="btn danger" onclick="eliminaSponsorAdmin(${s.id})">Elimina</button></div>`).join("") : '<p class="notice">Nessuno sponsor inserito.</p>';
+    list.innerHTML = items.length ? items.map(s => `<div class="lista-item"><b>${window.escapeHtml(s.nome || "Sponsor")}</b><br><small>${window.escapeHtml(s.categoria || "-")}</small><br><button class="btn danger" onclick="eliminaSponsorAdmin(${JSON.stringify(s.id)})">Elimina</button></div>`).join("") : '<p class="notice">Nessuno sponsor inserito.</p>';
   }
   window.renderSponsorAdmin = renderSponsorAdmin;
 
@@ -514,7 +514,7 @@
     const box = document.getElementById("listaTorneiAdmin");
     if (!box) return;
     const tornei = Array.isArray(window.adminState?.tornei) ? window.adminState.tornei : [];
-    box.innerHTML = tornei.length ? tornei.map(t => `<div class="lista-item"><b>${window.escapeHtml(t.nome || "Torneo")}</b> (${window.escapeHtml(t.data || "-")})<br><small>Stato: ${window.escapeHtml(t.stato || "bozza")}</small><br><button class="btn" onclick="selezionaTorneoAdmin(${t.id})">Seleziona</button> <button class="btn danger" onclick="eliminaTorneoAdmin('${t.id}')">Elimina</button></div>`).join("") : '<p class="notice">Nessun torneo disponibile.</p>';
+    box.innerHTML = tornei.length ? tornei.map(t => `<div class="lista-item"><b>${window.escapeHtml(t.nome || "Torneo")}</b> (${window.escapeHtml(t.data || "-")})<br><small>Stato: ${window.escapeHtml(t.stato || "bozza")}</small><br><button class="btn" onclick="selezionaTorneoAdmin(${JSON.stringify(t.id)})">Seleziona</button> <button class="btn danger" onclick="eliminaTorneoAdmin(${JSON.stringify(t.id)})">Elimina</button></div>`).join("") : '<p class="notice">Nessun torneo disponibile.</p>';
   }
   window.renderAdmin = renderAdmin;
 
@@ -581,7 +581,6 @@
     area.innerHTML = '';
     area.appendChild(shell);
 
-    // Inizializza i dati e carica news e sponsor in modo sicuro
     caricaNewsAdmin();
     caricaSponsorAdmin();
   }
