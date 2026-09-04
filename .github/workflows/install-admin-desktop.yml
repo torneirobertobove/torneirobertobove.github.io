@@ -7,12 +7,20 @@ on:
 permissions:
   contents: write
 
+# Serialize this self-mutating workflow so two runs cannot race while updating main.
+concurrency:
+  group: admin-desktop-main
+  cancel-in-progress: false
+
 jobs:
   install:
     if: ${{ !contains(github.event.head_commit.message, '[admin-desktop-installed]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Inject desktop assets into admin.html
         run: |
           python - <<'PY'
@@ -29,13 +37,34 @@ jobs:
               s=re.sub(r'<script src="admin-desktop-(?:v2\.js|js|v3\.js)(?:\?v=[^"]+)?"></script>', '<script src="admin-desktop-v3.js?v=4"></script>', s)
           p.write_text(s,encoding='utf-8')
           PY
+
       - name: Verify desktop installation
         run: |
           grep -n "ADMIN-DESKTOP-V2\|admin-desktop-v3.js?v=4" admin.html
+
       - name: Commit installed layout
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add admin.html admin-desktop.css admin-desktop.js admin-desktop-v2.js admin-desktop-v3.js
-          git diff --cached --quiet || git commit -m "feat: install approved admin desktop integration [admin-desktop-installed]"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: install approved admin desktop integration [admin-desktop-installed]"
+
+          # main may have advanced while the job was running. Rebase the generated
+          # commit onto the current remote tip before pushing instead of failing on
+          # a non-fast-forward push.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected; refreshing main (attempt $attempt/3)..."
+            git fetch origin main
+            git rebase origin/main || {
+              echo "Rebase conflict detected; aborting safely."
+              git rebase --abort
+              exit 1
+            }
+          done
+          echo "Unable to push after 3 attempts."
+          exit 1
