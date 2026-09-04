@@ -5,8 +5,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin Tornei - Padel Manager</title>
 
-<!-- SUPABASE LIBRERIA CARICATA SUBITO PER PRIMA -->
+<!-- SUPABASE LIBRERIA CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- FALLBACK DI SICUREZZA PER EVITARE CRASH SE IL CDN RITARDA -->
+<script>
+if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+  window.supabase = {
+    createClient: function() {
+      return {
+        auth: {
+          signInWithPassword: async () => ({ error: new Error("SDK non disponibile, uso fallback REST") })
+        }
+      };
+    }
+  };
+}
+</script>
 
 <style>
 :root{--bg:#080d14;--card:#101923;--sidebar:#0d141d;--text:#edf2f7;--muted:#788697;--border:#263442;--blue:#1677ff;--blue-hover:#3b88ff;--blue-bg:#172331;--green:#159a67;--red:#d9485f}
@@ -51,10 +66,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 .brand,.sidebar-bottom,.nav-section{grid-column:1/3}.topbar{height:68px;padding:0 15px}.main{padding:12px}.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.link-box{flex-wrap:wrap}.link-box input{min-width:100%}
 }
 </style>
-
-<!-- ADMIN-DESKTOP-V2 -->
-<link rel="stylesheet" href="admin-desktop.css?v=4">
-<script src="admin-desktop-v3.js?v=4"></script>
 </head>
 <body>
 
@@ -204,26 +215,14 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 </main>
 </div>
 
-<!-- SCRIPT LOGIN SICURO E ROBUSTO -->
+<!-- SCRIPT LOGIN DIRETTO VIA REST API (BYPASS COMPLETO DEI LOCK SDK) -->
 <script>
 (function(){
   'use strict';
   const SUPABASE_URL = 'https://iybjvtmfaupgthqqsngd.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
 
-  let client = null;
   window.addEventListener('DOMContentLoaded', function(){
-    try {
-      if (window.supabase && typeof window.supabase.createClient === 'function') {
-        client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-        });
-        window.supabaseClient = client;
-      }
-    } catch(e) {
-      console.error('Errore client supabase:', e);
-    }
-
     const btn = document.getElementById('btnLoginAdmin');
     const msg = document.getElementById('loginMessaggio');
     const emailInput = document.getElementById('adminEmail');
@@ -245,28 +244,19 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
       if(msg) msg.textContent = 'Accesso in corso...';
 
       try {
-        let sessionData = null;
-        if(client && client.auth) {
-          const res = await client.auth.signInWithPassword({ email, password });
-          if(res.error) throw res.error;
-          if(res.data && res.data.session) sessionData = res.data.session;
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+          body: JSON.stringify({ email: email, password: password })
+        });
+        const data = await response.json();
+        
+        if(!response.ok) {
+          throw new Error(data.error_description || data.msg || data.message || 'Credenziali non valide');
         }
 
-        if(!sessionData) {
-          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-            body: JSON.stringify({ email: email, password: password })
-          });
-          const data = await response.json();
-          if(!response.ok) throw new Error(data.error_description || data.msg || data.message || 'Credenziali non valide');
-          if(data.access_token) {
-            sessionData = data;
-            localStorage.setItem('sb-iybjvtmfaupgthqqsngd-auth-token', JSON.stringify(data));
-          }
-        }
-
-        if(sessionData) {
+        if(data.access_token) {
+          localStorage.setItem('sb-iybjvtmfaupgthqqsngd-auth-token', JSON.stringify(data));
           if(msg) msg.textContent = 'Accesso riuscito!';
           document.getElementById('boxLoginAdmin').classList.add('hidden');
           document.getElementById('areaAdmin').classList.remove('hidden');
@@ -275,7 +265,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
           if(typeof window.caricaDatiAdmin === 'function') window.caricaDatiAdmin();
           if(typeof window.inizializzaAdmin === 'function') window.inizializzaAdmin();
         } else {
-          throw new Error('Impossibile stabilire la sessione.');
+          throw new Error('Token non ricevuto.');
         }
       } catch(err) {
         if(msg) msg.textContent = 'Errore: ' + (err.message || 'Credenziali non valide');
@@ -285,7 +275,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 })();
 </script>
 
-<!-- SCRIPT ESTERNI CARICATI IN SICUREZZA DOPO LA LIBRERIA -->
+<!-- SCRIPT ESTERNI -->
 <script src="admin-functions.js?v=2"></script>
 <script>
 (function(){
