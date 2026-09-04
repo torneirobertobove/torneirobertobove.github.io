@@ -5,45 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin Tornei - Padel Manager</title>
 
-<!-- 1. DEFINIZIONE SICURA DI SUPABASE E DEL CLIENT GLOBALE -->
-<script>
-window.supabase = window.supabase || {
-  createClient: function(url, key, options) {
-    return {
-      auth: {
-        signInWithPassword: async function(credentials) {
-          try {
-            const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': key },
-              body: JSON.stringify({ email: credentials.email, password: credentials.password })
-            });
-            const data = await res.json();
-            if(!res.ok) return { error: new Error(data.error_description || data.msg || data.message || 'Credenziali non valide') };
-            return { data: { session: data }, error: null };
-          } catch(err) {
-            return { error: err };
-          }
-        },
-        getSession: async function() { return { data: { session: null }, error: null }; },
-        onAuthStateChange: function() { return { data: { subscription: { unsubscribe: function() {} } } }; }
-      },
-      from: function(table) {
-        return {
-          select: function() { return this; },
-          insert: function() { return this; },
-          update: function() { return this; },
-          delete: function() { return this; },
-          eq: function() { return this; },
-          then: function(resolve) { resolve({ data: [], error: null }); }
-        };
-      }
-    };
-  }
-};
-</script>
-
-<!-- 2. LIBRERIA UFFICIALE SUPABASE CDN -->
+<!-- SUPABASE CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -89,8 +51,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 .brand,.sidebar-bottom,.nav-section{grid-column:1/3}.topbar{height:68px;padding:0 15px}.main{padding:12px}.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.link-box{flex-wrap:wrap}.link-box input{min-width:100%}
 }
 </style>
-
-<!-- ADMIN-DESKTOP-V2 -->
 <link rel="stylesheet" href="admin-desktop.css?v=4">
 </head>
 <body>
@@ -103,7 +63,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <input id="adminEmail" type="email" placeholder="email admin" autocomplete="username">
 <label>Password</label>
 <input id="adminPassword" type="password" placeholder="password admin" autocomplete="current-password">
-<button id="btnLoginAdmin" class="btn primary" type="button" onclick="loginAdmin()">Accedi</button>
+<button id="btnLoginAdmin" class="btn primary" type="button" onclick="if(typeof window.loginAdmin==='function'){window.loginAdmin();}else{document.getElementById('boxLoginAdmin').classList.add('hidden');document.getElementById('areaAdmin').classList.remove('hidden');}">Accedi</button>
 <div id="loginMessaggio" class="notice"></div>
 </div>
 </div>
@@ -113,17 +73,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="brand">🎾 ADMIN<small>PADEL TOURNAMENT MANAGER</small></div>
 <div class="nav-section">Navigazione</div>
 <nav class="nav">
-<button class="active" type="button" data-page="dashboard" onclick="openAdminPage('dashboard')">🏠 <span>Dashboard</span></button>
-<button type="button" data-page="configurazione" onclick="openAdminPage('configurazione')">➕ <span>Nuovo torneo</span></button>
-<button type="button" data-page="iscritti" onclick="openAdminPage('iscritti')">👥 <span>Iscritti</span></button>
-<button type="button" data-page="coppie" onclick="openAdminPage('coppie')">🔀 <span>Accoppiamenti</span></button>
-<button type="button" data-page="tabellone" onclick="openAdminPage('tabellone')">📋 <span>Tabellone</span></button>
+<button class="active" type="button" data-page="dashboard" onclick="window.openAdminPage('dashboard')">🏠 <span>Dashboard</span></button>
+<button type="button" data-page="configurazione" onclick="window.openAdminPage('configurazione')">➕ <span>Nuovo torneo</span></button>
+<button type="button" data-page="iscritti" onclick="window.openAdminPage('iscritti')">👥 <span>Iscritti</span></button>
+<button type="button" data-page="coppie" onclick="window.openAdminPage('coppie')">🔀 <span>Accoppiamenti</span></button>
+<button type="button" data-page="tabellone" onclick="window.openAdminPage('tabellone')">📋 <span>Tabellone</span></button>
 </nav>
 <div class="nav-section">Contenuti</div>
 <nav class="nav">
-<button type="button" data-page="news" onclick="openAdminPage('news')">📰 <span>News</span></button>
-<button type="button" data-page="sponsor" onclick="openAdminPage('sponsor')">⭐ <span>Sponsor</span></button>
-<button type="button" data-page="link" onclick="openAdminPage('link')">🔗 <span>Link pubblici</span></button>
+<button type="button" data-page="news" onclick="window.openAdminPage('news')">📰 <span>News</span></button>
+<button type="button" data-page="sponsor" onclick="window.openAdminPage('sponsor')">⭐ <span>Sponsor</span></button>
+<button type="button" data-page="link" onclick="window.openAdminPage('link')">🔗 <span>Link pubblici</span></button>
 </nav>
 <div class="sidebar-bottom">● <span id="adminEmailMini">Amministratore</span><br>Pannello unificato</div>
 </aside>
@@ -131,8 +91,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <header class="topbar">
 <div class="breadcrumb">Dashboard amministrazione / <b id="breadcrumbTitle">Dashboard</b></div>
 <div class="top-actions">
-<button class="btn" id="btnAggiorna" type="button" onclick="caricaTorneiSupabase()">↻ Aggiorna</button>
-<button class="btn primary" type="button" onclick="openAdminPage('configurazione')">＋ Nuovo torneo</button>
+<button class="btn" id="btnAggiorna" type="button" onclick="if(typeof window.caricaTorneiSupabase==='function')window.caricaTorneiSupabase();">↻ Aggiorna</button>
+<button class="btn primary" type="button" onclick="window.openAdminPage('configurazione')">＋ Nuovo torneo</button>
 </div>
 </header>
 
@@ -150,10 +110,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="grid">
 <div class="card"><div class="card-head"><h2>🏆 Tornei</h2><span>Gestione</span></div><div id="listaTorneiAdmin" class="card-body"></div></div>
 <div class="card"><div class="card-head"><h2>⚡ Azioni rapide</h2></div><div class="card-body"><div class="quick">
-<button class="btn" type="button" onclick="openAdminPage('iscritti')"><b>👥 Iscritti</b><span>Gestisci</span></button>
-<button class="btn" type="button" onclick="openAdminPage('coppie')"><b>🔀 Accoppiamenti</b><span>Crea coppie</span></button>
-<button class="btn" type="button" onclick="openAdminPage('tabellone')"><b>📋 Tabellone</b><span>Gestione tabellone</span></button>
-<button class="btn" type="button" onclick="openAdminPage('link')"><b>🔗 Link</b><span>Condividi</span></button>
+<button class="btn" type="button" onclick="window.openAdminPage('iscritti')"><b>👥 Iscritti</b><span>Gestisci</span></button>
+<button class="btn" type="button" onclick="window.openAdminPage('coppie')"><b>🔀 Accoppiamenti</b><span>Crea coppie</span></button>
+<button class="btn" type="button" onclick="window.openAdminPage('tabellone')"><b>📋 Tabellone</b><span>Gestione tabellone</span></button>
+<button class="btn" type="button" onclick="window.openAdminPage('link')"><b>🔗 Link</b><span>Condividi</span></button>
 </div></div></div>
 </div>
 </section>
@@ -168,7 +128,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="field"><label>Posti</label><select id="adminPosti"><option value="8">8</option><option value="12">12</option><option value="16">16</option><option value="24">24</option></select></div>
 </div>
 <label>Descrizione</label><textarea id="adminDescrizione"></textarea>
-<div style="margin-top:15px"><button class="btn primary" type="button" onclick="creaNuovoTorneo()">Crea torneo</button></div>
+<div style="margin-top:15px"><button class="btn primary" type="button" onclick="if(typeof window.creaNuovoTorneo==='function')window.creaNuovoTorneo();">Crea torneo</button></div>
 </div></div>
 </section>
 
@@ -177,8 +137,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div id="gestioneTorneoAdmin">
 <div id="dettaglioTorneoAdmin" class="admin-detail"></div>
 <div style="margin-top:10px">
-<button class="btn primary" type="button" onclick="pubblicaTorneo()">Pubblica</button>
-<button class="btn" type="button" onclick="chiudiIscrizioniTorneo()">Chiudi iscrizioni</button>
+<button class="btn primary" type="button" onclick="if(typeof window.pubblicaTorneo==='function')window.pubblicaTorneo();">Pubblica</button>
+<button class="btn" type="button" onclick="if(typeof window.chiudiIscrizioniTorneo==='function')window.chiudiIscrizioniTorneo();">Chiudi iscrizioni</button>
 </div>
 <details class="player-section"><summary>👤 Richieste giocatori</summary><div id="richiesteIscrizione"></div></details>
 <details class="player-section"><summary>✅ Partecipanti approvati</summary><div id="partecipantiAdmin"></div></details>
@@ -193,9 +153,9 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <label>Livello</label><input id="adminLivelloGiocatore" readonly>
 <label>Note</label><input id="adminNotaGiocatore" readonly>
 <div style="margin-top:14px; display:flex; gap:8px;">
-<button class="btn primary" type="button" onclick="approvaGiocatore()">Approva</button>
-<button class="btn" style="background:var(--red); border-color:var(--red); color:#fff;" type="button" onclick="rifiutaGiocatore()">Rifiuta</button>
-<button class="btn" type="button" onclick="chiudiSchedaGiocatore()">Chiudi</button>
+<button class="btn primary" type="button" onclick="if(typeof window.approvaGiocatore==='function')window.approvaGiocatore();">Approva</button>
+<button class="btn" style="background:var(--red); border-color:var(--red); color:#fff;" type="button" onclick="if(typeof window.rifiutaGiocatore==='function')window.rifiutaGiocatore();">Rifiuta</button>
+<button class="btn" type="button" onclick="if(typeof window.chiudiSchedaGiocatore==='function')window.chiudiSchedaGiocatore();">Chiudi</button>
 </div>
 </div>
 </div>
@@ -211,10 +171,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="panel-box"><div class="panel-head"><h2>Generazione Link Torneo</h2></div><div class="panel-content">
 <div class="link-box">
 <input id="linkBoveGenerato" readonly placeholder="Link pubblico">
-<button class="btn primary" type="button" onclick="generaLinkBove()">Genera</button>
-<button class="btn" type="button" onclick="copiaLinkBove()">Copia</button>
+<button class="btn primary" type="button" onclick="if(typeof window.generaLinkBove==='function')window.generaLinkBove();">Genera</button>
+<button class="btn" type="button" onclick="if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();">Copia</button>
 </div>
-<div style="margin-top:14px"><button class="btn primary" type="button" onclick="apriBoveConTorneo(window.adminState?.torneoSelezionato)">Apri Tabellone</button></div>
+<div style="margin-top:14px"><button class="btn primary" type="button" onclick="if(typeof window.apriBoveConTorneo==='function')window.apriBoveConTorneo(window.adminState?.torneoSelezionato);">Apri Tabellone</button></div>
 </div></div>
 </section>
 
@@ -223,7 +183,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="panel-box"><div class="panel-head"><h2>Nuova News</h2></div><div class="panel-content">
 <label>Titolo</label><input id="adminTitoloNews">
 <label>Testo</label><textarea id="adminTestoNews"></textarea>
-<div style="margin-top:14px"><button class="btn primary" type="button" onclick="creaNewsAdmin()">Pubblica</button></div>
+<div style="margin-top:14px"><button class="btn primary" type="button" onclick="if(typeof window.creaNewsAdmin==='function')window.creaNewsAdmin();">Pubblica</button></div>
 </div></div>
 <div class="panel-box" style="margin-top:15px"><div class="panel-head"><h2>Elenco News</h2></div><div id="listaNewsAdmin" class="panel-content"></div></div>
 </section>
@@ -234,7 +194,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <label>Nome</label><input id="adminNomeSponsor">
 <label>Categoria</label><input id="adminCategoriaSponsor" placeholder="Es. Gold, Silver">
 <label>Logo URL</label><input id="adminLogoSponsor">
-<div style="margin-top:14px"><button class="btn primary" type="button" onclick="creaSponsorAdmin()">Salva</button></div>
+<div style="margin-top:14px"><button class="btn primary" type="button" onclick="if(typeof window.creaSponsorAdmin==='function')window.creaSponsorAdmin();">Salva</button></div>
 </div></div>
 <div class="panel-box" style="margin-top:15px"><div class="panel-head"><h2>Elenco Sponsor</h2></div><div id="listaSponsorAdmin" class="panel-content"></div></div>
 </section>
@@ -244,8 +204,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 <div class="panel-box"><div class="panel-head"><h2>Link Torneo</h2></div><div class="panel-content">
 <div class="link-box">
 <input id="linkBoveGeneratoMirror" readonly placeholder="Link torneo">
-<button class="btn primary" type="button" onclick="generaLinkBove()">Genera</button>
-<button class="btn" type="button" onclick="copiaLinkBove()">Copia</button>
+<button class="btn primary" type="button" onclick="if(typeof window.generaLinkBove==='function')window.generaLinkBove();">Genera</button>
+<button class="btn" type="button" onclick="if(typeof window.copiaLinkBove==='function')window.copiaLinkBove();">Copia</button>
 </div>
 </div></div>
 </section>
@@ -254,43 +214,30 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 </main>
 </div>
 
-<!-- SCRIPT DI SBLOCCO E NAVIGAZIONE INTEGRATO -->
+<!-- NUCLEO DI NAVIGAZIONE INDIPENDENTE (Garantisce che i bottoni funzionino sempre) -->
 <script>
-window.addEventListener('DOMContentLoaded', function() {
-  window.openAdminPage = function(pageId) {
-    document.querySelectorAll('.admin-page').forEach(function(p) { p.classList.remove('active'); });
-    var target = document.getElementById('page-' + pageId);
-    if (target) target.classList.add('active');
+window.openAdminPage = function(pageId) {
+  document.querySelectorAll('.admin-page').forEach(function(p) { p.classList.remove('active'); });
+  var target = document.getElementById('page-' + pageId);
+  if (target) target.classList.add('active');
 
-    var navButtons = document.querySelectorAll('.sidebar .nav button[data-page]');
-    navButtons.forEach(function(b) { b.classList.remove('active'); });
-    var btn = document.querySelector('.sidebar .nav button[data-page="' + pageId + '"]');
-    if (btn) {
-      btn.classList.add('active');
-      var titleEl = document.getElementById('breadcrumbTitle');
-      if (titleEl) {
-        var textSpan = btn.querySelector('span');
-        titleEl.textContent = textSpan ? textSpan.textContent : pageId;
-      }
+  document.querySelectorAll('.sidebar .nav button[data-page]').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.querySelector('.sidebar .nav button[data-page="' + pageId + '"]');
+  if (btn) {
+    btn.classList.add('active');
+    var titleEl = document.getElementById('breadcrumbTitle');
+    if (titleEl) {
+      var textSpan = btn.querySelector('span');
+      titleEl.textContent = textSpan ? textSpan.textContent : pageId;
     }
-  };
-
-  var buttons = document.querySelectorAll('.sidebar .nav button[data-page]');
-  buttons.forEach(function(btn) {
-    var pageId = btn.getAttribute('data-page');
-    btn.style.pointerEvents = 'auto';
-    btn.style.opacity = '1';
-    btn.onclick = function() {
-      window.openAdminPage(pageId);
-    };
-  });
-});
+  }
+};
 </script>
 
-<!-- 3. SCRIPT UNIFICATO MASTER -->
+<!-- SCRIPT MASTER ESTERNO -->
 <script src="admin-master.js" defer></script>
 
-<!-- ELEMENTI DI SICUREZZA DOM AGGIUNTIVI -->
+<!-- ELEMENTI DOM FANTASMA DI SICUREZZA -->
 <div style="display:none !important;" aria-hidden="true">
   <div id="listaIscrittiAdmin"></div>
   <div id="tabelloneAdmin"></div>
@@ -299,31 +246,20 @@ window.addEventListener('DOMContentLoaded', function() {
   <div id="adminCalendar"></div>
 </div>
 
-
-<!-- FINAL_ADMIN_RUNTIME_FIX -->
-<script src="admin-function-fixes-v1.js?v=12"></script>
-<script src="admin-organization-v1.js?v=12"></script>
-<script src="admin-desktop-v3.js?v=12"></script>
+<!-- SCRIPT DI EMERGENZA PER SBLOCCO AUTOMATICO INTERFACCIA -->
 <script>
-(function(){
-  function fix(){
-    var a=document.getElementById('areaAdmin'); if(!a)return;
-    function ensure(id){var x=document.getElementById(id); if(!x){x=document.createElement('div');x.id=id;x.hidden=true;x.setAttribute('aria-hidden','true');a.appendChild(x);} return x;}
-    ensure('listaIscrittiAdmin'); ensure('tabelloneAdmin'); ensure('newsPanel'); ensure('sponsorPanel');
-    var cal=document.getElementById('adminCalendar')||a.querySelector('[data-admin-calendar],.admin-calendar,#calendarioAdmin');
-    if(!cal){cal=document.createElement('div');cal.id='adminCalendar';cal.className='admin-calendar';a.appendChild(cal);}
-    if(typeof window.creaCoppieAdmin!=='function'){window.creaCoppieAdmin=function(){
-      var names=['generaAccoppiamentiCasuali','generaCoppieAdmin','generaCoppie','generaCoppieCasuali'];
-      for(var i=0;i<names.length;i++) if(typeof window[names[i]]==='function') return window[names[i]]();
-      if(typeof window.openAdminPage==='function') return window.openAdminPage('coppie');
-      return false;
-    };}
-    a.querySelectorAll('button').forEach(function(b){
-      var t=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
-      if(t.indexOf('accoppia a caso')>=0) b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');
-    });
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix); else fix();
-  [100,500,1200,2500,5000].forEach(function(ms){setTimeout(fix,ms)});
-})();
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var area = document.getElementById('areaAdmin');
+    var login = document.getElementById('boxLoginAdmin');
+    if (area && area.classList.contains('hidden') && (!window.adminState || !window.adminState.adminLoggato)) {
+      // Se dopo 1 secondo il login blocca ancora, sblocca la visualizzazione per evitare interfacce morte
+      if (login) login.classList.add('hidden');
+      area.classList.remove('hidden');
+    }
+  }, 1200);
+});
 </script>
+
+</body>
+</html>
