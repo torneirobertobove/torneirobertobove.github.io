@@ -199,56 +199,88 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 </main>
 </div>
 
-<!-- LIBRERIA SUPABASE E CONFIGURAZIONE SICURA ANTI-BLOCCO -->
+<!-- LIBRERIA SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- SBLOCCO DEFINITIVO LOGIN SUPABASE -->
-<!-- BYPASS DEFINITIVO BLOCCO ROTELLINA SUPABASE -->
+
+<!-- SOLUZIONE DEFINITIVA LOGIN: SOSTITUZIONE TOTALE SENZA SCRIPT ESTERNI IN CONFLITTO -->
 <script>
 (function(){
   'use strict';
+
+  const SUPABASE_URL = 'https://iybjvtmfaupgthqqsngd.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
+
+  let client = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      });
+      window.supabaseClient = client;
+    }
+  } catch(e) {
+    console.error('Errore inizializzazione client:', e);
+  }
+
   window.addEventListener('DOMContentLoaded', function(){
     const btn = document.getElementById('btnLoginAdmin');
     const msg = document.getElementById('loginMessaggio');
+    const emailInput = document.getElementById('adminEmail');
+    const passInput = document.getElementById('adminPassword');
+
     if(!btn) return;
 
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
+    // Sostituisce il bottone per azzerare qualsiasi listener precedente
+    const cleanBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(cleanBtn, btn);
 
-    newBtn.addEventListener('click', async function(e){
+    cleanBtn.addEventListener('click', async function(e){
       e.preventDefault();
       e.stopPropagation();
-      
-      const email = document.getElementById('adminEmail').value.trim();
-      const password = document.getElementById('adminPassword').value;
-      
+
+      const email = emailInput.value.trim();
+      const password = passInput.value;
+
       if(!email || !password){
         if(msg) msg.textContent = 'Inserisci email e password.';
         return;
       }
-      
+
       if(msg) msg.textContent = 'Accesso in corso...';
-      
+
       try {
-        // Chiamata REST diretta per evitare il blocco dei lock di Supabase JS
-        const response = await fetch('https://iybjvtmfaupgthqqsngd.supabase.co/auth/v1/token?grant_type=password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI'
-          },
-          body: JSON.stringify({ email: email, password: password })
-        });
+        let sessionData = null;
 
-        const data = await response.json();
-
-        if(!response.ok) {
-          throw new Error(data.error_description || data.msg || 'Credenziali non valide');
+        // Tenta prima con il client SDK ufficiale
+        if(client && client.auth) {
+          const res = await client.auth.signInWithPassword({ email, password });
+          if(res.error) throw res.error;
+          if(res.data && res.data.session) {
+            sessionData = res.data.session;
+          }
         }
 
-        if(data.access_token) {
-          // Salva il token per le richieste future
-          localStorage.setItem('sb-iybjvtmfaupgthqqsngd-auth-token', JSON.stringify(data));
-          
+        // Fallback di sicurezza tramite Fetch REST se l'SDK fallisce o si blocca
+        if(!sessionData) {
+          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          const data = await response.json();
+          if(!response.ok) {
+            throw new Error(data.error_description || data.msg || data.message || 'Credenziali non valide');
+          }
+          if(data.access_token) {
+            sessionData = data;
+            localStorage.setItem('sb-iybjvtmfaupgthqqsngd-auth-token', JSON.stringify(data));
+          }
+        }
+
+        if(sessionData) {
           if(msg) msg.textContent = 'Accesso riuscito!';
           document.getElementById('boxLoginAdmin').classList.add('hidden');
           document.getElementById('areaAdmin').classList.remove('hidden');
@@ -259,18 +291,68 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
           if(typeof window.caricaDatiAdmin === 'function') window.caricaDatiAdmin();
           if(typeof window.inizializzaAdmin === 'function') window.inizializzaAdmin();
         } else {
-          throw new Error('Errore durante la sessione.');
+          throw new Error('Impossibile stabilire la sessione.');
         }
+
       } catch(err) {
-        console.error(err);
-        if(msg) msg.textContent = 'Errore: ' + err.message;
+        console.error('Errore login:', err);
+        if(msg) msg.textContent = 'Errore: ' + (err.message || 'Credenziali non valide');
       }
     });
   });
 })();
 </script>
 
-<!-- FINAL_ADMIN_RUNTIME_FIX -->
+<script src="admin-functions.js?v=2"></script>
+<script>
+(function(){
+"use strict";
+var titles={
+dashboard:"Dashboard",
+configurazione:"Nuovo torneo",
+iscritti:"Iscritti",
+coppie:"Accoppiamenti",
+tabellone:"Tabellone",
+news:"News",
+sponsor:"Sponsor",
+link:"Link pubblici"
+};
+
+function openPage(page){
+var target=document.getElementById("page-"+page);
+var area=document.getElementById("areaAdmin");
+if(!target||!area||area.classList.contains("hidden"))return false;
+document.querySelectorAll(".admin-page").forEach(function(p){p.classList.remove("active")});
+target.classList.add("active");
+document.querySelectorAll(".sidebar .nav [data-page]").forEach(function(button){
+button.classList.toggle("active",button.getAttribute("data-page")===page);
+});
+var title=document.getElementById("breadcrumbTitle");
+if(title)title.textContent=titles[page]||"Dashboard";
+var main=area.querySelector(".main");
+if(main)main.scrollTop=0;
+return true;
+}
+
+window.openAdminPage=openPage;
+
+document.addEventListener("click",function(event){
+var button=event.target.closest("[data-page]");
+if(!button)return;
+var page=button.getAttribute("data-page");
+if(!page||!document.getElementById("page-"+page))return;
+event.preventDefault();
+openPage(page);
+});
+
+document.addEventListener("DOMContentLoaded",function(){
+if(window.location.hash==="#config"){
+openPage("configurazione");
+}
+});
+})();
+</script>
+
 <script src="admin-function-fixes-v1.js?v=12"></script>
 <script src="admin-organization-v1.js?v=12"></script>
 <script src="admin-desktop-v3.js?v=4"></script>
@@ -297,3 +379,5 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
   [100,500,1200,2500,5000].forEach(function(ms){setTimeout(fix,ms)});
 })();
 </script>
+</body>
+</html>
