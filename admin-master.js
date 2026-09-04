@@ -2,7 +2,15 @@
 /* ==========================================================================
    PADEL ADMIN MASTER CONSOLE - UNIFIED MASTER
    Versione corretta per il nuovo admin.html statico
+
+   IMPORTANTI DIFFERENZE:
+   - NON esiste più mount()
+   - NON viene mai sostituito il contenuto di #areaAdmin
+   - NON viene creato un secondo desktop
+   - Il DOM .admin-page appartiene esclusivamente ad admin.html
+   - Supabase viene inizializzato in modo robusto
    ========================================================================== */
+
 (() => {
   'use strict';
 
@@ -10,16 +18,121 @@
      1. SUPABASE
      ------------------------------------------------------------------------ */
 
-  const SUPABASE_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
+  const SUPABASE_URL =
+    "https://iybjvtmfaupgthqqsngd.supabase.co";
+
+  const SUPABASE_KEY =
+    "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
 
   let sb = null;
+  let supabaseInitPromise = null;
 
   async function initSupabase() {
-    if (sb) return sb;
+    if (sb) {
+      return sb;
+    }
 
-    // Se la libreria è già presente
-    if (window.supabase?.createClient) {
+    if (supabaseInitPromise) {
+      return supabaseInitPromise;
+    }
+
+    supabaseInitPromise = (async () => {
+      /*
+       * CASO 1:
+       * Supabase è già stato caricato da admin.html.
+       */
+      if (
+        window.supabase &&
+        typeof window.supabase.createClient === "function"
+      ) {
+        sb = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_KEY,
+          {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true
+            }
+          }
+        );
+
+        window.sb = sb;
+        window.supabaseClient = sb;
+
+        return sb;
+      }
+
+      /*
+       * CASO 2:
+       * La libreria non è presente.
+       *
+       * Usiamo il nome corretto del pacchetto:
+       * @supabase/supabase-js
+       */
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector(
+          'script[data-supabase-admin-loader="true"]'
+        );
+
+        if (existing) {
+          if (
+            window.supabase &&
+            typeof window.supabase.createClient === "function"
+          ) {
+            resolve();
+            return;
+          }
+
+          existing.addEventListener(
+            "load",
+            () => resolve(),
+            { once: true }
+          );
+
+          existing.addEventListener(
+            "error",
+            () => reject(
+              new Error(
+                "Impossibile caricare Supabase JS."
+              )
+            ),
+            { once: true }
+          );
+
+          return;
+        }
+
+        const script =
+          document.createElement("script");
+
+        script.src =
+          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+
+        script.async = false;
+        script.dataset.supabaseAdminLoader = "true";
+
+        script.onload = () => resolve();
+
+        script.onerror = () =>
+          reject(
+            new Error(
+              "Impossibile caricare Supabase JS."
+            )
+          );
+
+        document.head.appendChild(script);
+      });
+
+      if (
+        !window.supabase ||
+        typeof window.supabase.createClient !== "function"
+      ) {
+        throw new Error(
+          "Libreria Supabase JS non disponibile."
+        );
+      }
+
       sb = window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_KEY,
@@ -36,56 +149,22 @@
       window.supabaseClient = sb;
 
       return sb;
+    })();
+
+    try {
+      return await supabaseInitPromise;
+    } catch (error) {
+      supabaseInitPromise = null;
+      throw error;
     }
-
-    // Fallback: carica la libreria corretta se non è disponibile
-    await new Promise((resolve, reject) => {
-      const existing = document.querySelector(
-        'script[data-supabase-admin-loader="true"]'
-      );
-
-      if (existing) {
-        existing.addEventListener("load", resolve, { once: true });
-        existing.addEventListener("error", reject, { once: true });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-      script.async = false;
-      script.dataset.supabaseAdminLoader = "true";
-
-      script.onload = resolve;
-      script.onerror = () =>
-        reject(new Error("Impossibile caricare Supabase JS"));
-
-      document.head.appendChild(script);
-    });
-
-    if (!window.supabase?.createClient) {
-      throw new Error("Libreria Supabase JS non disponibile.");
-    }
-
-    sb = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
-      }
-    );
-
-    window.sb = sb;
-    window.supabaseClient = sb;
-
-    return sb;
   }
 
-  // Disponibile anche agli altri script
-  window.initAdminSupabase = initSupabase;
+  /*
+   * Funzione disponibile globalmente.
+   * Gli altri script dell'admin possono utilizzarla.
+   */
+  window.initAdminSupabase =
+    initSupabase;
 
   /* ------------------------------------------------------------------------
      2. STATO GLOBALE
@@ -100,11 +179,16 @@
     news: []
   };
 
-  const ADMIN_STORAGE = "padel_admin_state";
-  const STORAGE_LINK = "padel_admin_generated_link";
+  const ADMIN_STORAGE =
+    "padel_admin_state";
+
+  const STORAGE_LINK =
+    "padel_admin_generated_link";
 
   window.iscrizioniTorneo = [];
-  window.giocatoreSelezionatoCorrente = null;
+
+  window.giocatoreSelezionatoCorrente =
+    null;
 
   function sincronizzaAdminState() {
     window.adminState = adminState;
@@ -126,30 +210,52 @@
     sincronizzaAdminState();
   }
 
-  window.salvaAdminState = salvaAdminState;
+  window.salvaAdminState =
+    salvaAdminState;
 
   function caricaAdminState() {
     try {
-      const raw = localStorage.getItem(ADMIN_STORAGE);
+      const raw =
+        localStorage.getItem(
+          ADMIN_STORAGE
+        );
 
       if (raw) {
-        const saved = JSON.parse(raw);
+        const saved =
+          JSON.parse(raw);
 
-        adminState = {
-          ...adminState,
-          ...saved
-        };
+        if (
+          saved &&
+          typeof saved === "object"
+        ) {
+          adminState = {
+            ...adminState,
+            ...saved
+          };
+        }
       }
 
-      if (!Array.isArray(adminState.tornei)) {
+      if (
+        !Array.isArray(
+          adminState.tornei
+        )
+      ) {
         adminState.tornei = [];
       }
 
-      if (!Array.isArray(adminState.sponsor)) {
+      if (
+        !Array.isArray(
+          adminState.sponsor
+        )
+      ) {
         adminState.sponsor = [];
       }
 
-      if (!Array.isArray(adminState.news)) {
+      if (
+        !Array.isArray(
+          adminState.news
+        )
+      ) {
         adminState.news = [];
       }
     } catch (e) {
@@ -162,7 +268,8 @@
     sincronizzaAdminState();
   }
 
-  window.caricaAdminState = caricaAdminState;
+  window.caricaAdminState =
+    caricaAdminState;
 
   caricaAdminState();
 
@@ -171,22 +278,32 @@
      ------------------------------------------------------------------------ */
 
   function getTorneoAdminCorrente() {
-    if (!Array.isArray(adminState.tornei)) {
+    if (
+      !Array.isArray(
+        adminState.tornei
+      )
+    ) {
       return null;
     }
 
-    return adminState.tornei.find(
-      t =>
-        String(t.id) ===
-        String(adminState.torneoSelezionato)
-    ) || null;
+    return (
+      adminState.tornei.find(
+        t =>
+          String(t.id) ===
+          String(
+            adminState.torneoSelezionato
+          )
+      ) || null
+    );
   }
 
   window.getTorneoAdminCorrente =
     getTorneoAdminCorrente;
 
   function escapeHtml(value) {
-    return String(value ?? "").replace(
+    return String(
+      value ?? ""
+    ).replace(
       /[&<>'"]/g,
       c =>
         ({
@@ -199,19 +316,32 @@
     );
   }
 
-  window.escapeHtml = escapeHtml;
+  window.escapeHtml =
+    escapeHtml;
 
   function errorText(error) {
     return (
       error?.message ||
       error?.error_description ||
-      String(error || "Operazione non riuscita")
+      String(
+        error ||
+        "Operazione non riuscita"
+      )
     );
   }
 
   function report(label, error) {
-    console.error("[ADMIN]", label, error);
-    alert(label + ": " + errorText(error));
+    console.error(
+      "[ADMIN]",
+      label,
+      error
+    );
+
+    alert(
+      label +
+        ": " +
+        errorText(error)
+    );
   }
 
   /* ------------------------------------------------------------------------
@@ -222,46 +352,65 @@
     torneo,
     apriRegole = false
   ) {
-    if (!torneo?.id) return "";
+    if (!torneo?.id) {
+      return "";
+    }
 
     if (
-      String(torneo.id).startsWith("temp_")
+      String(torneo.id).startsWith(
+        "temp_"
+      )
     ) {
-      const payload = encodeURIComponent(
-        JSON.stringify(torneo)
-      );
+      const payload =
+        encodeURIComponent(
+          JSON.stringify(torneo)
+        );
 
       return (
         "Bove.html?torneo=" +
         payload +
-        (apriRegole
-          ? "&apriRegole=true"
-          : "")
+        (
+          apriRegole
+            ? "&apriRegole=true"
+            : ""
+        )
       );
     }
 
     return (
       "Bove.html?idTorneo=" +
-      encodeURIComponent(String(torneo.id)) +
-      (apriRegole
-        ? "&apriRegole=true"
-        : "")
+      encodeURIComponent(
+        String(torneo.id)
+      ) +
+      (
+        apriRegole
+          ? "&apriRegole=true"
+          : ""
+      )
     );
   }
 
-  window.creaUrlBove = creaUrlBove;
+  window.creaUrlBove =
+    creaUrlBove;
 
   function buildTournamentLink(id) {
     return (
       location.origin +
-      location.pathname.replace(/[^/]*$/, "") +
+      location.pathname.replace(
+        /[^/]*$/,
+        ""
+      ) +
       "Bove.html?idTorneo=" +
-      encodeURIComponent(String(id))
+      encodeURIComponent(
+        String(id)
+      )
     );
   }
 
   function applyGeneratedLink(value) {
-    if (!value) return;
+    if (!value) {
+      return;
+    }
 
     const a =
       document.getElementById(
@@ -273,192 +422,229 @@
         "linkBoveGeneratoMirror"
       );
 
-    if (a) a.value = value;
-    if (b) b.value = value;
+    if (a) {
+      a.value = value;
+    }
+
+    if (b) {
+      b.value = value;
+    }
   }
 
-  window.generaLinkPerId = function (id) {
-    if (
-      id === undefined ||
-      id === null ||
-      String(id).trim() === ""
-    ) {
-      alert("Seleziona prima un torneo");
-      return false;
-    }
-
-    adminState.torneoSelezionato = id;
-
-    salvaAdminState();
-
-    const value = buildTournamentLink(id);
-
-    try {
-      localStorage.setItem(
-        STORAGE_LINK,
-        value
-      );
-    } catch {}
-
-    applyGeneratedLink(value);
-
-    [0, 150, 500].forEach(ms => {
-      setTimeout(
-        () => applyGeneratedLink(value),
-        ms
-      );
-    });
-
-    return value;
-  };
-
-  window.generaLinkBove = function () {
-    const id =
-      adminState?.torneoSelezionato;
-
-    return id == null
-      ? (
-          alert(
-            "Seleziona prima un torneo"
-          ),
-          false
-        )
-      : window.generaLinkPerId(id);
-  };
-
-  window.copiaLinkBove = async function () {
-    let value =
-      document.getElementById(
-        "linkBoveGenerato"
-      )?.value ||
-      document.getElementById(
-        "linkBoveGeneratoMirror"
-      )?.value ||
-      "";
-
-    if (!value) {
-      try {
-        value =
-          localStorage.getItem(
-            STORAGE_LINK
-          ) || "";
-      } catch {}
-    }
-
-    if (
-      !value &&
-      adminState?.torneoSelezionato != null
-    ) {
-      window.generaLinkPerId(
-        adminState.torneoSelezionato
-      );
-
-      try {
-        value =
-          localStorage.getItem(
-            STORAGE_LINK
-          ) || "";
-      } catch {}
-    }
-
-    if (!value) {
-      alert(
-        "Seleziona prima un torneo e genera il link."
-      );
-      return false;
-    }
-
-    try {
+  window.generaLinkPerId =
+    function (id) {
       if (
-        navigator.clipboard?.writeText
+        id === undefined ||
+        id === null ||
+        String(id).trim() === ""
       ) {
-        await navigator.clipboard.writeText(
+        alert(
+          "Seleziona prima un torneo"
+        );
+
+        return false;
+      }
+
+      adminState.torneoSelezionato =
+        id;
+
+      salvaAdminState();
+
+      const value =
+        buildTournamentLink(id);
+
+      try {
+        localStorage.setItem(
+          STORAGE_LINK,
           value
         );
-      } else {
-        const textarea =
-          document.createElement(
-            "textarea"
-          );
+      } catch {}
 
-        textarea.value = value;
-        textarea.readOnly = true;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
+      applyGeneratedLink(value);
 
-        document.body.appendChild(
-          textarea
-        );
-
-        textarea.select();
-
-        if (
-          !document.execCommand("copy")
-        ) {
-          throw new Error(
-            "Copia non disponibile"
+      [0, 150, 500].forEach(
+        ms => {
+          setTimeout(
+            () =>
+              applyGeneratedLink(
+                value
+              ),
+            ms
           );
         }
-
-        textarea.remove();
-      }
-
-      alert(
-        "Link copiato negli appunti!"
       );
 
-      return true;
-    } catch {
-      const input =
-        document.getElementById(
-          "linkBoveGenerato"
-        ) ||
-        document.getElementById(
-          "linkBoveGeneratoMirror"
+      return value;
+    };
+
+  window.generaLinkBove =
+    function () {
+      const id =
+        adminState?.torneoSelezionato;
+
+      if (id == null) {
+        alert(
+          "Seleziona prima un torneo"
         );
 
-      if (input) {
-        input.value = value;
-        input.focus();
-        input.select();
+        return false;
       }
 
-      alert(
-        "Il link è pronto: selezionalo e copialo manualmente."
+      return window.generaLinkPerId(
+        id
       );
+    };
 
-      return false;
-    }
-  };
+  window.copiaLinkBove =
+    async function () {
+      let value =
+        document.getElementById(
+          "linkBoveGenerato"
+        )?.value ||
+        document.getElementById(
+          "linkBoveGeneratoMirror"
+        )?.value ||
+        "";
 
-  window.apriBoveConTorneo = function (
-    id
-  ) {
-    if (
-      id === undefined ||
-      id === null ||
-      String(id).trim() === ""
-    ) {
-      alert("Seleziona prima un torneo");
-      return false;
-    }
+      if (!value) {
+        try {
+          value =
+            localStorage.getItem(
+              STORAGE_LINK
+            ) || "";
+        } catch {}
+      }
 
-    const url =
-      "Bove.html?idTorneo=" +
-      encodeURIComponent(String(id));
+      if (
+        !value &&
+        adminState?.torneoSelezionato !=
+          null
+      ) {
+        window.generaLinkPerId(
+          adminState.torneoSelezionato
+        );
 
-    const win = window.open(
-      url,
-      "_blank",
-      "noopener"
-    );
+        try {
+          value =
+            localStorage.getItem(
+              STORAGE_LINK
+            ) || "";
+        } catch {}
+      }
 
-    if (!win) {
-      window.location.href = url;
-    }
+      if (!value) {
+        alert(
+          "Seleziona prima un torneo e genera il link."
+        );
 
-    return true;
-  };
+        return false;
+      }
+
+      try {
+        if (
+          navigator.clipboard &&
+          typeof navigator.clipboard.writeText ===
+            "function"
+        ) {
+          await navigator.clipboard.writeText(
+            value
+          );
+        } else {
+          const textarea =
+            document.createElement(
+              "textarea"
+            );
+
+          textarea.value = value;
+          textarea.readOnly = true;
+
+          textarea.style.position =
+            "fixed";
+
+          textarea.style.opacity =
+            "0";
+
+          document.body.appendChild(
+            textarea
+          );
+
+          textarea.select();
+
+          if (
+            !document.execCommand(
+              "copy"
+            )
+          ) {
+            throw new Error(
+              "Copia non disponibile"
+            );
+          }
+
+          textarea.remove();
+        }
+
+        alert(
+          "Link copiato negli appunti!"
+        );
+
+        return true;
+      } catch {
+        const input =
+          document.getElementById(
+            "linkBoveGenerato"
+          ) ||
+          document.getElementById(
+            "linkBoveGeneratoMirror"
+          );
+
+        if (input) {
+          input.value = value;
+          input.focus();
+          input.select();
+        }
+
+        alert(
+          "Il link è pronto: selezionalo e copialo manualmente."
+        );
+
+        return false;
+      }
+    };
+
+  window.apriBoveConTorneo =
+    function (id) {
+      if (
+        id === undefined ||
+        id === null ||
+        String(id).trim() === ""
+      ) {
+        alert(
+          "Seleziona prima un torneo"
+        );
+
+        return false;
+      }
+
+      const url =
+        "Bove.html?idTorneo=" +
+        encodeURIComponent(
+          String(id)
+        );
+
+      const win =
+        window.open(
+          url,
+          "_blank",
+          "noopener"
+        );
+
+      if (!win) {
+        window.location.href =
+          url;
+      }
+
+      return true;
+    };
 
   /* ------------------------------------------------------------------------
      5. TORNEI
@@ -475,20 +661,25 @@
       } = await client
         .from("tornei")
         .select("*")
-        .order("id", {
-          ascending: false
-        });
+        .order(
+          "id",
+          {
+            ascending: false
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       if (Array.isArray(data)) {
-        adminState.tornei = data;
+        adminState.tornei =
+          data;
       }
 
       salvaAdminState();
 
       renderAdmin();
-
       renderGestioneTorneo();
       renderPartecipanti();
       renderCoppie();
@@ -537,7 +728,9 @@
         error
       } = await client.auth.getSession();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       let session =
         data?.session;
@@ -558,6 +751,7 @@
             "Inserisci email e password.",
             "#ff6678"
           );
+
           return;
         }
 
@@ -589,7 +783,8 @@
         );
       }
 
-      adminState.adminLoggato = true;
+      adminState.adminLoggato =
+        true;
 
       adminState.adminEmail =
         session.user?.email ||
@@ -601,17 +796,20 @@
         .getElementById(
           "boxLoginAdmin"
         )
-        ?.classList.add("hidden");
+        ?.classList.add(
+          "hidden"
+        );
 
       document
         .getElementById(
           "areaAdmin"
         )
-        ?.classList.remove("hidden");
+        ?.classList.remove(
+          "hidden"
+        );
 
       await caricaTorneiSupabase();
       await caricaRichiesteIscrizione();
-
       await caricaNewsAdmin();
       await caricaSponsorAdmin();
 
@@ -634,7 +832,8 @@
     }
   }
 
-  window.loginAdmin = loginAdmin;
+  window.loginAdmin =
+    loginAdmin;
 
   /* ------------------------------------------------------------------------
      7. NUOVO TORNEO
@@ -651,7 +850,8 @@
       const data =
         document.getElementById(
           "adminDataTorneo"
-        )?.value || "";
+        )?.value ||
+        "";
 
       const posti =
         Number(
@@ -663,10 +863,12 @@
       const descrizione =
         document.getElementById(
           "adminDescrizione"
-        )?.value.trim() || "";
+        )?.value.trim() ||
+        "";
 
       const tempId =
-        "temp_" + Date.now();
+        "temp_" +
+        Date.now();
 
       const torneoTemp = {
         id: tempId,
@@ -681,9 +883,12 @@
         partecipanti: [],
         configurazione: {
           rules: {
-            numeroSquadre: posti,
+            numeroSquadre:
+              posti,
             numeroGironi:
-              Math.ceil(posti / 4),
+              Math.ceil(
+                posti / 4
+              ),
             squadrePerGirone: 4
           }
         }
@@ -718,7 +923,8 @@
       const data =
         document.getElementById(
           "adminDataTorneo"
-        )?.value || "";
+        )?.value ||
+        "";
 
       const posti =
         Number(
@@ -730,72 +936,83 @@
       const descrizione =
         document.getElementById(
           "adminDescrizione"
-        )?.value.trim() || "";
+        )?.value.trim() ||
+        "";
 
       if (!data) {
         alert(
           "Inserisci la data del torneo."
         );
+
         return false;
       }
 
-      const client =
-        await initSupabase();
+      try {
+        const client =
+          await initSupabase();
 
-      const nuovoId =
-        Date.now();
+        const nuovoId =
+          Date.now();
 
-      const numeroGironi =
-        Math.ceil(posti / 4);
+        const numeroGironi =
+          Math.ceil(
+            posti / 4
+          );
 
-      const configurazione = {
-        coppie: [],
-        partecipanti: [],
-        rules: {
-          numeroSquadre: posti,
-          numeroGironi,
-          squadrePerGirone: 4
-        }
-      };
+        const configurazione = {
+          coppie: [],
+          partecipanti: [],
+          rules: {
+            numeroSquadre:
+              posti,
+            numeroGironi,
+            squadrePerGirone: 4
+          }
+        };
 
-      const nuovoTorneo = {
-        id: nuovoId,
-        nome,
-        data,
-        posti,
-        descrizione,
-        formula: "",
-        stato: "bozza",
-        iscritti: [],
-        coppie: [],
-        partecipanti: [],
-        configurazione
-      };
+        const nuovoTorneo = {
+          id: novoIdSafe(
+            nuovoId
+          ),
+          nome,
+          data,
+          posti,
+          descrizione,
+          formula: "",
+          stato: "bozza",
+          iscritti: [],
+          coppie: [],
+          partecipanti: [],
+          configurazione
+        };
 
-      adminState.tornei =
-        adminState.tornei.filter(
-          t =>
-            !String(t.id).startsWith(
-              "temp_"
-            )
+        adminState.tornei =
+          adminState.tornei.filter(
+            t =>
+              !String(
+                t.id
+              ).startsWith(
+                "temp_"
+              )
+          );
+
+        adminState.tornei.push(
+          nuovoTorneo
         );
 
-      adminState.tornei.push(
-        nuovoTorneo
-      );
+        adminState.torneoSelezionato =
+          nuovoId;
 
-      adminState.torneoSelezionato =
-        nuovoId;
+        salvaAdminState();
 
-      salvaAdminState();
-
-      try {
         const {
           error
         } = await client
           .from("tornei")
           .insert({
-            id: nuovoId,
+            id: novoIdSafe(
+              novoId
+            ),
             nome,
             data,
             data_torneo: data,
@@ -809,14 +1026,21 @@
             configurazione
           });
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         renderAdmin();
+        renderGestioneTorneo();
+        renderPartecipanti();
+        renderCoppie();
 
         window.open(
           "Bove.html?idTorneo=" +
             encodeURIComponent(
-              nuovoId
+              novoIdSafe(
+                nuovoId
+              )
             ) +
             "&apriRegole=true",
           "_blank"
@@ -833,6 +1057,14 @@
         return false;
       }
     };
+
+  /*
+   * Mantiene il valore numerico originale senza introdurre
+   * trasformazioni nello schema Supabase.
+   */
+  function novoIdSafe(id) {
+    return Number(id);
+  }
 
   window.eliminaTorneoAdmin =
     async function (id) {
@@ -853,9 +1085,14 @@
         } = await client
           .from("tornei")
           .delete()
-          .eq("id", id);
+          .eq(
+            "id",
+            id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         adminState.tornei =
           adminState.tornei.filter(
@@ -867,7 +1104,8 @@
         if (
           String(
             adminState.torneoSelezionato
-          ) === String(id)
+          ) ===
+          String(id)
         ) {
           adminState.torneoSelezionato =
             null;
@@ -897,6 +1135,7 @@
         alert(
           "Seleziona prima un torneo"
         );
+
         return;
       }
 
@@ -912,14 +1151,23 @@
             pubblicato: true,
             stato: "attivo"
           })
-          .eq("id", torneo.id);
+          .eq(
+            "id",
+            torneo.id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
-        torneo.pubblicato = true;
-        torneo.stato = "attivo";
+        torneo.pubblicato =
+          true;
+
+        torneo.stato =
+          "attivo";
 
         salvaAdminState();
+
         renderAdmin();
         renderGestioneTorneo();
 
@@ -944,6 +1192,7 @@
         alert(
           "Seleziona prima un torneo"
         );
+
         return;
       }
 
@@ -956,16 +1205,23 @@
         } = await client
           .from("tornei")
           .update({
-            iscrizioni_chiuse: true
+            iscrizioni_chiuse:
+              true
           })
-          .eq("id", torneo.id);
+          .eq(
+            "id",
+            torneo.id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         torneo.iscrizioni_chiuse =
           true;
 
         salvaAdminState();
+
         renderAdmin();
         renderGestioneTorneo();
 
@@ -986,15 +1242,17 @@
      ------------------------------------------------------------------------ */
 
   async function caricaRichiesteIscrizione() {
-    const id = Number(
-      adminState?.torneoSelezionato
-    );
+    const id =
+      Number(
+        adminState?.torneoSelezionato
+      );
 
     if (
       !Number.isFinite(id) ||
       id <= 0
     ) {
-      window.iscrizioniTorneo = [];
+      window.iscrizioniTorneo =
+        [];
 
       renderGestioneTorneo();
       renderPartecipanti();
@@ -1013,9 +1271,14 @@
       } = await client
         .from("iscrizioni")
         .select("*")
-        .eq("torneo_id", id);
+        .eq(
+          "torneo_id",
+          id
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       window.iscrizioniTorneo =
         Array.isArray(data)
@@ -1029,7 +1292,8 @@
       return true;
 
     } catch (e) {
-      window.iscrizioniTorneo = [];
+      window.iscrizioniTorneo =
+        [];
 
       renderGestioneTorneo();
       renderPartecipanti();
@@ -1058,18 +1322,26 @@
         "gestioneTorneoAdmin"
       );
 
-    if (!box || !card) return;
+    if (!box || !card) {
+      return;
+    }
 
     const torneo =
       getTorneoAdminCorrente();
 
     if (!torneo) {
-      card.classList.add("hidden");
+      card.classList.add(
+        "hidden"
+      );
+
       box.innerHTML = "";
+
       return;
     }
 
-    card.classList.remove("hidden");
+    card.classList.remove(
+      "hidden"
+    );
 
     const rules =
       torneo.configurazione?.rules ||
@@ -1128,7 +1400,9 @@
         "richiesteIscrizione"
       );
 
-    if (!requests) return;
+    if (!requests) {
+      return;
+    }
 
     requests.innerHTML =
       window.iscrizioniTorneo.length
@@ -1143,11 +1417,13 @@
                   )}</b>
 
                   <br>
+
                   <small>${escapeHtml(
                     g.email || "-"
                   )}</small>
 
                   <br>
+
                   <span class="badge">
                     ${escapeHtml(
                       g.stato ||
@@ -1190,13 +1466,20 @@
         } = await client
           .from("iscrizioni")
           .select("*")
-          .eq("id", id)
+          .eq(
+            "id",
+            id
+          )
           .single();
 
-        if (error || !data) {
+        if (
+          error ||
+          !data
+        ) {
           alert(
             "Giocatore non trovato."
           );
+
           return;
         }
 
@@ -1218,7 +1501,10 @@
         }
 
         const setValue =
-          (domId, value) => {
+          (
+            domId,
+            value
+          ) => {
             const element =
               document.getElementById(
                 domId
@@ -1239,22 +1525,26 @@
 
         setValue(
           "adminEmailGiocatore",
-          data.email || ""
+          data.email ||
+            ""
         );
 
         setValue(
           "adminTelefonoGiocatore",
-          data.telefono || ""
+          data.telefono ||
+            ""
         );
 
         setValue(
           "adminLivelloGiocatore",
-          data.livello || "-"
+          data.livello ||
+            "-"
         );
 
         setValue(
           "adminNotaGiocatore",
-          data.note || ""
+          data.note ||
+            ""
         );
 
       } catch (e) {
@@ -1273,12 +1563,14 @@
           ?.id ||
         document.getElementById(
           "schedaGiocatoreAdmin"
-        )?.dataset?.giocatoreId;
+        )?.dataset
+          ?.giocatoreId;
 
       if (!id) {
         alert(
           "Nessun giocatore selezionato"
         );
+
         return;
       }
 
@@ -1295,11 +1587,16 @@
             stato: "approvato",
             approvato: true
           })
-          .eq("id", id)
+          .eq(
+            "id",
+            id
+          )
           .select("*")
           .single();
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         window.giocatoreSelezionatoCorrente =
           data;
@@ -1324,12 +1621,14 @@
           ?.id ||
         document.getElementById(
           "schedaGiocatoreAdmin"
-        )?.dataset?.giocatoreId;
+        )?.dataset
+          ?.giocatoreId;
 
       if (!id) {
         alert(
           "Nessun giocatore selezionato."
         );
+
         return;
       }
 
@@ -1345,9 +1644,14 @@
             stato: "rifiutato",
             approvato: false
           })
-          .eq("id", id);
+          .eq(
+            "id",
+            id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         window.chiudiSchedaGiocatore();
 
@@ -1387,7 +1691,9 @@
         "partecipantiAdmin"
       );
 
-    if (!box) return;
+    if (!box) {
+      return;
+    }
 
     const approved =
       window.iscrizioniTorneo.filter(
@@ -1445,7 +1751,9 @@
         "listaCoppieAdmin"
       );
 
-    if (!box) return;
+    if (!box) {
+      return;
+    }
 
     const torneo =
       getTorneoAdminCorrente();
@@ -1473,7 +1781,8 @@
     }
 
     if (!torneo.configurazione) {
-      torneo.configurazione = {};
+      torneo.configurazione =
+        {};
     }
 
     if (
@@ -1534,7 +1843,9 @@
             "Giocatore"
         );
 
-    if (available.length >= 2) {
+    if (
+      available.length >= 2
+    ) {
       box.innerHTML = `
         <div class="pair-form">
 
@@ -1658,6 +1969,7 @@
             alert(
               "Seleziona due giocatori diversi."
             );
+
             return;
           }
 
@@ -1675,7 +1987,9 @@
                 String(id2)
             );
 
-          if (!g1 || !g2) return;
+          if (!g1 || !g2) {
+            return;
+          }
 
           torneo.coppie.push({
             id: Date.now(),
@@ -1778,6 +2092,7 @@
         alert(
           "Scrivi un messaggio"
         );
+
         return false;
       }
 
@@ -1820,7 +2135,9 @@
           }
         );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       adminState.news =
         Array.isArray(data)
@@ -1848,10 +2165,13 @@
         "listaNewsAdmin"
       );
 
-    if (!list) return;
+    if (!list) {
+      return;
+    }
 
     const items =
-      adminState.news || [];
+      adminState.news ||
+      [];
 
     list.innerHTML =
       items.length
@@ -1919,6 +2239,7 @@
         alert(
           "Compila titolo e testo della news"
         );
+
         return;
       }
 
@@ -1938,7 +2259,9 @@
           .select("*")
           .single();
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         if (result) {
           adminState.news.unshift(
@@ -1994,9 +2317,14 @@
         } = await client
           .from("news")
           .delete()
-          .eq("id", id);
+          .eq(
+            "id",
+            id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         adminState.news =
           adminState.news.filter(
@@ -2032,7 +2360,9 @@
         .from("sponsor")
         .select("*");
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       adminState.sponsor =
         Array.isArray(data)
@@ -2060,10 +2390,13 @@
         "listaSponsorAdmin"
       );
 
-    if (!list) return;
+    if (!list) {
+      return;
+    }
 
     const items =
-      adminState.sponsor || [];
+      adminState.sponsor ||
+      [];
 
     list.innerHTML =
       items.length
@@ -2126,12 +2459,14 @@
       const logo_url =
         document.getElementById(
           "adminLogoSponsor"
-        )?.value.trim() || "";
+        )?.value.trim() ||
+        "";
 
       if (!nome) {
         alert(
           "Inserisci il nome dello sponsor"
         );
+
         return;
       }
 
@@ -2152,7 +2487,9 @@
           .select("*")
           .single();
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         if (result) {
           adminState.sponsor.push(
@@ -2208,14 +2545,21 @@
         } = await client
           .from("sponsor")
           .delete()
-          .eq("id", id);
+          .eq(
+            "id",
+            id
+          );
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         adminState.sponsor =
           adminState.sponsor.filter(
             sponsor =>
-              String(sponsor.id) !==
+              String(
+                sponsor.id
+              ) !==
               String(id)
           );
 
@@ -2273,12 +2617,14 @@
 
       const fine =
         new Date(
-          2028,
+          annoInizio + 1,
           11,
           31
         );
 
-      while (current <= fine) {
+      while (
+        current <= fine
+      ) {
         const data =
           current
             .toISOString()
@@ -2289,8 +2635,10 @@
             .toLocaleString(
               "it-IT",
               {
-                month: "long",
-                year: "numeric"
+                month:
+                  "long",
+                year:
+                  "numeric"
               }
             )
             .toUpperCase()}`;
@@ -2313,7 +2661,8 @@
           descrizione:
             "Torneo ufficiale programmato da calendario biennale 2026-2028.",
 
-          stato: "bozza",
+          stato:
+            "bozza",
 
           configurazione: {
             rules: {
@@ -2325,7 +2674,8 @@
                   posti / 4
                 ),
 
-              squadrePerGirone: 4
+              squadrePerGirone:
+                4
             }
           }
         });
@@ -2384,7 +2734,9 @@
         "listaTorneiAdmin"
       );
 
-    if (!box) return;
+    if (!box) {
+      return;
+    }
 
     const tornei =
       Array.isArray(
@@ -2473,33 +2825,61 @@
 
   /* ------------------------------------------------------------------------
      15. AVVIO
-     
-     IMPORTANTE:
-     NON esiste più mount().
-     NON viene più fatto areaAdmin.innerHTML = "".
-     Il DOM delle .admin-page appartiene a admin.html.
+     ------------------------------------------------------------------------
+
+     FONDAMENTALE:
+
+     NON viene definito mount().
+     NON viene definito __adminDesktopRender.
+     NON viene modificato il contenuto di #areaAdmin.
+
+     admin.html contiene già:
+       .desktop-app
+       .desktop-nav
+       .admin-page
+       #page-dashboard
+       #page-configurazione
+       ecc.
+
+     Questo file si limita a gestire i dati e i pulsanti.
      ------------------------------------------------------------------------ */
 
   async function avviaAdmin() {
     caricaAdminState();
 
-    // Se non siamo autenticati, lasciamo che admin.html
-    // mostri normalmente il login.
     if (!adminState.adminLoggato) {
       return;
     }
 
-    document
-      .getElementById(
+    const loginBox =
+      document.getElementById(
         "boxLoginAdmin"
-      )
-      ?.classList.add("hidden");
+      );
 
-    document
-      .getElementById(
+    const area =
+      document.getElementById(
         "areaAdmin"
-      )
-      ?.classList.remove("hidden");
+      );
+
+    if (loginBox) {
+      loginBox.classList.add(
+        "hidden"
+      );
+    }
+
+    if (area) {
+      area.classList.remove(
+        "hidden"
+      );
+    }
+
+    /*
+     * NON fare:
+     *
+     * area.innerHTML = "";
+     *
+     * NON creare un nuovo desktop.
+     */
 
     try {
       await initSupabase();
@@ -2529,7 +2909,9 @@
     document.addEventListener(
       "DOMContentLoaded",
       avviaAdmin,
-      { once: true }
+      {
+        once: true
+      }
     );
   } else {
     avviaAdmin();
