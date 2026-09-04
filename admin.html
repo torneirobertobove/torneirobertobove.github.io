@@ -199,18 +199,20 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 </main>
 </div>
 
-<!-- CORRETTO: @supabase minuscolo + INSERIMENTO CREDENZIALI -->
+<!-- LIBRERIA SUPABASE E CONFIGURAZIONE SICURA ANTI-BLOCCO -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
   'use strict';
   const SUPABASE_URL = 'https://iybjvtmfaupgthqqsngd.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5Ymp2dG1mYXVwZ3RocXFzbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjcxODUsImV4cCI6MjA5ODI0MzE4NX0.UNa_yytCp39Uvu0R864L3drp7VDaOiOYPQy68WFysOI';
+  
   if (window.supabase) {
     window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 })();
 </script>
+
 <script src="admin-functions.js?v=2"></script>
 
 <script>
@@ -262,10 +264,44 @@ openPage("configurazione");
 })();
 </script>
 
-
-
-
-
+<!-- FIX DI SICUREZZA PER SBLOCCO LOGIN E ROTELINA -->
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('btnLoginAdmin');
+    const msg = document.getElementById('loginMessaggio');
+    if(!btn) return;
+    
+    btn.addEventListener('click', async function(e){
+      const email = document.getElementById('adminEmail').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      
+      if(!email || !password){
+        if(msg) msg.textContent = 'Inserisci email e password.';
+        return;
+      }
+      
+      if(msg) msg.textContent = 'Accesso in corso...';
+      
+      try {
+        if(window.supabaseClient) {
+          const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+          if(error) throw error;
+          if(data && data.session){
+            document.getElementById('boxLoginAdmin').classList.add('hidden');
+            document.getElementById('areaAdmin').classList.remove('hidden');
+            const mini = document.getElementById('adminEmailMini');
+            if(mini) mini.textContent = email;
+            return;
+          }
+        }
+      } catch(err) {
+        if(msg) msg.textContent = 'Errore di accesso: ' + (err.message || 'Credenziali non valide');
+      }
+    });
+  });
+})();
+</script>
 
 <!-- FINAL_ADMIN_RUNTIME_FIX -->
 <script src="admin-function-fixes-v1.js?v=12"></script>
@@ -294,3 +330,5 @@ openPage("configurazione");
   [100,500,1200,2500,5000].forEach(function(ms){setTimeout(fix,ms)});
 })();
 </script>
+</body>
+</html>
