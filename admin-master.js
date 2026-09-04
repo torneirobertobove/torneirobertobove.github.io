@@ -1,16 +1,7 @@
-
 /* ==========================================================================
    PADEL ADMIN MASTER CONSOLE - UNIFIED MASTER
-   Versione corretta per il nuovo admin.html statico
-
-   IMPORTANTI DIFFERENZE:
-   - NON esiste più mount()
-   - NON viene mai sostituito il contenuto di #areaAdmin
-   - NON viene creato un secondo desktop
-   - Il DOM .admin-page appartiene esclusivamente ad admin.html
-   - Supabase viene inizializzato in modo robusto
+   Versione definitiva per il nuovo admin.html statico
    ========================================================================== */
-
 (() => {
   'use strict';
 
@@ -37,10 +28,10 @@
     }
 
     supabaseInitPromise = (async () => {
-      /*
-       * CASO 1:
-       * Supabase è già stato caricato da admin.html.
-       */
+      /* ------------------------------------------------------------------
+         Se la libreria Supabase è già disponibile
+         ------------------------------------------------------------------ */
+
       if (
         window.supabase &&
         typeof window.supabase.createClient === "function"
@@ -63,13 +54,10 @@
         return sb;
       }
 
-      /*
-       * CASO 2:
-       * La libreria non è presente.
-       *
-       * Usiamo il nome corretto del pacchetto:
-       * @supabase/supabase-js
-       */
+      /* ------------------------------------------------------------------
+         Fallback: carica la libreria Supabase corretta
+         ------------------------------------------------------------------ */
+
       await new Promise((resolve, reject) => {
         const existing = document.querySelector(
           'script[data-supabase-admin-loader="true"]'
@@ -86,17 +74,13 @@
 
           existing.addEventListener(
             "load",
-            () => resolve(),
+            resolve,
             { once: true }
           );
 
           existing.addEventListener(
             "error",
-            () => reject(
-              new Error(
-                "Impossibile caricare Supabase JS."
-              )
-            ),
+            reject,
             { once: true }
           );
 
@@ -110,7 +94,8 @@
           "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
         script.async = false;
-        script.dataset.supabaseAdminLoader = "true";
+        script.dataset.supabaseAdminLoader =
+          "true";
 
         script.onload = () => resolve();
 
@@ -159,10 +144,6 @@
     }
   }
 
-  /*
-   * Funzione disponibile globalmente.
-   * Gli altri script dell'admin possono utilizzarla.
-   */
   window.initAdminSupabase =
     initSupabase;
 
@@ -288,8 +269,8 @@
 
     return (
       adminState.tornei.find(
-        t =>
-          String(t.id) ===
+        torneo =>
+          String(torneo.id) ===
           String(
             adminState.torneoSelezionato
           )
@@ -305,14 +286,14 @@
       value ?? ""
     ).replace(
       /[&<>'"]/g,
-      c =>
+      character =>
         ({
           "&": "&amp;",
           "<": "&lt;",
           ">": "&gt;",
           "'": "&#39;",
           '"': "&quot;"
-        })[c]
+        })[character]
     );
   }
 
@@ -325,7 +306,7 @@
       error?.error_description ||
       String(
         error ||
-        "Operazione non riuscita"
+          "Operazione non riuscita"
       )
     );
   }
@@ -412,22 +393,22 @@
       return;
     }
 
-    const a =
+    const inputA =
       document.getElementById(
         "linkBoveGenerato"
       );
 
-    const b =
+    const inputB =
       document.getElementById(
         "linkBoveGeneratoMirror"
       );
 
-    if (a) {
-      a.value = value;
+    if (inputA) {
+      inputA.value = value;
     }
 
-    if (b) {
-      b.value = value;
+    if (inputB) {
+      inputB.value = value;
     }
   }
 
@@ -439,7 +420,7 @@
         String(id).trim() === ""
       ) {
         alert(
-          "Seleziona prima un torneo"
+          "Seleziona prima un torneo."
         );
 
         return false;
@@ -463,13 +444,13 @@
       applyGeneratedLink(value);
 
       [0, 150, 500].forEach(
-        ms => {
+        milliseconds => {
           setTimeout(
             () =>
               applyGeneratedLink(
                 value
               ),
-            ms
+            milliseconds
           );
         }
       );
@@ -482,9 +463,12 @@
       const id =
         adminState?.torneoSelezionato;
 
-      if (id == null) {
+      if (
+        id === undefined ||
+        id === null
+      ) {
         alert(
-          "Seleziona prima un torneo"
+          "Seleziona prima un torneo."
         );
 
         return false;
@@ -568,6 +552,7 @@
             textarea
           );
 
+          textarea.focus();
           textarea.select();
 
           if (
@@ -576,7 +561,7 @@
             )
           ) {
             throw new Error(
-              "Copia non disponibile"
+              "Copia non disponibile."
             );
           }
 
@@ -588,7 +573,7 @@
         );
 
         return true;
-      } catch {
+      } catch (e) {
         const input =
           document.getElementById(
             "linkBoveGenerato"
@@ -619,7 +604,7 @@
         String(id).trim() === ""
       ) {
         alert(
-          "Seleziona prima un torneo"
+          "Seleziona prima un torneo."
         );
 
         return false;
@@ -683,7 +668,6 @@
       renderGestioneTorneo();
       renderPartecipanti();
       renderCoppie();
-
     } catch (e) {
       console.error(
         "Errore caricamento tornei Supabase:",
@@ -709,9 +693,12 @@
       );
 
     if (box) {
-      box.textContent = testo;
+      box.textContent =
+        testo;
+
       box.style.color =
-        colore || "inherit";
+        colore ||
+        "inherit";
     }
   }
 
@@ -726,7 +713,8 @@
       const {
         data,
         error
-      } = await client.auth.getSession();
+      } =
+        await client.auth.getSession();
 
       if (error) {
         throw error;
@@ -817,7 +805,6 @@
       renderGestioneTorneo();
       renderPartecipanti();
       renderCoppie();
-
     } catch (e) {
       console.error(
         "Errore login:",
@@ -893,6 +880,15 @@
           }
         }
       };
+
+      if (
+        !Array.isArray(
+          adminState.tornei
+        )
+      ) {
+        adminState.tornei =
+          [];
+      }
 
       adminState.tornei.push(
         torneoTemp
@@ -971,9 +967,7 @@
         };
 
         const nuovoTorneo = {
-          id: novoIdSafe(
-            nuovoId
-          ),
+          id: nuovoId,
           nome,
           data,
           posti,
@@ -988,9 +982,9 @@
 
         adminState.tornei =
           adminState.tornei.filter(
-            t =>
+            torneo =>
               !String(
-                t.id
+                torneo.id
               ).startsWith(
                 "temp_"
               )
@@ -1010,9 +1004,7 @@
         } = await client
           .from("tornei")
           .insert({
-            id: novoIdSafe(
-              novoId
-            ),
+            id: nuovoId,
             nome,
             data,
             data_torneo: data,
@@ -1031,23 +1023,17 @@
         }
 
         renderAdmin();
-        renderGestioneTorneo();
-        renderPartecipanti();
-        renderCoppie();
 
         window.open(
           "Bove.html?idTorneo=" +
             encodeURIComponent(
-              novoIdSafe(
-                nuovoId
-              )
+              nuovoId
             ) +
             "&apriRegole=true",
           "_blank"
         );
 
         return true;
-
       } catch (e) {
         report(
           "Creazione torneo non riuscita",
@@ -1057,14 +1043,6 @@
         return false;
       }
     };
-
-  /*
-   * Mantiene il valore numerico originale senza introdurre
-   * trasformazioni nello schema Supabase.
-   */
-  function novoIdSafe(id) {
-    return Number(id);
-  }
 
   window.eliminaTorneoAdmin =
     async function (id) {
@@ -1096,8 +1074,10 @@
 
         adminState.tornei =
           adminState.tornei.filter(
-            t =>
-              String(t.id) !==
+            torneo =>
+              String(
+                torneo.id
+              ) !==
               String(id)
           );
 
@@ -1117,7 +1097,6 @@
         renderGestioneTorneo();
         renderPartecipanti();
         renderCoppie();
-
       } catch (e) {
         report(
           "Eliminazione torneo non riuscita",
@@ -1133,7 +1112,7 @@
 
       if (!torneo) {
         alert(
-          "Seleziona prima un torneo"
+          "Seleziona prima un torneo."
         );
 
         return;
@@ -1174,7 +1153,6 @@
         alert(
           "Torneo pubblicato con successo!"
         );
-
       } catch (e) {
         report(
           "Pubblicazione torneo non riuscita",
@@ -1190,7 +1168,7 @@
 
       if (!torneo) {
         alert(
-          "Seleziona prima un torneo"
+          "Seleziona prima un torneo."
         );
 
         return;
@@ -1228,7 +1206,6 @@
         alert(
           "Iscrizioni chiuse."
         );
-
       } catch (e) {
         report(
           "Chiusura iscrizioni non riuscita",
@@ -1290,7 +1267,6 @@
       renderCoppie();
 
       return true;
-
     } catch (e) {
       window.iscrizioniTorneo =
         [];
@@ -1300,7 +1276,7 @@
       renderCoppie();
 
       console.error(
-        "Caricamento iscrizioni non riuscito",
+        "Caricamento iscrizioni non riuscito:",
         e
       );
 
@@ -1334,7 +1310,8 @@
         "hidden"
       );
 
-      box.innerHTML = "";
+      box.innerHTML =
+        "";
 
       return;
     }
@@ -1344,26 +1321,33 @@
     );
 
     const rules =
-      torneo.configurazione?.rules ||
+      torneo.configurazione
+        ?.rules ||
       torneo.rules ||
       {};
 
     box.innerHTML = `
       <div class="admin-detail">
-        <h3>${escapeHtml(
-          torneo.nome ||
-            "Torneo"
-        )}</h3>
+
+        <h3>
+          ${escapeHtml(
+            torneo.nome ||
+              "Torneo"
+          )}
+        </h3>
 
         <p>
           📅 ${escapeHtml(
-            torneo.data || "-"
+            torneo.data ||
+              "-"
           )}
+
           · 👥 ${
             torneo.posti ||
             rules.numeroSquadre ||
             0
           } squadre
+
           · 🏆 ${escapeHtml(
             rules.tipoTorneo ||
               torneo.formula ||
@@ -1373,10 +1357,12 @@
 
         <p>
           Stato:
-          <b>${escapeHtml(
-            torneo.stato ||
-              "bozza"
-          )}</b>
+          <b>
+            ${escapeHtml(
+              torneo.stato ||
+                "bozza"
+            )}
+          </b>
 
           · Pubblicato:
           ${
@@ -1392,6 +1378,7 @@
               : "aperte"
           }
         </p>
+
       </div>
     `;
 
@@ -1404,29 +1391,42 @@
       return;
     }
 
-    requests.innerHTML =
-      window.iscrizioniTorneo.length
+    const richieste =
+      Array.isArray(
+        window.iscrizioniTorneo
+      )
         ? window.iscrizioniTorneo
+        : [];
+
+    requests.innerHTML =
+      richieste.length
+        ? richieste
             .map(
-              g => `
+              giocatore => `
                 <div class="lista-item">
-                  <b>${escapeHtml(
-                    g.nome_giocatore ||
-                      g.nome ||
-                      "Giocatore"
-                  )}</b>
+
+                  <b>
+                    ${escapeHtml(
+                      giocatore.nome_giocatore ||
+                        giocatore.nome ||
+                        "Giocatore"
+                    )}
+                  </b>
 
                   <br>
 
-                  <small>${escapeHtml(
-                    g.email || "-"
-                  )}</small>
+                  <small>
+                    ${escapeHtml(
+                      giocatore.email ||
+                        "-"
+                    )}
+                  </small>
 
                   <br>
 
                   <span class="badge">
                     ${escapeHtml(
-                      g.stato ||
+                      giocatore.stato ||
                         "in attesa"
                     )}
                   </span>
@@ -1436,10 +1436,11 @@
                   <button
                     class="btn"
                     onclick="selezionaGiocatoreAdmin(${JSON.stringify(
-                      g.id
+                      giocatore.id
                     )})">
                     Gestisci
                   </button>
+
                 </div>
               `
             )
@@ -1472,10 +1473,7 @@
           )
           .single();
 
-        if (
-          error ||
-          !data
-        ) {
+        if (error || !data) {
           alert(
             "Giocatore non trovato."
           );
@@ -1546,7 +1544,6 @@
           data.note ||
             ""
         );
-
       } catch (e) {
         report(
           "Errore caricamento giocatore",
@@ -1563,12 +1560,11 @@
           ?.id ||
         document.getElementById(
           "schedaGiocatoreAdmin"
-        )?.dataset
-          ?.giocatoreId;
+        )?.dataset?.giocatoreId;
 
       if (!id) {
         alert(
-          "Nessun giocatore selezionato"
+          "Nessun giocatore selezionato."
         );
 
         return;
@@ -1584,8 +1580,10 @@
         } = await client
           .from("iscrizioni")
           .update({
-            stato: "approvato",
-            approvato: true
+            stato:
+              "approvato",
+            approvato:
+              true
           })
           .eq(
             "id",
@@ -1604,7 +1602,6 @@
         window.chiudiSchedaGiocatore();
 
         await caricaRichiesteIscrizione();
-
       } catch (e) {
         alert(
           "Errore approvazione: " +
@@ -1621,8 +1618,7 @@
           ?.id ||
         document.getElementById(
           "schedaGiocatoreAdmin"
-        )?.dataset
-          ?.giocatoreId;
+        )?.dataset?.giocatoreId;
 
       if (!id) {
         alert(
@@ -1641,8 +1637,10 @@
         } = await client
           .from("iscrizioni")
           .update({
-            stato: "rifiutato",
-            approvato: false
+            stato:
+              "rifiutato",
+            approvato:
+              false
           })
           .eq(
             "id",
@@ -1656,7 +1654,6 @@
         window.chiudiSchedaGiocatore();
 
         await caricaRichiesteIscrizione();
-
       } catch (e) {
         alert(
           "Errore durante il rifiuto: " +
@@ -1695,14 +1692,22 @@
       return;
     }
 
+    const iscrizioni =
+      Array.isArray(
+        window.iscrizioniTorneo
+      )
+        ? window.iscrizioniTorneo
+        : [];
+
     const approved =
-      window.iscrizioniTorneo.filter(
-        g =>
-          g &&
+      iscrizioni.filter(
+        giocatore =>
+          giocatore &&
           (
-            g.stato ===
+            giocatore.stato ===
               "approvato" ||
-            g.approvato === true
+            giocatore.approvato ===
+              true
           )
       );
 
@@ -1710,18 +1715,26 @@
       approved.length
         ? approved
             .map(
-              g => `
+              giocatore => `
                 <div class="lista-item">
+
                   ✅
-                  <b>${escapeHtml(
-                    g.nome_giocatore ||
-                      g.nome ||
-                      "Partecipante"
-                  )}</b>
+
+                  <b>
+                    ${escapeHtml(
+                      giocatore.nome_giocatore ||
+                        giocatore.nome ||
+                        "Partecipante"
+                    )}
+                  </b>
+
                   —
+
                   ${escapeHtml(
-                    g.email || "-"
+                    giocatore.email ||
+                      "-"
                   )}
+
                 </div>
               `
             )
@@ -1766,7 +1779,8 @@
       `;
 
       if (list) {
-        list.innerHTML = "";
+        list.innerHTML =
+          "";
       }
 
       return;
@@ -1777,10 +1791,13 @@
         torneo.coppie
       )
     ) {
-      torneo.coppie = [];
+      torneo.coppie =
+        [];
     }
 
-    if (!torneo.configurazione) {
+    if (
+      !torneo.configurazione
+    ) {
       torneo.configurazione =
         {};
     }
@@ -1794,14 +1811,22 @@
         torneo.coppie;
     }
 
+    const iscrizioni =
+      Array.isArray(
+        window.iscrizioniTorneo
+      )
+        ? window.iscrizioniTorneo
+        : [];
+
     const approved =
-      window.iscrizioniTorneo.filter(
-        g =>
-          g &&
+      iscrizioni.filter(
+        giocatore =>
+          giocatore &&
           (
-            g.stato ===
+            giocatore.stato ===
               "approvato" ||
-            g.approvato === true
+            giocatore.approvato ===
+              true
           )
       );
 
@@ -1810,37 +1835,47 @@
         torneo.coppie.flatMap(
           coppia =>
             [
-              coppia?.giocatore1?.id,
-              coppia?.giocatore2?.id
+              coppia?.giocatore1
+                ?.id,
+              coppia?.giocatore2
+                ?.id
             ]
               .filter(
                 value =>
-                  value != null
+                  value !=
+                  null
               )
-              .map(String)
+              .map(
+                value =>
+                  String(value)
+              )
         )
       );
 
     const available =
       approved.filter(
-        g =>
+        giocatore =>
           !used.has(
-            String(g.id)
+            String(
+              giocatore.id
+            )
           )
       );
 
     const name =
-      g =>
+      giocatore =>
         escapeHtml(
           [
-            g?.nome,
-            g?.cognome
+            giocatore?.nome,
+            giocatore?.cognome
           ]
             .filter(Boolean)
             .join(" ") ||
-            g?.nome_giocatore ||
-            g?.email ||
-            "Giocatore"
+          giocatore
+            ?.nome_giocatore ||
+          giocatore
+            ?.email ||
+          "Giocatore"
         );
 
     if (
@@ -1850,53 +1885,75 @@
         <div class="pair-form">
 
           <p>
-            <b>Giocatori approvati:</b>
+            <b>
+              Giocatori approvati:
+            </b>
+
             ${approved.length}
+
             ·
-            <b>Coppie:</b>
+
+            <b>
+              Coppie:
+            </b>
+
             ${torneo.coppie.length}
           </p>
 
-          <select id="adminCoppiaGiocatore1">
+          <select
+            id="adminCoppiaGiocatore1">
+
             <option value="">
               Primo giocatore
             </option>
 
             ${available
               .map(
-                g => `
-                  <option value="${escapeHtml(
-                    g.id
-                  )}">
-                    ${name(g)}
+                giocatore => `
+                  <option
+                    value="${escapeHtml(
+                      giocatore.id
+                    )}">
+                    ${name(
+                      giocatore
+                    )}
                   </option>
                 `
               )
               .join("")}
+
           </select>
 
-          <select id="adminCoppiaGiocatore2">
+          <select
+            id="adminCoppiaGiocatore2">
+
             <option value="">
               Secondo giocatore
             </option>
 
             ${available
               .map(
-                g => `
-                  <option value="${escapeHtml(
-                    g.id
-                  )}">
-                    ${name(g)}
+                giocatore => `
+                  <option
+                    value="${escapeHtml(
+                      giocatore.id
+                    )}">
+                    ${name(
+                      giocatore
+                    )}
                   </option>
                 `
               )
               .join("")}
+
           </select>
 
           <button
             class="btn primary"
             id="btnCreaCoppiaAdmin">
+
             ＋ Crea coppia
+
           </button>
 
         </div>
@@ -1918,21 +1975,30 @@
         torneo.coppie.length
           ? torneo.coppie
               .map(
-                (coppia, index) => `
+                (
+                  coppia,
+                  index
+                ) => `
                   <div class="lista-item">
+
                     <b>
-                      Coppia ${index + 1}
+                      Coppia ${
+                        index + 1
+                      }
                     </b>
 
                     <br>
+
                     👤 ${name(
                       coppia.giocatore1
                     )}
 
                     <br>
+
                     👤 ${name(
                       coppia.giocatore2
                     )}
+
                   </div>
                 `
               )
@@ -1944,11 +2010,15 @@
           `;
     }
 
-    document
-      .getElementById(
+    const createButton =
+      document.getElementById(
         "btnCreaCoppiaAdmin"
-      )
-      ?.addEventListener(
+      );
+
+    if (
+      createButton
+    ) {
+      createButton.addEventListener(
         "click",
         async () => {
           const id1 =
@@ -1975,15 +2045,19 @@
 
           const g1 =
             approved.find(
-              g =>
-                String(g.id) ===
+              giocatore =>
+                String(
+                  giocatore.id
+                ) ===
                 String(id1)
             );
 
           const g2 =
             approved.find(
-              g =>
-                String(g.id) ===
+              giocatore =>
+                String(
+                  giocatore.id
+                ) ===
                 String(id2)
             );
 
@@ -1997,27 +2071,33 @@
             giocatore1: {
               id: g1.id,
               nome:
-                g1.nome || "",
+                g1.nome ||
+                "",
               cognome:
-                g1.cognome || "",
+                g1.cognome ||
+                "",
               nome_giocatore:
                 g1.nome_giocatore ||
                 "",
               email:
-                g1.email || ""
+                g1.email ||
+                ""
             },
 
             giocatore2: {
               id: g2.id,
               nome:
-                g2.nome || "",
+                g2.nome ||
+                "",
               cognome:
-                g2.cognome || "",
+                g2.cognome ||
+                "",
               nome_giocatore:
                 g2.nome_giocatore ||
                 "",
               email:
-                g2.email || ""
+                g2.email ||
+                ""
             }
           });
 
@@ -2026,14 +2106,19 @@
 
           const index =
             adminState.tornei.findIndex(
-              t =>
-                String(t.id) ===
-                String(torneo.id)
+              elemento =>
+                String(
+                  elemento.id
+                ) ===
+                String(
+                  torneo.id
+                )
             );
 
           if (index >= 0) {
-            adminState.tornei[index] =
-              torneo;
+            adminState.tornei[
+              index
+            ] = torneo;
           }
 
           salvaAdminState();
@@ -2054,7 +2139,9 @@
                   torneo.id
                 );
 
-            if (result.error) {
+            if (
+              result.error
+            ) {
               console.error(
                 result.error
               );
@@ -2069,6 +2156,7 @@
           renderCoppie();
         }
       );
+    }
   }
 
   window.renderCoppie =
@@ -2090,7 +2178,7 @@
 
       if (!message) {
         alert(
-          "Scrivi un messaggio"
+          "Scrivi un messaggio."
         );
 
         return false;
@@ -2147,7 +2235,6 @@
       salvaAdminState();
 
       renderNewsAdmin();
-
     } catch (e) {
       console.error(
         "Errore caricamento news:",
@@ -2170,43 +2257,51 @@
     }
 
     const items =
-      adminState.news ||
-      [];
+      Array.isArray(
+        adminState.news
+      )
+        ? adminState.news
+        : [];
 
     list.innerHTML =
       items.length
         ? items
             .map(
-              n => `
+              news => `
                 <div class="lista-item">
 
-                  <b>${escapeHtml(
-                    n.titolo ||
-                      "News"
-                  )}</b>
+                  <b>
+                    ${escapeHtml(
+                      news.titolo ||
+                        "News"
+                    )}
+                  </b>
 
                   <br>
 
                   <small>
                     ${escapeHtml(
-                      n.created_at ||
-                        n.data ||
+                      news.created_at ||
+                        news.data ||
                         "-"
                     )}
                   </small>
 
                   <p>
                     ${escapeHtml(
-                      n.testo || ""
+                      news.testo ||
+                        ""
                     )}
                   </p>
 
                   <button
                     class="btn danger"
                     onclick="eliminaNewsAdmin(${JSON.stringify(
-                      n.id
+                      news.id
                     )})">
+
                     Elimina
+
                   </button>
 
                 </div>
@@ -2237,7 +2332,7 @@
 
       if (!titolo || !testo) {
         alert(
-          "Compila titolo e testo della news"
+          "Compila titolo e testo della news."
         );
 
         return;
@@ -2270,6 +2365,7 @@
         }
 
         salvaAdminState();
+
         renderNewsAdmin();
 
         const titoloInput =
@@ -2283,13 +2379,14 @@
           );
 
         if (titoloInput) {
-          titoloInput.value = "";
+          titoloInput.value =
+            "";
         }
 
         if (testoInput) {
-          testoInput.value = "";
+          testoInput.value =
+            "";
         }
-
       } catch (e) {
         alert(
           "Errore creazione news: " +
@@ -2328,14 +2425,16 @@
 
         adminState.news =
           adminState.news.filter(
-            n =>
-              String(n.id) !==
+            news =>
+              String(
+                news.id
+              ) !==
               String(id)
           );
 
         salvaAdminState();
-        renderNewsAdmin();
 
+        renderNewsAdmin();
       } catch (e) {
         alert(
           "Errore eliminazione: " +
@@ -2372,7 +2471,6 @@
       salvaAdminState();
 
       renderSponsorAdmin();
-
     } catch (e) {
       console.error(
         "Errore caricamento sponsor:",
@@ -2395,8 +2493,11 @@
     }
 
     const items =
-      adminState.sponsor ||
-      [];
+      Array.isArray(
+        adminState.sponsor
+      )
+        ? adminState.sponsor
+        : [];
 
     list.innerHTML =
       items.length
@@ -2405,10 +2506,12 @@
               sponsor => `
                 <div class="lista-item">
 
-                  <b>${escapeHtml(
-                    sponsor.nome ||
-                      "Sponsor"
-                  )}</b>
+                  <b>
+                    ${escapeHtml(
+                      sponsor.nome ||
+                        "Sponsor"
+                    )}
+                  </b>
 
                   <br>
 
@@ -2426,7 +2529,9 @@
                     onclick="eliminaSponsorAdmin(${JSON.stringify(
                       sponsor.id
                     )})">
+
                     Elimina
+
                   </button>
 
                 </div>
@@ -2464,7 +2569,7 @@
 
       if (!nome) {
         alert(
-          "Inserisci il nome dello sponsor"
+          "Inserisci il nome dello sponsor."
         );
 
         return;
@@ -2498,6 +2603,7 @@
         }
 
         salvaAdminState();
+
         renderSponsorAdmin();
 
         const nomeInput =
@@ -2511,13 +2617,14 @@
           );
 
         if (nomeInput) {
-          nomeInput.value = "";
+          nomeInput.value =
+            "";
         }
 
         if (logoInput) {
-          logoInput.value = "";
+          logoInput.value =
+            "";
         }
-
       } catch (e) {
         alert(
           "Errore inserimento sponsor: " +
@@ -2564,8 +2671,8 @@
           );
 
         salvaAdminState();
-        renderSponsorAdmin();
 
+        renderSponsorAdmin();
       } catch (e) {
         alert(
           "Errore eliminazione sponsor: " +
@@ -2606,7 +2713,8 @@
           )?.value
         ) || 8;
 
-      const generati = [];
+      const generati =
+        [];
 
       let current =
         new Date(
@@ -2617,7 +2725,7 @@
 
       const fine =
         new Date(
-          annoInizio + 1,
+          2028,
           11,
           31
         );
@@ -2709,7 +2817,8 @@
           adminState.tornei
         )
       ) {
-        adminState.tornei = [];
+        adminState.tornei =
+          [];
       }
 
       adminState.tornei.push(
@@ -2717,6 +2826,7 @@
       );
 
       salvaAdminState();
+
       renderAdmin();
 
       alert(
@@ -2752,10 +2862,12 @@
               torneo => `
                 <div class="lista-item">
 
-                  <b>${escapeHtml(
-                    torneo.nome ||
-                      "Torneo"
-                  )}</b>
+                  <b>
+                    ${escapeHtml(
+                      torneo.nome ||
+                        "Torneo"
+                    )}
+                  </b>
 
                   (${escapeHtml(
                     torneo.data ||
@@ -2779,7 +2891,9 @@
                     onclick="selezionaTorneoAdmin(${JSON.stringify(
                       torneo.id
                     )})">
+
                     Seleziona
+
                   </button>
 
                   <button
@@ -2787,7 +2901,9 @@
                     onclick="eliminaTorneoAdmin(${JSON.stringify(
                       torneo.id
                     )})">
+
                     Elimina
+
                   </button>
 
                 </div>
@@ -2825,61 +2941,39 @@
 
   /* ------------------------------------------------------------------------
      15. AVVIO
-     ------------------------------------------------------------------------
-
-     FONDAMENTALE:
-
-     NON viene definito mount().
-     NON viene definito __adminDesktopRender.
-     NON viene modificato il contenuto di #areaAdmin.
-
-     admin.html contiene già:
-       .desktop-app
-       .desktop-nav
-       .admin-page
-       #page-dashboard
-       #page-configurazione
-       ecc.
-
-     Questo file si limita a gestire i dati e i pulsanti.
+     
+     IMPORTANTE:
+     - NON esiste mount()
+     - NON esiste __adminDesktopRender
+     - NON viene modificato areaAdmin.innerHTML
+     - NON vengono eliminate le .admin-page
+     - Il DOM principale appartiene ad admin.html
      ------------------------------------------------------------------------ */
 
   async function avviaAdmin() {
     caricaAdminState();
 
-    if (!adminState.adminLoggato) {
+    if (
+      !adminState.adminLoggato
+    ) {
       return;
     }
 
-    const loginBox =
-      document.getElementById(
+    document
+      .getElementById(
         "boxLoginAdmin"
+      )
+      ?.classList.add(
+        "hidden"
       );
 
-    const area =
-      document.getElementById(
+    document
+      .getElementById(
         "areaAdmin"
-      );
-
-    if (loginBox) {
-      loginBox.classList.add(
+      )
+      ?.classList.remove(
         "hidden"
       );
-    }
-
-    if (area) {
-      area.classList.remove(
-        "hidden"
-      );
-    }
-
-    /*
-     * NON fare:
-     *
-     * area.innerHTML = "";
-     *
-     * NON creare un nuovo desktop.
-     */
 
     try {
       await initSupabase();
@@ -2893,7 +2987,6 @@
       renderGestioneTorneo();
       renderPartecipanti();
       renderCoppie();
-
     } catch (e) {
       console.error(
         "[ADMIN] Avvio non riuscito:",
@@ -2901,6 +2994,10 @@
       );
     }
   }
+
+  /* ------------------------------------------------------------------------
+     16. AVVIO SICURO
+     ------------------------------------------------------------------------ */
 
   if (
     document.readyState ===
@@ -2918,4 +3015,3 @@
   }
 
 })();
-
