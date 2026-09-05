@@ -1,4 +1,3 @@
-
 /*
  * PADEL ADMIN MASTER CONSOLE
  * Versione coordinata con admin.html statico
@@ -299,6 +298,9 @@
             window.supabaseClient =
               supabaseClient;
 
+            window._supabase =
+              supabaseClient;
+
             resolve(
               supabaseClient
             );
@@ -309,9 +311,8 @@
 
         if (
           window.supabase &&
-          typeof window.supabase
-            .createClient ===
-          "function"
+          typeof window.supabase.createClient ===
+            "function"
         ) {
           createClientNow();
           return;
@@ -363,26 +364,11 @@
     }
 
     return String(value)
-      .replace(
-        /&/g,
-        "&amp;"
-      )
-      .replace(
-        /</g,
-        "&lt;"
-      )
-      .replace(
-        />/g,
-        "&gt;"
-      )
-      .replace(
-        /"/g,
-        "&quot;"
-      )
-      .replace(
-        /'/g,
-        "&#039;"
-      );
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   function getAreaAdmin() {
@@ -1131,21 +1117,22 @@
     window.creaNuovoTorneo;
 
   /* ============================================================
-     ELIMINA TORNEO
+     ELIMINAZIONE TORNEO
      ============================================================ */
 
   window.eliminaTorneo =
-    async function (
-      idParam
-    ) {
-      const id =
-        idParam ??
-        getSelectedTournamentId();
+    async function (id) {
+      const torneoId =
+        id !== undefined &&
+        id !== null &&
+        id !== ""
+          ? id
+          : getSelectedTournamentId();
 
       if (
-        id === null ||
-        id === undefined ||
-        id === ""
+        torneoId === null ||
+        torneoId === undefined ||
+        torneoId === ""
       ) {
         alert(
           "Seleziona prima un torneo."
@@ -1154,12 +1141,29 @@
         return false;
       }
 
-      const conferma =
-        window.confirm(
-          "Vuoi eliminare definitivamente il torneo selezionato?"
+      const torneo =
+        adminState.tornei.find(
+          function (item) {
+            return (
+              String(item.id) ===
+              String(torneoId)
+            );
+          }
         );
 
-      if (!conferma) {
+      const nome =
+        torneo?.nome ||
+        torneo?.titolo ||
+        torneo?.name ||
+        "questo torneo";
+
+      if (
+        !window.confirm(
+          'Vuoi eliminare "' +
+            nome +
+            '"?'
+        )
+      ) {
         return false;
       }
 
@@ -1173,7 +1177,7 @@
             .delete()
             .eq(
               "id",
-              id
+              torneoId
             );
 
         if (result.error) {
@@ -1185,10 +1189,10 @@
             adminState.tornei ||
             []
           ).filter(
-            function (torneo) {
+            function (item) {
               return (
-                String(torneo.id) !==
-                String(id)
+                String(item.id) !==
+                String(torneoId)
               );
             }
           );
@@ -1196,8 +1200,7 @@
         if (
           String(
             adminState.torneoSelezionato
-          ) ===
-          String(id)
+          ) === String(torneoId)
         ) {
           adminState.torneoSelezionato =
             adminState.tornei.length
@@ -1214,14 +1217,17 @@
         sincronizzaAdminState();
         salvaStato();
 
-        await caricaTorneiSupabase();
-
         renderListaTornei();
         renderTorneoSelezionato();
+        renderIscrizioni();
 
-        alert(
-          "Torneo eliminato."
-        );
+        if (
+          adminState.tornei.length
+        ) {
+          await caricaRichiesteIscrizione(
+            adminState.tornei[0].id
+          );
+        }
 
         return true;
       } catch (error) {
@@ -1306,21 +1312,22 @@
     window.pubblicaTorneo;
 
   /* ============================================================
-     CHIUDI TORNEO
+     CHIUSURA TORNEO
      ============================================================ */
 
   window.chiudiTorneo =
-    async function (
-      idParam
-    ) {
-      const id =
-        idParam ??
-        getSelectedTournamentId();
+    async function (id) {
+      const torneoId =
+        id !== undefined &&
+        id !== null &&
+        id !== ""
+          ? id
+          : getSelectedTournamentId();
 
       if (
-        id === null ||
-        id === undefined ||
-        id === ""
+        torneoId === null ||
+        torneoId === undefined ||
+        torneoId === ""
       ) {
         alert(
           "Seleziona prima un torneo."
@@ -1338,12 +1345,15 @@
             .from("tornei")
             .update({
               stato: "chiuso",
-              iscrizioni_aperte: false
+              iscrizioni_aperte:
+                false
             })
             .eq(
               "id",
-              id
-            );
+              torneoId
+            )
+            .select()
+            .single();
 
         if (result.error) {
           throw result.error;
@@ -1355,7 +1365,7 @@
           "Torneo chiuso."
         );
 
-        return true;
+        return result.data;
       } catch (error) {
         console.error(
           "Chiusura torneo:",
@@ -1514,21 +1524,22 @@
     caricaRichiesteIscrizione;
 
   /* ============================================================
-     PARTECIPANTI
+     PARTECIPANTI APPROVATI
      ============================================================ */
 
   window.caricaPartecipanti =
-    async function (
-      torneoIdParam
-    ) {
-      const torneoId =
-        torneoIdParam ??
-        getSelectedTournamentId();
+    async function (torneoId) {
+      const id =
+        torneoId !== undefined &&
+        torneoId !== null &&
+        torneoId !== ""
+          ? torneoId
+          : getSelectedTournamentId();
 
       if (
-        torneoId === null ||
-        torneoId === undefined ||
-        torneoId === ""
+        id === null ||
+        id === undefined ||
+        id === ""
       ) {
         adminState.partecipanti =
           [];
@@ -1548,7 +1559,7 @@
             .select("*")
             .eq(
               "torneo_id",
-              torneoId
+              id
             )
             .eq(
               "stato",
@@ -1557,7 +1568,7 @@
             .order(
               "created_at",
               {
-                ascending: true
+                ascending: false
               }
             );
 
@@ -1832,6 +1843,10 @@
         getSelectedTournamentId();
 
       await caricaRichiesteIscrizione(
+        torneoId
+      );
+
+      await window.caricaPartecipanti(
         torneoId
       );
 
@@ -2217,10 +2232,6 @@
   window.caricaNewsAdmin =
     caricaNewsAdmin;
 
-  /*
-   * COMPATIBILITÀ:
-   * alcune parti dell'admin richiamano caricaNews
-   */
   window.caricaNews =
     caricaNewsAdmin;
 
@@ -2407,12 +2418,7 @@
           error
         );
 
-        alert(
-          error.message ||
-            "Errore durante la modifica della news."
-        );
-
-        return false;
+        throw error;
       }
     };
 
@@ -2421,9 +2427,7 @@
      ============================================================ */
 
   window.eliminaNews =
-    async function (
-      id
-    ) {
+    async function (id) {
       if (
         id === null ||
         id === undefined ||
@@ -2434,12 +2438,11 @@
         );
       }
 
-      const conferma =
-        window.confirm(
+      if (
+        !window.confirm(
           "Vuoi eliminare questa news?"
-        );
-
-      if (!conferma) {
+        )
+      ) {
         return false;
       }
 
@@ -2531,10 +2534,6 @@
   window.caricaSponsorAdmin =
     caricaSponsorAdmin;
 
-  /*
-   * COMPATIBILITÀ:
-   * alcune parti dell'admin richiamano caricaSponsor
-   */
   window.caricaSponsor =
     caricaSponsorAdmin;
 
@@ -2757,12 +2756,7 @@
           error
         );
 
-        alert(
-          error.message ||
-            "Errore durante la modifica dello sponsor."
-        );
-
-        return false;
+        throw error;
       }
     };
 
@@ -2771,9 +2765,7 @@
      ============================================================ */
 
   window.eliminaSponsor =
-    async function (
-      id
-    ) {
+    async function (id) {
       if (
         id === null ||
         id === undefined ||
@@ -2784,12 +2776,11 @@
         );
       }
 
-      const conferma =
-        window.confirm(
+      if (
+        !window.confirm(
           "Vuoi eliminare questo sponsor?"
-        );
-
-      if (!conferma) {
+        )
+      ) {
         return false;
       }
 
@@ -2928,10 +2919,13 @@
     const container =
       document.getElementById(
         "adminCalendar"
+      ) ||
+      document.getElementById(
+        "calendarioAdmin"
       );
 
     if (!container) {
-      return;
+      return false;
     }
 
     const calendario =
@@ -2952,22 +2946,13 @@
   window.generaCalendario =
     generaCalendario;
 
-  /*
-   * FIX PERMANENTE:
-   * renderCalendario esisteva ma non era esportata.
-   */
-  window.renderCalendario =
-    renderCalendario;
-
-  /*
-   * COMPATIBILITÀ:
-   * caricaCalendario viene richiesto da alcune parti
-   * dell'interfaccia admin.
-   */
   window.caricaCalendario =
     function () {
       return generaCalendario();
     };
+
+  window.renderCalendario =
+    renderCalendario;
 
   /* ============================================================
      AVVIO
@@ -2999,6 +2984,10 @@
           id !== ""
         ) {
           await caricaRichiesteIscrizione(
+            id
+          );
+
+          await window.caricaPartecipanti(
             id
           );
         }
@@ -3088,4 +3077,3 @@
     };
 
 })();
-
