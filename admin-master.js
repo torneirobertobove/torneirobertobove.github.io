@@ -1,25 +1,14 @@
 (function () {
   "use strict";
 
-  /*
-   * ============================================================
-   * PADEL ADMIN - ADMIN MASTER
-   * Versione: 23
-   * ============================================================
-   *
-   * Questo file contiene esclusivamente JavaScript.
-   * NON deve essere incollato dentro admin.html.
-   */
+  const VERSION = "23";
 
-  const ADMIN_MASTER_VERSION = "23";
+  const SUPABASE_URL = "https://iybjvtmfaupgthqqsngd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
 
-  const SUPABASE_URL =
-    "https://iybjvtmfaupgthqqsngd.supabase.co";
+  console.log("[Padel Admin] admin-master.js v23 avvio...");
 
-  const SUPABASE_KEY =
-    "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
-
-  window.__ADMIN_MASTER_VERSION = ADMIN_MASTER_VERSION;
+  window.__ADMIN_MASTER_VERSION = VERSION;
 
   const defaultState = {
     tornei: [],
@@ -34,30 +23,46 @@
     initialized: false
   };
 
-  const adminState = Object.assign({}, defaultState);
+  if (!window.adminState || typeof window.adminState !== "object") {
+    window.adminState = {};
+  }
 
-  window.adminState = adminState;
+  Object.keys(defaultState).forEach(function (key) {
+    if (!(key in window.adminState)) {
+      window.adminState[key] = defaultState[key];
+    }
+  });
+
+  const adminState = window.adminState;
 
   let supabaseClient = null;
+  let authSubscription = null;
+  let refreshTimer = null;
 
-  /*
-   * ------------------------------------------------------------
-   * UTILITY
-   * ------------------------------------------------------------
-   */
+  function log() {
+    try {
+      console.log.apply(console, arguments);
+    } catch (_) {}
+  }
+
+  function warn() {
+    try {
+      console.warn.apply(console, arguments);
+    } catch (_) {}
+  }
+
+  function errorLog() {
+    try {
+      console.error.apply(console, arguments);
+    } catch (_) {}
+  }
 
   function byId(id) {
     return document.getElementById(id);
   }
 
-  function text(value) {
-    return value === null || value === undefined
-      ? ""
-      : String(value);
-  }
-
   function escapeHtml(value) {
-    return text(value)
+    return String(value == null ? "" : value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -65,729 +70,801 @@
       .replace(/'/g, "&#039;");
   }
 
+  function escapeAttr(value) {
+    return escapeHtml(value);
+  }
+
   function formatDate(value) {
+    if (!value) return "—";
+
+    try {
+      const date = new Date(value + (String(value).length === 10 ? "T00:00:00" : ""));
+
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return date.toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    } catch (_) {
+      return String(value);
+    }
+  }
+
+  function formatDateTime(value) {
     if (!value) return "—";
 
     try {
       const date = new Date(value);
 
       if (Number.isNaN(date.getTime())) {
-        return text(value);
+        return String(value);
       }
 
-      return date.toLocaleDateString("it-IT");
-    } catch (e) {
-      return text(value);
+      return date.toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (_) {
+      return String(value);
     }
   }
 
-  function formatTime(value) {
-    if (!value) return "";
+  function showNotice(message, type) {
+    const text = String(message || "");
+    const kind = type || "info";
 
-    const valueText = text(value);
+    let box = byId("adminNotice");
 
-    if (valueText.length >= 5) {
-      return valueText.substring(0, 5);
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "adminNotice";
+      box.style.position = "fixed";
+      box.style.right = "20px";
+      box.style.bottom = "20px";
+      box.style.zIndex = "99999";
+      box.style.maxWidth = "420px";
+      box.style.padding = "14px 18px";
+      box.style.borderRadius = "10px";
+      box.style.background = "#222";
+      box.style.color = "#fff";
+      box.style.boxShadow = "0 8px 30px rgba(0,0,0,.25)";
+      box.style.fontFamily = "Arial,sans-serif";
+      document.body.appendChild(box);
     }
 
-    return valueText;
-  }
+    box.textContent = text;
 
-  function showMessage(message, type) {
-    const loginMessage = byId("messaggioLoginAdmin");
-
-    if (loginMessage && !byId("areaAdmin")?.style.display) {
-      loginMessage.textContent = text(message);
+    if (kind === "error") {
+      box.style.background = "#b42318";
+    } else if (kind === "success") {
+      box.style.background = "#087443";
+    } else if (kind === "warning") {
+      box.style.background = "#9a6700";
+    } else {
+      box.style.background = "#222";
     }
 
-    if (typeof window.alert === "function" && type === "error") {
-      console.error(message);
-    }
+    box.style.display = "block";
 
-    try {
-      if (typeof window.__adminToast === "function") {
-        window.__adminToast(message, type);
-      }
-    } catch (e) {}
+    clearTimeout(box.__timer);
 
-    console.log("[PADel Admin]", message);
+    box.__timer = setTimeout(function () {
+      box.style.display = "none";
+    }, 3500);
   }
 
-  function setLoginMessage(message) {
-    const element = byId("messaggioLoginAdmin");
-
-    if (element) {
-      element.textContent = text(message);
-    }
-  }
-
-  function getCurrentUser() {
-    if (!supabaseClient) return null;
-
-    return supabaseClient.auth
-      ? supabaseClient.auth.getUser()
-      : null;
-  }
-
-  function ensureClient() {
+  function getSupabaseClient() {
     if (supabaseClient) {
       return supabaseClient;
     }
 
     if (
-      !window.supabase ||
-      typeof window.supabase.createClient !== "function"
+      window.supabaseClient &&
+      typeof window.supabaseClient.from === "function"
     ) {
-      return null;
+      supabaseClient = window.supabaseClient;
     }
 
-    supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
+    if (!supabaseClient && window.supabase && typeof window.supabase.createClient === "function") {
+      try {
+        supabaseClient = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_KEY
+        );
+      } catch (err) {
+        errorLog("[Padel Admin] Errore creazione Supabase:", err);
+        return null;
+      }
+    }
 
-    window._supabase = supabaseClient;
-    window.sb = supabaseClient;
-    window.supabaseClient = supabaseClient;
+    if (supabaseClient) {
+      window._supabase = supabaseClient;
+      window.sb = supabaseClient;
+      window.supabaseClient = supabaseClient;
+    }
 
     return supabaseClient;
   }
 
   function waitForSupabase(timeout) {
-    const maxTime = Number(timeout) || 10000;
+    timeout = timeout || 10000;
 
-    return new Promise(function (resolve) {
-      const started = Date.now();
+    return new Promise(function (resolve, reject) {
+      const start = Date.now();
 
       function check() {
-        const client = ensureClient();
+        const client = getSupabaseClient();
 
         if (client) {
           resolve(client);
           return;
         }
 
-        if (Date.now() - started >= maxTime) {
-          resolve(null);
+        if (Date.now() - start >= timeout) {
+          reject(new Error("Supabase non disponibile"));
           return;
         }
 
-        setTimeout(check, 50);
+        setTimeout(check, 100);
       }
 
       check();
     });
   }
 
-  function getSelectedTournamentId() {
-    if (!adminState.torneoSelezionato) {
-      return null;
+  function getCurrentSession() {
+    const client = getSupabaseClient();
+
+    if (!client || !client.auth) {
+      return Promise.resolve(null);
     }
 
-    return adminState.torneoSelezionato.id || null;
+    return client.auth.getSession()
+      .then(function (result) {
+        if (result && result.data) {
+          return result.data.session || null;
+        }
+
+        return null;
+      })
+      .catch(function (err) {
+        errorLog("[Padel Admin] getSession:", err);
+        return null;
+      });
   }
 
-  function normalizeTournamentDate(torneo) {
-    if (!torneo) return "";
-
-    return torneo.data_torneo ||
-      torneo.data ||
-      "";
-  }
-
-  function getTournamentName(torneo) {
-    if (!torneo) return "Torneo";
-
-    return torneo.nome ||
-      torneo.titolo ||
-      "Torneo";
-  }
-
-  function getConfig(torneo) {
-    if (!torneo) return {};
-
-    if (
-      torneo.configurazione &&
-      typeof torneo.configurazione === "object"
-    ) {
-      return torneo.configurazione;
-    }
-
-    return {};
-  }
-
-  function mergeConfig(torneo, patch) {
-    const current = getConfig(torneo);
-
-    return Object.assign({}, current, patch || {});
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * UI LOGIN
-   * ------------------------------------------------------------
-   */
-
-  function showLogin() {
-    const login = byId("boxLoginAdmin");
-    const app = byId("areaAdmin");
-
-    if (login) {
-      login.style.display = "flex";
-    }
-
-    if (app) {
-      app.style.display = "none";
-    }
-  }
-
-  function showApp(user) {
-    const login = byId("boxLoginAdmin");
-    const app = byId("areaAdmin");
-
-    if (login) {
-      login.style.display = "none";
-    }
-
-    if (app) {
-      app.style.display = "block";
-    }
-
+  function setLoginState(session) {
+    const loginBox = byId("boxLoginAdmin");
+    const areaAdmin = byId("areaAdmin");
     const emailDisplay = byId("adminEmailDisplay");
+
+    if (loginBox) {
+      loginBox.style.display = session ? "none" : "flex";
+    }
+
+    if (areaAdmin) {
+      areaAdmin.style.display = session ? "block" : "none";
+    }
 
     if (emailDisplay) {
       emailDisplay.textContent =
-        user?.email ||
-        "Utente autenticato";
-    }
-
-    try {
-      if (typeof window.openAdminPage === "function") {
-        const currentHash =
-          location.hash
-            ? location.hash.substring(1)
-            : "dashboard";
-
-        window.openAdminPage(currentHash || "dashboard");
-      }
-    } catch (e) {
-      console.warn("Navigazione admin non disponibile:", e);
+        session && session.user
+          ? session.user.email || "—"
+          : "—";
     }
   }
 
-  /*
-   * ------------------------------------------------------------
-   * AUTH
-   * ------------------------------------------------------------
-   */
+  function getSelectedTournament() {
+    if (adminState.torneoSelezionato) {
+      return adminState.torneoSelezionato;
+    }
+
+    if (adminState.tornei && adminState.tornei.length) {
+      adminState.torneoSelezionato = adminState.tornei[0];
+      return adminState.tornei[0];
+    }
+
+    return null;
+  }
+
+  function getSelectedTournamentId() {
+    const torneo = getSelectedTournament();
+
+    if (!torneo) {
+      return null;
+    }
+
+    return torneo.id;
+  }
+
+  function normalizeTournamentConfig(torneo) {
+    let config = torneo && torneo.configurazione;
+
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      config = {};
+    }
+
+    if (!Array.isArray(config.coppie)) {
+      config.coppie = [];
+    }
+
+    if (!Array.isArray(config.tabellone)) {
+      config.tabellone = [];
+    }
+
+    return config;
+  }
+
+  function participantName(person) {
+    if (!person) {
+      return "Giocatore";
+    }
+
+    if (person.nome_giocatore) {
+      return String(person.nome_giocatore).trim();
+    }
+
+    const fullName = [
+      person.nome,
+      person.cognome
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    if (person.alias) {
+      return String(person.alias).trim();
+    }
+
+    if (person.email) {
+      return String(person.email).trim();
+    }
+
+    return "Giocatore";
+  }
+
+  function participantPhone(person) {
+    if (!person) return "";
+
+    return String(
+      person.telefono ||
+      person.phone ||
+      ""
+    ).trim();
+  }
+
+  function isApprovedRegistration(row) {
+    if (!row) return false;
+
+    return (
+      row.approvato === true ||
+      String(row.stato || "").toLowerCase() === "approvata"
+    );
+  }
+
+  function sortTournaments(list) {
+    return list.slice().sort(function (a, b) {
+      const da = a && (a.data_torneo || a.data);
+      const db = b && (b.data_torneo || b.data);
+
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+
+      return String(da).localeCompare(String(db));
+    });
+  }
+
+  function updateDashboardStats() {
+    const tournaments = adminState.tornei || [];
+    const registrations = adminState.iscrizioni || [];
+    const pairs = adminState.coppie || [];
+
+    const statTornei = byId("statTornei");
+    const statIscritti = byId("statIscritti");
+    const statCoppie = byId("statCoppie");
+    const statStato = byId("statStato");
+
+    if (statTornei) {
+      statTornei.textContent = String(tournaments.length);
+    }
+
+    if (statIscritti) {
+      statIscritti.textContent = String(
+        registrations.filter(isApprovedRegistration).length
+      );
+    }
+
+    if (statCoppie) {
+      statCoppie.textContent = String(pairs.length);
+    }
+
+    if (statStato) {
+      const selected = getSelectedTournament();
+
+      if (!selected) {
+        statStato.textContent = "Nessun torneo";
+      } else if (selected.iscrizioni_chiuse) {
+        statStato.textContent = "Iscrizioni chiuse";
+      } else if (selected.pubblicato) {
+        statStato.textContent = "Pubblicato";
+      } else {
+        statStato.textContent = "Bozza";
+      }
+    }
+
+    const legacyMap = {
+      totTornei: tournaments.length,
+      totIscritti: registrations.filter(isApprovedRegistration).length,
+      totCoppie: pairs.length,
+      totPartite: (adminState.tabellone || []).length
+    };
+
+    Object.keys(legacyMap).forEach(function (id) {
+      const element = byId(id);
+
+      if (element) {
+        element.textContent = String(legacyMap[id]);
+      }
+    });
+  }
+
+  function renderTorneiAdmin() {
+    const container = byId("listaTorneiAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const tournaments = adminState.tornei || [];
+
+    if (!tournaments.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessun torneo presente.</div>';
+      return;
+    }
+
+    container.innerHTML = tournaments.map(function (torneo) {
+      const selected =
+        adminState.torneoSelezionato &&
+        String(adminState.torneoSelezionato.id) === String(torneo.id);
+
+      const name = escapeHtml(torneo.nome || "Torneo senza nome");
+      const date = formatDate(torneo.data_torneo || torneo.data);
+      const time = torneo.ora_inizio
+        ? escapeHtml(String(torneo.ora_inizio).slice(0, 5))
+        : "";
+
+      const state = torneo.iscrizioni_chiuse
+        ? "Chiuso"
+        : torneo.pubblicato
+          ? "Pubblicato"
+          : "Bozza";
+
+      return `
+        <div class="admin-torneo-card ${selected ? "selected" : ""}"
+             data-torneo-id="${escapeAttr(torneo.id)}"
+             style="border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div>
+              <h3 style="margin:0 0 6px;">${name}</h3>
+              <div>${escapeHtml(date)}${time ? " · " + time : ""}</div>
+              <div style="margin-top:5px;font-size:13px;opacity:.75;">
+                ${escapeHtml(state)}
+              </div>
+            </div>
+
+            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+              <button type="button"
+                      onclick="window.selezionaTorneoAdmin(${Number(torneo.id)})">
+                Seleziona
+              </button>
+
+              <button type="button"
+                      onclick="window.pubblicaTorneo(${Number(torneo.id)}, ${torneo.pubblicato ? "false" : "true"})">
+                ${torneo.pubblicato ? "Depubblica" : "Pubblica"}
+              </button>
+
+              <button type="button"
+                      onclick="window.chiudiTorneo(${Number(torneo.id)})">
+                Chiudi iscrizioni
+              </button>
+
+              <button type="button"
+                      onclick="window.eliminaTorneo(${Number(torneo.id)})">
+                Elimina
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderConfig() {
+    const container = byId("configTorneoAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const torneo = getSelectedTournament();
+
+    if (!torneo) {
+      container.innerHTML =
+        '<div class="admin-empty">Seleziona un torneo.</div>';
+      return;
+    }
+
+    const config = normalizeTournamentConfig(torneo);
+
+    container.innerHTML = `
+      <div style="padding:16px;border:1px solid #ddd;border-radius:12px;">
+        <h3 style="margin-top:0;">${escapeHtml(torneo.nome || "Torneo")}</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+          <div><strong>Data</strong><br>${escapeHtml(formatDate(torneo.data_torneo || torneo.data))}</div>
+          <div><strong>Ora</strong><br>${escapeHtml(torneo.ora_inizio || "—")}</div>
+          <div><strong>Formula</strong><br>${escapeHtml(torneo.formula || "—")}</div>
+          <div><strong>Posti</strong><br>${escapeHtml(torneo.posti == null ? "—" : torneo.posti)}</div>
+          <div><strong>Stato</strong><br>${torneo.iscrizioni_chiuse ? "Chiuso" : "Aperto"}</div>
+          <div><strong>Pubblicato</strong><br>${torneo.pubblicato ? "Sì" : "No"}</div>
+        </div>
+
+        <div style="margin-top:15px;">
+          <strong>Coppie:</strong> ${config.coppie.length}
+          &nbsp; · &nbsp;
+          <strong>Partite:</strong> ${config.tabellone.length}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCoppie() {
+    const container = byId("coppieAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const pairs = adminState.coppie || [];
+
+    if (!pairs.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessuna coppia generata.</div>';
+      return;
+    }
+
+    container.innerHTML = pairs.map(function (pair, index) {
+      const a = pair.giocatore1 || pair.player1 || "—";
+      const b = pair.giocatore2 || pair.player2 || "—";
+
+      return `
+        <div class="admin-pair"
+             style="display:flex;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #eee;">
+          <strong>Coppia ${index + 1}</strong>
+          <span>${escapeHtml(a)} &amp; ${escapeHtml(b)}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderTabellone() {
+    const container = byId("tabelloneAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const bracket = adminState.tabellone || [];
+
+    if (!bracket.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessun tabellone generato.</div>';
+      return;
+    }
+
+    container.innerHTML = bracket.map(function (match, index) {
+      const p1 = match.coppia1 || match.team1 || "—";
+      const p2 = match.coppia2 || match.team2 || "—";
+
+      return `
+        <div class="admin-match"
+             style="border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <strong>Partita ${index + 1}</strong>
+          <div style="margin-top:6px;">${escapeHtml(p1)}</div>
+          <div style="margin-top:4px;">${escapeHtml(p2)}</div>
+          <div style="margin-top:6px;font-size:12px;opacity:.65;">
+            ${escapeHtml(match.round || "1° turno")}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderNews() {
+    const container =
+      byId("listaNewsAdmin") ||
+      byId("newsAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const news = adminState.news || [];
+
+    if (!news.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessuna news presente.</div>';
+      return;
+    }
+
+    container.innerHTML = news.map(function (item) {
+      return `
+        <article style="border:1px solid #ddd;border-radius:12px;padding:15px;margin-bottom:10px;">
+          <h3 style="margin-top:0;">${escapeHtml(item.titolo || "")}</h3>
+          <div style="white-space:pre-wrap;">${escapeHtml(item.testo || "")}</div>
+
+          <div style="margin-top:10px;font-size:12px;opacity:.65;">
+            ${escapeHtml(formatDateTime(item.created_at))}
+            · ${item.pubblicata ? "Pubblicata" : "Bozza"}
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:6px;">
+            <button type="button"
+                    onclick="window.modificaNews(${Number(item.id)})">
+              Modifica
+            </button>
+
+            <button type="button"
+                    onclick="window.eliminaNews(${Number(item.id)})">
+              Elimina
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  function renderSponsor() {
+    const container =
+      byId("listaSponsorAdmin") ||
+      byId("sponsorAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const sponsors = adminState.sponsor || [];
+
+    if (!sponsors.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessuno sponsor presente.</div>';
+      return;
+    }
+
+    container.innerHTML = sponsors.map(function (item) {
+      const link = item.link || "";
+
+      return `
+        <article style="border:1px solid #ddd;border-radius:12px;padding:15px;margin-bottom:10px;">
+          <h3 style="margin-top:0;">${escapeHtml(item.nome || "")}</h3>
+
+          ${item.immagine
+            ? `<img src="${escapeAttr(item.immagine)}"
+                    alt=""
+                    style="max-width:180px;max-height:90px;object-fit:contain;">`
+            : ""}
+
+          ${link
+            ? `<div style="margin-top:8px;">${escapeHtml(link)}</div>`
+            : ""}
+
+          <div style="margin-top:10px;display:flex;gap:6px;">
+            <button type="button"
+                    onclick="window.modificaSponsor(${Number(item.id)})">
+              Modifica
+            </button>
+
+            <button type="button"
+                    onclick="window.eliminaSponsor(${Number(item.id)})">
+              Elimina
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  function renderCalendar() {
+    const container =
+      byId("adminCalendar") ||
+      byId("calendarioAdmin");
+
+    if (!container) {
+      return;
+    }
+
+    const tournaments = adminState.tornei || [];
+
+    if (!tournaments.length) {
+      container.innerHTML =
+        '<div class="admin-empty">Nessun evento in calendario.</div>';
+      return;
+    }
+
+    container.innerHTML = tournaments.map(function (torneo) {
+      const date = torneo.data_torneo || torneo.data;
+
+      return `
+        <div style="border-left:4px solid currentColor;padding:10px 14px;margin-bottom:10px;">
+          <strong>${escapeHtml(formatDate(date))}</strong>
+          <div>${escapeHtml(torneo.nome || "Torneo")}</div>
+          <small>${escapeHtml(torneo.ora_inizio || "")}</small>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderAll() {
+    updateDashboardStats();
+    renderTorneiAdmin();
+    renderConfig();
+    renderCoppie();
+    renderTabellone();
+    renderNews();
+    renderSponsor();
+    renderCalendar();
+  }
 
   async function loginAdmin() {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      setLoginMessage(
-        "Supabase non è ancora disponibile. Riprova tra qualche secondo."
-      );
+      showNotice("Supabase non è disponibile.", "error");
       return false;
     }
 
-    const emailInput = byId("emailAdmin");
-    const passwordInput = byId("passwordAdmin");
+    const emailElement = byId("emailAdmin");
+    const passwordElement = byId("passwordAdmin");
 
-    const email = emailInput
-      ? text(emailInput.value).trim()
+    const email = emailElement
+      ? String(emailElement.value || "").trim()
       : "";
 
-    const password = passwordInput
-      ? text(passwordInput.value)
+    const password = passwordElement
+      ? String(passwordElement.value || "")
       : "";
 
     if (!email || !password) {
-      setLoginMessage(
-        "Inserisci email e password."
-      );
-      return false;
-    }
-
-    setLoginMessage("Accesso in corso...");
-
-    try {
-      const result =
-        await client.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-
-      if (result.error) {
-        console.error(
-          "Errore login Supabase:",
-          result.error
-        );
-
-        setLoginMessage(
-          result.error.message ||
-          "Accesso non riuscito."
-        );
-
-        return false;
-      }
-
-      const user =
-        result.data?.user ||
-        null;
-
-      setLoginMessage("");
-
-      showApp(user);
-
-      await avviaDatiAdmin();
-
-      return true;
-    } catch (error) {
-      console.error(
-        "Errore loginAdmin:",
-        error
-      );
-
-      setLoginMessage(
-        error?.message ||
-        "Errore durante il login."
-      );
-
-      return false;
-    }
-  }
-
-  async function logoutAdmin() {
-    const client = ensureClient();
-
-    try {
-      if (client) {
-        await client.auth.signOut();
-      }
-    } catch (error) {
-      console.warn(
-        "Errore logout:",
-        error
-      );
-    }
-
-    Object.assign(
-      adminState,
-      JSON.parse(
-        JSON.stringify(defaultState)
-      )
-    );
-
-    showLogin();
-
-    setLoginMessage("");
-
-    return true;
-  }
-
-  async function avviaAdmin() {
-    const client = await waitForSupabase(12000);
-
-    if (!client) {
-      console.error(
-        "Supabase non disponibile."
-      );
-
-      showLogin();
-
-      setLoginMessage(
-        "Impossibile inizializzare Supabase."
-      );
-
+      showNotice("Inserisci email e password.", "warning");
       return false;
     }
 
     try {
-      const result =
-        await client.auth.getSession();
+      adminState.loading = true;
 
-      if (result.error) {
-        console.warn(
-          "Errore recupero sessione:",
-          result.error
-        );
-
-        showLogin();
-
-        return false;
-      }
-
-      const session =
-        result.data?.session ||
-        null;
-
-      if (session?.user) {
-        showApp(session.user);
-        await avviaDatiAdmin();
-        return true;
-      }
-
-      showLogin();
-
-      return false;
-    } catch (error) {
-      console.error(
-        "Errore avviaAdmin:",
-        error
-      );
-
-      showLogin();
-
-      return false;
-    }
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * TORNEI
-   * ------------------------------------------------------------
-   */
-
-  async function caricaTorneiAdmin() {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    adminState.loading = true;
-
-    try {
-      const result =
-        await client
-          .from("tornei")
-          .select("*")
-          .order("data_torneo", {
-            ascending: true,
-            nullsFirst: false
-          })
-          .order("data", {
-            ascending: true,
-            nullsFirst: false
-          });
+      const result = await client.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
 
       if (result.error) {
         throw result.error;
       }
 
-      adminState.tornei =
-        Array.isArray(result.data)
-          ? result.data
-          : [];
+      setLoginState(result.data.session);
 
-      if (adminState.torneoSelezionato) {
-        const selected =
-          adminState.tornei.find(function (torneo) {
-            return String(torneo.id) ===
-              String(adminState.torneoSelezionato.id);
-          });
+      showNotice("Accesso effettuato.", "success");
 
-        if (selected) {
-          adminState.torneoSelezionato = selected;
-        }
-      }
+      await refreshAdmin();
 
-      if (
-        !adminState.torneoSelezionato &&
-        adminState.tornei.length
-      ) {
-        adminState.torneoSelezionato =
-          adminState.tornei[0];
-      }
-
-      renderDashboard();
-      renderTournamentConfig();
-
-      if (adminState.torneoSelezionato) {
-        await caricaIscrizioni();
-      }
-
-      return adminState.tornei;
-    } catch (error) {
-      console.error(
-        "Errore caricaTorneiAdmin:",
-        error
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Login:", err);
+      showNotice(
+        err && err.message
+          ? err.message
+          : "Errore durante il login.",
+        "error"
       );
-
-      renderDashboard(
-        "Errore caricamento tornei."
-      );
-
-      return [];
+      return false;
     } finally {
       adminState.loading = false;
     }
   }
 
-  const caricaTornei =
-    caricaTorneiAdmin;
-
-  async function creaTorneo(data) {
-    const client = ensureClient();
+  async function logoutAdmin() {
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
+      setLoginState(null);
+      return;
     }
 
-    let payload = data || null;
+    try {
+      await client.auth.signOut();
+    } catch (err) {
+      errorLog("[Padel Admin] Logout:", err);
+    }
 
-    if (!payload) {
-      const nome = window.prompt(
-        "Nome del torneo:"
-      );
+    setLoginState(null);
 
-      if (!nome) {
-        return null;
+    adminState.tornei = [];
+    adminState.torneoSelezionato = null;
+    adminState.iscrizioni = [];
+    adminState.partecipanti = [];
+    adminState.coppie = [];
+    adminState.tabellone = [];
+
+    renderAll();
+
+    showNotice("Sessione terminata.", "success");
+  }
+
+  async function caricaTorneiAdmin() {
+    const client = getSupabaseClient();
+
+    if (!client) {
+      return [];
+    }
+
+    try {
+      const result = await client
+        .from("tornei")
+        .select("*");
+
+      if (result.error) {
+        throw result.error;
       }
 
-      const dataTorneo = window.prompt(
-        "Data torneo (YYYY-MM-DD):",
-        new Date()
-          .toISOString()
-          .slice(0, 10)
-      );
+      adminState.tornei = sortTournaments(result.data || []);
 
-      if (!dataTorneo) {
-        return null;
+      if (adminState.torneoSelezionato) {
+        const updated = adminState.tornei.find(function (torneo) {
+          return String(torneo.id) === String(adminState.torneoSelezionato.id);
+        });
+
+        adminState.torneoSelezionato = updated || null;
       }
 
-      const oraInizio = window.prompt(
-        "Ora inizio (HH:MM):",
-        "09:00"
+      if (!adminState.torneoSelezionato && adminState.tornei.length) {
+        adminState.torneoSelezionato = adminState.tornei[0];
+      }
+
+      renderAll();
+
+      return adminState.tornei;
+    } catch (err) {
+      errorLog("[Padel Admin] Caricamento tornei:", err);
+      showNotice(
+        "Impossibile caricare i tornei: " +
+        (err.message || "errore"),
+        "error"
       );
-
-      const postiText = window.prompt(
-        "Numero posti:",
-        "32"
-      );
-
-      const formula = window.prompt(
-        "Formula:",
-        "padel"
-      );
-
-      payload = {
-        nome: nome.trim(),
-        data: dataTorneo,
-        data_torneo: dataTorneo,
-        ora_inizio: oraInizio || null,
-        posti: Number(postiText) || null,
-        formula: formula || null,
-        stato: "attivo",
-        pubblicato: false,
-        iscrizioni_chiuse: false
-      };
-    }
-
-    const result =
-      await client
-        .from("tornei")
-        .insert(payload)
-        .select()
-        .single();
-
-    if (result.error) {
-      console.error(
-        "Errore creazione torneo:",
-        result.error
-      );
-
-      throw result.error;
-    }
-
-    const torneo = result.data;
-
-    adminState.tornei.push(torneo);
-    adminState.torneoSelezionato = torneo;
-
-    renderDashboard();
-    renderTournamentConfig();
-
-    return torneo;
-  }
-
-  async function eliminaTorneo(id) {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    if (!id) {
-      return false;
-    }
-
-    const torneo =
-      adminState.tornei.find(function (item) {
-        return String(item.id) === String(id);
-      });
-
-    const nome =
-      getTournamentName(torneo);
-
-    const conferma =
-      window.confirm(
-        'Eliminare definitivamente il torneo "' +
-        nome +
-        '"?'
-      );
-
-    if (!conferma) {
-      return false;
-    }
-
-    const result =
-      await client
-        .from("tornei")
-        .delete()
-        .eq("id", id);
-
-    if (result.error) {
-      console.error(
-        "Errore eliminazione torneo:",
-        result.error
-      );
-
-      throw result.error;
-    }
-
-    adminState.tornei =
-      adminState.tornei.filter(function (item) {
-        return String(item.id) !== String(id);
-      });
-
-    if (
-      adminState.torneoSelezionato &&
-      String(adminState.torneoSelezionato.id) ===
-        String(id)
-    ) {
-      adminState.torneoSelezionato =
-        adminState.tornei[0] || null;
-
-      adminState.iscrizioni = [];
-      adminState.partecipanti = [];
-      adminState.coppie = [];
-      adminState.tabellone = [];
-    }
-
-    renderDashboard();
-    renderTournamentConfig();
-    renderIscritti();
-    renderCoppie();
-    renderTabellone();
-
-    return true;
-  }
-
-  async function pubblicaTorneo(id, value) {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const pubblicato =
-      typeof value === "boolean"
-        ? value
-        : true;
-
-    const result =
-      await client
-        .from("tornei")
-        .update({
-          pubblicato: pubblicato
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    updateLocalTournament(result.data);
-
-    renderDashboard();
-    renderTournamentConfig();
-
-    return result.data;
-  }
-
-  async function chiudiTorneo(id) {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const result =
-      await client
-        .from("tornei")
-        .update({
-          iscrizioni_chiuse: true,
-          stato: "chiuso"
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    updateLocalTournament(result.data);
-
-    renderDashboard();
-    renderTournamentConfig();
-
-    return result.data;
-  }
-
-  function updateLocalTournament(torneo) {
-    if (!torneo) return;
-
-    const index =
-      adminState.tornei.findIndex(function (item) {
-        return String(item.id) ===
-          String(torneo.id);
-      });
-
-    if (index >= 0) {
-      adminState.tornei[index] = torneo;
-    } else {
-      adminState.tornei.push(torneo);
-    }
-
-    if (
-      adminState.torneoSelezionato &&
-      String(adminState.torneoSelezionato.id) ===
-        String(torneo.id)
-    ) {
-      adminState.torneoSelezionato = torneo;
+      return [];
     }
   }
 
-  function selezionaTorneo(id) {
-    const torneo =
-      adminState.tornei.find(function (item) {
-        return String(item.id) === String(id);
-      });
+  async function caricaTornei() {
+    return caricaTorneiAdmin();
+  }
+
+  async function selezionaTorneoAdmin(id) {
+    const torneo = (adminState.tornei || []).find(function (item) {
+      return String(item.id) === String(id);
+    });
 
     if (!torneo) {
       return null;
@@ -795,458 +872,413 @@
 
     adminState.torneoSelezionato = torneo;
 
-    adminState.iscrizioni = [];
-    adminState.partecipanti = [];
+    const config = normalizeTournamentConfig(torneo);
 
-    const config = getConfig(torneo);
+    adminState.coppie = config.coppie || [];
+    adminState.tabellone = config.tabellone || [];
 
-    adminState.coppie =
-      Array.isArray(config.coppie)
-        ? config.coppie
-        : [];
+    await caricaIscrizioni();
 
-    adminState.tabellone =
-      Array.isArray(config.tabellone)
-        ? config.tabellone
-        : [];
-
-    renderDashboard();
-    renderTournamentConfig();
-    renderCoppie();
-    renderTabellone();
-
-    caricaIscrizioni();
+    renderAll();
 
     return torneo;
   }
 
-  /*
-   * ------------------------------------------------------------
-   * ISCRIZIONI
-   * ------------------------------------------------------------
-   */
-
-  async function caricaIscrizioni(torneoId) {
-    const client = ensureClient();
+  async function creaTorneo() {
+    const client = getSupabaseClient();
 
     if (!client) {
-      return [];
+      showNotice("Supabase non disponibile.", "error");
+      return null;
     }
 
-    const id =
-      torneoId ||
-      getSelectedTournamentId();
+    const nome = window.prompt("Nome del torneo:");
 
-    if (!id) {
-      adminState.iscrizioni = [];
-      adminState.partecipanti = [];
-      renderIscritti();
-      return [];
+    if (!nome || !nome.trim()) {
+      return null;
+    }
+
+    const data = window.prompt(
+      "Data del torneo (AAAA-MM-GG):",
+      new Date().toISOString().slice(0, 10)
+    );
+
+    if (!data) {
+      return null;
+    }
+
+    const ora = window.prompt(
+      "Ora di inizio (HH:MM):",
+      "09:00"
+    );
+
+    const postiText = window.prompt(
+      "Numero posti:",
+      "32"
+    );
+
+    const formula = window.prompt(
+      "Formula:",
+      "Padel"
+    );
+
+    let posti = parseInt(postiText, 10);
+
+    if (Number.isNaN(posti)) {
+      posti = null;
     }
 
     try {
-      const result =
-        await client
-          .from("iscrizioni")
-          .select("*")
-          .eq("torneo_id", id)
-          .order("created_at", {
-            ascending: true
-          });
+      const session = await getCurrentSession();
+
+      const payload = {
+        nome: nome.trim(),
+        data: data,
+        data_torneo: data,
+        ora_inizio: ora || null,
+        posti: posti,
+        formula: formula || null,
+        stato: "attivo",
+        pubblicato: false,
+        iscrizioni_chiuse: false,
+        configurazione: {
+          coppie: [],
+          tabellone: []
+        }
+      };
+
+      if (session && session.user && session.user.id) {
+        payload.created_by = session.user.id;
+      }
+
+      const result = await client
+        .from("tornei")
+        .insert(payload)
+        .select()
+        .single();
 
       if (result.error) {
         throw result.error;
       }
 
-      adminState.iscrizioni =
-        Array.isArray(result.data)
-          ? result.data
-          : [];
+      showNotice("Torneo creato.", "success");
 
-      adminState.partecipanti =
-        adminState.iscrizioni.filter(
-          isApprovedRegistration
+      await caricaTorneiAdmin();
+
+      if (result.data) {
+        await selezionaTorneoAdmin(result.data.id);
+      }
+
+      return result.data;
+    } catch (err) {
+      errorLog("[Padel Admin] Creazione torneo:", err);
+      showNotice(
+        "Errore creazione torneo: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return null;
+    }
+  }
+
+  function apriRegoleNuovoTorneo() {
+    return creaTorneo();
+  }
+
+  async function eliminaTorneo(id) {
+    const client = getSupabaseClient();
+
+    if (!client) {
+      showNotice("Supabase non disponibile.", "error");
+      return false;
+    }
+
+    const torneo = (adminState.tornei || []).find(function (item) {
+      return String(item.id) === String(id);
+    });
+
+    if (!torneo) {
+      return false;
+    }
+
+    const confirmed = window.confirm(
+      'Eliminare definitivamente il torneo "' +
+      (torneo.nome || "") +
+      '"?'
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    try {
+      const registrationsDelete = await client
+        .from("iscrizioni")
+        .delete()
+        .eq("torneo_id", id);
+
+      if (registrationsDelete.error) {
+        warn(
+          "[Padel Admin] Impossibile eliminare le iscrizioni:",
+          registrationsDelete.error
         );
+      }
 
-      renderIscritti();
-      renderDashboard();
+      const result = await client
+        .from("tornei")
+        .delete()
+        .eq("id", id);
 
-      return adminState.iscrizioni;
-    } catch (error) {
-      console.error(
-        "Errore caricaIscrizioni:",
-        error
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (
+        adminState.torneoSelezionato &&
+        String(adminState.torneoSelezionato.id) === String(id)
+      ) {
+        adminState.torneoSelezionato = null;
+        adminState.iscrizioni = [];
+        adminState.partecipanti = [];
+        adminState.coppie = [];
+        adminState.tabellone = [];
+      }
+
+      showNotice("Torneo eliminato.", "success");
+
+      await caricaTorneiAdmin();
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Eliminazione torneo:", err);
+      showNotice(
+        "Errore eliminazione torneo: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return false;
+    }
+  }
+
+  async function pubblicaTorneo(id, value) {
+    const client = getSupabaseClient();
+
+    if (!client) {
+      showNotice("Supabase non disponibile.", "error");
+      return false;
+    }
+
+    try {
+      const result = await client
+        .from("tornei")
+        .update({
+          pubblicato: Boolean(value)
+        })
+        .eq("id", id);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      showNotice(
+        value ? "Torneo pubblicato." : "Torneo rimosso dalla pubblicazione.",
+        "success"
       );
 
+      await caricaTorneiAdmin();
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Pubblicazione torneo:", err);
+      showNotice(
+        "Errore pubblicazione: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return false;
+    }
+  }
+
+  async function chiudiTorneo(id) {
+    const client = getSupabaseClient();
+
+    if (!client) {
+      showNotice("Supabase non disponibile.", "error");
+      return false;
+    }
+
+    const confirmed = window.confirm(
+      "Vuoi chiudere le iscrizioni a questo torneo?"
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    try {
+      const result = await client
+        .from("tornei")
+        .update({
+          iscrizioni_chiuse: true,
+          stato: "chiuso"
+        })
+        .eq("id", id);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      showNotice("Iscrizioni chiuse.", "success");
+
+      await caricaTorneiAdmin();
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Chiusura torneo:", err);
+      showNotice(
+        "Errore chiusura iscrizioni: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return false;
+    }
+  }
+
+  async function caricaIscrizioni() {
+    const client = getSupabaseClient();
+    const torneoId = getSelectedTournamentId();
+
+    if (!client || !torneoId) {
       adminState.iscrizioni = [];
       adminState.partecipanti = [];
+      updateDashboardStats();
+      return [];
+    }
 
-      renderIscritti(
-        "Errore caricamento iscrizioni."
+    try {
+      const result = await client
+        .from("iscrizioni")
+        .select("*")
+        .eq("torneo_id", torneoId)
+        .order("created_at", { ascending: false });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      adminState.iscrizioni = result.data || [];
+
+      adminState.partecipanti =
+        adminState.iscrizioni.filter(isApprovedRegistration);
+
+      updateDashboardStats();
+
+      return adminState.iscrizioni;
+    } catch (err) {
+      errorLog("[Padel Admin] Caricamento iscrizioni:", err);
+      showNotice(
+        "Errore caricamento iscrizioni: " +
+        (err.message || "errore"),
+        "error"
       );
-
       return [];
     }
   }
 
-  function isApprovedRegistration(item) {
-    if (!item) return false;
-
-    return item.approvato === true ||
-      text(item.stato).toLowerCase() ===
-        "approvata";
-  }
-
-  async function cambiaStatoIscrizione(
-    id,
-    stato
-  ) {
-    const client = ensureClient();
+  async function cambiaStatoIscrizione(id, stato) {
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
+      return false;
     }
 
-    const normalized =
-      text(stato)
-        .trim()
-        .toLowerCase();
+    try {
+      const approved =
+        String(stato).toLowerCase() === "approvata";
 
-    const approved =
-      normalized === "approvata" ||
-      normalized === "approvato" ||
-      normalized === "approved";
-
-    const result =
-      await client
+      const result = await client
         .from("iscrizioni")
         .update({
-          stato: approved
-            ? "approvata"
-            : normalized,
+          stato: stato,
           approvato: approved
         })
-        .eq("id", id)
-        .select()
-        .single();
+        .eq("id", id);
 
-    if (result.error) {
-      throw result.error;
-    }
+      if (result.error) {
+        throw result.error;
+      }
 
-    const index =
-      adminState.iscrizioni.findIndex(
-        function (item) {
-          return String(item.id) === String(id);
-        }
+      await caricaIscrizioni();
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Stato iscrizione:", err);
+      showNotice(
+        "Errore aggiornamento iscrizione.",
+        "error"
       );
-
-    if (index >= 0) {
-      adminState.iscrizioni[index] =
-        result.data;
+      return false;
     }
-
-    adminState.partecipanti =
-      adminState.iscrizioni.filter(
-        isApprovedRegistration
-      );
-
-    renderIscritti();
-    renderDashboard();
-
-    return result.data;
   }
 
   async function approvaIscrizione(id) {
-    return cambiaStatoIscrizione(
-      id,
-      "approvata"
-    );
+    return cambiaStatoIscrizione(id, "approvata");
   }
 
   async function rifiutaIscrizione(id) {
-    return cambiaStatoIscrizione(
-      id,
-      "rifiutata"
-    );
+    return cambiaStatoIscrizione(id, "rifiutata");
   }
 
-  async function caricaPartecipanti(torneoId) {
-    await caricaIscrizioni(
-      torneoId ||
-      getSelectedTournamentId()
-    );
+  async function caricaPartecipanti() {
+    if (!adminState.iscrizioni || !adminState.iscrizioni.length) {
+      await caricaIscrizioni();
+    }
 
     adminState.partecipanti =
-      adminState.iscrizioni.filter(
-        isApprovedRegistration
-      );
+      (adminState.iscrizioni || []).filter(isApprovedRegistration);
 
-    renderIscritti();
-    renderCoppie();
-    renderDashboard();
+    updateDashboardStats();
 
     return adminState.partecipanti;
   }
 
-  /*
-   * ------------------------------------------------------------
-   * COPPIE
-   * ------------------------------------------------------------
-   */
-
-  function participantName(item) {
-    if (!item) {
-      return "Giocatore";
-    }
-
-    const nomeCompleto =
-      [
-        item.nome,
-        item.cognome
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-    return (
-      nomeCompleto ||
-      item.nome_giocatore ||
-      item.alias ||
-      item.email ||
-      "Giocatore"
-    );
-  }
-
-  function createPair(player1, player2, index) {
-    return {
-      id:
-        "coppia-" +
-        Date.now() +
-        "-" +
-        index,
-      numero: index + 1,
-      giocatore1: {
-        id: player1?.id || null,
-        nome: participantName(player1),
-        email: player1?.email || null,
-        telefono: player1?.telefono || null
-      },
-      giocatore2: player2
-        ? {
-            id: player2?.id || null,
-            nome: participantName(player2),
-            email: player2?.email || null,
-            telefono: player2?.telefono || null
-          }
-        : null
-    };
-  }
-
   function buildPairs(participants) {
-    const list =
-      Array.isArray(participants)
-        ? participants.slice()
-        : [];
-
     const pairs = [];
 
-    for (
-      let index = 0;
-      index < list.length;
-      index += 2
-    ) {
-      pairs.push(
-        createPair(
-          list[index],
-          list[index + 1] || null,
-          pairs.length
-        )
-      );
+    for (let i = 0; i < participants.length; i += 2) {
+      const p1 = participants[i];
+      const p2 = participants[i + 1] || null;
+
+      pairs.push({
+        id: i / 2 + 1,
+        giocatore1: participantName(p1),
+        giocatore2: p2 ? participantName(p2) : "BYE",
+        giocatore1_id: p1 && p1.id != null ? p1.id : null,
+        giocatore2_id: p2 && p2.id != null ? p2.id : null
+      });
     }
 
     return pairs;
   }
 
-  function shuffle(array) {
-    const result =
-      Array.isArray(array)
-        ? array.slice()
-        : [];
-
-    for (
-      let i = result.length - 1;
-      i > 0;
-      i--
-    ) {
-      const j =
-        Math.floor(
-          Math.random() * (i + 1)
-        );
-
-      const temp = result[i];
-
-      result[i] = result[j];
-      result[j] = temp;
-    }
-
-    return result;
-  }
-
-  async function generaCoppie() {
-    await caricaPartecipanti();
-
-    if (!adminState.torneoSelezionato) {
-      throw new Error(
-        "Seleziona prima un torneo."
-      );
-    }
-
-    const participants =
-      adminState.partecipanti;
-
-    if (!participants.length) {
-      window.alert(
-        "Non ci sono iscritti approvati."
-      );
-
-      adminState.coppie = [];
-
-      renderCoppie();
-
-      return [];
-    }
-
-    adminState.coppie =
-      buildPairs(participants);
-
-    adminState.tabellone =
-      buildBracket(
-        adminState.coppie
-      );
-
-    await salvaConfigurazioneTorneo();
-
-    renderCoppie();
-    renderTabellone();
-    renderDashboard();
-
-    return adminState.coppie;
-  }
-
-  async function generaCoppieLocali() {
-    await caricaPartecipanti();
-
-    if (!adminState.torneoSelezionato) {
-      throw new Error(
-        "Seleziona prima un torneo."
-      );
-    }
-
-    const shuffled =
-      shuffle(
-        adminState.partecipanti
-      );
-
-    adminState.coppie =
-      buildPairs(shuffled);
-
-    adminState.tabellone =
-      buildBracket(
-        adminState.coppie
-      );
-
-    await salvaConfigurazioneTorneo();
-
-    renderCoppie();
-    renderTabellone();
-    renderDashboard();
-
-    return adminState.coppie;
-  }
-
-  async function salvaConfigurazioneTorneo() {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const torneo =
-      adminState.torneoSelezionato;
-
-    if (!torneo?.id) {
-      throw new Error(
-        "Nessun torneo selezionato."
-      );
-    }
-
-    const configurazione =
-      mergeConfig(torneo, {
-        coppie: adminState.coppie,
-        tabellone: adminState.tabellone
-      });
-
-    const result =
-      await client
-        .from("tornei")
-        .update({
-          configurazione:
-            configurazione
-        })
-        .eq("id", torneo.id)
-        .select()
-        .single();
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    updateLocalTournament(
-      result.data
-    );
-
-    return result.data;
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * TABELLONE
-   * ------------------------------------------------------------
-   */
-
   function buildBracket(pairs) {
-    const list =
-      Array.isArray(pairs)
-        ? pairs
-        : [];
-
-    if (!list.length) {
-      return [];
-    }
-
     const matches = [];
 
-    for (
-      let index = 0;
-      index < list.length;
-      index += 2
-    ) {
+    for (let i = 0; i < pairs.length; i += 2) {
+      const first = pairs[i];
+      const second = pairs[i + 1] || null;
+
       matches.push({
-        id:
-          "match-" +
-          (index / 2 + 1),
-        turno: 1,
-        numero:
-          index / 2 + 1,
-        coppia1:
-          list[index] || null,
-        coppia2:
-          list[index + 1] || null,
+        id: i / 2 + 1,
+        round: "1° turno",
+        coppia1: first
+          ? "Coppia " + first.id
+          : "—",
+        coppia2: second
+          ? "Coppia " + second.id
+          : "BYE",
+        coppia1_id: first ? first.id : null,
+        coppia2_id: second ? second.id : null,
         risultato: null,
         vincitore: null
       });
@@ -1255,88 +1287,213 @@
     return matches;
   }
 
-  /*
-   * ------------------------------------------------------------
-   * NEWS
-   * ------------------------------------------------------------
-   */
+  async function salvaConfigurazioneTorneo(config) {
+    const client = getSupabaseClient();
+    const torneo = getSelectedTournament();
+
+    if (!client || !torneo) {
+      return false;
+    }
+
+    try {
+      const result = await client
+        .from("tornei")
+        .update({
+          configurazione: config
+        })
+        .eq("id", torneo.id);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      torneo.configurazione = config;
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Salvataggio configurazione:", err);
+      showNotice(
+        "Errore salvataggio configurazione: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return false;
+    }
+  }
+
+  async function generaCoppie() {
+    await caricaPartecipanti();
+
+    const torneo = getSelectedTournament();
+
+    if (!torneo) {
+      showNotice("Seleziona prima un torneo.", "warning");
+      return [];
+    }
+
+    const participants = adminState.partecipanti || [];
+
+    if (participants.length < 2) {
+      showNotice(
+        "Servono almeno 2 partecipanti approvati.",
+        "warning"
+      );
+      return [];
+    }
+
+    const pairs = buildPairs(participants);
+    const bracket = buildBracket(pairs);
+
+    const config = normalizeTournamentConfig(torneo);
+
+    config.coppie = pairs;
+    config.tabellone = bracket;
+
+    const saved = await salvaConfigurazioneTorneo(config);
+
+    if (!saved) {
+      return [];
+    }
+
+    adminState.coppie = pairs;
+    adminState.tabellone = bracket;
+
+    renderAll();
+
+    showNotice("Coppie generate.", "success");
+
+    return pairs;
+  }
+
+  function shuffle(array) {
+    const result = array.slice();
+
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+
+      const temp = result[i];
+      result[i] = result[j];
+      result[j] = temp;
+    }
+
+    return result;
+  }
+
+  async function generaCoppieLocali() {
+    await caricaPartecipanti();
+
+    const torneo = getSelectedTournament();
+
+    if (!torneo) {
+      showNotice("Seleziona prima un torneo.", "warning");
+      return [];
+    }
+
+    const participants = adminState.partecipanti || [];
+
+    if (participants.length < 2) {
+      showNotice(
+        "Servono almeno 2 partecipanti approvati.",
+        "warning"
+      );
+      return [];
+    }
+
+    const shuffled = shuffle(participants);
+    const pairs = buildPairs(shuffled);
+    const bracket = buildBracket(pairs);
+
+    const config = normalizeTournamentConfig(torneo);
+
+    config.coppie = pairs;
+    config.tabellone = bracket;
+
+    const saved = await salvaConfigurazioneTorneo(config);
+
+    if (!saved) {
+      return [];
+    }
+
+    adminState.coppie = pairs;
+    adminState.tabellone = bracket;
+
+    renderAll();
+
+    showNotice("Coppie casuali generate.", "success");
+
+    return pairs;
+  }
+
+  async function creaCoppieAdmin() {
+    return generaCoppieLocali();
+  }
 
   async function caricaNewsAdmin() {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
       return [];
     }
 
     try {
-      const result =
-        await client
-          .from("news")
-          .select("*")
-          .order("created_at", {
-            ascending: false
-          });
+      const result = await client
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (result.error) {
         throw result.error;
       }
 
-      adminState.news =
-        Array.isArray(result.data)
-          ? result.data
-          : [];
+      adminState.news = result.data || [];
 
       renderNews();
 
       return adminState.news;
-    } catch (error) {
-      console.error(
-        "Errore caricaNews:",
-        error
+    } catch (err) {
+      errorLog("[Padel Admin] News:", err);
+      showNotice(
+        "Errore caricamento news: " +
+        (err.message || "errore"),
+        "error"
       );
-
-      adminState.news = [];
-
-      renderNews(
-        "Errore caricamento news."
-      );
-
       return [];
     }
   }
 
-  const caricaNews =
-    caricaNewsAdmin;
-
   async function creaNews() {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const titolo =
-      text(
-        byId("titoloNews")?.value
-      ).trim();
-
-    const testo =
-      text(
-        byId("testoNews")?.value
-      ).trim();
-
-    if (!titolo) {
-      window.alert(
-        "Inserisci il titolo della news."
-      );
-
       return null;
     }
 
-    const result =
-      await client
+    let titoloElement = byId("titoloNews");
+    let testoElement = byId("testoNews");
+
+    let titolo = titoloElement
+      ? String(titoloElement.value || "").trim()
+      : "";
+
+    let testo = testoElement
+      ? String(testoElement.value || "").trim()
+      : "";
+
+    if (!titolo) {
+      titolo = window.prompt("Titolo news:", "") || "";
+      titolo = titolo.trim();
+    }
+
+    if (!titolo) {
+      return null;
+    }
+
+    if (!testo) {
+      testo = window.prompt("Testo news:", "") || "";
+    }
+
+    try {
+      const result = await client
         .from("news")
         .insert({
           titolo: titolo,
@@ -1346,206 +1503,201 @@
         .select()
         .single();
 
-    if (result.error) {
-      throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (titoloElement) titoloElement.value = "";
+      if (testoElement) testoElement.value = "";
+
+      await caricaNewsAdmin();
+
+      showNotice("News creata.", "success");
+
+      return result.data;
+    } catch (err) {
+      errorLog("[Padel Admin] Creazione news:", err);
+      showNotice(
+        "Errore creazione news: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return null;
     }
-
-    const titoloInput =
-      byId("titoloNews");
-
-    const testoInput =
-      byId("testoNews");
-
-    if (titoloInput) {
-      titoloInput.value = "";
-    }
-
-    if (testoInput) {
-      testoInput.value = "";
-    }
-
-    await caricaNewsAdmin();
-
-    return result.data;
   }
 
   async function modificaNews(id) {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const news =
-      adminState.news.find(function (item) {
-        return String(item.id) ===
-          String(id);
-      });
-
-    if (!news) {
       return null;
     }
 
-    const titolo =
-      window.prompt(
-        "Titolo:",
-        news.titolo || ""
-      );
+    const item = (adminState.news || []).find(function (news) {
+      return String(news.id) === String(id);
+    });
+
+    if (!item) {
+      return null;
+    }
+
+    const titolo = window.prompt(
+      "Titolo news:",
+      item.titolo || ""
+    );
 
     if (titolo === null) {
       return null;
     }
 
-    const testo =
-      window.prompt(
-        "Testo:",
-        news.testo || ""
-      );
+    const testo = window.prompt(
+      "Testo news:",
+      item.testo || ""
+    );
 
     if (testo === null) {
       return null;
     }
 
-    const result =
-      await client
+    try {
+      const result = await client
         .from("news")
         .update({
-          titolo: titolo,
+          titolo: titolo.trim(),
           testo: testo
         })
-        .eq("id", id)
-        .select()
-        .single();
+        .eq("id", id);
 
-    if (result.error) {
-      throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
+
+      await caricaNewsAdmin();
+
+      showNotice("News modificata.", "success");
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Modifica news:", err);
+      showNotice(
+        "Errore modifica news.",
+        "error"
+      );
+      return false;
     }
-
-    await caricaNewsAdmin();
-
-    return result.data;
   }
 
   async function eliminaNews(id) {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    if (
-      !window.confirm(
-        "Eliminare questa news?"
-      )
-    ) {
       return false;
     }
 
-    const result =
-      await client
+    if (!window.confirm("Eliminare questa news?")) {
+      return false;
+    }
+
+    try {
+      const result = await client
         .from("news")
         .delete()
         .eq("id", id);
 
-    if (result.error) {
-      throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
+
+      await caricaNewsAdmin();
+
+      showNotice("News eliminata.", "success");
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Eliminazione news:", err);
+      showNotice(
+        "Errore eliminazione news.",
+        "error"
+      );
+      return false;
     }
-
-    await caricaNewsAdmin();
-
-    return true;
   }
-    /*
-   * ------------------------------------------------------------
-   * SPONSOR
-   * ------------------------------------------------------------
-   */
 
   async function caricaSponsorAdmin() {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
       return [];
     }
 
     try {
-      const result =
-        await client
-          .from("sponsor")
-          .select("*")
-          .order("created_at", {
-            ascending: false
-          });
+      const result = await client
+        .from("sponsor")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (result.error) {
         throw result.error;
       }
 
-      adminState.sponsor =
-        Array.isArray(result.data)
-          ? result.data
-          : [];
+      adminState.sponsor = result.data || [];
 
       renderSponsor();
 
       return adminState.sponsor;
-    } catch (error) {
-      console.error(
-        "Errore caricaSponsor:",
-        error
+    } catch (err) {
+      errorLog("[Padel Admin] Sponsor:", err);
+      showNotice(
+        "Errore caricamento sponsor: " +
+        (err.message || "errore"),
+        "error"
       );
-
-      adminState.sponsor = [];
-
-      renderSponsor(
-        "Errore caricamento sponsor."
-      );
-
       return [];
     }
   }
 
-  const caricaSponsor =
-    caricaSponsorAdmin;
-
   async function creaSponsor() {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const nome =
-      text(
-        byId("nomeSponsor")?.value
-      ).trim();
-
-    const immagine =
-      text(
-        byId("logoSponsor")?.value
-      ).trim();
-
-    const link =
-      text(
-        byId("linkSponsor")?.value
-      ).trim();
-
-    if (!nome) {
-      window.alert(
-        "Inserisci il nome dello sponsor."
-      );
-
       return null;
     }
 
-    const result =
-      await client
+    const nomeElement = byId("nomeSponsor");
+    const logoElement = byId("logoSponsor");
+    const linkElement = byId("linkSponsor");
+
+    let nome = nomeElement
+      ? String(nomeElement.value || "").trim()
+      : "";
+
+    let immagine = logoElement
+      ? String(logoElement.value || "").trim()
+      : "";
+
+    let link = linkElement
+      ? String(linkElement.value || "").trim()
+      : "";
+
+    if (!nome) {
+      nome = window.prompt("Nome sponsor:", "") || "";
+      nome = nome.trim();
+    }
+
+    if (!nome) {
+      return null;
+    }
+
+    if (!immagine) {
+      immagine = window.prompt("URL logo/immagine:", "") || "";
+    }
+
+    if (!link) {
+      link = window.prompt("URL sponsor:", "") || "";
+    }
+
+    try {
+      const result = await client
         .from("sponsor")
         .insert({
           nome: nome,
@@ -1555,254 +1707,182 @@
         .select()
         .single();
 
-    if (result.error) {
-      throw result.error;
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (nomeElement) nomeElement.value = "";
+      if (logoElement) logoElement.value = "";
+      if (linkElement) linkElement.value = "";
+
+      await caricaSponsorAdmin();
+
+      showNotice("Sponsor creato.", "success");
+
+      return result.data;
+    } catch (err) {
+      errorLog("[Padel Admin] Creazione sponsor:", err);
+      showNotice(
+        "Errore creazione sponsor: " +
+        (err.message || "errore"),
+        "error"
+      );
+      return null;
     }
-
-    const nomeInput =
-      byId("nomeSponsor");
-
-    const logoInput =
-      byId("logoSponsor");
-
-    const linkInput =
-      byId("linkSponsor");
-
-    if (nomeInput) {
-      nomeInput.value = "";
-    }
-
-    if (logoInput) {
-      logoInput.value = "";
-    }
-
-    if (linkInput) {
-      linkInput.value = "";
-    }
-
-    await caricaSponsorAdmin();
-
-    return result.data;
   }
 
   async function modificaSponsor(id) {
-    const client = ensureClient();
+    const client = getSupabaseClient();
 
     if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    const sponsor =
-      adminState.sponsor.find(function (item) {
-        return String(item.id) ===
-          String(id);
-      });
-
-    if (!sponsor) {
-      return null;
-    }
-
-    const nome =
-      window.prompt(
-        "Nome sponsor:",
-        sponsor.nome || ""
-      );
-
-    if (nome === null) {
-      return null;
-    }
-
-    const immagine =
-      window.prompt(
-        "URL immagine/logo:",
-        sponsor.immagine || ""
-      );
-
-    if (immagine === null) {
-      return null;
-    }
-
-    const link =
-      window.prompt(
-        "Link:",
-        sponsor.link || ""
-      );
-
-    if (link === null) {
-      return null;
-    }
-
-    const result =
-      await client
-        .from("sponsor")
-        .update({
-          nome: nome,
-          immagine: immagine || null,
-          link: link || null
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    await caricaSponsorAdmin();
-
-    return result.data;
-  }
-
-  async function eliminaSponsor(id) {
-    const client = ensureClient();
-
-    if (!client) {
-      throw new Error(
-        "Supabase non disponibile."
-      );
-    }
-
-    if (
-      !window.confirm(
-        "Eliminare questo sponsor?"
-      )
-    ) {
       return false;
     }
 
-    const result =
-      await client
+    const item = (adminState.sponsor || []).find(function (sponsor) {
+      return String(sponsor.id) === String(id);
+    });
+
+    if (!item) {
+      return false;
+    }
+
+    const nome = window.prompt(
+      "Nome sponsor:",
+      item.nome || ""
+    );
+
+    if (nome === null) {
+      return false;
+    }
+
+    const immagine = window.prompt(
+      "URL logo/immagine:",
+      item.immagine || ""
+    );
+
+    if (immagine === null) {
+      return false;
+    }
+
+    const link = window.prompt(
+      "URL sponsor:",
+      item.link || ""
+    );
+
+    if (link === null) {
+      return false;
+    }
+
+    try {
+      const result = await client
+        .from("sponsor")
+        .update({
+          nome: nome.trim(),
+          immagine: immagine.trim() || null,
+          link: link.trim() || null
+        })
+        .eq("id", id);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      await caricaSponsorAdmin();
+
+      showNotice("Sponsor modificato.", "success");
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Modifica sponsor:", err);
+      showNotice(
+        "Errore modifica sponsor.",
+        "error"
+      );
+      return false;
+    }
+  }
+
+  async function eliminaSponsor(id) {
+    const client = getSupabaseClient();
+
+    if (!client) {
+      return false;
+    }
+
+    if (!window.confirm("Eliminare questo sponsor?")) {
+      return false;
+    }
+
+    try {
+      const result = await client
         .from("sponsor")
         .delete()
         .eq("id", id);
 
-    if (result.error) {
-      throw result.error;
-    }
-
-    await caricaSponsorAdmin();
-
-    return true;
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * CALENDARIO
-   * ------------------------------------------------------------
-   */
-
-  function generaCalendario(torneo) {
-    const selected =
-      torneo ||
-      adminState.torneoSelezionato;
-
-    if (!selected) {
-      return [];
-    }
-
-    const config =
-      getConfig(selected);
-
-    const calendario =
-      Array.isArray(config.calendario)
-        ? config.calendario
-        : [];
-
-    const container =
-      byId("adminCalendar") ||
-      byId("calendarioAdmin");
-
-    if (container) {
-      if (!calendario.length) {
-        container.innerHTML =
-          '<div class="empty-state">' +
-          "Nessuna partita programmata." +
-          "</div>";
-      } else {
-        container.innerHTML =
-          calendario
-            .map(function (item) {
-              return (
-                '<div class="match-card">' +
-                "<strong>" +
-                escapeHtml(
-                  item.data || ""
-                ) +
-                "</strong>" +
-                "<div>" +
-                escapeHtml(
-                  item.ora || ""
-                ) +
-                "</div>" +
-                "</div>"
-              );
-            })
-            .join("");
+      if (result.error) {
+        throw result.error;
       }
-    }
 
-    return calendario;
-  }
+      await caricaSponsorAdmin();
 
-  const caricaCalendario =
-    generaCalendario;
+      showNotice("Sponsor eliminato.", "success");
 
-  const renderCalendario =
-    generaCalendario;
-
-  /*
-   * ------------------------------------------------------------
-   * WHATSAPP
-   * ------------------------------------------------------------
-   */
-
-  function normalizePhone(phone) {
-    return text(phone)
-      .replace(/[^\d+]/g, "")
-      .replace(/^\+/, "");
-  }
-
-  function getParticipantPhone(item) {
-    if (!item) {
-      return "";
-    }
-
-    return (
-      item.telefono ||
-      item.phone ||
-      ""
-    );
-  }
-
-  function inviaWhatsApp(
-    messaggio,
-    destinatari
-  ) {
-    const message =
-      text(messaggio).trim();
-
-    if (!message) {
-      window.alert(
-        "Inserisci un messaggio."
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Eliminazione sponsor:", err);
+      showNotice(
+        "Errore eliminazione sponsor.",
+        "error"
       );
-
       return false;
     }
+  }
 
-    const recipients =
-      Array.isArray(destinatari)
-        ? destinatari
-        : [];
+  function generaCalendario() {
+    renderCalendar();
 
-    if (!recipients.length) {
-      const url =
-        "https://wa.me/?text=" +
-        encodeURIComponent(message);
+    return adminState.tornei || [];
+  }
 
+  async function caricaCalendario() {
+    await caricaTorneiAdmin();
+    return generaCalendario();
+  }
+
+  function renderCalendario() {
+    return generaCalendario();
+  }
+
+  async function inviaWhatsApp(messaggio, destinatari) {
+    const message = String(
+      messaggio ||
+      "Ciao! Comunicazione dal Padel Admin."
+    );
+
+    let targets = destinatari;
+
+    if (!Array.isArray(targets)) {
+      targets = [];
+    }
+
+    targets = targets
+      .map(function (item) {
+        if (typeof item === "string") {
+          return item;
+        }
+
+        return participantPhone(item);
+      })
+      .map(function (phone) {
+        return String(phone || "").replace(/\D/g, "");
+      })
+      .filter(Boolean);
+
+    const encoded = encodeURIComponent(message);
+
+    if (!targets.length) {
       window.open(
-        url,
+        "https://wa.me/?text=" + encoded,
         "_blank",
         "noopener"
       );
@@ -1810,22 +1890,9 @@
       return true;
     }
 
-    recipients.forEach(function (item) {
-      const phone =
-        normalizePhone(
-          getParticipantPhone(item)
-        );
-
-      const url = phone
-        ? "https://wa.me/" +
-          phone +
-          "?text=" +
-          encodeURIComponent(message)
-        : "https://wa.me/?text=" +
-          encodeURIComponent(message);
-
+    targets.forEach(function (phone) {
       window.open(
-        url,
+        "https://wa.me/" + phone + "?text=" + encoded,
         "_blank",
         "noopener"
       );
@@ -1834,92 +1901,99 @@
     return true;
   }
 
-  function getWhatsAppMessage() {
-    return text(
-      byId("messaggioWhatsApp")?.value
-    ).trim();
-  }
+  async function inviaWhatsAppTutti() {
+    await caricaIscrizioni();
 
-  function inviaWhatsAppTutti() {
-    const message =
-      getWhatsAppMessage();
+    const targets = (adminState.iscrizioni || [])
+      .map(function (item) {
+        return participantPhone(item);
+      })
+      .filter(Boolean);
 
-    return inviaWhatsApp(
-      message,
-      adminState.iscrizioni
+    const message = window.prompt(
+      "Messaggio WhatsApp:",
+      "Ciao! Comunicazione dal torneo di padel."
     );
+
+    if (message === null) {
+      return false;
+    }
+
+    return inviaWhatsApp(message, targets);
   }
 
-  function inviaWhatsAppApprovati() {
-    const message =
-      getWhatsAppMessage();
+  async function inviaWhatsAppApprovati() {
+    await caricaIscrizioni();
 
-    return inviaWhatsApp(
-      message,
-      adminState.partecipanti
+    const targets = (adminState.iscrizioni || [])
+      .filter(isApprovedRegistration)
+      .map(function (item) {
+        return participantPhone(item);
+      })
+      .filter(Boolean);
+
+    const message = window.prompt(
+      "Messaggio WhatsApp per gli iscritti approvati:",
+      "Ciao! Comunicazione dal torneo di padel."
     );
-  }
 
-  /*
-   * ------------------------------------------------------------
-   * LINK PUBBLICO
-   * ------------------------------------------------------------
-   */
+    if (message === null) {
+      return false;
+    }
+
+    return inviaWhatsApp(message, targets);
+  }
 
   function generaLink(torneoId) {
-    const id =
-      torneoId ||
-      getSelectedTournamentId();
+    const id = torneoId || getSelectedTournamentId();
 
     if (!id) {
-      window.alert(
-        "Seleziona prima un torneo."
-      );
-
+      showNotice("Seleziona un torneo.", "warning");
       return "";
     }
 
-    const origin =
-      window.location.origin ||
-      "";
+    const base =
+      window.location.origin +
+      window.location.pathname.replace(/\/[^/]*$/, "/");
 
-    const url =
-      origin +
-      "/?torneo=" +
+    const cleanBase = base.endsWith("/")
+      ? base
+      : base + "/";
+
+    return cleanBase +
+      "?torneo=" +
       encodeURIComponent(id);
+  }
 
-    const input =
-      byId("linkBoveGenerato");
+  function setLinkInputs(url) {
+    [
+      "linkBove",
+      "linkTorneo",
+      "urlTorneo",
+      "linkGenerato"
+    ].forEach(function (id) {
+      const element = byId(id);
 
-    const mirror =
-      byId("linkBoveGeneratoMirror");
+      if (element) {
+        element.value = url;
+        element.textContent = url;
+      }
+    });
+  }
 
-    if (input) {
-      input.value = url;
-    }
+  function generaLinkBoveMirror(torneoId) {
+    const url = generaLink(torneoId);
 
-    if (mirror) {
-      mirror.value = url;
+    if (url) {
+      setLinkInputs(url);
+      showNotice("Link generato.", "success");
     }
 
     return url;
   }
 
-  function generaLinkBoveMirror() {
-    return generaLink(
-      getSelectedTournamentId()
-    );
-  }
-
-  async function copiaLink() {
-    const input =
-      byId("linkBoveGenerato");
-
-    const url =
-      text(
-        input?.value
-      ).trim() ||
-      generaLinkBoveMirror();
+  async function copiaLinkBove(torneoId) {
+    const url = generaLink(torneoId);
 
     if (!url) {
       return false;
@@ -1928,1506 +2002,310 @@
     try {
       if (
         navigator.clipboard &&
-        typeof navigator.clipboard.writeText ===
-          "function"
+        typeof navigator.clipboard.writeText === "function"
       ) {
-        await navigator.clipboard.writeText(
-          url
-        );
+        await navigator.clipboard.writeText(url);
       } else {
-        const temporary =
-          document.createElement("textarea");
-
-        temporary.value = url;
-
-        document.body.appendChild(
-          temporary
-        );
-
-        temporary.select();
-
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
         document.execCommand("copy");
-
-        temporary.remove();
+        textarea.remove();
       }
 
-      showMessage(
-        "Link copiato.",
-        "success"
-      );
+      setLinkInputs(url);
+
+      showNotice("Link copiato.", "success");
 
       return true;
-    } catch (error) {
-      console.error(
-        "Errore copia link:",
-        error
+    } catch (err) {
+      errorLog("[Padel Admin] Copia link:", err);
+      showNotice(
+        "Impossibile copiare automaticamente il link.",
+        "warning"
       );
-
-      window.prompt(
-        "Copia questo link:",
-        url
-      );
-
       return false;
     }
   }
 
-  function apriLink() {
-    const input =
-      byId("linkBoveGenerato");
-
-    const url =
-      text(
-        input?.value
-      ).trim() ||
-      generaLinkBoveMirror();
+  function apriLinkBove(torneoId) {
+    const url = generaLink(torneoId);
 
     if (!url) {
       return false;
     }
 
-    window.open(
-      url,
-      "_blank",
-      "noopener"
-    );
+    window.open(url, "_blank", "noopener");
 
     return true;
   }
 
-  function apriBoveConTorneo(id) {
-    const url =
-      generaLink(
-        id ||
-        getSelectedTournamentId()
-      );
-
-    if (!url) {
-      return false;
-    }
-
-    window.open(
-      url,
-      "_blank",
-      "noopener"
-    );
-
-    return true;
+  function apriBoveConTorneo(torneoId) {
+    return apriLinkBove(torneoId);
   }
 
-  /*
-   * ------------------------------------------------------------
-   * RENDER DASHBOARD
-   * ------------------------------------------------------------
-   */
-
-  function renderDashboard(errorMessage) {
-    const statTornei =
-      byId("statTornei");
-
-    const statIscritti =
-      byId("statIscritti");
-
-    const statCoppie =
-      byId("statCoppie");
-
-    const statStato =
-      byId("statStato");
-
-    if (statTornei) {
-      statTornei.textContent =
-        String(
-          adminState.tornei.length
-        );
+  function __adminButtonAction(action) {
+    if (action === "generate") {
+      return generaCoppie();
     }
 
-    if (statIscritti) {
-      statIscritti.textContent =
-        String(
-          adminState.iscrizioni.length
-        );
+    if (action === "random") {
+      return generaCoppieLocali();
     }
 
-    if (statCoppie) {
-      statCoppie.textContent =
-        String(
-          adminState.coppie.length
-        );
-    }
+    warn("[Padel Admin] Azione pulsante sconosciuta:", action);
 
-    if (statStato) {
-      const torneo =
-        adminState.torneoSelezionato;
-
-      statStato.textContent =
-        torneo
-          ? (
-              torneo.stato ||
-              (
-                torneo.pubblicato
-                  ? "pubblicato"
-                  : "non pubblicato"
-              )
-            )
-          : "—";
-    }
-
-    const container =
-      byId("listaTorneiAdmin");
-
-    if (!container) {
-      return;
-    }
-
-    if (errorMessage) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        escapeHtml(errorMessage) +
-        "</div>";
-
-      return;
-    }
-
-    if (!adminState.tornei.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessun torneo presente." +
-        "</div>";
-
-      return;
-    }
-
-    container.innerHTML =
-      adminState.tornei
-        .map(function (torneo) {
-          const selected =
-            adminState.torneoSelezionato &&
-            String(
-              adminState.torneoSelezionato.id
-            ) ===
-              String(torneo.id);
-
-          const date =
-            normalizeTournamentDate(
-              torneo
-            );
-
-          const stato =
-            torneo.stato ||
-            (
-              torneo.pubblicato
-                ? "pubblicato"
-                : "bozza"
-            );
-
-          return (
-            '<div class="admin-list-item">' +
-
-            "<strong>" +
-            escapeHtml(
-              getTournamentName(
-                torneo
-              )
-            ) +
-            "</strong>" +
-
-            "<div>" +
-            escapeHtml(
-              formatDate(date)
-            ) +
-            (
-              torneo.ora_inizio
-                ? " — " +
-                  escapeHtml(
-                    formatTime(
-                      torneo.ora_inizio
-                    )
-                  )
-                : ""
-            ) +
-            "</div>" +
-
-            "<div style=\"margin-top:6px;\">" +
-
-            '<span class="badge ' +
-            (
-              torneo.pubblicato
-                ? "ok"
-                : "wait"
-            ) +
-            '">' +
-            escapeHtml(
-              stato
-            ) +
-            "</span>" +
-
-            (
-              torneo.iscrizioni_chiuse
-                ? ' <span class="badge no">Iscrizioni chiuse</span>'
-                : ""
-            ) +
-
-            "</div>" +
-
-            '<div class="admin-list-actions">' +
-
-            '<button type="button" class="admin-btn" ' +
-            'data-action="select-torneo" ' +
-            'data-id="' +
-            escapeHtml(
-              torneo.id
-            ) +
-            '">' +
-            (
-              selected
-                ? "Selezionato"
-                : "Seleziona"
-            ) +
-            "</button>" +
-
-            '<button type="button" class="admin-btn secondary" ' +
-            'data-action="pubblica-torneo" ' +
-            'data-id="' +
-            escapeHtml(
-              torneo.id
-            ) +
-            '">' +
-            (
-              torneo.pubblicato
-                ? "Rendi bozza"
-                : "Pubblica"
-            ) +
-            "</button>" +
-
-            '<button type="button" class="admin-btn warning" ' +
-            'data-action="chiudi-torneo" ' +
-            'data-id="' +
-            escapeHtml(
-              torneo.id
-            ) +
-            '">' +
-            "Chiudi iscrizioni" +
-            "</button>" +
-
-            '<button type="button" class="admin-btn danger" ' +
-            'data-action="elimina-torneo" ' +
-            'data-id="' +
-            escapeHtml(
-              torneo.id
-            ) +
-            '">' +
-            "Elimina" +
-            "</button>" +
-
-            "</div>" +
-            "</div>"
-          );
-        })
-        .join("");
-
-    container
-      .querySelectorAll(
-        "[data-action]"
-      )
-      .forEach(function (button) {
-        button.addEventListener(
-          "click",
-          async function () {
-            const action =
-              button.dataset.action;
-
-            const id =
-              button.dataset.id;
-
-            try {
-              if (
-                action ===
-                "select-torneo"
-              ) {
-                selezionaTorneo(id);
-              }
-
-              if (
-                action ===
-                "pubblica-torneo"
-              ) {
-                const torneo =
-                  adminState.tornei.find(
-                    function (item) {
-                      return String(
-                        item.id
-                      ) ===
-                        String(id);
-                    }
-                  );
-
-                await pubblicaTorneo(
-                  id,
-                  !torneo?.pubblicato
-                );
-              }
-
-              if (
-                action ===
-                "chiudi-torneo"
-              ) {
-                await chiudiTorneo(
-                  id
-                );
-              }
-
-              if (
-                action ===
-                "elimina-torneo"
-              ) {
-                await eliminaTorneo(
-                  id
-                );
-              }
-            } catch (error) {
-              console.error(
-                error
-              );
-
-              window.alert(
-                error?.message ||
-                "Operazione non riuscita."
-              );
-            }
-          }
-        );
-      });
+    return null;
   }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER CONFIGURAZIONE
-   * ------------------------------------------------------------
-   */
-
-  function renderTournamentConfig() {
-    const container =
-      byId("configTorneoAdmin");
-
-    if (!container) {
-      return;
-    }
-
-    const torneo =
-      adminState.torneoSelezionato;
-
-    if (!torneo) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Seleziona un torneo." +
-        "</div>";
-
-      return;
-    }
-
-    const config =
-      getConfig(torneo);
-
-    container.innerHTML =
-      "<div>" +
-
-      "<p><strong>Nome:</strong> " +
-      escapeHtml(
-        getTournamentName(
-          torneo
-        )
-      ) +
-      "</p>" +
-
-      "<p><strong>Data:</strong> " +
-      escapeHtml(
-        formatDate(
-          normalizeTournamentDate(
-            torneo
-          )
-        )
-      ) +
-      "</p>" +
-
-      "<p><strong>Ora:</strong> " +
-      escapeHtml(
-        formatTime(
-          torneo.ora_inizio
-        ) || "—"
-      ) +
-      "</p>" +
-
-      "<p><strong>Posti:</strong> " +
-      escapeHtml(
-        torneo.posti ??
-        "—"
-      ) +
-      "</p>" +
-
-      "<p><strong>Formula:</strong> " +
-      escapeHtml(
-        torneo.formula ||
-        "—"
-      ) +
-      "</p>" +
-
-      "<p><strong>Pubblicato:</strong> " +
-      (
-        torneo.pubblicato
-          ? "Sì"
-          : "No"
-      ) +
-      "</p>" +
-
-      "<p><strong>Iscrizioni chiuse:</strong> " +
-      (
-        torneo.iscrizioni_chiuse
-          ? "Sì"
-          : "No"
-      ) +
-      "</p>" +
-
-      "<p><strong>Coppie salvate:</strong> " +
-      String(
-        Array.isArray(
-          config.coppie
-        )
-          ? config.coppie.length
-          : 0
-      ) +
-      "</p>" +
-
-      "</div>";
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER ISCRITTI
-   * ------------------------------------------------------------
-   */
-
-  function renderIscritti(errorMessage) {
-    const container =
-      byId("listaIscrittiAdmin");
-
-    if (!container) {
-      return;
-    }
-
-    if (errorMessage) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        escapeHtml(errorMessage) +
-        "</div>";
-
-      return;
-    }
-
-    if (!adminState.torneoSelezionato) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Seleziona un torneo." +
-        "</div>";
-
-      return;
-    }
-
-    if (!adminState.iscrizioni.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessuna iscrizione per questo torneo." +
-        "</div>";
-
-      return;
-    }
-
-    const rows =
-      adminState.iscrizioni
-        .map(function (item) {
-          const approved =
-            isApprovedRegistration(
-              item
-            );
-
-          const stato =
-            item.stato ||
-            (
-              approved
-                ? "approvata"
-                : "richiesta"
-            );
-
-          return (
-            "<tr>" +
-
-            "<td>" +
-            escapeHtml(
-              participantName(
-                item
-              )
-            ) +
-            "</td>" +
-
-            "<td>" +
-            escapeHtml(
-              item.email ||
-              item.email_giocatore ||
-              "—"
-            ) +
-            "</td>" +
-
-            "<td>" +
-            escapeHtml(
-              item.telefono ||
-              "—"
-            ) +
-            "</td>" +
-
-            "<td>" +
-            escapeHtml(
-              item.livello ||
-              item.categoria ||
-              "—"
-            ) +
-            "</td>" +
-
-            "<td>" +
-
-            '<span class="badge ' +
-            (
-              approved
-                ? "ok"
-                : (
-                    stato === "rifiutata"
-                      ? "no"
-                      : "wait"
-                  )
-            ) +
-            '">' +
-            escapeHtml(
-              stato
-            ) +
-            "</span>" +
-
-            "</td>" +
-
-            "<td>" +
-
-            (
-              approved
-                ? (
-                  '<button type="button" class="admin-btn danger" ' +
-                  'data-action="reject-iscrizione" ' +
-                  'data-id="' +
-                  escapeHtml(
-                    item.id
-                  ) +
-                  '">' +
-                  "Rifiuta" +
-                  "</button>"
-                )
-                : (
-                  '<button type="button" class="admin-btn success" ' +
-                  'data-action="approve-iscrizione" ' +
-                  'data-id="' +
-                  escapeHtml(
-                    item.id
-                  ) +
-                  '">' +
-                  "Approva" +
-                  "</button>"
-                )
-            ) +
-
-            "</td>" +
-
-            "</tr>"
-          );
-        })
-        .join("");
-
-    container.innerHTML =
-      '<div class="admin-table-wrap">' +
-      "<table>" +
-
-      "<thead>" +
-      "<tr>" +
-      "<th>Giocatore</th>" +
-      "<th>Email</th>" +
-      "<th>Telefono</th>" +
-      "<th>Livello</th>" +
-      "<th>Stato</th>" +
-      "<th>Azioni</th>" +
-      "</tr>" +
-      "</thead>" +
-
-      "<tbody>" +
-      rows +
-      "</tbody>" +
-
-      "</table>" +
-      "</div>";
-
-    container
-      .querySelectorAll(
-        "[data-action]"
-      )
-      .forEach(function (button) {
-        button.addEventListener(
-          "click",
-          async function () {
-            try {
-              if (
-                button.dataset.action ===
-                "approve-iscrizione"
-              ) {
-                await approvaIscrizione(
-                  button.dataset.id
-                );
-              }
-
-              if (
-                button.dataset.action ===
-                "reject-iscrizione"
-              ) {
-                await rifiutaIscrizione(
-                  button.dataset.id
-                );
-              }
-            } catch (error) {
-              console.error(
-                error
-              );
-
-              window.alert(
-                error?.message ||
-                "Operazione non riuscita."
-              );
-            }
-          }
-        );
-      });
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER COPPIE
-   * ------------------------------------------------------------
-   */
-
-  function renderCoppie() {
-    const container =
-      byId("coppieAdmin");
-
-    if (!container) {
-      return;
-    }
-
-    if (!adminState.coppie.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessuna coppia generata." +
-        "</div>";
-
-      return;
-    }
-
-    container.innerHTML =
-      '<div class="pair-grid">' +
-
-      adminState.coppie
-        .map(function (pair, index) {
-          const first =
-            pair.giocatore1?.nome ||
-            "Giocatore 1";
-
-          const second =
-            pair.giocatore2?.nome ||
-            "Da assegnare";
-
-          return (
-            '<div class="pair-card">' +
-
-            "<h4>Coppia " +
-            String(
-              pair.numero ||
-              index + 1
-            ) +
-            "</h4>" +
-
-            "<div>1. " +
-            escapeHtml(
-              first
-            ) +
-            "</div>" +
-
-            "<div>2. " +
-            escapeHtml(
-              second
-            ) +
-            "</div>" +
-
-            "</div>"
-          );
-        })
-        .join("") +
-
-      "</div>";
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER TABELLONE
-   * ------------------------------------------------------------
-   */
-
-  function renderTabellone() {
-    const container =
-      byId("tabelloneAdmin");
-
-    if (!container) {
-      return;
-    }
-
-    if (!adminState.tabellone.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessun tabellone generato." +
-        "</div>";
-
-      return;
-    }
-
-    container.innerHTML =
-      '<div class="bracket-grid">' +
-
-      adminState.tabellone
-        .map(function (match) {
-          const first =
-            match.coppia1
-              ? (
-                "Coppia " +
-                (
-                  match.coppia1.numero ||
-                  "?"
-                )
-              )
-              : "—";
-
-          const second =
-            match.coppia2
-              ? (
-                "Coppia " +
-                (
-                  match.coppia2.numero ||
-                  "?"
-                )
-              )
-              : "—";
-
-          return (
-            '<div class="match-card">' +
-
-            "<h4>Match " +
-            escapeHtml(
-              match.numero ||
-              ""
-            ) +
-            "</h4>" +
-
-            "<div>" +
-            escapeHtml(
-              first
-            ) +
-            "</div>" +
-
-            "<div>" +
-            escapeHtml(
-              second
-            ) +
-            "</div>" +
-
-            (
-              match.vincitore
-                ? (
-                  "<div style=\"margin-top:8px;\">" +
-                  "<strong>Vincitore:</strong> " +
-                  escapeHtml(
-                    match.vincitore
-                  ) +
-                  "</div>"
-                )
-                : ""
-            ) +
-
-            "</div>"
-          );
-        })
-        .join("") +
-
-      "</div>";
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER NEWS
-   * ------------------------------------------------------------
-   */
-
-  function renderNews(errorMessage) {
-    const container =
-      byId("newsPanel");
-
-    if (!container) {
-      return;
-    }
-
-    if (errorMessage) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        escapeHtml(errorMessage) +
-        "</div>";
-
-      return;
-    }
-
-    if (!adminState.news.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessuna news presente." +
-        "</div>";
-
-      return;
-    }
-
-    container.innerHTML =
-      '<div class="cards-list">' +
-
-      adminState.news
-        .map(function (news) {
-          return (
-            '<div class="admin-list-item">' +
-
-            "<strong>" +
-            escapeHtml(
-              news.titolo ||
-              "Senza titolo"
-            ) +
-            "</strong>" +
-
-            "<div>" +
-            escapeHtml(
-              news.testo ||
-              ""
-            ) +
-            "</div>" +
-
-            "<div class=\"admin-list-actions\">" +
-
-            '<button type="button" class="admin-btn secondary" ' +
-            'data-action="edit-news" ' +
-            'data-id="' +
-            escapeHtml(
-              news.id
-            ) +
-            '">' +
-            "Modifica" +
-            "</button>" +
-
-            '<button type="button" class="admin-btn danger" ' +
-            'data-action="delete-news" ' +
-            'data-id="' +
-            escapeHtml(
-              news.id
-            ) +
-            '">' +
-            "Elimina" +
-            "</button>" +
-
-            "</div>" +
-
-            "</div>"
-          );
-        })
-        .join("") +
-
-      "</div>";
-
-    container
-      .querySelectorAll(
-        "[data-action]"
-      )
-      .forEach(function (button) {
-        button.addEventListener(
-          "click",
-          async function () {
-            try {
-              if (
-                button.dataset.action ===
-                "edit-news"
-              ) {
-                await modificaNews(
-                  button.dataset.id
-                );
-              }
-
-              if (
-                button.dataset.action ===
-                "delete-news"
-              ) {
-                await eliminaNews(
-                  button.dataset.id
-                );
-              }
-            } catch (error) {
-              console.error(
-                error
-              );
-
-              window.alert(
-                error?.message ||
-                "Operazione non riuscita."
-              );
-            }
-          }
-        );
-      });
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * RENDER SPONSOR
-   * ------------------------------------------------------------
-   */
-
-  function renderSponsor(errorMessage) {
-    const container =
-      byId("sponsorPanel");
-
-    if (!container) {
-      return;
-    }
-
-    if (errorMessage) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        escapeHtml(errorMessage) +
-        "</div>";
-
-      return;
-    }
-
-    if (!adminState.sponsor.length) {
-      container.innerHTML =
-        '<div class="empty-state">' +
-        "Nessuno sponsor presente." +
-        "</div>";
-
-      return;
-    }
-
-    container.innerHTML =
-      '<div class="cards-list">' +
-
-      adminState.sponsor
-        .map(function (sponsor) {
-          const image =
-            sponsor.immagine || "";
-
-          const link =
-            sponsor.link || "";
-
-          return (
-            '<div class="admin-list-item">' +
-
-            "<strong>" +
-            escapeHtml(
-              sponsor.nome ||
-              "Sponsor"
-            ) +
-            "</strong>" +
-
-            (
-              image
-                ? (
-                  '<div style="margin-top:8px;">' +
-                  '<img src="' +
-                  escapeHtml(
-                    image
-                  ) +
-                  '" alt="' +
-                  escapeHtml(
-                    sponsor.nome ||
-                    "Sponsor"
-                  ) +
-                  '" style="max-width:180px;max-height:80px;object-fit:contain;">' +
-                  "</div>"
-                )
-                : ""
-            ) +
-
-            (
-              link
-                ? (
-                  '<div style="margin-top:8px;">' +
-                  '<a href="' +
-                  escapeHtml(
-                    link
-                  ) +
-                  '" target="_blank" rel="noopener noreferrer">' +
-                  escapeHtml(
-                    link
-                  ) +
-                  "</a>" +
-                  "</div>"
-                )
-                : ""
-            ) +
-
-            '<div class="admin-list-actions">' +
-
-            '<button type="button" class="admin-btn secondary" ' +
-            'data-action="edit-sponsor" ' +
-            'data-id="' +
-            escapeHtml(
-              sponsor.id
-            ) +
-            '">' +
-            "Modifica" +
-            "</button>" +
-
-            '<button type="button" class="admin-btn danger" ' +
-            'data-action="delete-sponsor" ' +
-            'data-id="' +
-            escapeHtml(
-              sponsor.id
-            ) +
-            '">' +
-            "Elimina" +
-            "</button>" +
-
-            "</div>" +
-
-            "</div>"
-          );
-        })
-        .join("") +
-
-      "</div>";
-
-    container
-      .querySelectorAll(
-        "[data-action]"
-      )
-      .forEach(function (button) {
-        button.addEventListener(
-          "click",
-          async function () {
-            try {
-              if (
-                button.dataset.action ===
-                "edit-sponsor"
-              ) {
-                await modificaSponsor(
-                  button.dataset.id
-                );
-              }
-
-              if (
-                button.dataset.action ===
-                "delete-sponsor"
-              ) {
-                await eliminaSponsor(
-                  button.dataset.id
-                );
-              }
-            } catch (error) {
-              console.error(
-                error
-              );
-
-              window.alert(
-                error?.message ||
-                "Operazione non riuscita."
-              );
-            }
-          }
-        );
-      });
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * REFRESH COMPLETO
-   * ------------------------------------------------------------
-   */
 
   async function refreshAdmin() {
-    const client = ensureClient();
-
-    if (!client) {
-      return false;
+    if (adminState.loading) {
+      return;
     }
 
     adminState.loading = true;
 
     try {
       await caricaTorneiAdmin();
-      await caricaNewsAdmin();
-      await caricaSponsorAdmin();
 
-      if (
-        adminState.torneoSelezionato
-      ) {
-        await caricaIscrizioni(
-          adminState.torneoSelezionato.id
-        );
+      if (getSelectedTournamentId()) {
+        await caricaIscrizioni();
+
+        const torneo = getSelectedTournament();
+        const config = normalizeTournamentConfig(torneo);
+
+        adminState.coppie = config.coppie || [];
+        adminState.tabellone = config.tabellone || [];
       }
 
-      renderCoppie();
-      renderTabellone();
-      renderTournamentConfig();
-      renderDashboard();
+      await Promise.all([
+        caricaNewsAdmin(),
+        caricaSponsorAdmin()
+      ]);
 
-      adminState.initialized = true;
-
-      return true;
-    } catch (error) {
-      console.error(
-        "Errore refresh admin:",
-        error
-      );
-
-      return false;
+      renderAll();
+    } catch (err) {
+      errorLog("[Padel Admin] Refresh:", err);
     } finally {
       adminState.loading = false;
     }
   }
 
-  const avviaDatiAdmin =
-    refreshAdmin;
+  function __adminRefresh() {
+    clearTimeout(refreshTimer);
 
-  /*
-   * ------------------------------------------------------------
-   * PULSANTI ADMIN
-   * ------------------------------------------------------------
-   */
+    refreshTimer = setTimeout(function () {
+      refreshAdmin();
+    }, 50);
 
-  async function adminButtonAction(
-    action
-  ) {
+    return true;
+  }
+
+  async function avviaAdmin() {
     try {
-      if (action === "generate") {
-        return await generaCoppie();
+      await waitForSupabase();
+
+      const session = await getCurrentSession();
+
+      setLoginState(session);
+
+      if (session) {
+        await refreshAdmin();
       }
 
-      if (action === "random") {
-        return await generaCoppieLocali();
-      }
+      adminState.initialized = true;
 
-      return null;
-    } catch (error) {
-      console.error(
-        "Errore pulsante admin:",
-        error
+      log("[Padel Admin] admin-master.js v23 pronto.");
+
+      return true;
+    } catch (err) {
+      errorLog("[Padel Admin] Avvio:", err);
+
+      setLoginState(null);
+
+      showNotice(
+        "Impossibile inizializzare il pannello amministrazione.",
+        "error"
       );
 
-      window.alert(
-        error?.message ||
-        "Operazione non riuscita."
-      );
-
-      return null;
+      return false;
     }
   }
 
-  /*
-   * ------------------------------------------------------------
-   * NUOVO TORNEO
-   * ------------------------------------------------------------
-   */
+  function setupAuthListener() {
+    const client = getSupabaseClient();
 
-  function apriRegoleNuovoTorneo() {
-    const conferma =
-      window.confirm(
-        "Vuoi creare un nuovo torneo?"
-      );
-
-    if (!conferma) {
-      return null;
-    }
-
-    return creaTorneo();
-  }
-
-  /*
-   * ------------------------------------------------------------
-   * EVENTI AUTH
-   * ------------------------------------------------------------
-   */
-
-  async function installAuthListener() {
-    const client =
-      ensureClient();
-
-    if (!client?.auth) {
+    if (!client || !client.auth) {
       return;
     }
 
-    client.auth.onAuthStateChange(
-      async function (event, session) {
-        console.log(
-          "[Padel Admin] Auth event:",
-          event
-        );
+    if (authSubscription) {
+      return;
+    }
 
-        if (
-          event ===
-            "SIGNED_IN" &&
-          session?.user
-        ) {
-          showApp(
-            session.user
-          );
+    try {
+      const result = client.auth.onAuthStateChange(
+        function (event, session) {
+          log("[Padel Admin] Auth event:", event);
 
-          if (
-            !adminState.initialized
-          ) {
-            await refreshAdmin();
+          setLoginState(session);
+
+          if (event === "SIGNED_IN") {
+            setTimeout(function () {
+              refreshAdmin();
+            }, 0);
+          }
+
+          if (event === "SIGNED_OUT") {
+            adminState.tornei = [];
+            adminState.torneoSelezionato = null;
+            adminState.iscrizioni = [];
+            adminState.partecipanti = [];
+            adminState.coppie = [];
+            adminState.tabellone = [];
+
+            renderAll();
+          }
+
+          if (event === "INITIAL_SESSION" && session) {
+            setTimeout(function () {
+              refreshAdmin();
+            }, 0);
           }
         }
+      );
 
-        if (
-          event ===
-          "SIGNED_OUT"
-        ) {
-          showLogin();
-        }
+      if (result && result.data) {
+        authSubscription = result.data.subscription;
       }
-    );
+    } catch (err) {
+      errorLog("[Padel Admin] Auth listener:", err);
+    }
   }
 
-  /*
-   * ------------------------------------------------------------
-   * API PUBBLICA
-   * ------------------------------------------------------------
-   *
-   * Tutte le funzioni vengono esposte esplicitamente su window
-   * per compatibilità con admin.html e admin-test.js.
-   */
+  function exposeApi() {
+    window.avviaAdmin = avviaAdmin;
 
-  window.loginAdmin =
-    loginAdmin;
+    window.loginAdmin = loginAdmin;
+    window.logoutAdmin = logoutAdmin;
 
-  window.logoutAdmin =
-    logoutAdmin;
+    window.caricaTorneiAdmin = caricaTorneiAdmin;
+    window.caricaTornei = caricaTornei;
 
-  window.avviaAdmin =
-    avviaAdmin;
+    window.creaTorneo = creaTorneo;
+    window.apriRegoleNuovoTorneo = apriRegoleNuovoTorneo;
+    window.eliminaTorneo = eliminaTorneo;
+    window.pubblicaTorneo = pubblicaTorneo;
+    window.chiudiTorneo = chiudiTorneo;
+    window.selezionaTorneoAdmin = selezionaTorneoAdmin;
 
-  window.caricaTorneiAdmin =
-    caricaTorneiAdmin;
+    window.caricaIscrizioni = caricaIscrizioni;
+    window.approvaIscrizione = approvaIscrizione;
+    window.rifiutaIscrizione = rifiutaIscrizione;
+    window.cambiaStatoIscrizione = cambiaStatoIscrizione;
 
-  window.caricaTornei =
-    caricaTornei;
+    window.caricaPartecipanti = caricaPartecipanti;
 
-  window.creaTorneo =
-    creaTorneo;
+    window.generaCoppie = generaCoppie;
+    window.generaCoppieLocali = generaCoppieLocali;
+    window.creaCoppieAdmin = creaCoppieAdmin;
+    window.salvaConfigurazioneTorneo = salvaConfigurazioneTorneo;
 
-  window.eliminaTorneo =
-    eliminaTorneo;
+    window.caricaNews = caricaNewsAdmin;
+    window.caricaNewsAdmin = caricaNewsAdmin;
+    window.creaNews = creaNews;
+    window.creaNewsAdmin = creaNews;
+    window.modificaNews = modificaNews;
+    window.eliminaNews = eliminaNews;
 
-  window.pubblicaTorneo =
-    pubblicaTorneo;
+    window.caricaSponsor = caricaSponsorAdmin;
+    window.caricaSponsorAdmin = caricaSponsorAdmin;
+    window.creaSponsor = creaSponsor;
+    window.creaSponsorAdmin = creaSponsor;
+    window.modificaSponsor = modificaSponsor;
+    window.eliminaSponsor = eliminaSponsor;
 
-  window.chiudiTorneo =
-    chiudiTorneo;
+    window.caricaCalendario = caricaCalendario;
+    window.generaCalendario = generaCalendario;
+    window.renderCalendario = renderCalendario;
 
-  window.cambiaStatoIscrizione =
-    cambiaStatoIscrizione;
+    window.inviaWhatsApp = inviaWhatsApp;
+    window.inviaWhatsAppTutti = inviaWhatsAppTutti;
+    window.inviaWhatsAppApprovati = inviaWhatsAppApprovati;
 
-  window.caricaIscrizioni =
-    caricaIscrizioni;
+    window.generaLink = generaLink;
+    window.generaLinkBoveMirror = generaLinkBoveMirror;
+    window.copiaLinkBove = copiaLinkBove;
+    window.apriLinkBove = apriLinkBove;
+    window.apriBoveConTorneo = apriBoveConTorneo;
 
-  window.approvaIscrizione =
-    approvaIscrizione;
+    window.__adminRefresh = __adminRefresh;
+    window.__adminButtonAction = __adminButtonAction;
 
-  window.rifiutaIscrizione =
-    rifiutaIscrizione;
+    window.adminState = adminState;
 
-  window.caricaPartecipanti =
-    caricaPartecipanti;
+    window._supabase = getSupabaseClient();
+    window.sb = window._supabase;
+    window.supabaseClient = window._supabase;
+  }
 
-  window.generaCoppie =
-    generaCoppie;
+  function bindLoginForm() {
+    const form = byId("formLoginAdmin");
 
-  window.generaCoppieLocali =
-    generaCoppieLocali;
-
-  window.salvaConfigurazioneTorneo =
-    salvaConfigurazioneTorneo;
-
-  window.inviaWhatsApp =
-    inviaWhatsApp;
-
-  window.inviaWhatsAppTutti =
-    inviaWhatsAppTutti;
-
-  window.inviaWhatsAppApprovati =
-    inviaWhatsAppApprovati;
-
-  window.caricaNewsAdmin =
-    caricaNewsAdmin;
-
-  window.caricaNews =
-    caricaNews;
-
-  window.creaNews =
-    creaNews;
-
-  window.creaNewsAdmin =
-    creaNews;
-
-  window.modificaNews =
-    modificaNews;
-
-  window.eliminaNews =
-    eliminaNews;
-
-  window.caricaSponsorAdmin =
-    caricaSponsorAdmin;
-
-  window.caricaSponsor =
-    caricaSponsor;
-
-  window.creaSponsor =
-    creaSponsor;
-
-  window.creaSponsorAdmin =
-    creaSponsor;
-
-  window.modificaSponsor =
-    modificaSponsor;
-
-  window.eliminaSponsor =
-    eliminaSponsor;
-
-  window.caricaCalendario =
-    caricaCalendario;
-
-  window.generaCalendario =
-    generaCalendario;
-
-  window.renderCalendario =
-    renderCalendario;
-
-  window.generaLink =
-    generaLink;
-
-  window.generaLinkBoveMirror =
-    generaLinkBoveMirror;
-
-  window.copiaLink =
-    copiaLink;
-
-  window.copiaLinkBove =
-    copiaLink;
-
-  window.apriLink =
-    apriLink;
-
-  window.apriLinkBove =
-    apriLink;
-
-  window.apriBoveConTorneo =
-    apriBoveConTorneo;
-
-  window.renderCoppie =
-    renderCoppie;
-
-  window.renderTabellone =
-    renderTabellone;
-
-  window.renderNews =
-    renderNews;
-
-  window.renderSponsor =
-    renderSponsor;
-
-  window.apriRegoleNuovoTorneo =
-    apriRegoleNuovoTorneo;
-
-  window.__adminRefresh =
-    refreshAdmin;
-
-  window.__adminButtonAction =
-    adminButtonAction;
-
-  /*
-   * ------------------------------------------------------------
-   * AVVIO
-   * ------------------------------------------------------------
-   */
-
-  async function boot() {
-    console.log(
-      "[Padel Admin] admin-master.js v" +
-      ADMIN_MASTER_VERSION +
-      " avvio..."
-    );
-
-    const client =
-      await waitForSupabase(
-        12000
-      );
-
-    if (!client) {
-      console.error(
-        "[Padel Admin] Supabase non disponibile."
-      );
-
-      showLogin();
-
-      setLoginMessage(
-        "Supabase non disponibile."
-      );
-
+    if (!form || form.__adminBound) {
       return;
     }
 
-    window._supabase =
-      client;
+    form.__adminBound = true;
 
-    window.sb =
-      client;
-
-    window.supabaseClient =
-      client;
-
-    await installAuthListener();
-
-    await avviaAdmin();
-
-    console.log(
-      "[Padel Admin] admin-master.js v" +
-      ADMIN_MASTER_VERSION +
-      " pronto."
-    );
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      loginAdmin();
+    });
   }
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
-    document.addEventListener(
-      "DOMContentLoaded",
-      boot,
-      {
-        once: true
+  function bindPasswordEnter() {
+    const password = byId("passwordAdmin");
+
+    if (!password || password.__adminBound) {
+      return;
+    }
+
+    password.__adminBound = true;
+
+    password.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loginAdmin();
       }
-    );
+    });
+  }
+
+  async function bootstrap() {
+    exposeApi();
+
+    bindLoginForm();
+    bindPasswordEnter();
+
+    try {
+      await waitForSupabase();
+
+      setupAuthListener();
+
+      await avviaAdmin();
+    } catch (err) {
+      errorLog("[Padel Admin] Bootstrap:", err);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootstrap);
   } else {
-    boot();
+    bootstrap();
   }
 
 })();
