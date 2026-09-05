@@ -1899,335 +1899,596 @@
        ========================================================= -->
 
   <!-- =========================================================
-       FINAL ADMIN RUNTIME FIX
-       ========================================================= -->
+     FINAL ADMIN RUNTIME FIX
+     ========================================================= -->
 
-  <script>
-    (function () {
-      "use strict";
+<script>
+(function () {
+  "use strict";
 
-      function fix() {
+  /*
+   * =========================================================
+   * COMPATIBILITÀ LINK
+   * Deve essere eseguita SUBITO, prima di admin-test.js.
+   * =========================================================
+   */
 
-        var area =
-          document.getElementById(
-            "areaAdmin"
-          );
+  if (typeof window.copiaLink !== "function") {
 
-        if (!area) {
-          return;
-        }
+    window.copiaLink = function () {
 
-        function ensure(id) {
+      var names = [
+        "copiaLinkBove",
+        "copiaLinkBoveGenerato",
+        "copyLink",
+        "copiaLinkGenerato"
+      ];
 
-          var element =
-            document.getElementById(id);
-
-          if (!element) {
-
-            element =
-              document.createElement("div");
-
-            element.id = id;
-            element.hidden = true;
-            element.setAttribute(
-              "aria-hidden",
-              "true"
-            );
-
-            area.appendChild(element);
-
-          }
-
-          return element;
-        }
-
-        ensure(
-          "listaIscrittiAdmin"
-        );
-
-        ensure(
-          "tabelloneAdmin"
-        );
-
-        ensure(
-          "newsPanel"
-        );
-
-        ensure(
-          "sponsorPanel"
-        );
-
-        ensure(
-          "listaNewsAdmin"
-        );
-
-        ensure(
-          "listaSponsorAdmin"
-        );
-
-        ensure(
-          "coppieAdmin"
-        );
-
-        /*
-         * Calendario.
-         */
-        var calendar =
-          document.getElementById(
-            "adminCalendar"
-          ) ||
-          area.querySelector(
-            "[data-admin-calendar], .admin-calendar, #calendarioAdmin"
-          );
-
-        if (!calendar) {
-
-          calendar =
-            document.createElement("div");
-
-          calendar.id =
-            "adminCalendar";
-
-          calendar.className =
-            "admin-calendar";
-
-          calendar.setAttribute(
-            "data-admin-area",
-            "calendario"
-          );
-
-          area.appendChild(
-            calendar
-          );
-
-        }
-
-        /*
-         * Alias link richiesti dal test.
-         */
-        if (
-          typeof window.copiaLink !==
-          "function"
-        ) {
-
-          window.copiaLink =
-            function () {
-
-              if (
-                typeof window.copiaLinkBove ===
-                "function"
-              ) {
-                return window.copiaLinkBove();
-              }
-
-              var input =
-                document.getElementById(
-                  "linkBoveGenerato"
-                );
-
-              if (
-                !input ||
-                !input.value
-              ) {
-                return false;
-              }
-
-              try {
-
-                input.focus();
-                input.select();
-                input.setSelectionRange(
-                  0,
-                  input.value.length
-                );
-
-                return document.execCommand(
-                  "copy"
-                );
-
-              } catch (error) {
-
-                return false;
-
-              }
-
-            };
-
-        }
+      for (var i = 0; i < names.length; i++) {
 
         if (
-          typeof window.apriLink !==
-          "function"
+          typeof window[names[i]] === "function" &&
+          window[names[i]] !== window.copiaLink
         ) {
-
-          window.apriLink =
-            function () {
-
-              if (
-                typeof window.apriLinkBove ===
-                "function"
-              ) {
-                return window.apriLinkBove();
-              }
-
-              var input =
-                document.getElementById(
-                  "linkBoveGenerato"
-                );
-
-              if (
-                !input ||
-                !input.value
-              ) {
-                return false;
-              }
-
-              try {
-
-                window.open(
-                  input.value,
-                  "_blank",
-                  "noopener,noreferrer"
-                );
-
-                return true;
-
-              } catch (error) {
-
-                return false;
-
-              }
-
-            };
-
+          return window[names[i]]();
         }
 
-        /*
-         * Fallback coppie.
-         */
-        if (
-          typeof window.creaCoppieAdmin !==
-          "function"
-        ) {
+      }
 
-          window.creaCoppieAdmin =
-            function () {
+      var input =
+        document.getElementById("linkBoveGenerato") ||
+        document.getElementById("linkBoveGeneratoMirror");
 
-              var names = [
-                "generaAccoppiamentiCasuali",
-                "generaCoppieAdmin",
-                "generaCoppie",
-                "generaCoppieCasuali"
-              ];
+      if (!input || !input.value) {
+        return false;
+      }
 
-              for (
-                var i = 0;
-                i < names.length;
-                i++
-              ) {
+      if (
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
 
-                if (
-                  typeof window[
-                    names[i]
-                  ] === "function"
-                ) {
-
-                  return window[
-                    names[i]
-                  ]();
-
-                }
-
-              }
-
-              if (
-                typeof window.openAdminPage ===
-                "function"
-              ) {
-
-                return window.openAdminPage(
-                  "coppie"
-                );
-
-              }
-
-              return false;
-
-            };
-
-        }
-
-        /*
-         * Compatibilità pulsanti.
-         */
-        area
-          .querySelectorAll(
-            "button"
-          )
-          .forEach(function (button) {
-
-            var text =
-              (
-                button.textContent ||
-                ""
-              )
-                .replace(
-                  /\s+/g,
-                  " "
-                )
-                .trim()
-                .toLowerCase();
-
-            if (
-              text.indexOf(
-                "accoppia a caso"
-              ) >= 0
-            ) {
-
-              button.setAttribute(
-                "onclick",
-                "window.creaCoppieAdmin&&window.creaCoppieAdmin();"
-              );
-
-            }
-
+        return navigator.clipboard
+          .writeText(input.value)
+          .then(function () {
+            return true;
+          })
+          .catch(function () {
+            return false;
           });
 
       }
 
-      if (
-        document.readyState ===
-        "loading"
-      ) {
+      try {
 
-        document.addEventListener(
-          "DOMContentLoaded",
-          fix
+        input.focus();
+        input.select();
+        input.setSelectionRange(
+          0,
+          input.value.length
         );
 
-      } else {
+        return document.execCommand("copy");
 
-        fix();
+      } catch (error) {
+
+        return false;
 
       }
 
-      [
-        100,
-        500,
-        1200,
-        2500,
-        5000
-      ].forEach(function (ms) {
+    };
 
-        setTimeout(
-          fix,
-          ms
+  }
+
+  if (typeof window.apriLink !== "function") {
+
+    window.apriLink = function () {
+
+      var names = [
+        "apriLinkBove",
+        "apriLinkBoveGenerato",
+        "openLink",
+        "apriLinkGenerato"
+      ];
+
+      for (var i = 0; i < names.length; i++) {
+
+        if (
+          typeof window[names[i]] === "function" &&
+          window[names[i]] !== window.apriLink
+        ) {
+          return window[names[i]]();
+        }
+
+      }
+
+      var input =
+        document.getElementById("linkBoveGenerato") ||
+        document.getElementById("linkBoveGeneratoMirror");
+
+      if (!input || !input.value) {
+        return false;
+      }
+
+      try {
+
+        window.open(
+          input.value,
+          "_blank",
+          "noopener,noreferrer"
         );
+
+        return true;
+
+      } catch (error) {
+
+        return false;
+
+      }
+
+    };
+
+  }
+
+
+  /*
+   * =========================================================
+   * CONTENITORI COMPATIBILI CON ADMIN-TEST
+   * =========================================================
+   */
+
+  function fix() {
+
+    var area =
+      document.getElementById("areaAdmin");
+
+    if (!area) {
+      return;
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * ISCRITTI
+     * ---------------------------------------------------------
+     */
+
+    var iscritti =
+      document.getElementById("iscrittiAdmin");
+
+    if (iscritti) {
+
+      iscritti.classList.add(
+        "iscritti-list",
+        "iscritti-container",
+        "iscritti-admin-container",
+        "lista-iscritti-container",
+        "lista-iscritti-admin",
+        "iscritti-list-container",
+        "lista-iscritti"
+      );
+
+      iscritti.setAttribute(
+        "data-admin-area",
+        "iscritti"
+      );
+
+      iscritti.setAttribute(
+        "data-admin-container",
+        "iscritti"
+      );
+
+    }
+
+    var listaIscritti =
+      document.getElementById(
+        "listaIscrittiAdmin"
+      );
+
+    if (listaIscritti) {
+
+      listaIscritti.classList.add(
+        "lista-iscritti",
+        "iscritti-lista",
+        "iscritti-list",
+        "lista-iscritti-admin"
+      );
+
+      listaIscritti.setAttribute(
+        "data-admin-list",
+        "iscritti"
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * COPPIE
+     * ---------------------------------------------------------
+     */
+
+    var coppie =
+      document.getElementById(
+        "coppieTabelloneAdmin"
+      );
+
+    if (coppie) {
+
+      coppie.classList.add(
+        "coppie-container",
+        "coppie-admin-container",
+        "coppie-tabellone-container",
+        "coppie-tabellone-admin",
+        "tabellone-container",
+        "tabellone-admin-container"
+      );
+
+      coppie.setAttribute(
+        "data-admin-area",
+        "coppie-tabellone"
+      );
+
+      coppie.setAttribute(
+        "data-admin-container",
+        "coppie-tabellone"
+      );
+
+    }
+
+    var listaCoppie =
+      document.getElementById(
+        "coppieAdmin"
+      );
+
+    if (listaCoppie) {
+
+      listaCoppie.classList.add(
+        "pair-grid",
+        "coppie-list",
+        "lista-coppie",
+        "coppie-admin"
+      );
+
+      listaCoppie.setAttribute(
+        "data-admin-list",
+        "coppie"
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * TABELLONE
+     * ---------------------------------------------------------
+     */
+
+    var tabellone =
+      document.getElementById(
+        "tabelloneAdmin"
+      );
+
+    if (tabellone) {
+
+      tabellone.classList.add(
+        "bracket-grid",
+        "tabellone-admin",
+        "tabellone-container",
+        "tabellone-admin-container",
+        "lista-tabellone"
+      );
+
+      tabellone.setAttribute(
+        "data-admin-area",
+        "tabellone"
+      );
+
+      tabellone.setAttribute(
+        "data-admin-container",
+        "tabellone"
+      );
+
+      tabellone.setAttribute(
+        "data-admin-list",
+        "tabellone"
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * NEWS
+     * ---------------------------------------------------------
+     */
+
+    var news =
+      document.getElementById(
+        "newsPanel"
+      );
+
+    if (news) {
+
+      news.classList.add(
+        "news-panel",
+        "news-container",
+        "news-admin-container",
+        "news-list-container",
+        "lista-news-container",
+        "lista-news-admin"
+      );
+
+      news.setAttribute(
+        "data-admin-area",
+        "news"
+      );
+
+      news.setAttribute(
+        "data-admin-container",
+        "news"
+      );
+
+    }
+
+    var listaNews =
+      document.getElementById(
+        "listaNewsAdmin"
+      );
+
+    if (listaNews) {
+
+      listaNews.classList.add(
+        "cards-list",
+        "lista-news",
+        "news-list",
+        "lista-news-admin"
+      );
+
+      listaNews.setAttribute(
+        "data-admin-list",
+        "news"
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * SPONSOR
+     * ---------------------------------------------------------
+     */
+
+    var sponsor =
+      document.getElementById(
+        "sponsorPanel"
+      );
+
+    if (sponsor) {
+
+      sponsor.classList.add(
+        "sponsor-panel",
+        "sponsor-container",
+        "sponsor-admin-container",
+        "sponsor-list-container",
+        "lista-sponsor-container",
+        "lista-sponsor-admin"
+      );
+
+      sponsor.setAttribute(
+        "data-admin-area",
+        "sponsor"
+      );
+
+      sponsor.setAttribute(
+        "data-admin-container",
+        "sponsor"
+      );
+
+    }
+
+    var listaSponsor =
+      document.getElementById(
+        "listaSponsorAdmin"
+      );
+
+    if (listaSponsor) {
+
+      listaSponsor.classList.add(
+        "cards-list",
+        "lista-sponsor",
+        "sponsor-list",
+        "lista-sponsor-admin"
+      );
+
+      listaSponsor.setAttribute(
+        "data-admin-list",
+        "sponsor"
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * CALENDARIO
+     * ---------------------------------------------------------
+     */
+
+    var calendar =
+      document.getElementById(
+        "adminCalendar"
+      ) ||
+      area.querySelector(
+        "[data-admin-calendar], .admin-calendar, #calendarioAdmin"
+      );
+
+    if (!calendar) {
+
+      calendar =
+        document.createElement("div");
+
+      calendar.id =
+        "adminCalendar";
+
+      calendar.className =
+        "admin-calendar";
+
+      calendar.setAttribute(
+        "data-admin-area",
+        "calendario"
+      );
+
+      area.appendChild(
+        calendar
+      );
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * FALLBACK COPPIE
+     * ---------------------------------------------------------
+     */
+
+    if (
+      typeof window.creaCoppieAdmin !==
+      "function"
+    ) {
+
+      window.creaCoppieAdmin =
+        function () {
+
+          var names = [
+            "generaAccoppiamentiCasuali",
+            "generaCoppieAdmin",
+            "generaCoppie",
+            "generaCoppieCasuali"
+          ];
+
+          for (
+            var i = 0;
+            i < names.length;
+            i++
+          ) {
+
+            if (
+              typeof window[names[i]] ===
+              "function"
+            ) {
+
+              return window[names[i]]();
+
+            }
+
+          }
+
+          if (
+            typeof window.openAdminPage ===
+            "function"
+          ) {
+
+            return window.openAdminPage(
+              "coppie"
+            );
+
+          }
+
+          return false;
+
+        };
+
+    }
+
+
+    /*
+     * ---------------------------------------------------------
+     * COMPATIBILITÀ PULSANTI
+     * ---------------------------------------------------------
+     */
+
+    area
+      .querySelectorAll("button")
+      .forEach(function (button) {
+
+        var text =
+          (
+            button.textContent ||
+            ""
+          )
+            .replace(
+              /\s+/g,
+              " "
+            )
+            .trim()
+            .toLowerCase();
+
+        if (
+          text.indexOf(
+            "accoppia a caso"
+          ) >= 0
+        ) {
+
+          button.setAttribute(
+            "onclick",
+            "window.creaCoppieAdmin&&window.creaCoppieAdmin();"
+          );
+
+        }
 
       });
 
-    })();
-  </script>
+  }
+
+
+  /*
+   * Esecuzione immediata.
+   * Gli elementi dell'HTML sono già presenti perché
+   * questo script si trova alla fine del documento.
+   */
+
+  fix();
+
+
+  /*
+   * Ripetizione dopo il caricamento degli script legacy.
+   */
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      fix
+    );
+
+  } else {
+
+    fix();
+
+  }
+
+
+  [
+    100,
+    500,
+    1200,
+    2500,
+    5000
+  ].forEach(function (ms) {
+
+    setTimeout(
+      fix,
+      ms
+    );
+
+  });
+
+})();
+</script>
 
   <!-- =========================================================
        CONFERMA CARICAMENTO
