@@ -416,84 +416,185 @@
       style.textContent = `
         html,
         body {
-          background: #050505 !important;
-          color: #f5f5f5 !important;
+          background: #030405 !important;
+          color: #f7f9fc !important;
         }
 
-        #areaAdmin,
-        #areaAdmin .admin-layout,
-        #areaAdmin .admin-main,
-        #areaAdmin .content,
-        #areaAdmin .admin-content {
-          background: #050505 !important;
-          color: #f5f5f5 !important;
+        body {
+          min-height: 100vh;
+          overflow-x: hidden;
+        }
+
+        #areaAdmin {
+          background:
+            radial-gradient(circle at 10% 0%, rgba(255,255,255,.075), transparent 28%),
+            radial-gradient(circle at 92% 12%, rgba(255,255,255,.045), transparent 24%),
+            linear-gradient(145deg, #020304 0%, #080a0d 52%, #030405 100%) !important;
+          color: #f7f9fc !important;
+          min-height: 100vh;
+        }
+
+        #areaAdmin .admin-layout {
+          min-height: 100vh !important;
+          background: transparent !important;
         }
 
         #areaAdmin .admin-sidebar,
         #areaAdmin .desktop-sidebar {
-          background: rgba(255,255,255,.075) !important;
-          border-right: 1px solid rgba(255,255,255,.16) !important;
-          box-shadow: 10px 0 35px rgba(0,0,0,.35), inset -1px 0 rgba(255,255,255,.04) !important;
-          backdrop-filter: blur(22px) saturate(135%) !important;
-          -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
+          background: linear-gradient(180deg, rgba(255,255,255,.105), rgba(255,255,255,.045)) !important;
+          border-right: 1px solid rgba(255,255,255,.15) !important;
+          box-shadow: 18px 0 55px rgba(0,0,0,.42), inset -1px 0 rgba(255,255,255,.045) !important;
+          backdrop-filter: blur(28px) saturate(150%) !important;
+          -webkit-backdrop-filter: blur(28px) saturate(150%) !important;
+        }
+
+        #areaAdmin .admin-brand {
+          color: #ffffff !important;
+          text-shadow: 0 1px 18px rgba(255,255,255,.12) !important;
+        }
+
+        #areaAdmin .admin-user {
+          background: rgba(255,255,255,.055) !important;
+          border: 1px solid rgba(255,255,255,.11) !important;
+          color: #b9c2cd !important;
+          box-shadow: inset 0 1px rgba(255,255,255,.045), 0 8px 24px rgba(0,0,0,.14) !important;
+          backdrop-filter: blur(16px) !important;
+          -webkit-backdrop-filter: blur(16px) !important;
+        }
+
+        #areaAdmin .admin-user strong {
+          color: #ffffff !important;
+        }
+
+        #areaAdmin .admin-nav,
+        #areaAdmin .desktop-nav,
+        #areaAdmin .sidebar .nav {
+          gap: 9px !important;
         }
 
         #areaAdmin .admin-nav button,
         #areaAdmin .desktop-nav button,
         #areaAdmin .sidebar .nav button {
-          background: rgba(255,255,255,.075) !important;
-          color: #f4f4f4 !important;
-          border: 1px solid rgba(255,255,255,.12) !important;
-          box-shadow: inset 0 1px rgba(255,255,255,.06) !important;
-          backdrop-filter: blur(14px) !important;
-          -webkit-backdrop-filter: blur(14px) !important;
-          transition: background .18s ease, border-color .18s ease, transform .18s ease !important;
+          min-height: 46px !important;
+          width: 100% !important;
+          padding: 11px 15px !important;
+          border: 1px solid rgba(255,255,255,.095) !important;
+          border-radius: 14px !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.035)) !important;
+          color: #e8edf3 !important;
+          box-shadow: inset 0 1px rgba(255,255,255,.055), 0 8px 22px rgba(0,0,0,.12) !important;
+          backdrop-filter: blur(17px) saturate(135%) !important;
+          -webkit-backdrop-filter: blur(17px) saturate(135%) !important;
+          transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease !important;
         }
 
         #areaAdmin .admin-nav button:hover,
         #areaAdmin .desktop-nav button:hover,
         #areaAdmin .sidebar .nav button:hover {
-          background: rgba(255,255,255,.16) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.145), rgba(255,255,255,.075)) !important;
+          border-color: rgba(255,255,255,.20) !important;
           color: #ffffff !important;
-          border-color: rgba(255,255,255,.24) !important;
-          transform: translateX(2px);
+          box-shadow: inset 0 1px rgba(255,255,255,.09), 0 12px 28px rgba(0,0,0,.22) !important;
+          transform: translateX(3px) !important;
         }
 
         #areaAdmin .admin-nav button.active,
         #areaAdmin .desktop-nav button.active,
         #areaAdmin .sidebar .nav button.active {
-          background: rgba(255,255,255,.23) !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.21), rgba(255,255,255,.095)) !important;
+          border-color: rgba(255,255,255,.29) !important;
           color: #ffffff !important;
-          border-color: rgba(255,255,255,.34) !important;
-          box-shadow: inset 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.20) !important;
+          box-shadow: inset 0 1px rgba(255,255,255,.13), 0 12px 30px rgba(0,0,0,.27) !important;
+        }
+
+        #areaAdmin .admin-sidebar-bottom {
+          margin-top: auto !important;
+          padding-top: 22px !important;
+        }
+
+        #areaAdmin .admin-sidebar-bottom .danger {
+          background: rgba(255,82,96,.12) !important;
+          border: 1px solid rgba(255,110,122,.23) !important;
+          color: #ffffff !important;
+        }
+
+        #areaAdmin .admin-main {
+          background: transparent !important;
+          color: #f5f7fa !important;
         }
 
         #areaAdmin .admin-topbar,
         #areaAdmin .desktop-topbar {
-          background: rgba(255,255,255,.06) !important;
-          color: #ffffff !important;
+          background: linear-gradient(135deg, rgba(255,255,255,.085), rgba(255,255,255,.035)) !important;
           border-bottom: 1px solid rgba(255,255,255,.12) !important;
-          backdrop-filter: blur(22px) saturate(135%) !important;
-          -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 10px 35px rgba(0,0,0,.20) !important;
+          backdrop-filter: blur(26px) saturate(145%) !important;
+          -webkit-backdrop-filter: blur(26px) saturate(145%) !important;
         }
 
         #areaAdmin .admin-topbar h2,
-        #areaAdmin .desktop-topbar h2,
+        #areaAdmin .desktop-topbar h2 {
+          color: #ffffff !important;
+          font-weight: 800 !important;
+          letter-spacing: -.02em !important;
+        }
+
+        #areaAdmin .admin-content,
+        #areaAdmin .content,
+        #areaAdmin .desktop-content {
+          background: transparent !important;
+          color: #f2f5f8 !important;
+        }
+
+        #areaAdmin .admin-card,
+        #areaAdmin .org-card,
+        #areaAdmin .glass-panel {
+          background: linear-gradient(145deg, rgba(255,255,255,.085), rgba(255,255,255,.038)) !important;
+          border: 1px solid rgba(255,255,255,.125) !important;
+          border-radius: 18px !important;
+          box-shadow: 0 18px 50px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.055) !important;
+          backdrop-filter: blur(20px) saturate(135%) !important;
+          -webkit-backdrop-filter: blur(20px) saturate(135%) !important;
+        }
+
+        #areaAdmin .org-page {
+          background: transparent !important;
+          color: #f2f5f8 !important;
+        }
+
+        #areaAdmin .org-head {
+          background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.025)) !important;
+          border: 1px solid rgba(255,255,255,.095) !important;
+          border-radius: 18px !important;
+          box-shadow: 0 15px 38px rgba(0,0,0,.20), inset 0 1px rgba(255,255,255,.045) !important;
+          backdrop-filter: blur(18px) !important;
+          -webkit-backdrop-filter: blur(18px) !important;
+        }
+
+        #areaAdmin .org-page h1,
+        #areaAdmin .org-page h2,
+        #areaAdmin .org-page h3,
+        #areaAdmin .org-page h4,
+        #areaAdmin .org-page h5,
+        #areaAdmin .org-page h6,
         #areaAdmin .admin-main h1,
         #areaAdmin .admin-main h2,
         #areaAdmin .admin-main h3,
         #areaAdmin .admin-main h4,
         #areaAdmin .admin-main h5,
-        #areaAdmin .admin-main h6,
+        #areaAdmin .admin-main h6 {
+          color: #ffffff !important;
+        }
+
+        #areaAdmin .org-page p,
         #areaAdmin .admin-main p,
         #areaAdmin .admin-main label,
         #areaAdmin .admin-main span,
         #areaAdmin .admin-main strong,
         #areaAdmin .admin-main small,
-        #areaAdmin .admin-main li,
-        #areaAdmin .org-page,
-        #areaAdmin .org-page * {
-          color: #f2f2f2 !important;
+        #areaAdmin .admin-main li {
+          color: #d9e0e7 !important;
         }
 
         #areaAdmin .admin-main input,
@@ -502,30 +603,29 @@
         #areaAdmin .org-page input,
         #areaAdmin .org-page textarea,
         #areaAdmin .org-page select {
-          background: rgba(255,255,255,.09) !important;
+          background: rgba(255,255,255,.065) !important;
           color: #ffffff !important;
-          border: 1px solid rgba(255,255,255,.18) !important;
+          border: 1px solid rgba(255,255,255,.15) !important;
+          border-radius: 12px !important;
+          box-shadow: inset 0 1px rgba(255,255,255,.04) !important;
         }
 
-        #areaAdmin .admin-card,
-        #areaAdmin .org-card,
-        #areaAdmin .glass-panel {
-          background: rgba(255,255,255,.065) !important;
-          border: 1px solid rgba(255,255,255,.13) !important;
-          box-shadow: 0 16px 45px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.045) !important;
-          backdrop-filter: blur(18px) saturate(130%) !important;
-          -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+        #areaAdmin .admin-main input::placeholder,
+        #areaAdmin .admin-main textarea::placeholder,
+        #areaAdmin .org-page input::placeholder,
+        #areaAdmin .org-page textarea::placeholder {
+          color: #8994a0 !important;
         }
 
         #areaAdmin .admin-main table,
         #areaAdmin .admin-main th,
         #areaAdmin .admin-main td {
-          color: #f2f2f2 !important;
-          border-color: rgba(255,255,255,.10) !important;
+          color: #edf1f5 !important;
+          border-color: rgba(255,255,255,.095) !important;
         }
 
         #areaAdmin .admin-main th {
-          background: rgba(255,255,255,.07) !important;
+          background: rgba(255,255,255,.065) !important;
         }
 
         #areaAdmin .admin-btn,
@@ -533,12 +633,16 @@
           color: #ffffff !important;
         }
 
-        #areaAdmin .hidden {
+        #areaAdmin .hidden,
+        #boxLoginAdmin.hidden {
           display: none !important;
         }
 
-        #boxLoginAdmin.hidden {
-          display: none !important;
+        #areaAdmin .admin-btn.primary,
+        #areaAdmin .admin-btn.secondary,
+        #areaAdmin .glass-action {
+          border-radius: 12px !important;
+          box-shadow: inset 0 1px rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.18) !important;
         }
       `;
       document.head.appendChild(style);
