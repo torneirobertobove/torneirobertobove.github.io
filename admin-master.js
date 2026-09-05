@@ -1,7 +1,4 @@
-from pathlib import Path
-import subprocess, textwrap
-
-js = r'''/*
+/*
  * PADEL ADMIN MASTER CONSOLE
  * Versione coordinata con admin.html statico
  * Versione 22
@@ -2551,20 +2548,3 @@ js = r'''/*
     };
 
 })();
-'''
-
-path = Path("/mnt/data/admin-master.js")
-path.write_text(js, encoding="utf-8")
-
-result = subprocess.run(
-    ["node", "--check", str(path)],
-    capture_output=True,
-    text=True
-)
-
-print(f"File creato: {path}")
-print(f"Controllo sintassi Node.js: {'OK' if result.returncode == 0 else 'ERRORE'}")
-if result.returncode != 0:
-    print(result.stderr)
-else:
-    print(f"Righe: {len(js.splitlines())}")
