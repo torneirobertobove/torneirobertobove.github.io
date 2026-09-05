@@ -190,6 +190,45 @@
         color: #000000 !important;
         border-color: rgba(255,255,255,.70) !important;
       }
+
+      /* Area contenuti: testo nero e leggibile */
+      #areaAdmin .admin-main,
+      #areaAdmin .admin-main h1,
+      #areaAdmin .admin-main h2,
+      #areaAdmin .admin-main h3,
+      #areaAdmin .admin-main h4,
+      #areaAdmin .admin-main h5,
+      #areaAdmin .admin-main h6,
+      #areaAdmin .admin-main p,
+      #areaAdmin .admin-main label,
+      #areaAdmin .admin-main span,
+      #areaAdmin .admin-main div,
+      #areaAdmin .admin-main strong,
+      #areaAdmin .admin-main small,
+      #areaAdmin .admin-main td,
+      #areaAdmin .admin-main th,
+      #areaAdmin .admin-main li {
+        color: #111111 !important;
+      }
+
+      #areaAdmin .admin-main input,
+      #areaAdmin .admin-main textarea,
+      #areaAdmin .admin-main select {
+        color: #111111 !important;
+        background: #ffffff !important;
+      }
+
+      #areaAdmin .admin-main button {
+        color: #111111 !important;
+      }
+
+      #areaAdmin .admin-main button.admin-btn,
+      #areaAdmin .admin-main button[class*="primary"],
+      #areaAdmin .admin-main button[class*="success"],
+      #areaAdmin .admin-main button[class*="danger"],
+      #areaAdmin .admin-main button[class*="warning"] {
+        color: #ffffff !important;
+      }
     `;
 
 
