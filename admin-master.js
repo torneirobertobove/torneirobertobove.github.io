@@ -15,7 +15,7 @@
     "https://iybjvtmfaupgthqqsngd.supabase.co";
 
   const SUPABASE_KEY =
-    "INCOLLA_LA_TUA_PUBLISHABLE_KEY_ESISTENTE";
+    "sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
 
   let supabaseClient = null;
   let supabaseInitPromise = null;
@@ -274,7 +274,7 @@
             !window.supabase ||
             typeof window.supabase
               .createClient !==
-              "function"
+            "function"
           ) {
             reject(
               new Error(
@@ -309,7 +309,7 @@
           window.supabase &&
           typeof window.supabase
             .createClient ===
-            "function"
+          "function"
         ) {
           createClientNow();
           return;
@@ -321,7 +321,7 @@
           );
 
         script.src =
-          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+          "https://cdn.jsdelivr.net/npm/@Supabase/supabase-js@2";
 
         script.async = true;
 
