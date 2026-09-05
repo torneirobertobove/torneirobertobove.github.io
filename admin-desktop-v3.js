@@ -176,6 +176,20 @@
       #areaAdmin summary {
         pointer-events: auto !important;
       }
+
+      /* Configurazione: testo ben leggibile */
+      #areaAdmin .admin-nav button[data-page="configurazione"] {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-color: rgba(255,255,255,.45) !important;
+      }
+
+      #areaAdmin .admin-nav button[data-page="configurazione"]:hover,
+      #areaAdmin .admin-nav button[data-page="configurazione"].active {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-color: rgba(255,255,255,.70) !important;
+      }
     `;
 
 
