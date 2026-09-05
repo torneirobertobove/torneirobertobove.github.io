@@ -345,8 +345,7 @@
 
   }
 
-
-  function initialize() {
+   function initialize() {
 
     ensureInteraction();
     installGlobals();
@@ -411,3 +410,16 @@
   }
 
 })();
+
+/*
+ * FINE FILE: admin-desktop-v3.js
+ *
+ * La parte finale del file è volutamente chiusa
+ * con l'IIFE sopra riportata.
+ *
+ * Nessun caricamento di:
+ * - admin-test.js
+ * - admin-desktop-v4.js
+ * - admin-legacy-navigation.js
+ * - admin-final-click-fix-v1.js
+ */
