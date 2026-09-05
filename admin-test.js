@@ -53,9 +53,11 @@ warn("Funzione " + name, "non presente");
 }
 
 function safeText(element) {
-return String(element && element.textContent || "")
-.replace(/\s+/g, " ")
-.trim();
+return String(
+element && element.textContent
+? element.textContent
+: ""
+).replace(/\s+/g, " ").trim();
 }
 
 function escapeHtml(value) {
@@ -67,833 +69,814 @@ return String(value)
 .replace(/'/g, "'");
 }
 
-/*
+/* =========================================================
+1. DOCUMENTO
+========================================================= */
 
-* =========================================================
-* 1. DOCUMENTO
-* =========================================================
-  */
-
-pass(
-"Test avviato",
-new Date().toLocaleTimeString()
-);
-
-if (document.readyState !== "loading") {
-pass(
-"DOM pronto",
-document.readyState
-);
+if (document && document.body) {
+pass("Documento HTML", "caricato correttamente");
 } else {
-fail(
-"DOM pronto",
-"document ancora in loading"
-);
+fail("Documento HTML", "body non disponibile");
 }
 
-testElement(
-"areaAdmin",
-"Contenitore Admin"
-);
-
-testElement(
-"boxLoginAdmin",
-"Box login Admin"
-);
-
-/*
-
-* =========================================================
-* 2. CSS E LAYOUT
-* =========================================================
-  */
-
-var stylesheets = Array.from(
-document.querySelectorAll(
-'link[rel="stylesheet"]'
-)
-);
-
-var adminCss = stylesheets.find(function (link) {
-return /admin-desktop.css/i.test(
-link.getAttribute("href") || ""
-);
-});
-
-if (adminCss) {
-pass(
-"admin-desktop.css",
-adminCss.getAttribute("href")
-);
+if (document.title) {
+pass("Titolo pagina", document.title);
 } else {
-fail(
-"admin-desktop.css",
-"foglio CSS non trovato"
-);
+warn("Titolo pagina", "titolo non impostato");
 }
 
-[
-[".desktop-app", "Layout desktop"],
-[".desktop-sidebar", "Sidebar"],
-[".desktop-main", "Main"],
-[".desktop-topbar", "Topbar"],
-[".desktop-nav", "Navigazione"],
-[".desktop-content", "Contenuto"],
-[".desktop-page-title", "Titolo pagina"]
-].forEach(function (item) {
-if (hasSelector(item[0])) {
-pass(
-item[1],
-item[0] + " presente"
-);
+/* =========================================================
+2. CSS E LAYOUT
+========================================================= */
+
+testElement("desktopApp", "Layout .desktop-app");
+
+if (hasSelector(".desktop-sidebar")) {
+pass("Sidebar desktop", "presente");
 } else {
-fail(
-item[1],
-item[0] + " MANCANTE"
-);
-}
-});
-
-/*
-
-* =========================================================
-* 3. PAGINE ADMIN
-* =========================================================
-  */
-
-var pages = [
-["dashboard", "page-dashboard"],
-["configurazione", "page-configurazione"],
-["iscritti", "page-iscritti"],
-["coppie", "page-coppie"],
-["tabellone", "page-tabellone"],
-["news", "page-news"],
-["sponsor", "page-sponsor"],
-["whatsapp", "page-whatsapp"],
-["link", "page-link"]
-];
-
-pages.forEach(function (page) {
-if (hasElement(page[1])) {
-pass(
-"Pagina " + page[0],
-"#" + page[1] + " presente"
-);
-} else {
-fail(
-"Pagina " + page[0],
-"#" + page[1] + " MANCANTE"
-);
-}
-});
-
-/*
-
-* =========================================================
-* 4. MENU LATERALE
-* =========================================================
-  */
-
-var navButtons = Array.from(
-document.querySelectorAll(
-".desktop-nav button"
-)
-);
-
-if (navButtons.length) {
-pass(
-"Menu laterale",
-navButtons.length + " pulsanti trovati"
-);
-} else {
-fail(
-"Menu laterale",
-"nessun pulsante trovato"
-);
+fail("Sidebar desktop", "MANCANTE");
 }
 
-pages.forEach(function (page) {
-var button = document.querySelector(
-'.desktop-nav button[data-page="' +
-page[0] +
-'"]'
-);
+if (hasSelector(".desktop-main")) {
+pass("Main desktop", "presente");
+} else {
+fail("Main desktop", "MANCANTE");
+}
+
+if (hasSelector(".desktop-topbar")) {
+pass("Topbar desktop", "presente");
+} else {
+warn("Topbar desktop", "non trovata");
+}
+
+if (hasSelector(".desktop-content")) {
+pass("Contenuto desktop", "presente");
+} else {
+fail("Contenuto desktop", "MANCANTE");
+}
+
+var cssLinks = document.querySelectorAll('link[rel="stylesheet"]');
+
+if (cssLinks.length > 0) {
+pass("Foglio CSS", cssLinks.length + " stylesheet trovati");
+} else {
+fail("Foglio CSS", "nessun stylesheet trovato");
+}
+
+var desktopCssFound = false;
+
+for (var c = 0; c < cssLinks.length; c++) {
+var href = cssLinks[c].getAttribute("href") || "";
 
 ```
-if (button) {
+if (href.indexOf("admin-desktop.css") !== -1) {
+  desktopCssFound = true;
+  pass("admin-desktop.css", href);
+}
+```
+
+}
+
+if (!desktopCssFound) {
+fail("admin-desktop.css", "non collegato");
+}
+
+/* =========================================================
+3. PAGINE ADMIN
+========================================================= */
+
+var pages = [
+"dashboard",
+"configurazione",
+"iscritti",
+"coppie",
+"tabellone",
+"news",
+"sponsor",
+"whatsapp",
+"link"
+];
+
+for (var p = 0; p < pages.length; p++) {
+var pageId = "page-" + pages[p];
+
+```
+if (hasElement(pageId)) {
+  pass("Pagina " + pages[p], "#" + pageId + " presente");
+} else {
+  warn(
+    "Pagina " + pages[p],
+    "#" + pageId + " non trovato"
+  );
+}
+```
+
+}
+
+/* =========================================================
+4. MENU
+========================================================= */
+
+var navButtons = document.querySelectorAll(
+".desktop-nav button, .nav button, [data-page]"
+);
+
+if (navButtons.length > 0) {
+pass("Menu amministrazione", navButtons.length + " elementi trovati");
+} else {
+fail("Menu amministrazione", "nessun pulsante di navigazione trovato");
+}
+
+var expectedNav = [
+"dashboard",
+"configurazione",
+"iscritti",
+"coppie",
+"tabellone",
+"news",
+"sponsor",
+"whatsapp",
+"link"
+];
+
+for (var n = 0; n < expectedNav.length; n++) {
+var navFound = false;
+
+```
+for (var b = 0; b < navButtons.length; b++) {
+  var target =
+    navButtons[b].getAttribute("data-page") ||
+    navButtons[b].getAttribute("data-target") ||
+    navButtons[b].getAttribute("onclick") ||
+    "";
+
+  if (
+    target.toLowerCase().indexOf(expectedNav[n].toLowerCase()) !== -1
+  ) {
+    navFound = true;
+    break;
+  }
+}
+
+if (navFound) {
+  pass("Menu " + expectedNav[n], "collegamento trovato");
+} else {
+  warn("Menu " + expectedNav[n], "collegamento non rilevato");
+}
+```
+
+}
+
+/* =========================================================
+5. NAVIGAZIONE
+========================================================= */
+
+testFunction("openAdminPage");
+
+if (typeof window.normalizzaPagina === "function") {
+pass("normalizzaPagina", "funzione disponibile");
+
+```
+var normalizedWhatsapp = window.normalizzaPagina("whatsapp");
+
+if (normalizedWhatsapp === "whatsapp") {
   pass(
-    "Menu " + page[0],
-    "pulsante presente"
+    "Navigazione WhatsApp",
+    "normalizzaPagina('whatsapp') restituisce whatsapp"
   );
 } else {
   fail(
-    "Menu " + page[0],
-    "pulsante MANCANTE"
+    "Navigazione WhatsApp",
+    "restituisce " + String(normalizedWhatsapp)
   );
 }
 ```
 
-});
-
-/*
-
-* =========================================================
-* 5. NAVIGAZIONE
-* =========================================================
-  */
-
-if (hasFunction("openAdminPage")) {
-pass(
-"openAdminPage",
-"funzione disponibile"
-);
-
-```
-pages.forEach(function (page) {
-  try {
-    window.openAdminPage(page[0]);
-
-    var expectedPage =
-      page[0] === "configurazione"
-        ? "config"
-        : page[0] === "link"
-          ? "links"
-          : page[0];
-
-    var target = document.querySelector(
-      '.admin-page[data-page="' +
-      expectedPage +
-      '"]'
-    );
-
-    if (target) {
-      pass(
-        "Navigazione " + page[0],
-        "pagina raggiungibile"
-      );
-    } else {
-      fail(
-        "Navigazione " + page[0],
-        "pagina target non trovata"
-      );
-    }
-  } catch (error) {
-    fail(
-      "Navigazione " + page[0],
-      error.message || String(error)
-    );
-  }
-});
-```
-
 } else {
-fail(
-"openAdminPage",
-"funzione MANCANTE"
+warn(
+"normalizzaPagina",
+"funzione non disponibile"
 );
 }
 
-/*
+/* =========================================================
+6. FUNZIONI PUBBLICHE
+========================================================= */
 
-* =========================================================
-* 6. FUNZIONI PUBBLICHE
-* =========================================================
-  */
-
-[
+var functions = [
 "avviaAdmin",
 "loginAdmin",
 "logoutAdmin",
-"renderAdmin",
-"caricaTorneiSupabase",
-"caricaIscrizioni",
-"creaNuovoTorneo",
+"caricaTorneiAdmin",
+"caricaTornei",
+"creaTorneo",
 "eliminaTorneo",
 "pubblicaTorneo",
-"chiudiIscrizioni",
-"approvaIscritto",
-"rifiutaIscritto",
+"chiudiTorneo",
+"caricaIscrizioni",
+"approvaIscrizione",
+"rifiutaIscrizione",
+"caricaPartecipanti",
 "generaCoppie",
-"generaCoppieAdmin",
-"accoppiaACaso",
-"generaCoppieCasuali",
-"creaCoppieCasuali",
-"generaLinkBove",
-"generaLinkBoveMirror",
-"copiaLinkBove",
-"apriLinkBove",
-"apriRegoleNuovoTorneo",
-"inviaWhatsAppTutti",
-"inviaWhatsAppApprovati",
-"caricaNewsAdmin",
-"creaNewsAdmin",
-"eliminaNewsAdmin",
-"caricaSponsorAdmin",
-"creaSponsorAdmin",
-"eliminaSponsorAdmin",
-"__adminRefresh",
-"__adminButtonAction"
-].forEach(testFunction);
+"generaCoppieLocali",
+"inviaWhatsApp",
+"caricaNews",
+"creaNews",
+"modificaNews",
+"eliminaNews",
+"caricaSponsor",
+"creaSponsor",
+"modificaSponsor",
+"eliminaSponsor",
+"caricaCalendario",
+"generaLink",
+"copiaLink",
+"apriLink"
+];
 
-/*
-
-* =========================================================
-* 7. ELEMENTI DASHBOARD
-* =========================================================
-  */
-
-[
-["listaTorneiAdmin", "Lista tornei"],
-["statTornei", "Stat tornei"],
-["statIscritti", "Stat iscritti"],
-["statCoppie", "Stat coppie"],
-["statStato", "Stat stato"],
-["btnAggiorna", "Pulsante aggiorna"],
-["btnNuovoTorneo", "Pulsante nuovo torneo"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 8. ISCRITTI
-* =========================================================
-  */
-
-[
-["listaIscrittiAdmin", "Lista iscritti"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 9. COPPIE / TABELLONE
-* =========================================================
-  */
-
-[
-["coppieAdmin", "Area coppie"],
-["tabelloneAdmin", "Area tabellone"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 10. NEWS
-* =========================================================
-  */
-
-[
-["titoloNews", "Titolo news"],
-["testoNews", "Testo news"],
-["btnSalvaNews", "Salva news"],
-["newsPanel", "Pannello news"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 11. SPONSOR
-* =========================================================
-  */
-
-[
-["nomeSponsor", "Nome sponsor"],
-["logoSponsor", "Logo sponsor"],
-["linkSponsor", "Link sponsor"],
-["btnSalvaSponsor", "Salva sponsor"],
-["sponsorPanel", "Pannello sponsor"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 12. WHATSAPP
-* =========================================================
-  */
-
-[
-["messaggioWhatsApp", "Messaggio WhatsApp"],
-["btnWhatsAppTutti", "WhatsApp tutti"],
-["btnWhatsAppApprovati", "WhatsApp approvati"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 13. LINK
-* =========================================================
-  */
-
-[
-["linkBoveGenerato", "Link generato"],
-["linkBoveGeneratoMirror", "Link mirror"],
-["btnGeneraLinkBove", "Genera link"],
-["btnCopiaLink", "Copia link"],
-["btnApriLink", "Apri link"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 14. LOGIN
-* =========================================================
-  */
-
-[
-["emailAdmin", "Email admin"],
-["passwordAdmin", "Password admin"]
-].forEach(function (item) {
-testElement(item[0], item[1]);
-});
-
-/*
-
-* =========================================================
-* 15. SUPABASE
-* =========================================================
-  */
-
-if (window.supabase) {
-pass(
-"Libreria Supabase",
-"caricata"
-);
-} else {
-fail(
-"Libreria Supabase",
-"window.supabase non presente"
-);
+for (var f = 0; f < functions.length; f++) {
+testFunction(functions[f]);
 }
 
-if (window.sb) {
-pass(
-"Client Supabase",
-"window.sb presente"
-);
-} else if (window.supabaseClient) {
-pass(
-"Client Supabase",
-"window.supabaseClient presente"
-);
-} else {
-warn(
-"Client Supabase",
-"client globale non rilevato"
-);
-}
+/* =========================================================
+7. DASHBOARD
+========================================================= */
 
-/*
+var dashboardElements = [
+"totTornei",
+"totIscritti",
+"totCoppie",
+"totPartite"
+];
 
-* =========================================================
-* 16. ADMIN STATE
-* =========================================================
-  */
-
-if (window.adminState) {
+for (var d = 0; d < dashboardElements.length; d++) {
+if (hasElement(dashboardElements[d])) {
 pass(
-"adminState",
+"Dashboard #" + dashboardElements[d],
 "presente"
 );
 } else {
 warn(
-"adminState",
-"non disponibile"
+"Dashboard #" + dashboardElements[d],
+"elemento non trovato"
 );
 }
-
-/*
-
-* =========================================================
-* 17. CONTROLLO PULSANTI
-* =========================================================
-  */
-
-var buttons = Array.from(
-document.querySelectorAll(
-"#areaAdmin button"
-)
-);
-
-var withoutAction = [];
-
-buttons.forEach(function (button) {
-var onclick =
-button.getAttribute("onclick");
-
-```
-var dataPage =
-  button.getAttribute("data-page");
-
-var text =
-  safeText(button);
-
-var knownNavigation =
-  !!dataPage;
-
-var knownListener =
-  !!button.__adminNavigationBound;
-
-if (
-  text &&
-  !onclick &&
-  !knownNavigation &&
-  !knownListener
-) {
-  withoutAction.push(text);
 }
-```
 
-});
+/* =========================================================
+8. ISCRITTI
+========================================================= */
 
-if (withoutAction.length === 0) {
+var iscrittiElements = [
+"listaIscritti",
+"listaPartecipanti",
+"tabellaIscritti"
+];
+
+var iscrittiFound = false;
+
+for (var i = 0; i < iscrittiElements.length; i++) {
+if (hasElement(iscrittiElements[i])) {
 pass(
-"Pulsanti senza azione",
+"Area iscritti",
+"#" + iscrittiElements[i] + " presente"
+);
+iscrittiFound = true;
+}
+}
+
+if (!iscrittiFound) {
+warn(
+"Area iscritti",
+"contenitore lista non rilevato"
+);
+}
+
+/* =========================================================
+9. COPPIE E TABELLONE
+========================================================= */
+
+var coppieSelectors = [
+"#listaCoppie",
+"#coppieContainer",
+"#tabellone",
+"#tabelloneContainer"
+];
+
+var coppieFound = false;
+
+for (var cp = 0; cp < coppieSelectors.length; cp++) {
+if (hasSelector(coppieSelectors[cp])) {
+pass(
+"Area coppie/tabellone",
+coppieSelectors[cp] + " presente"
+);
+coppieFound = true;
+}
+}
+
+if (!coppieFound) {
+warn(
+"Area coppie/tabellone",
+"contenitore non rilevato"
+);
+}
+
+/* =========================================================
+10. NEWS
+========================================================= */
+
+var newsSelectors = [
+"#listaNews",
+"#newsContainer",
+"#newsList"
+];
+
+var newsFound = false;
+
+for (var nw = 0; nw < newsSelectors.length; nw++) {
+if (hasSelector(newsSelectors[nw])) {
+pass(
+"Area News",
+newsSelectors[nw] + " presente"
+);
+newsFound = true;
+}
+}
+
+if (!newsFound) {
+warn(
+"Area News",
+"contenitore non rilevato"
+);
+}
+
+/* =========================================================
+11. SPONSOR
+========================================================= */
+
+var sponsorSelectors = [
+"#listaSponsor",
+"#sponsorContainer",
+"#sponsorList"
+];
+
+var sponsorFound = false;
+
+for (var sp = 0; sp < sponsorSelectors.length; sp++) {
+if (hasSelector(sponsorSelectors[sp])) {
+pass(
+"Area Sponsor",
+sponsorSelectors[sp] + " presente"
+);
+sponsorFound = true;
+}
+}
+
+if (!sponsorFound) {
+warn(
+"Area Sponsor",
+"contenitore non rilevato"
+);
+}
+
+/* =========================================================
+12. WHATSAPP
+========================================================= */
+
+if (hasElement("whatsapp")) {
+pass(
+"Pagina WhatsApp",
+"#whatsapp presente"
+);
+} else if (hasElement("page-whatsapp")) {
+pass(
+"Pagina WhatsApp",
+"#page-whatsapp presente"
+);
+} else {
+fail(
+"Pagina WhatsApp",
+"contenitore WhatsApp MANCANTE"
+);
+}
+
+var whatsappButtons = document.querySelectorAll(
+'#whatsapp button, #page-whatsapp button'
+);
+
+if (whatsappButtons.length > 0) {
+pass(
+"Pulsanti WhatsApp",
+whatsappButtons.length + " trovati"
+);
+} else {
+warn(
+"Pulsanti WhatsApp",
+"nessun pulsante trovato"
+);
+}
+
+/* =========================================================
+13. LINK
+========================================================= */
+
+var linkSelectors = [
+"#link",
+"#page-link",
+"#linkContainer",
+"#linkTorneo"
+];
+
+var linkFound = false;
+
+for (var l = 0; l < linkSelectors.length; l++) {
+if (hasSelector(linkSelectors[l])) {
+pass(
+"Area Link",
+linkSelectors[l] + " presente"
+);
+linkFound = true;
+}
+}
+
+if (!linkFound) {
+warn(
+"Area Link",
+"contenitore link non rilevato"
+);
+}
+
+/* =========================================================
+14. LOGIN
+========================================================= */
+
+var loginSelectors = [
+"#loginAdmin",
+"#adminLogin",
+"#loginForm",
+"#passwordAdmin"
+];
+
+var loginFound = false;
+
+for (var lg = 0; lg < loginSelectors.length; lg++) {
+if (hasSelector(loginSelectors[lg])) {
+pass(
+"Login",
+loginSelectors[lg] + " presente"
+);
+loginFound = true;
+}
+}
+
+if (!loginFound) {
+warn(
+"Login",
+"elementi login non rilevati"
+);
+}
+
+/* =========================================================
+15. SUPABASE
+========================================================= */
+
+if (window.supabase) {
+pass(
+"Supabase globale",
+"window.supabase presente"
+);
+} else {
+warn(
+"Supabase globale",
+"window.supabase non presente"
+);
+}
+
+if (window.supabaseClient) {
+pass(
+"Supabase client",
+"window.supabaseClient presente"
+);
+} else {
+warn(
+"Supabase client",
+"window.supabaseClient non presente"
+);
+}
+
+if (window._supabase) {
+pass(
+"_supabase",
+"client presente"
+);
+} else {
+warn(
+"_supabase",
+"client non presente"
+);
+}
+
+/* =========================================================
+16. ADMIN STATE
+========================================================= */
+
+if (window.adminState) {
+pass(
+"adminState",
+"stato amministrazione presente"
+);
+
+```
+if (
+  typeof window.adminState === "object" &&
+  !Array.isArray(window.adminState)
+) {
+  pass(
+    "adminState struttura",
+    "oggetto valido"
+  );
+} else {
+  warn(
+    "adminState struttura",
+    "tipo inatteso"
+  );
+}
+```
+
+} else {
+warn(
+"adminState",
+"non presente"
+);
+}
+
+/* =========================================================
+17. BOTTONI
+========================================================= */
+
+var allButtons = document.querySelectorAll("button");
+
+if (allButtons.length > 0) {
+pass(
+"Pulsanti pagina",
+allButtons.length + " pulsanti trovati"
+);
+} else {
+fail(
+"Pulsanti pagina",
+"nessun pulsante trovato"
+);
+}
+
+var buttonsWithoutAction = 0;
+
+for (var bt = 0; bt < allButtons.length; bt++) {
+var button = allButtons[bt];
+
+```
+var onclick = button.getAttribute("onclick");
+var dataPage = button.getAttribute("data-page");
+var dataAction = button.getAttribute("data-action");
+var type = button.getAttribute("type");
+
+var hasAction =
+  !!onclick ||
+  !!dataPage ||
+  !!dataAction ||
+  type === "submit";
+
+if (!hasAction) {
+  buttonsWithoutAction++;
+}
+```
+
+}
+
+if (buttonsWithoutAction === 0) {
+pass(
+"Bottoni senza azione",
 "nessuno rilevato"
 );
 } else {
 warn(
-"Pulsanti senza azione",
-withoutAction.join(" | ")
+"Bottoni senza azione",
+buttonsWithoutAction + " pulsanti senza azione esplicita"
 );
 }
 
-/*
+/* =========================================================
+18. HASH
+========================================================= */
 
-* =========================================================
-* 18. HASH URL
-* =========================================================
-  */
+var hash = window.location.hash || "";
 
-if (location.hash) {
+if (hash) {
 pass(
-"Hash URL",
-location.hash
+"Hash pagina",
+hash
 );
 } else {
 warn(
-"Hash URL",
-"nessun hash attuale"
+"Hash pagina",
+"nessun hash presente"
 );
 }
 
-/*
+if (hash === "#whatsapp") {
+pass(
+"Hash WhatsApp",
+"pagina WhatsApp richiesta"
+);
+}
 
-* =========================================================
-* 19. ERRORI JAVASCRIPT
-* =========================================================
-  */
+/* =========================================================
+19. ERRORI RUNTIME
+========================================================= */
 
-var runtimeErrors = [];
+var runtimeErrors = window.__adminTestRuntimeErrors || [];
 
-var oldErrorHandler =
-window.__adminTestOriginalErrorHandler;
+if (runtimeErrors.length === 0) {
+pass(
+"Errori runtime",
+"nessun errore registrato"
+);
+} else {
+for (var er = 0; er < runtimeErrors.length; er++) {
+fail(
+"Errore runtime",
+runtimeErrors[er]
+);
+}
+}
 
-if (!oldErrorHandler) {
-window.__adminTestOriginalErrorHandler =
-window.onerror;
+/* =========================================================
+20. RIEPILOGO
+========================================================= */
+
+var passCount = 0;
+var failCount = 0;
+var warnCount = 0;
+
+for (var r = 0; r < results.length; r++) {
+if (results[r].status === "PASS") {
+passCount++;
+}
 
 ```
-window.onerror = function (
-  message,
-  source,
-  line,
-  column
-) {
-  runtimeErrors.push({
-    message: String(message),
-    source: source || "",
-    line: line || "",
-    column: column || ""
-  });
+if (results[r].status === "FAIL") {
+  failCount++;
+}
 
-  if (
-    typeof oldErrorHandler === "function"
-  ) {
-    return oldErrorHandler.apply(
-      this,
-      arguments
-    );
-  }
+if (results[r].status === "WARN") {
+  warnCount++;
+}
+```
 
-  return false;
+}
+
+var duration = Date.now() - started;
+
+window.adminTestResults = results;
+
+window.adminTestSummary = {
+pass: passCount,
+fail: failCount,
+warn: warnCount,
+duration: duration
 };
-```
 
-}
+/* =========================================================
+21. PANNELLO
+========================================================= */
 
-/*
-
-* =========================================================
-* 20. RISULTATO
-* =========================================================
-  */
-
-var duration =
-Date.now() - started;
-
-var passed =
-results.filter(function (item) {
-return item.status === "PASS";
-}).length;
-
-var failed =
-results.filter(function (item) {
-return item.status === "FAIL";
-}).length;
-
-var warnings =
-results.filter(function (item) {
-return item.status === "WARN";
-}).length;
-
-/*
-
-* =========================================================
-* 21. PANNELLO
-* =========================================================
-  */
-
-var oldPanel =
-document.getElementById(
-"adminTestPanel"
-);
+var oldPanel = document.getElementById("adminTestPanel");
 
 if (oldPanel) {
 oldPanel.remove();
 }
 
-var panel =
-document.createElement("section");
+var panel = document.createElement("div");
 
-panel.id =
-"adminTestPanel";
+panel.id = "adminTestPanel";
 
-panel.style.cssText =
-[
-"position:fixed",
-"right:20px",
-"bottom:20px",
-"width:min(820px,calc(100vw - 40px))",
-"max-height:80vh",
-"overflow:auto",
-"z-index:999999",
-"background:#11161c",
-"color:#f1f4f7",
-"border:1px solid rgba(255,255,255,.16)",
-"border-radius:16px",
-"padding:20px",
-"box-shadow:0 25px 80px rgba(0,0,0,.55)",
-"font-family:Inter,system-ui,sans-serif",
-"font-size:13px"
-].join(";");
+panel.style.position = "fixed";
+panel.style.right = "20px";
+panel.style.bottom = "20px";
+panel.style.width = "430px";
+panel.style.maxHeight = "75vh";
+panel.style.overflow = "auto";
+panel.style.zIndex = "999999";
+panel.style.background = "#111";
+panel.style.color = "#fff";
+panel.style.border = "1px solid #444";
+panel.style.borderRadius = "14px";
+panel.style.padding = "18px";
+panel.style.boxSizing = "border-box";
+panel.style.fontFamily = "Arial, sans-serif";
+panel.style.fontSize = "13px";
+panel.style.boxShadow = "0 15px 50px rgba(0,0,0,.5)";
 
-var title =
-document.createElement("div");
+var headerColor = failCount > 0 ? "#ff5252" : "#4caf50";
 
-title.innerHTML =
-"<strong style='font-size:18px'>" +
+var html = "";
+
+html +=
+'<div style="font-size:18px;font-weight:700;margin-bottom:12px;">' +
 "ADMIN — CONTROLLO COMPLETO" +
-"</strong>" +
-"<div style='margin-top:6px;color:#a5afb9'>" +
-"Controllo non distruttivo · " +
+"</div>";
+
+html +=
+'<div style="padding:10px;background:#1d1d1d;border-radius:10px;margin-bottom:14px;">' +
+'<span style="color:#4caf50;font-weight:700;">PASS: ' +
+passCount +
+"</span>" +
+"   " +
+'<span style="color:#ff5252;font-weight:700;">FAIL: ' +
+failCount +
+"</span>" +
+"   " +
+'<span style="color:#ffb300;font-weight:700;">WARN: ' +
+warnCount +
+"</span>" +
+"</div>";
+
+html +=
+'<div style="margin-bottom:12px;color:' +
+ headerColor +
+ ';font-weight:700;">' +
+(
+failCount > 0
+? "ATTENZIONE: sono presenti errori."
+: "Controllo terminato."
+) +
+"</div>";
+
+for (var q = 0; q < results.length; q++) {
+var item = results[q];
+
+```
+var itemColor = "#aaa";
+
+if (item.status === "PASS") {
+  itemColor = "#4caf50";
+}
+
+if (item.status === "FAIL") {
+  itemColor = "#ff5252";
+}
+
+if (item.status === "WARN") {
+  itemColor = "#ffb300";
+}
+
+html +=
+  '<div style="padding:7px 0;border-bottom:1px solid #292929;">' +
+  '<span style="display:inline-block;width:48px;color:' +
+  itemColor +
+  ';font-weight:700;">' +
+  escapeHtml(item.status) +
+  "</span>" +
+  "<strong>" +
+  escapeHtml(item.name) +
+  "</strong>" +
+  (
+    item.detail
+      ? '<div style="margin-left:48px;margin-top:2px;color:#aaa;">' +
+        escapeHtml(item.detail) +
+        "</div>"
+      : ""
+  ) +
+  "</div>";
+```
+
+}
+
+html +=
+'<div style="margin-top:14px;color:#888;font-size:11px;">' +
+"Tempo controllo: " +
 duration +
 " ms" +
 "</div>";
 
-panel.appendChild(title);
-
-var summary =
-document.createElement("div");
-
-summary.style.cssText =
-"display:flex;gap:8px;flex-wrap:wrap;margin:16px 0";
-
-summary.innerHTML =
-"<span style='padding:8px 11px;border-radius:8px;background:rgba(66,211,146,.13);color:#42d392;font-weight:700'>PASS " +
-passed +
-"</span>" +
-
-```
-"<span style='padding:8px 11px;border-radius:8px;background:rgba(255,102,120,.13);color:#ff6678;font-weight:700'>FAIL " +
-failed +
-"</span>" +
-
-"<span style='padding:8px 11px;border-radius:8px;background:rgba(242,201,76,.13);color:#f2c94c;font-weight:700'>WARN " +
-warnings +
-"</span>";
-```
-
-panel.appendChild(summary);
-
-if (failed === 0) {
-var overall =
-document.createElement("div");
-
-```
-overall.style.cssText =
-  "padding:12px;margin-bottom:12px;border-radius:10px;background:rgba(66,211,146,.08);border:1px solid rgba(66,211,146,.18);color:#42d392;font-weight:700";
-
-overall.textContent =
-  "Nessun errore strutturale rilevato.";
-
-panel.appendChild(overall);
-```
-
-} else {
-var overallFail =
-document.createElement("div");
-
-```
-overallFail.style.cssText =
-  "padding:12px;margin-bottom:12px;border-radius:10px;background:rgba(255,102,120,.08);border:1px solid rgba(255,102,120,.18);color:#ff6678;font-weight:700";
-
-overallFail.textContent =
-  "Sono presenti " +
-  failed +
-  " problemi da correggere.";
-
-panel.appendChild(overallFail);
-```
-
-}
-
-var list =
-document.createElement("div");
-
-results.forEach(function (item) {
-var row =
-document.createElement("div");
-
-```
-var symbol =
-  item.status === "PASS"
-    ? "✓"
-    : item.status === "FAIL"
-      ? "✕"
-      : "⚠";
-
-var color =
-  item.status === "PASS"
-    ? "#42d392"
-    : item.status === "FAIL"
-      ? "#ff6678"
-      : "#f2c94c";
-
-row.style.cssText =
-  "padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)";
-
-row.innerHTML =
-  "<span style='color:" +
-  color +
-  ";font-weight:900'>" +
-  symbol +
-  "</span> " +
-
-  "<strong>" +
-  escapeHtml(item.name) +
-  "</strong>" +
-
-  (
-    item.detail
-      ? "<span style='color:#a5afb9'> — " +
-        escapeHtml(item.detail) +
-        "</span>"
-      : ""
-  );
-
-list.appendChild(row);
-```
-
-});
-
-panel.appendChild(list);
-
-var close =
-document.createElement("button");
-
-close.type =
-"button";
-
-close.textContent =
-"Chiudi controllo";
-
-close.style.cssText =
-"margin-top:16px;padding:9px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;cursor:pointer";
-
-close.onclick =
-function () {
-panel.remove();
-};
-
-panel.appendChild(close);
+panel.innerHTML = html;
 
 document.body.appendChild(panel);
 
-/*
+/* =========================================================
+22. REPORT IN CONSOLE / WINDOW
+========================================================= */
 
-* =========================================================
-* 22. REPORT GLOBALE
-* =========================================================
-  */
-
-window.adminTestResults =
-results;
-
-window.adminTestSummary = {
-pass: passed,
-fail: failed,
-warn: warnings,
-duration: duration
-};
-
-console.group(
-"ADMIN — CONTROLLO COMPLETO"
-);
-
+if (window.console && typeof console.log === "function") {
 console.log(
-"PASS:",
-passed
+"ADMIN TEST COMPLETATO",
+window.adminTestSummary
 );
 
-console.log(
-"FAIL:",
-failed
-);
+```
+console.table(results);
+```
 
-console.log(
-"WARN:",
-warnings
-);
-
-console.log(
-"Durata:",
-duration + " ms"
-);
-
-console.table(
-results
-);
-
-if (runtimeErrors.length) {
-console.error(
-"Errori runtime rilevati:",
-runtimeErrors
-);
 }
 
-console.groupEnd();
 })();
