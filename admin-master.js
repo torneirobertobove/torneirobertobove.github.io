@@ -1,7 +1,8 @@
+
 /*
  * PADEL ADMIN MASTER CONSOLE
  * Versione coordinata con admin.html statico
- * Versione 22
+ * Versione 23
  */
 
 (function () {
@@ -31,7 +32,8 @@
     tornei: [],
     sponsor: [],
     news: [],
-    iscrizioni: []
+    iscrizioni: [],
+    partecipanti: []
   };
 
   let adminState = Object.assign({}, defaultState);
@@ -321,7 +323,7 @@
           );
 
         script.src =
-          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+          "https://cdn.jsdelivr.net/npm/@Supabase/supabase-js@2";
 
         script.async = true;
 
@@ -1129,6 +1131,115 @@
     window.creaNuovoTorneo;
 
   /* ============================================================
+     ELIMINA TORNEO
+     ============================================================ */
+
+  window.eliminaTorneo =
+    async function (
+      idParam
+    ) {
+      const id =
+        idParam ??
+        getSelectedTournamentId();
+
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        alert(
+          "Seleziona prima un torneo."
+        );
+
+        return false;
+      }
+
+      const conferma =
+        window.confirm(
+          "Vuoi eliminare definitivamente il torneo selezionato?"
+        );
+
+      if (!conferma) {
+        return false;
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("tornei")
+            .delete()
+            .eq(
+              "id",
+              id
+            );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        adminState.tornei =
+          (
+            adminState.tornei ||
+            []
+          ).filter(
+            function (torneo) {
+              return (
+                String(torneo.id) !==
+                String(id)
+              );
+            }
+          );
+
+        if (
+          String(
+            adminState.torneoSelezionato
+          ) ===
+          String(id)
+        ) {
+          adminState.torneoSelezionato =
+            adminState.tornei.length
+              ? adminState.tornei[0].id
+              : null;
+        }
+
+        adminState.iscrizioni =
+          [];
+
+        adminState.partecipanti =
+          [];
+
+        sincronizzaAdminState();
+        salvaStato();
+
+        await caricaTorneiSupabase();
+
+        renderListaTornei();
+        renderTorneoSelezionato();
+
+        alert(
+          "Torneo eliminato."
+        );
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Eliminazione torneo:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante l'eliminazione del torneo."
+        );
+
+        return false;
+      }
+    };
+
+  /* ============================================================
      PUBBLICAZIONE
      ============================================================ */
 
@@ -1193,6 +1304,72 @@
 
   window.pubblicaTorneoAdmin =
     window.pubblicaTorneo;
+
+  /* ============================================================
+     CHIUDI TORNEO
+     ============================================================ */
+
+  window.chiudiTorneo =
+    async function (
+      idParam
+    ) {
+      const id =
+        idParam ??
+        getSelectedTournamentId();
+
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        alert(
+          "Seleziona prima un torneo."
+        );
+
+        return false;
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("tornei")
+            .update({
+              stato: "chiuso",
+              iscrizioni_aperte: false
+            })
+            .eq(
+              "id",
+              id
+            );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        await caricaTorneiSupabase();
+
+        alert(
+          "Torneo chiuso."
+        );
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Chiusura torneo:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante la chiusura del torneo."
+        );
+
+        return false;
+      }
+    };
 
   window.chiudiIscrizioniTorneo =
     async function () {
@@ -1335,6 +1512,82 @@
 
   window.caricaIscrizioni =
     caricaRichiesteIscrizione;
+
+  /* ============================================================
+     PARTECIPANTI
+     ============================================================ */
+
+  window.caricaPartecipanti =
+    async function (
+      torneoIdParam
+    ) {
+      const torneoId =
+        torneoIdParam ??
+        getSelectedTournamentId();
+
+      if (
+        torneoId === null ||
+        torneoId === undefined ||
+        torneoId === ""
+      ) {
+        adminState.partecipanti =
+          [];
+
+        sincronizzaAdminState();
+
+        return [];
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("iscrizioni")
+            .select("*")
+            .eq(
+              "torneo_id",
+              torneoId
+            )
+            .eq(
+              "stato",
+              "approvato"
+            )
+            .order(
+              "created_at",
+              {
+                ascending: true
+              }
+            );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        adminState.partecipanti =
+          Array.isArray(result.data)
+            ? result.data
+            : [];
+
+        sincronizzaAdminState();
+        salvaStato();
+
+        return adminState.partecipanti;
+      } catch (error) {
+        console.error(
+          "Caricamento partecipanti:",
+          error
+        );
+
+        adminState.partecipanti =
+          [];
+
+        sincronizzaAdminState();
+
+        return [];
+      }
+    };
 
   function renderIscrizioni() {
     const container =
@@ -1964,6 +2217,13 @@
   window.caricaNewsAdmin =
     caricaNewsAdmin;
 
+  /*
+   * COMPATIBILITÀ:
+   * alcune parti dell'admin richiamano caricaNews
+   */
+  window.caricaNews =
+    caricaNewsAdmin;
+
   function renderNews() {
     const container =
       document.getElementById(
@@ -2092,6 +2352,133 @@
     window.creaNewsAdmin;
 
   /* ============================================================
+     MODIFICA NEWS
+     ============================================================ */
+
+  window.modificaNews =
+    async function (
+      id,
+      dati
+    ) {
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        throw new Error(
+          "ID news mancante."
+        );
+      }
+
+      if (
+        !dati ||
+        typeof dati !== "object"
+      ) {
+        throw new Error(
+          "Dati news mancanti."
+        );
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("news")
+            .update(dati)
+            .eq(
+              "id",
+              id
+            )
+            .select()
+            .single();
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        await caricaNewsAdmin();
+
+        return result.data;
+      } catch (error) {
+        console.error(
+          "Modifica news:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante la modifica della news."
+        );
+
+        return false;
+      }
+    };
+
+  /* ============================================================
+     ELIMINA NEWS
+     ============================================================ */
+
+  window.eliminaNews =
+    async function (
+      id
+    ) {
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        throw new Error(
+          "ID news mancante."
+        );
+      }
+
+      const conferma =
+        window.confirm(
+          "Vuoi eliminare questa news?"
+        );
+
+      if (!conferma) {
+        return false;
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("news")
+            .delete()
+            .eq(
+              "id",
+              id
+            );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        await caricaNewsAdmin();
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Eliminazione news:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante l'eliminazione della news."
+        );
+
+        return false;
+      }
+    };
+
+  /* ============================================================
      SPONSOR
      ============================================================ */
 
@@ -2142,6 +2529,13 @@
   }
 
   window.caricaSponsorAdmin =
+    caricaSponsorAdmin;
+
+  /*
+   * COMPATIBILITÀ:
+   * alcune parti dell'admin richiamano caricaSponsor
+   */
+  window.caricaSponsor =
     caricaSponsorAdmin;
 
   function renderSponsor() {
@@ -2308,6 +2702,133 @@
     window.creaSponsorAdmin;
 
   /* ============================================================
+     MODIFICA SPONSOR
+     ============================================================ */
+
+  window.modificaSponsor =
+    async function (
+      id,
+      dati
+    ) {
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        throw new Error(
+          "ID sponsor mancante."
+        );
+      }
+
+      if (
+        !dati ||
+        typeof dati !== "object"
+      ) {
+        throw new Error(
+          "Dati sponsor mancanti."
+        );
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("sponsor")
+            .update(dati)
+            .eq(
+              "id",
+              id
+            )
+            .select()
+            .single();
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        await caricaSponsorAdmin();
+
+        return result.data;
+      } catch (error) {
+        console.error(
+          "Modifica sponsor:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante la modifica dello sponsor."
+        );
+
+        return false;
+      }
+    };
+
+  /* ============================================================
+     ELIMINA SPONSOR
+     ============================================================ */
+
+  window.eliminaSponsor =
+    async function (
+      id
+    ) {
+      if (
+        id === null ||
+        id === undefined ||
+        id === ""
+      ) {
+        throw new Error(
+          "ID sponsor mancante."
+        );
+      }
+
+      const conferma =
+        window.confirm(
+          "Vuoi eliminare questo sponsor?"
+        );
+
+      if (!conferma) {
+        return false;
+      }
+
+      try {
+        const sb =
+          await initSupabase();
+
+        const result =
+          await sb
+            .from("sponsor")
+            .delete()
+            .eq(
+              "id",
+              id
+            );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        await caricaSponsorAdmin();
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Eliminazione sponsor:",
+          error
+        );
+
+        alert(
+          error.message ||
+            "Errore durante l'eliminazione dello sponsor."
+        );
+
+        return false;
+      }
+    };
+
+  /* ============================================================
      WHATSAPP
      ============================================================ */
 
@@ -2424,10 +2945,29 @@
         ${calendario.length}
       </div>
     `;
+
+    return true;
   }
 
   window.generaCalendario =
     generaCalendario;
+
+  /*
+   * FIX PERMANENTE:
+   * renderCalendario esisteva ma non era esportata.
+   */
+  window.renderCalendario =
+    renderCalendario;
+
+  /*
+   * COMPATIBILITÀ:
+   * caricaCalendario viene richiesto da alcune parti
+   * dell'interfaccia admin.
+   */
+  window.caricaCalendario =
+    function () {
+      return generaCalendario();
+    };
 
   /* ============================================================
      AVVIO
@@ -2548,3 +3088,4 @@
     };
 
 })();
+
