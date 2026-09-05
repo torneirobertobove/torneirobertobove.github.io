@@ -1,4 +1,7 @@
-/*
+from pathlib import Path
+import subprocess, textwrap
+
+js = r'''/*
  * PADEL ADMIN MASTER CONSOLE
  * Versione coordinata con admin.html statico
  * Versione 22
@@ -321,7 +324,7 @@
           );
 
         script.src =
-          "https://cdn.jsdelivr.net/npm/@Supabase/supabase-js@2";
+          "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
         script.async = true;
 
@@ -2548,3 +2551,20 @@
     };
 
 })();
+'''
+
+path = Path("/mnt/data/admin-master.js")
+path.write_text(js, encoding="utf-8")
+
+result = subprocess.run(
+    ["node", "--check", str(path)],
+    capture_output=True,
+    text=True
+)
+
+print(f"File creato: {path}")
+print(f"Controllo sintassi Node.js: {'OK' if result.returncode == 0 else 'ERRORE'}")
+if result.returncode != 0:
+    print(result.stderr)
+else:
+    print(f"Righe: {len(js.splitlines())}")
