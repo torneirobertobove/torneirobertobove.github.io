@@ -1,47 +1,97 @@
-/* ADMIN DESKTOP V3 - compatibility/bootstrap loader V15 */
+/* ADMIN DESKTOP V3 - stable native admin bootstrap */
 (function(){
   'use strict';
-  var LINK_KEY='padel_admin_generated_link';
-  function area(){return document.getElementById('areaAdmin');}
-  function tournamentId(){var st=window.adminState;if(st&&st.torneoSelezionato!=null)return st.torneoSelezionato;if(st&&Array.isArray(st.tornei)&&st.tornei.length)return st.tornei[0].id;return null;}
-  function buildLink(id){return location.origin+location.pathname.replace(/[^/]*$/,'')+'Bove.html?idTorneo='+encodeURIComponent(String(id));}
-  function setLink(v){if(!v)return;['linkBoveGenerato','linkBoveGeneratoMirror'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=v;});try{localStorage.setItem(LINK_KEY,v);sessionStorage.setItem(LINK_KEY,v)}catch(e){}}
-  function ensureInteraction(){
-    var style=document.getElementById('admin-v15-interaction-style');
-    if(!style){style=document.createElement('style');style.id='admin-v15-interaction-style';style.textContent='#boxLoginAdmin.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}#areaAdmin.hidden{display:none!important}#areaAdmin:not(.hidden){display:flex!important;pointer-events:auto!important}#areaAdmin button,#areaAdmin a,#areaAdmin input,#areaAdmin select,#areaAdmin textarea,#areaAdmin summary{pointer-events:auto!important}';document.head.appendChild(style)}
-    var login=document.getElementById('boxLoginAdmin'),app=area();
-    if(app&&!app.classList.contains('hidden')&&login)login.style.pointerEvents='none';
+
+  function area(){ return document.getElementById('areaAdmin'); }
+
+  function pageAlias(page){
+    page = String(page || '').toLowerCase();
+    if(page === 'config') return 'configurazione';
+    if(page === 'links') return 'link';
+    return page;
   }
-  function ensurePanels(){var a=area();if(!a)return;var news=a.querySelector('section#newsPanel[data-page="news"]')||a.querySelector('#org-page-news');if(news)news.id='newsPanel';[['sponsorPanel','#org-page-sponsor'],['listaIscrittiAdmin',null],['tabelloneAdmin',null]].forEach(function(x){var e=document.getElementById(x[0])||(x[1]&&a.querySelector(x[1]));if(e)e.id=x[0];else{e=document.createElement('div');e.id=x[0];e.hidden=true;a.appendChild(e)}});if(!a.querySelector('#adminCalendar,[data-admin-calendar],#calendarioAdmin,.admin-calendar')){var c=document.createElement('div');c.id='adminCalendar';c.hidden=true;a.appendChild(c)}}
-  function installGlobals(){
-    window.__adminRefresh=function(){if(typeof window.caricaTorneiSupabase==='function')return window.caricaTorneiSupabase();if(typeof window.renderAdmin==='function')return window.renderAdmin();return true};
-    window.generaLinkBoveMirror=function(){var id=tournamentId();if(id==null){alert('Seleziona prima un torneo');return false}try{if(typeof window.generaLinkBove==='function')window.generaLinkBove()}catch(e){console.error(e)}setLink(buildLink(id));return true};
-    window.__adminButtonAction=function(kind){var names={generate:['generaCoppieAdmin','generaCoppie','generaCoppieAutomatiche','generaSfide'],random:['accoppiaACaso','accoppiaCasualmente','generaCoppieCasuali','creaCoppieCasuali']};var list=names[kind]||[];for(var i=0;i<list.length;i++)if(typeof window[list[i]]==='function')return window[list[i]]();if(typeof window.openAdminPage==='function')return window.openAdminPage('coppie');return true};
+
+  function openPage(page){
+    page = pageAlias(page || 'dashboard');
+    var target = document.getElementById('page-' + page);
+    if(!target) return false;
+
+    document.querySelectorAll('.admin-page').forEach(function(p){
+      p.classList.remove('active');
+    });
+    target.classList.add('active');
+
+    document.querySelectorAll('.sidebar [data-page]').forEach(function(btn){
+      var p = pageAlias(btn.dataset.page || '');
+      btn.classList.toggle('active', p === page);
+    });
+
+    var title = document.getElementById('breadcrumbTitle');
+    var titles = {
+      dashboard:'Tornei',
+      iscritti:'Iscritti',
+      coppie:'Accoppiamenti',
+      tabellone:'Tabellone',
+      news:'News',
+      sponsor:'Sponsor',
+      configurazione:'Nuovo torneo',
+      link:'Link pubblici',
+      comunicazioni:'Comunicazioni'
+    };
+    if(title) title.textContent = titles[page] || 'Gestione';
+
+    try { history.replaceState(null, '', '#' + page); } catch(e) {}
+    window.scrollTo({top:0, behavior:'smooth'});
+    return true;
   }
-  function installHandlers(){
-    var a=area();if(!a)return;ensureInteraction();ensurePanels();installGlobals();
-    var login=document.getElementById('btnLoginAdmin');if(login&&!login.getAttribute('onclick'))login.setAttribute('onclick','window.loginAdmin&&window.loginAdmin()');
-    var refresh=document.getElementById('btnAggiorna');if(refresh)refresh.setAttribute('onclick','window.__adminRefresh()');
-    a.querySelectorAll('button').forEach(function(b){
-      var text=String(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
-      if(!b.getAttribute('onclick')){
-        if(b.dataset.page==='configurazione'||/configurazione|impostazioni/.test(text))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('config')");
-        else if(b.dataset.page==='link'||/link pubblici/.test(text))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('links')");
-        else if(/nuovo torneo|crea torneo/.test(text))b.setAttribute('onclick','window.apriRegoleNuovoTorneo&&window.apriRegoleNuovoTorneo()');
-        else if(/^genera link$/.test(text))b.setAttribute('onclick','window.generaLinkBoveMirror&&window.generaLinkBoveMirror()');
-        else if(/^copia$/.test(text))b.setAttribute('onclick','window.copiaLinkBove&&window.copiaLinkBove()');
-        else if(/gestisci le richieste/.test(text))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('iscritti')");
-        else if(/genera le sfide/.test(text))b.setAttribute('onclick',"window.__adminButtonAction('generate')");
-        else if(/apri tabellone|visualizza il torneo/.test(text))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('tabellone')");
-        else if(/accoppia a caso/.test(text))b.setAttribute('onclick',"window.__adminButtonAction('random')");
+
+  window.openAdminPage = openPage;
+  window.goAdminPage = openPage;
+  window.adminGoPage = openPage;
+
+  function boot(){
+    var a = area();
+    if(!a) return;
+
+    /* Keep the native admin UI clickable. */
+    a.querySelectorAll('button,a,input,select,textarea,summary').forEach(function(el){
+      el.style.pointerEvents = 'auto';
+    });
+
+    /* Native data-page navigation. */
+    a.querySelectorAll('[data-page]').forEach(function(btn){
+      if(btn.dataset.adminNativeBound === '1') return;
+      btn.dataset.adminNativeBound = '1';
+      btn.addEventListener('click', function(e){
+        var page = btn.dataset.page;
+        if(!page) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openPage(page);
+      });
+    });
+
+    /* The real create button must open the real configuration screen. */
+    a.querySelectorAll('button').forEach(function(btn){
+      var text = String(btn.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
+      if(/nuovo torneo|crea torneo/.test(text) && btn.dataset.page !== 'dashboard'){
+        if(!btn.dataset.adminCreateBound){
+          btn.dataset.adminCreateBound = '1';
+          btn.addEventListener('click', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            openPage('configurazione');
+          });
+        }
       }
     });
-    var mirror=document.getElementById('linkBoveGeneratoMirror');if(mirror&&!mirror.getAttribute('onclick'))mirror.setAttribute('onclick','window.generaLinkBoveMirror&&window.generaLinkBoveMirror()');
-    var gen=document.getElementById('btnGeneraLinkBove');if(gen&&!gen.getAttribute('onclick'))gen.setAttribute('onclick','window.generaLinkBoveMirror&&window.generaLinkBoveMirror()');
-    var id=tournamentId();if(id!=null){var v='';try{v=sessionStorage.getItem(LINK_KEY)||localStorage.getItem(LINK_KEY)||''}catch(e){}setLink(v||buildLink(id))}
   }
-  function installNavigation(){var a=area();if(!a)return;a.querySelectorAll('.sidebar .nav button,[data-page="configurazione"],[data-page="link"]').forEach(function(b){var raw=String(b.dataset.page||b.dataset.orgPage||'').toLowerCase();if(raw==='configurazione'||/configurazione|impostazioni/i.test(b.textContent||'')){b.dataset.orgPage='config';b.dataset.internalPage='config';b.dataset.page='configurazione';b.setAttribute('data-legacy-page','configurazione');b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('config')")}else if(raw==='link'||/link pubblici/i.test(b.textContent||'')){b.dataset.orgPage='links';b.dataset.internalPage='links';b.dataset.page='link';b.setAttribute('data-legacy-page','link');b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('links')")}})}
-  function loadFinal(){if(document.getElementById('admin-final-click-fix-loader'))return;var s=document.createElement('script');s.id='admin-final-click-fix-loader';s.src='admin-final-click-fix-v1.js?v=1';s.async=false;document.head.appendChild(s)}
-  function boot(){ensureInteraction();ensurePanels();installGlobals();installNavigation();installHandlers();loadFinal();var root=document.body||document.documentElement;if(root&&!root.__adminV15Observer){root.__adminV15Observer=true;new MutationObserver(function(){ensureInteraction();installNavigation();installHandlers()}).observe(root,{childList:true,subtree:true})}if(!document.getElementById('admin-desktop-v4-loader')){var s=document.createElement('script');s.id='admin-desktop-v4-loader';s.src='admin-desktop-v4.js?v=14';s.async=false;document.head.appendChild(s)}if(!document.getElementById('admin-legacy-navigation-loader')){var n=document.createElement('script');n.id='admin-legacy-navigation-loader';n.src='admin-legacy-navigation.js?v=14';n.async=false;document.head.appendChild(n)}[100,500,1200,2500].forEach(function(ms){setTimeout(function(){ensureInteraction();installNavigation();installHandlers();loadFinal()},ms)})}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  }else{
+    boot();
+  }
+
+  window.addEventListener('load', boot);
 })();
