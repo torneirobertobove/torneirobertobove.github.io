@@ -32,7 +32,18 @@ jobs:
           s = re.sub(r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?', '', s, flags=re.S)
           s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
           s = re.sub(r'\s*<script\s+src=["\']admin-final-click-fix-v1\.js(?:\?v=[^"\']+)?["\']\s*></script>', '', s, flags=re.I)
-          s = re.sub(r'\s*<!-- FINAL_ADMIN_RUNTIME_FIX -->.*?(?=<script\s+src=["\']admin-random-pairs\.js)', '\n', s, flags=re.S | re.I)
+          marker = 'FINAL_ADMIN_RUNTIME_FIX'
+          if marker in s:
+              pos = s.find(marker)
+              start = s.rfind('<!--', 0, pos)
+              if start < 0:
+                  start = pos
+              end = s.find('</script>', pos)
+              if end >= 0:
+                  end += len('</script>')
+                  s = s[:start] + '\n' + s[end:]
+              else:
+                  s = s[:start]
           direct = ('<script src="admin-function-fixes-v1.js?v=12"></script>\n'
                     '<script src="admin-organization-v1.js?v=12"></script>\n'
                     '<script src="admin-desktop-v3.js?v=4"></script>\n')
@@ -55,7 +66,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
           p = Path('admin-function-fixes-v1.js')
           s = p.read_text(encoding='utf-8')
           old = "window.creaNuovoTorneo=async function(){"
