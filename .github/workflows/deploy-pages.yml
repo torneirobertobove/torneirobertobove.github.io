@@ -25,6 +25,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore real tournament formula handoff
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Admin must pass the actual new-tournament object to Bove.
+          p = Path('admin-function-fixes-v1.js')
+          s = p.read_text(encoding='utf-8')
+          old = "window.open('Bove.html?idTorneo='+encodeURIComponent(id)+'&apriRegole=true','_blank');"
+          new = "window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true','_blank');"
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('Admin Bove launch code not found')
+          p.write_text(s, encoding='utf-8')
+
+          # Empty formula values are intentional during creation. Preserve them.
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('rulesAdmin.formatoTorneo ||\n                            "gironiFinale"', 'rulesAdmin.formatoTorneo ??\n                            "gironiFinale"', 1)
+          s = s.replace('rulesAdmin.tipoTorneo ||\n                            "gironiFinale"', 'rulesAdmin.tipoTorneo ??\n                            "gironiFinale"', 1)
+
+          # The admin explicitly asks Bove to open the formula configuration.
+          tag = '<script src="bove-admin-flow-fix.js?v=1"></script>'
+          if tag not in s:
+              s = s.replace('</body>', tag + '\n</body>', 1)
+          p.write_text(s, encoding='utf-8')
+
       - name: Apply final empty-tournament rendering patch
         shell: python
         run: |
