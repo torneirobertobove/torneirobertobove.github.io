@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   cleanup:
-    if: ${{ !contains(github.event.head_commit.message, '[admin-cleanup]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,34 +26,32 @@ jobs:
           s = p.read_text(encoding='utf-8')
           original = s
 
-          # Remove the obsolete ADMIN_DESKTOP_APPROVED_V2 script block,
-          # including the literal escaped newlines that were accidentally stored.
+          # Remove every obsolete ADMIN_DESKTOP_APPROVED_V2 script block,
+          # including literal escaped newlines stored by the old injector.
           pattern = r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?'
-          s = re.sub(pattern, '', s, count=1, flags=re.S)
+          s = re.sub(pattern, '', s, flags=re.S)
+          s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
 
-          # Remove the duplicate admin-desktop stylesheet include.
+          # Keep only one admin-desktop stylesheet include.
           link = '<link rel="stylesheet" href="admin-desktop.css?v=4">'
           first = s.find(link)
           if first >= 0:
-              second = s.find(link, first + len(link))
-              if second >= 0:
-                  s = s[:second] + s[second + len(link):]
-
-          # Clean accidental literal \n sequences left by the old injector.
-          s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
+              prefix = s[:first + len(link)]
+              suffix = s[first + len(link):].replace(link, '')
+              s = prefix + suffix
 
           if s != original:
               p.write_text(s, encoding='utf-8')
               print('admin.html cleaned')
           else:
               print('admin.html already clean')
-      - name: Verify obsolete override is gone
+      - name: Verify admin.html
         shell: python
         run: |
           from pathlib import Path
           s = Path('admin.html').read_text(encoding='utf-8')
           assert 'ADMIN_DESKTOP_APPROVED_V2' not in s
-          assert s.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') <= 1
+          assert s.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') == 1
           assert '\\n<!--' not in s
           print('admin.html verification passed')
       - name: Commit cleanup
@@ -63,5 +60,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add admin.html
           git diff --cached --quiet && exit 0
-          git commit -m 'fix: remove obsolete admin desktop override [admin-cleanup]'
+          git commit -m 'fix: remove obsolete admin desktop override'
           git push
