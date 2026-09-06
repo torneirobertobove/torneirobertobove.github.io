@@ -1,79 +1,16 @@
-/* ADMIN FLOW FIX - minimal and isolated.
-   This file must not intercept navigation or rewrite unrelated buttons.
-   It only provides the new-tournament handoff used by the existing Admin UI. */
+/* ADMIN FLOW FIX V12 - real visible New Tournament wizard */
 (()=>{
 'use strict';
-
-window.creaNuovoTorneo=async function(){
-  const st=window.adminState;
-  if(!st){
-    console.error('[ADMIN FLOW] adminState non disponibile');
-    return false;
-  }
-
-  const byId=id=>document.getElementById(id);
-  const nome=byId('adminNomeTorneo')?.value.trim()||'Nuovo Torneo';
-  const data=byId('adminDataTorneo')?.value||'';
-  const posti=Number(byId('adminPosti')?.value)||8;
-  const descrizione=byId('adminDescrizione')?.value.trim()||'';
-
-  if(!data){
-    alert('Inserisci la data del torneo.');
-    return false;
-  }
-
-  const old=Array.isArray(st.tornei)?st.tornei.slice():[];
-  const oldSelected=st.torneoSelezionato;
-  const id=Date.now();
-  const numeroGironi=Math.max(1,Math.ceil(posti/4));
-
-  const configurazione={
-    coppie:[],
-    partecipanti:[],
-    rules:{
-      locked:false,
-      tipoTorneo:'',
-      formatoTorneo:'',
-      numeroSquadre:posti,
-      numeroGironi,
-      squadrePerGirone:4,
-      formulaGironi:'',
-      formulaFinale:''
-    }
-  };
-
-  const torneo={id,nome,data,posti,descrizione,formula:'',stato:'bozza',iscritti:[],coppie:[],partecipanti:[],configurazione};
-
-  st.tornei=(Array.isArray(st.tornei)?st.tornei:[]).filter(t=>!String(t.id).startsWith('temp_'));
-  st.tornei.push(torneo);
-  st.torneoSelezionato=id;
-  window.adminState=st;
-
-  try{localStorage.setItem('padel_admin_state',JSON.stringify(st));}catch(e){console.warn('[ADMIN FLOW] localStorage non disponibile',e);}
-
-  try{
-    if(!window.sb) throw new Error('Connessione Supabase non disponibile');
-    const {error}=await window.sb.from('tornei').insert({id,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:'bozza',pubblicato:false,iscrizioni_chiuse:false,configurazione});
-    if(error) throw error;
-    if(typeof window.renderAdmin==='function') window.renderAdmin();
-    const url='Bove.html?torneo='+encodeURIComponent(JSON.stringify(torneo))+'&apriRegole=true';
-    window.open(url,'_blank');
-    return true;
-  }catch(e){
-    st.tornei=old;
-    st.torneoSelezionato=oldSelected;
-    window.adminState=st;
-    try{localStorage.setItem('padel_admin_state',JSON.stringify(st));}catch{}
-    if(typeof window.renderAdmin==='function') window.renderAdmin();
-    console.error('[ADMIN FLOW] Creazione torneo non riuscita',e);
-    alert('Creazione torneo non riuscita: '+(e?.message||e));
-    return false;
-  }
-};
-
-/* Legacy button compatibility: only redirect the old function name. */
-window.apriRegoleNuovoTorneo=window.creaNuovoTorneo;
-
+const FORMULE=[['italiana',"🇮🇹 Torneo all'italiana"],['gironiFinale','🏆 Gironi + Fase Finale'],['eliminazione','⚔️ Eliminazione Diretta'],['svizzero','🇨🇭 Torneo Svizzero'],['americano','🎾 Americano Padel'],['mexicano','🇲🇽 Mexicano Padel'],['king','👑 King of the Court'],['short','⏱ Short Format'],['manuale','⚙️ Torneo Personalizzato']];
+const $=id=>document.getElementById(id);
+function state(){if(window.adminState)return window.adminState;try{const raw=localStorage.getItem('padel_admin_state');if(raw){window.adminState=JSON.parse(raw);return window.adminState}}catch{}window.adminState={adminLoggato:true,adminEmail:'',torneoSelezionato:null,tornei:[],sponsor:[],news:[]};return window.adminState}
+function saveState(st){try{localStorage.setItem('padel_admin_state',JSON.stringify(st))}catch{}}
+function stop(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}
+function css(){if($('adminFlowV12Style'))return;const s=document.createElement('style');s.id='adminFlowV12Style';s.textContent=`#adminFlowV12{position:fixed;inset:0;background:rgba(5,8,12,.78);backdrop-filter:blur(8px);z-index:99999;display:grid;place-items:center;padding:24px}#adminFlowV12 .af-card{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#151b22;color:#eef2f6;border:1px solid rgba(255,255,255,.15);border-radius:18px;box-shadow:0 30px 100px rgba(0,0,0,.55);padding:24px}#adminFlowV12 .af-muted{color:#9ca8b5;font-size:13px}#adminFlowV12 .af-step{display:none}.af-step.active{display:block!important}#adminFlowV12 .af-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}#adminFlowV12 label{display:block;color:#9ca8b5;font-size:11px;margin:0 0 6px}#adminFlowV12 input,#adminFlowV12 select,#adminFlowV12 textarea{width:100%;box-sizing:border-box;background:#0b1016;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:11px}#adminFlowV12 textarea{min-height:90px}#adminFlowV12 .af-formulas{display:grid;grid-template-columns:1fr 1fr;gap:9px}#adminFlowV12 .af-formula{padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#0d131a;cursor:pointer;text-align:left;color:#eef2f6}#adminFlowV12 .af-formula.sel{border-color:#4da3ff;box-shadow:0 0 0 2px rgba(77,163,255,.18)}#adminFlowV12 .af-actions{display:flex;justify-content:space-between;gap:8px;margin-top:22px;border-top:1px solid rgba(255,255,255,.09);padding-top:16px}#adminFlowV12 button{cursor:pointer;border:1px solid rgba(255,255,255,.14);background:#252d37;color:#fff;border-radius:9px;padding:10px 14px;font-weight:700}#adminFlowV12 .primary{background:#4da3ff;color:#07111a;border-color:#4da3ff}#adminFlowV12 .af-badge{display:inline-block;padding:5px 9px;border-radius:20px;background:rgba(77,163,255,.13);color:#8ec7ff;font-size:11px;margin-bottom:12px}#adminFlowV12 .af-summary{background:#0b1016;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;line-height:1.7}@media(max-width:650px){#adminFlowV12 .af-grid,#adminFlowV12 .af-formulas{grid-template-columns:1fr}}`;document.head.appendChild(s)}
+function openWizard(){if($('adminFlowV12'))$('adminFlowV12').remove();css();let selFormula='';const ov=document.createElement('div');ov.id='adminFlowV12';ov.innerHTML=`<div class="af-card"><h2>🏆 Nuovo torneo</h2><div class="af-muted" style="margin-bottom:20px">Dati torneo → numero squadre → giocatori calcolati → scelta formula → configurazione formula → creazione</div><div class="af-step active" data-s="1"><span class="af-badge">1 · Dati torneo</span><div class="af-grid"><div><label>Nome torneo</label><input id="afNome" placeholder="Nome torneo"></div><div><label>Data</label><input id="afData" type="date"></div><div><label>Numero squadre</label><select id="afPosti"><option>8</option><option>12</option><option>16</option><option>20</option><option>24</option></select></div><div><label>Giocatori calcolati</label><input id="afGiocatori" readonly></div></div><div style="margin-top:12px"><label>Descrizione</label><textarea id="afDescrizione"></textarea></div></div><div class="af-step" data-s="2"><span class="af-badge">2 · Numero squadre</span><h3 id="afTeamTitle"></h3><p class="af-muted">2 giocatori per squadra.</p></div><div class="af-step" data-s="3"><span class="af-badge">3 · Giocatori calcolati</span><div class="af-summary">Squadre: <b id="afSquadreOut"></b><br>Giocatori necessari: <b id="afGiocOut"></b></div></div><div class="af-step" data-s="4"><span class="af-badge">4 · Scelta formula</span><div class="af-formulas">${FORMULE.map(([v,t])=>`<button type="button" class="af-formula" data-f="${v}">${t}</button>`).join('')}</div></div><div class="af-step" data-s="5"><span class="af-badge">5 · Configurazione formula</span><div class="af-summary"><b id="afFormulaName">Nessuna formula</b><p class="af-muted">La configurazione dettagliata verrà aperta in Bove dopo la creazione della bozza, senza preimpostare una formula.</p></div></div><div class="af-step" data-s="6"><span class="af-badge">6 · Riepilogo</span><div id="afSummary" class="af-summary"></div></div><div class="af-step" data-s="7"><span class="af-badge">7 · Creazione</span><div class="af-summary">Premi <b>Crea torneo</b> per salvare la bozza e aprire la configurazione formula.</div></div><div class="af-actions"><button type="button" id="afBack">Indietro</button><div><button type="button" id="afCancel">Annulla</button> <button type="button" class="primary" id="afNext">Avanti</button></div></div></div>`;document.body.appendChild(ov);const posti=$('afPosti'),gioc=$('afGiocatori'),steps=[...ov.querySelectorAll('.af-step')];let step=1;const update=()=>{const n=Number(posti.value)||8;gioc.value=n*2;$('afTeamTitle').textContent=`${n} squadre`;$('afSquadreOut').textContent=n;$('afGiocOut').textContent=n*2};update();posti.addEventListener('change',update);ov.querySelectorAll('[data-f]').forEach(b=>b.addEventListener('click',()=>{ov.querySelectorAll('[data-f]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');selFormula=b.dataset.f;$('afFormulaName').textContent=FORMULE.find(x=>x[0]===selFormula)?.[1]||selFormula}));const show=n=>{step=Math.max(1,Math.min(7,n));steps.forEach(x=>x.classList.toggle('active',Number(x.dataset.s)===step));$('afBack').style.visibility=step===1?'hidden':'visible';$('afNext').textContent=step===7?'Crea torneo':'Avanti';if(step===6)$('afSummary').innerHTML=`<b>${$('afNome').value||'Nuovo Torneo'}</b><br>Data: ${$('afData').value||'-'}<br>Squadre: ${posti.value}<br>Giocatori: ${gioc.value}<br>Formula: ${FORMULE.find(x=>x[0]===selFormula)?.[1]||'nessuna'}`};$('afBack').onclick=()=>show(step-1);$('afCancel').onclick=()=>ov.remove();$('afNext').onclick=async()=>{if(step===1&&!$('afData').value){alert('Inserisci la data del torneo.');return}if(step===4&&!selFormula){alert('Seleziona una formula.');return}if(step<7){show(step+1);return}await create(selFormula)};show(1)}
+async function create(selFormula){const st=state(),nome=$('afNome').value.trim()||'Nuovo Torneo',data=$('afData').value,posti=Number($('afPosti').value)||8,descrizione=$('afDescrizione').value.trim(),id=Date.now(),numeroGironi=Math.max(1,Math.ceil(posti/4));const configurazione={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:'',formatoTorneo:'',numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:'',formulaFinale:'',formulaScelta:selFormula||''}};const torneo={id,nome,data,posti,descrizione,formula:selFormula||'',stato:'bozza',iscritti:[],coppie:[],partecipanti:[],configurazione};try{if(!window.sb)throw Error('Supabase non disponibile');const r=await window.sb.from('tornei').insert({id,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:selFormula||null,stato:'bozza',pubblicato:false,iscrizioni_chiuse:false,configurazione});if(r.error)throw r.error;st.tornei=Array.isArray(st.tornei)?st.tornei:[];st.tornei.push(torneo);st.torneoSelezionato=id;window.adminState=st;saveState(st);window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(torneo))+'&apriRegole=true','_blank');$('adminFlowV12')?.remove()}catch(e){console.error('[ADMIN FLOW V12]',e);alert('Creazione torneo non riuscita: '+(e.message||e))}}
+function bind(){const root=document.getElementById('areaAdmin')||document.body;root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const txt=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(txt.includes('nuovo torneo')||txt.includes('＋ crea torneo')||txt.includes('+ crea torneo')){stop(e);openWizard()}},true)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
 /* Deploy workflow compatibility marker: */
 /* window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true','_blank'); */
-})();
