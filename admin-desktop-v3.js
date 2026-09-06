@@ -30,6 +30,10 @@
       state.torneoSelezionato !== undefined &&
       state.torneoSelezionato !== ""
     ) {
+      if (typeof state.torneoSelezionato === "object") {
+        return state.torneoSelezionato.id ?? null;
+      }
+
       return state.torneoSelezionato;
     }
 
