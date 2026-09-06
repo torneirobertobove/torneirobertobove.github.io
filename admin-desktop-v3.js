@@ -2,6 +2,9 @@
 (function(){
   'use strict';
 
+  var nativeSnapshot = null;
+  var restoring = false;
+
   function area(){ return document.getElementById('areaAdmin'); }
 
   function pageAlias(page){
@@ -49,16 +52,14 @@
   window.goAdminPage = openPage;
   window.adminGoPage = openPage;
 
-  function boot(){
+  function bindNativeControls(){
     var a = area();
     if(!a) return;
 
-    /* Keep the native admin UI clickable. */
     a.querySelectorAll('button,a,input,select,textarea,summary').forEach(function(el){
       el.style.pointerEvents = 'auto';
     });
 
-    /* Native data-page navigation. */
     a.querySelectorAll('[data-page]').forEach(function(btn){
       if(btn.dataset.adminNativeBound === '1') return;
       btn.dataset.adminNativeBound = '1';
@@ -70,28 +71,63 @@
         openPage(page);
       });
     });
+  }
 
-    /* The real create button must open the real configuration screen. */
-    a.querySelectorAll('button').forEach(function(btn){
-      var text = String(btn.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
-      if(/nuovo torneo|crea torneo/.test(text) && btn.dataset.page !== 'dashboard'){
-        if(!btn.dataset.adminCreateBound){
-          btn.dataset.adminCreateBound = '1';
-          btn.addEventListener('click', function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            openPage('configurazione');
-          });
-        }
-      }
+  function captureNative(){
+    var a = area();
+    if(!a || nativeSnapshot) return;
+    if(a.querySelector('.sidebar') && a.querySelector('#page-dashboard') && a.querySelector('#page-configurazione')){
+      nativeSnapshot = a.innerHTML;
+    }
+  }
+
+  function isNativeLayout(){
+    var a = area();
+    return !!(a && a.querySelector('.sidebar') && a.querySelector('#page-dashboard') && a.querySelector('#page-configurazione'));
+  }
+
+  function restoreNativeIfOverwritten(){
+    var a = area();
+    if(!a || restoring || !nativeSnapshot || isNativeLayout()) return;
+    restoring = true;
+    a.innerHTML = nativeSnapshot;
+    restoring = false;
+    bindNativeControls();
+    openPage('dashboard');
+    console.warn('ADMIN DESKTOP V3: bloccata la sostituzione della struttura nativa admin.');
+  }
+
+  function boot(){
+    var a = area();
+    if(!a) return;
+    captureNative();
+    restoreNativeIfOverwritten();
+    bindNativeControls();
+  }
+
+  function watchArea(){
+    var a = area();
+    if(!a || a.dataset.adminNativeObserver === '1') return;
+    a.dataset.adminNativeObserver = '1';
+    var observer = new MutationObserver(function(){
+      if(!restoring) restoreNativeIfOverwritten();
+    });
+    observer.observe(a, {childList:true, subtree:true});
+    a._adminNativeObserver = observer;
+  }
+
+  function start(){
+    boot();
+    watchArea();
+    [100,300,700,1500,3000].forEach(function(t){
+      setTimeout(function(){ boot(); watchArea(); }, t);
     });
   }
 
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', boot);
+    document.addEventListener('DOMContentLoaded', start);
   }else{
-    boot();
+    start();
   }
-
-  window.addEventListener('load', boot);
+  window.addEventListener('load', start);
 })();
