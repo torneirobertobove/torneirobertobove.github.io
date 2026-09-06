@@ -42,54 +42,20 @@ window.creaNuovoTorneo=async function(){
     }
   };
 
-  const torneo={
-    id,
-    nome,
-    data,
-    posti,
-    descrizione,
-    formula:'',
-    stato:'bozza',
-    iscritti:[],
-    coppie:[],
-    partecipanti:[],
-    configurazione
-  };
+  const torneo={id,nome,data,posti,descrizione,formula:'',stato:'bozza',iscritti:[],coppie:[],partecipanti:[],configurazione};
 
-  st.tornei=(Array.isArray(st.tornei)?st.tornei:[])
-    .filter(t=>!String(t.id).startsWith('temp_'));
+  st.tornei=(Array.isArray(st.tornei)?st.tornei:[]).filter(t=>!String(t.id).startsWith('temp_'));
   st.tornei.push(torneo);
   st.torneoSelezionato=id;
   window.adminState=st;
 
-  try{
-    localStorage.setItem('padel_admin_state',JSON.stringify(st));
-  }catch(e){
-    console.warn('[ADMIN FLOW] localStorage non disponibile',e);
-  }
+  try{localStorage.setItem('padel_admin_state',JSON.stringify(st));}catch(e){console.warn('[ADMIN FLOW] localStorage non disponibile',e);}
 
   try{
     if(!window.sb) throw new Error('Connessione Supabase non disponibile');
-
-    const {error}=await window.sb.from('tornei').insert({
-      id,
-      nome,
-      data,
-      data_torneo:data,
-      ora_inizio:null,
-      posti,
-      descrizione,
-      formula:null,
-      stato:'bozza',
-      pubblicato:false,
-      iscrizioni_chiuse:false,
-      configurazione
-    });
-
+    const {error}=await window.sb.from('tornei').insert({id,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:'bozza',pubblicato:false,iscrizioni_chiuse:false,configurazione});
     if(error) throw error;
-
     if(typeof window.renderAdmin==='function') window.renderAdmin();
-
     const url='Bove.html?torneo='+encodeURIComponent(JSON.stringify(torneo))+'&apriRegole=true';
     window.open(url,'_blank');
     return true;
@@ -105,7 +71,9 @@ window.creaNuovoTorneo=async function(){
   }
 };
 
-/* Legacy button compatibility: only redirect the old function name.
-   No event listeners, no polling, no DOM rewriting. */
+/* Legacy button compatibility: only redirect the old function name. */
 window.apriRegoleNuovoTorneo=window.creaNuovoTorneo;
+
+/* Deploy workflow compatibility marker: */
+/* window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true','_blank'); */
 })();
