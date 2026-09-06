@@ -1,73 +1,111 @@
-name: fix-user-menu
-
+name: one-shot-real-tournament-flow
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Repair Bove user menu
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Repair real tournament creation source
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          p = Path('Bove.html')
-          s = p.read_text(encoding='utf-8')
+          p=Path('admin-functions.js')
+          s=p.read_text(encoding='utf-8')
+          pattern=r'function apriRegoleNuovoTorneo\(\)\s*\{.*?\n\}\s*\n\s*async function creaNuovoTorneo\(\)\s*\{.*?\n\}\s*\n\s*function renderListaTornei\(\)'
+          replacement='''function apriRegoleNuovoTorneo(){
+  return creaNuovoTorneo();
+}
 
-          # Remove all previous injected menu fixes.
-          s = re.sub(r'<style id="bove-user-menu-[^"]+">.*?</style>\s*', '', s, flags=re.S)
-          s = re.sub(r'<script id="bove-user-menu-toggle">.*?</script>\s*', '', s, flags=re.S)
-          s = re.sub(r'<!-- BOVE USER MENU FINAL FIX -->.*?<!-- /BOVE USER MENU FINAL FIX -->\s*', '', s, flags=re.S)
+async function creaNuovoTorneo(){
+  const nome=document.getElementById("adminNomeTorneo")?.value.trim()||"Nuovo Torneo";
+  const data=document.getElementById("adminDataTorneo")?.value||"";
+  const posti=Number(document.getElementById("adminPosti")?.value)||8;
+  const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
+  if(!data){ alert("Inserisci la data del torneo."); return false; }
+  const nuovoId=Date.now();
+  const numeroGironi=Math.max(1,Math.ceil(posti/4));
+  const configurazione={
+    coppie:[],
+    partecipanti:[],
+    rules:{
+      locked:false,
+      tipoTorneo:"",
+      formatoTorneo:"",
+      numeroSquadre:posti,
+      numeroGironi,
+      squadrePerGirone:4,
+      formulaGironi:"",
+      formulaFinale:""
+    }
+  };
+  const nuovoTorneo={
+    id:nuovoId,nome,data,posti,descrizione,formula:"",stato:"bozza",
+    iscritti:[],coppie:[],partecipanti:[],configurazione
+  };
+  adminState.tornei=Array.isArray(adminState.tornei)
+    ? adminState.tornei.filter(t=>!String(t.id).startsWith("temp_"))
+    : [];
+  adminState.tornei.push(nuovoTorneo);
+  adminState.torneoSelezionato=nuovoId;
+  salvaAdminState();
+  try{
+    const {error}=await sb.from("tornei").insert({
+      id:nuovoId,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,
+      formula:null,stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione
+    });
+    if(error) throw error;
+    renderAdmin();
+    window.open("Bove.html?torneo="+encodeURIComponent(JSON.stringify(nuovoTorneo))+"&apriRegole=true","_blank");
+    return true;
+  }catch(error){
+    adminState.tornei=adminState.tornei.filter(t=>String(t.id)!==String(nuovoId));
+    adminState.torneoSelezionato=null;
+    salvaAdminState();
+    renderAdmin();
+    console.error("Errore creazione torneo:",error);
+    alert("Creazione torneo non riuscita: "+(error?.message||error));
+    return false;
+  }
+}
 
-          # Replace the current non-admin menu block with a deterministic USER mode:
-          # ONLY PRINT + EXIT. ADMIN keeps the complete existing menu.
-          start = s.find('    if(\n        String(profilo.ruolo)')
-          if start == -1:
-              raise SystemExit('Blocco controllo ruolo non trovato')
+function renderListaTornei()'''
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('Funzione reale creaNuovoTorneo non trovata')
+          p.write_text(s,encoding='utf-8')
 
-          end = s.find('        console.log(\n            "=== ACCESSO USER:', start)
-          if end == -1:
-              raise SystemExit('Fine blocco user non trovata')
+          for name,version in [('admin.html','20260906-flow3'),('Bove.html','20260906-flow3')]:
+            q=Path(name); x=q.read_text(encoding='utf-8')
+            x=re.sub(r'(admin-functions\.js)(?:\?v=[^"\']*)?',r'\1?v='+version,x)
+            x=re.sub(r'(bove-admin-flow-fix\.js)(?:\?v=[^"\']*)?',r'\1?v='+version,x)
+            q.write_text(x,encoding='utf-8')
 
-          end2 = s.find('        );', end)
-          if end2 == -1:
-              raise SystemExit('Fine log user non trovata')
-          end2 += len('        );')
+          # Remove the broken temporary workflow and this one-shot workflow after the repair.
+          for f in [
+            '.github/workflows/fix-tournament-flow.yml',
+            '.github/workflows/fix-user-menu.yml',
+            'fix-flow-trigger-20260906.txt'
+          ]:
+            Path(f).unlink(missing_ok=True)
 
-          replacement = '''    if(\n        String(profilo.ruolo)\n            .toLowerCase()\n            .trim() !== "admin"\n    ){\n\n        console.warn(\n            "Utente senza permessi admin:",\n            profilo\n        );\n\n        bloccaGestionale();\n        document.body.classList.add("user-mode");\n\n        const hamburger = document.querySelector(".menu-button");\n        const menu = document.getElementById("menuComandi");\n\n        if(hamburger){\n            hamburger.disabled = false;\n            hamburger.style.setProperty("display", "flex", "important");\n            hamburger.style.setProperty("visibility", "visible", "important");\n            hamburger.style.setProperty("opacity", "1", "important");\n            hamburger.style.setProperty("pointer-events", "auto", "important");\n        }\n\n        if(menu){\n            const buttons = [...menu.querySelectorAll("button")];\n\n            buttons.forEach(function(button, index){\n                const testo = (button.textContent || "").trim();\n                const isPrint = /stampa/i.test(testo);\n                const isExit = index === buttons.length - 1 || /uscita/i.test(testo);\n                const allowed = isPrint || isExit;\n\n                button.classList.toggle("user-print", isPrint);\n                button.classList.toggle("user-exit", isExit && !isPrint);\n                button.disabled = !allowed;\n\n                button.style.setProperty(\n                    "display",\n                    allowed ? "block" : "none",\n                    "important"\n                );\n                button.style.setProperty(\n                    "visibility",\n                    allowed ? "visible" : "hidden",\n                    "important"\n                );\n                button.style.setProperty(\n                    "pointer-events",\n                    allowed ? "auto" : "none",\n                    "important"\n                );\n\n                if(isExit && !isPrint){\n                    button.textContent = "🚪 Uscita";\n                    button.onclick = function(){\n                        window.location.href = "index.html";\n                    };\n                }\n            });\n        }\n\n        console.log(\n            "=== ACCESSO USER: SOLO STAMPA E USCITA ==="\n        );'''
-
-          s = s[:start] + replacement + s[end2:]
-
-          # One final CSS block. No Regole, no other admin functions for USER.
-          css = '''<style id="bove-user-menu-stable">\nbody.user-mode .menu-container {\n    position: fixed !important;\n    top: 75px !important;\n    right: 20px !important;\n    left: auto !important;\n    z-index: 99999 !important;\n}\nbody.user-mode .menu-button {\n    display: flex !important;\n    visibility: visible !important;\n    opacity: 1 !important;\n    pointer-events: auto !important;\n}\nbody.user-mode #menuComandi {\n    display: none !important;\n    visibility: hidden !important;\n    opacity: 0 !important;\n    pointer-events: none !important;\n    position: absolute !important;\n    top: 45px !important;\n    right: 0 !important;\n    width: 220px !important;\n    padding: 10px !important;\n    background: #111827 !important;\n    border: 1px solid #334155 !important;\n    border-radius: 12px !important;\n    box-shadow: 0 10px 25px rgba(0,0,0,.5) !important;\n    flex-direction: column !important;\n    gap: 8px !important;\n}\nbody.user-mode #menuComandi.show {\n    display: flex !important;\n    visibility: visible !important;\n    opacity: 1 !important;\n    pointer-events: auto !important;\n}\nbody.user-mode #menuComandi button {\n    display: none !important;\n}\nbody.user-mode #menuComandi button.user-print,\nbody.user-mode #menuComandi button.user-exit {\n    display: block !important;\n    visibility: visible !important;\n    opacity: 1 !important;\n    pointer-events: auto !important;\n    width: 100% !important;\n    min-height: 42px !important;\n    box-sizing: border-box !important;\n}\n</style>\n'''
-          s = s.replace('</head>', css + '</head>', 1)
-
-          # Definitive toggle: USER can only see/click PRINT + EXIT.
-          toggle = '''<script id="bove-user-menu-toggle">\nwindow.toggleMenu = function(){\n    const menu = document.getElementById("menuComandi");\n    if(!menu) return;\n\n    if(document.body.classList.contains("user-mode")){\n        const buttons = [...menu.querySelectorAll("button")];\n        buttons.forEach(function(button, index){\n            const text = (button.textContent || "").trim();\n            const print = /stampa/i.test(text);\n            const exit = button.classList.contains("user-exit") || index === buttons.length - 1 || /uscita/i.test(text);\n            const allowed = print || exit;\n\n            button.classList.toggle("user-print", print);\n            button.classList.toggle("user-exit", exit && !print);\n            button.disabled = !allowed;\n            button.style.setProperty("display", allowed ? "block" : "none", "important");\n            button.style.setProperty("visibility", allowed ? "visible" : "hidden", "important");\n            button.style.setProperty("pointer-events", allowed ? "auto" : "none", "important");\n\n            if(exit && !print){\n                button.textContent = "🚪 Uscita";\n                button.onclick = function(){ window.location.href = "index.html"; };\n            }\n        });\n    }\n\n    menu.classList.toggle("show");\n};\n</script>\n'''
-          s = s.replace('</head>', toggle + '</head>', 1)
-
-          p.write_text(s, encoding='utf-8')
-          print('Bove.html repaired: USER = PRINT + EXIT only; ADMIN = full access')
-
-      - name: Commit repair
+      - name: Commit repaired source
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Bove.html
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes"
             exit 0
           fi
-          git commit -m "Fix user access to print and exit only"
-          git push
+          git commit -m "Fix real tournament creation flow"
+          git push origin HEAD:main
