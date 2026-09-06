@@ -46,5 +46,29 @@ function ensureWhatsAppMenu(){
 function restoreWhatsAppUI(){const area=$('messaggioWhatsAppArea');if(!area)return;const page=document.getElementById('page-iscritti');if(page&&!page.contains(area))page.appendChild(area);area.classList.remove('hidden');area.removeAttribute('hidden');area.style.display='block';area.style.marginTop='18px';area.style.padding='18px';area.style.border='1px solid var(--border)';area.style.borderRadius='17px';area.style.background='var(--panel)';area.style.boxShadow='0 16px 45px rgba(0,0,0,.14)';if(!area.dataset.whatsappRestored){area.dataset.whatsappRestored='1';const title=document.createElement('h3');title.textContent='📲 Comunicazioni WhatsApp';title.style.margin='0 0 12px';title.style.fontSize='15px';area.prepend(title);const msg=$('messaggioWhatsApp');if(msg){msg.style.width='100%';msg.style.minHeight='100px';msg.style.marginBottom='10px';msg.style.display='block'}const btn=area.querySelector('button[onclick*="inviaWhatsAppTutti"]');if(btn){btn.classList.add('primary');btn.textContent='📲 Invia WhatsApp'}}}
 function nav(){const area=$('areaAdmin');if(!area)return;if(!area.__nav){area.__nav=true;area.addEventListener('click',e=>{const b=e.target.closest('.sidebar .nav button');if(!b)return;const raw=String(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page||'').toLowerCase().trim(),p={configurazione:'config',config:'config',link:'links',links:'links'}[raw]||raw;if(p&&typeof window.openAdminPage==='function'){e.preventDefault();window.openAdminPage(p)}})}}
 function boot(){nav();compatibility();ensureWhatsAppMenu();restoreWhatsAppUI();setTimeout(compatibility,250);setTimeout(ensureWhatsAppMenu,250);setTimeout(restoreWhatsAppUI,250);setTimeout(compatibility,1000);setTimeout(ensureWhatsAppMenu,1000);setTimeout(restoreWhatsAppUI,1000);setInterval(compatibility,1500);setInterval(ensureWhatsAppMenu,1500);setInterval(restoreWhatsAppUI,1500)}
+
+/* FIX MIRATO: impedisce al catalogo organizzato di ricreare le sezioni ogni 1,2 s,
+   preservando l'apertura/chiusura scelta dall'utente. */
+const __nativeSetInterval=window.setInterval.bind(window);
+window.setInterval=function(callback,delay,...args){
+  const source=String(callback||'');
+  if(source.includes('scheduleCatalog()')) return 0;
+  return __nativeSetInterval(callback,delay,...args);
+};
+
+/* FIX MIRATO: il tabellone viene aperto nella stessa scheda, così la sessione
+   Supabase autenticata dell'admin resta disponibile anche su Bove.html. */
+setTimeout(()=>{
+  window.apriBoveConTorneo=function(id){
+    if(id===undefined||id===null||String(id).trim()===''){
+      alert('Seleziona prima un torneo');
+      return false;
+    }
+    const u='Bove.html?idTorneo='+encodeURIComponent(String(id));
+    window.location.href=u;
+    return true;
+  };
+},0);
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
