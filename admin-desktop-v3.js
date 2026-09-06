@@ -1,9 +1,6 @@
-/* ADMIN DESKTOP V3 - stable native admin bootstrap */
+/* ADMIN DESKTOP V4 - stable native admin navigation */
 (function(){
   'use strict';
-
-  var nativeSnapshot = null;
-  var restoring = false;
 
   function area(){ return document.getElementById('areaAdmin'); }
 
@@ -25,8 +22,7 @@
     target.classList.add('active');
 
     document.querySelectorAll('.sidebar [data-page]').forEach(function(btn){
-      var p = pageAlias(btn.dataset.page || '');
-      btn.classList.toggle('active', p === page);
+      btn.classList.toggle('active', pageAlias(btn.dataset.page || '') === page);
     });
 
     var title = document.getElementById('breadcrumbTitle');
@@ -37,12 +33,11 @@
       tabellone:'Tabellone',
       news:'News',
       sponsor:'Sponsor',
-      configurazione:'Nuovo torneo',
+      configurazione:'Configurazione',
       link:'Link pubblici',
       comunicazioni:'Comunicazioni'
     };
     if(title) title.textContent = titles[page] || 'Gestione';
-
     try { history.replaceState(null, '', '#' + page); } catch(e) {}
     window.scrollTo({top:0, behavior:'smooth'});
     return true;
@@ -52,82 +47,31 @@
   window.goAdminPage = openPage;
   window.adminGoPage = openPage;
 
-  function bindNativeControls(){
+  function bind(){
     var a = area();
-    if(!a) return;
+    if(!a || a.dataset.adminNavBound === '1') return;
+    a.dataset.adminNavBound = '1';
 
-    a.querySelectorAll('button,a,input,select,textarea,summary').forEach(function(el){
-      el.style.pointerEvents = 'auto';
+    a.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-page]');
+      if(!btn || !a.contains(btn)) return;
+      var page = pageAlias(btn.dataset.page);
+      if(!page) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openPage(page);
     });
-
-    a.querySelectorAll('[data-page]').forEach(function(btn){
-      if(btn.dataset.adminNativeBound === '1') return;
-      btn.dataset.adminNativeBound = '1';
-      btn.addEventListener('click', function(e){
-        var page = btn.dataset.page;
-        if(!page) return;
-        e.preventDefault();
-        e.stopPropagation();
-        openPage(page);
-      });
-    });
-  }
-
-  function captureNative(){
-    var a = area();
-    if(!a || nativeSnapshot) return;
-    if(a.querySelector('.sidebar') && a.querySelector('#page-dashboard') && a.querySelector('#page-configurazione')){
-      nativeSnapshot = a.innerHTML;
-    }
-  }
-
-  function isNativeLayout(){
-    var a = area();
-    return !!(a && a.querySelector('.sidebar') && a.querySelector('#page-dashboard') && a.querySelector('#page-configurazione'));
-  }
-
-  function restoreNativeIfOverwritten(){
-    var a = area();
-    if(!a || restoring || !nativeSnapshot || isNativeLayout()) return;
-    restoring = true;
-    a.innerHTML = nativeSnapshot;
-    restoring = false;
-    bindNativeControls();
-    openPage('dashboard');
-    console.warn('ADMIN DESKTOP V3: bloccata la sostituzione della struttura nativa admin.');
-  }
-
-  function boot(){
-    var a = area();
-    if(!a) return;
-    captureNative();
-    restoreNativeIfOverwritten();
-    bindNativeControls();
-  }
-
-  function watchArea(){
-    var a = area();
-    if(!a || a.dataset.adminNativeObserver === '1') return;
-    a.dataset.adminNativeObserver = '1';
-    var observer = new MutationObserver(function(){
-      if(!restoring) restoreNativeIfOverwritten();
-    });
-    observer.observe(a, {childList:true, subtree:true});
-    a._adminNativeObserver = observer;
   }
 
   function start(){
-    boot();
-    watchArea();
-    [100,300,700,1500,3000].forEach(function(t){
-      setTimeout(function(){ boot(); watchArea(); }, t);
-    });
+    bind();
+    if(location.hash){
+      var page = location.hash.replace(/^#/, '');
+      if(document.getElementById('page-' + page)) openPage(page);
+    }
   }
 
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', start);
-  }else{
-    start();
-  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
   window.addEventListener('load', start);
 })();
