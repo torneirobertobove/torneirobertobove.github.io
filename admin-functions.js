@@ -92,14 +92,7 @@ function mostraLoginMessaggio(testo,colore){
 }
 
 function apriRegoleNuovoTorneo(){
-  const nome=document.getElementById("adminNomeTorneo")?.value.trim()||"Nuovo Torneo";
-  const data=document.getElementById("adminDataTorneo")?.value||"";
-  const posti=Number(document.getElementById("adminPosti")?.value)||8;
-  const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
-  const tempId="temp_"+Date.now();
-  const torneoTemp={id:tempId,nome,data,posti,descrizione,formula:"italiana",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{rules:{numeroSquadre:posti,numeroGironi:Math.ceil(posti/4),squadrePerGirone:4,tipoTorneo:"italiana",formatoTorneo:"italiana",formulaGironi:"tuttiControTutti",formulaFinale:"eliminazioneDiretta",qualificatePerGirone:2,numeroQualificateFinali:Math.max(2,Math.ceil(posti/4)*2),usaQuarti:true,usaSemifinali:true,usaFinale:true}}};
-  adminState.tornei.push(torneoTemp); adminState.torneoSelezionato=tempId; salvaAdminState();
-  window.open("Bove.html?idTorneo="+encodeURIComponent(tempId)+"&apriRegole=true","_blank");
+  return creaNuovoTorneo();
 }
 
 async function creaNuovoTorneo(){
