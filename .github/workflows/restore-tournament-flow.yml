@@ -1,0 +1,78 @@
+name: Restore tournament creation flow
+
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-tournament-flow.yml'
+      - 'BOVE-FLOW-RESTORE.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Repair real Bove tournament flow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # 1) The admin must pass the actual tournament configuration to Bove.
+          p = Path('admin-function-fixes-v1.js')
+          s = p.read_text(encoding='utf-8')
+          old = "window.open('Bove.html?idTorneo='+encodeURIComponent(id)+'&apriRegole=true','_blank');"
+          new = "window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true','_blank');"
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('Admin Bove launch code not found')
+          p.write_text(s, encoding='utf-8')
+
+          # 2) Empty formula values are intentional during creation. Do not
+          #    silently convert them back to Gironi + Finale.
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          replacements = {
+              'rulesAdmin.formatoTorneo ||\n                            "gironiFinale"': 'rulesAdmin.formatoTorneo ??\n                            "gironiFinale"',
+              'rulesAdmin.tipoTorneo ||\n                            "gironiFinale"': 'rulesAdmin.tipoTorneo ??\n                            "gironiFinale"',
+          }
+          for old, new in replacements.items():
+              if old in s:
+                  s = s.replace(old, new, 1)
+              elif new not in s:
+                  raise SystemExit(f'Bove fallback not found: {old[:40]}')
+
+          # 3) The admin explicitly requests the formula screen with
+          #    ?apriRegole=true. The real Bove page previously ignored it.
+          tag = '<script src="bove-admin-flow-fix.js?v=1"></script>'
+          if tag not in s:
+              marker = '</body>'
+              if marker not in s:
+                  raise SystemExit('Bove body marker not found')
+              s = s.replace(marker, tag + '\n' + marker, 1)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Verify repair
+        shell: python
+        run: |
+          from pathlib import Path
+          a = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
+          b = Path('Bove.html').read_text(encoding='utf-8')
+          assert "Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true" in a
+          assert 'rulesAdmin.tipoTorneo ||' not in b
+          assert 'rulesAdmin.formatoTorneo ||' not in b
+          assert 'bove-admin-flow-fix.js?v=1' in b
+
+      - name: Commit repaired flow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin-function-fixes-v1.js Bove.html
+          git diff --cached --quiet || git commit -m 'fix: restore real tournament formula flow'
+          git push
