@@ -1,0 +1,113 @@
+name: Fix real tournament flow now
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Patch real creation flow
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p=Path('admin-functions.js')
+          text=p.read_text(encoding='utf-8')
+          pat=r'async function creaNuovoTorneo\(\)\{.*?\n\}\n\nfunction renderListaTornei'
+          replacement='''async function creaNuovoTorneo(){
+  const nome=document.getElementById("adminNomeTorneo")?.value.trim()||"Nuovo Torneo";
+  const data=document.getElementById("adminDataTorneo")?.value||"";
+  const posti=Number(document.getElementById("adminPosti")?.value)||8;
+  const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
+  if(!data){ alert("Inserisci la data del torneo."); return false; }
+
+  const nuovoId=Date.now();
+  const numeroGironi=Math.max(1,Math.ceil(posti/4));
+  const configurazione={
+    coppie:[],
+    partecipanti:[],
+    rules:{
+      locked:false,
+      tipoTorneo:"",
+      formatoTorneo:"",
+      numeroSquadre:posti,
+      numeroGironi,
+      squadrePerGirone:4,
+      formulaGironi:"",
+      formulaFinale:""
+    }
+  };
+  const nuovoTorneo={
+    id:nuovoId,nome,data,posti,descrizione,formula:"",stato:"bozza",
+    iscritti:[],coppie:[],partecipanti:[],configurazione
+  };
+
+  adminState.tornei=Array.isArray(adminState.tornei)
+    ? adminState.tornei.filter(t=>!String(t.id).startsWith("temp_"))
+    : [];
+  adminState.tornei.push(nuovoTorneo);
+  adminState.torneoSelezionato=nuovoId;
+  salvaAdminState();
+
+  try{
+    const {error}=await sb.from("tornei").insert({
+      id:nuovoId,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,
+      formula:null,stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,
+      configurazione
+    });
+    if(error) throw error;
+
+    renderAdmin();
+    const url="Bove.html?torneo="+encodeURIComponent(JSON.stringify(nuovoTorneo))
+      +"&apriRegole=true";
+    window.open(url,"_blank");
+    return true;
+  }catch(error){
+    adminState.tornei=adminState.tornei.filter(t=>String(t.id)!==String(nuovoId));
+    adminState.torneoSelezionato=null;
+    salvaAdminState();
+    renderAdmin();
+    console.error("Errore creazione torneo:",error);
+    alert("Creazione torneo non riuscita: "+(error?.message||error));
+    return false;
+  }
+}
+
+function renderListaTornei'''
+          text,n=re.subn(pat,replacement,text,count=1,flags=re.S)
+          if n!=1: raise SystemExit('creaNuovoTorneo non trovato')
+          p.write_text(text,encoding='utf-8')
+
+          for name,old,new in [
+            ('admin.html','admin-functions.js?v=2','admin-functions.js?v=20260906-flow1'),
+            ('Bove.html','bove-admin-flow-fix.js?v=1','bove-admin-flow-fix.js?v=20260906-flow1')
+          ]:
+            p=Path(name); text=p.read_text(encoding='utf-8')
+            if old not in text: raise SystemExit(f'marker non trovato: {name}')
+            p.write_text(text.replace(old,new,1),encoding='utf-8')
+
+      - name: Validate
+        shell: bash
+        run: |
+          grep -q 'torneo="+encodeURIComponent(JSON.stringify(nuovoTorneo))' admin-functions.js
+          grep -q 'tipoTorneo:""' admin-functions.js
+          grep -q 'admin-functions.js?v=20260906-flow1' admin.html
+          grep -q 'bove-admin-flow-fix.js?v=20260906-flow1' Bove.html
+          if grep -q 'const tempId="temp_"+Date.now()' admin-functions.js; then exit 1; fi
+
+      - name: Commit and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin-functions.js admin.html Bove.html
+          git rm -f .github/workflows/fix-real-flow-now.yml
+          git commit -m 'Fix real tournament creation flow and bust cache'
+          git push origin HEAD:main
