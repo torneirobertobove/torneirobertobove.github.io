@@ -6,7 +6,7 @@ on:
     paths:
       - 'admin.html'
       - '.github/workflows/apply-admin-desktop-layout.yml'
-      - '.github/workflows/final-admin-runtime-fix.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,26 +17,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Remove obsolete desktop override
+      - name: Remove obsolete admin runtime injectors
         shell: python
         run: |
           from pathlib import Path
           import re
-
           p = Path('admin.html')
           s = p.read_text(encoding='utf-8')
           original = s
 
-          pattern = r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?'
-          s = re.sub(pattern, '', s, flags=re.S)
+          # Remove the old destructive desktop injector, including escaped newlines.
+          s = re.sub(r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?', '', s, flags=re.S)
           s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
 
+          # Remove legacy click-fix runtime if it was injected by an old workflow.
+          s = re.sub(r'\s*<script\s+src=["\']admin-final-click-fix-v1\.js(?:\?v=[^"\']+)?["\']\s*></script>', '', s, flags=re.I)
+
+          # Keep exactly one desktop stylesheet include.
           link = '<link rel="stylesheet" href="admin-desktop.css?v=4">'
           first = s.find(link)
           if first >= 0:
-              prefix = s[:first + len(link)]
-              suffix = s[first + len(link):].replace(link, '')
-              s = prefix + suffix
+              s = s[:first + len(link)] + s[first + len(link):].replace(link, '')
 
           if s != original:
               p.write_text(s, encoding='utf-8')
@@ -50,6 +51,7 @@ jobs:
           s = Path('admin.html').read_text(encoding='utf-8')
           assert 'ADMIN_DESKTOP_APPROVED_V2' not in s
           assert s.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') == 1
+          assert 'admin-final-click-fix-v1.js' not in s
           assert '\\n<!--' not in s
           print('admin.html verification passed')
       - name: Commit cleanup
@@ -58,5 +60,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add admin.html
           git diff --cached --quiet && exit 0
-          git commit -m 'fix: remove obsolete admin desktop override'
+          git commit -m 'fix: remove obsolete admin runtime injectors'
           git push
