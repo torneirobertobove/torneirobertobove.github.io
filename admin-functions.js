@@ -100,15 +100,30 @@ async function creaNuovoTorneo(){
   const data=document.getElementById("adminDataTorneo")?.value||"";
   const posti=Number(document.getElementById("adminPosti")?.value)||8;
   const descrizione=document.getElementById("adminDescrizione")?.value.trim()||"";
+  if(!data){ alert("Inserisci la data del torneo."); return false; }
   const nuovoId=Date.now();
-  const numeroGironi=Math.ceil(posti/4);
-  const nuovoTorneo={id:nuovoId,nome,data,posti,descrizione,formula:"italiana",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione:{coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"italiana",formatoTorneo:"italiana",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"tuttiControTutti",formulaFinale:"eliminazioneDiretta",w:3,d:1,l:0,qualificatePerGirone:2,numeroQualificateFinali:numeroGironi*2,usaQuarti:true,usaSemifinali:true,usaFinale:true,killerPoint:false,rigori:true,tempoSupplementare:true,garaAndataRitorno:false,start:"20:00",duration:30,crit1:"df",crit2:"gf",crit3:"gs",mostraQuarti:true}}};
-  adminState.tornei=adminState.tornei.filter(t=>!String(t.id).startsWith("temp_"));
-  adminState.tornei.push(nuovoTorneo); adminState.torneoSelezionato=nuovoId; salvaAdminState();
-  const {error}=await sb.from("tornei").insert({id:nuovoId,nome,data,data_torneo:data,ora_inizio:"20:00",posti,descrizione,formula:"italiana",stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione:nuovoTorneo.configurazione});
-  if(error){ console.error(error); alert("Errore salvataggio torneo su Supabase"); return; }
-  renderAdmin();
-  window.open("Bove.html?idTorneo="+encodeURIComponent(nuovoId)+"&apriRegole=true","_blank");
+  const numeroGironi=Math.max(1,Math.ceil(posti/4));
+  const configurazione={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:"",formatoTorneo:"",numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:"",formulaFinale:""}};
+  const nuovoTorneo={id:nuovoId,nome,data,posti,descrizione,formula:"",stato:"bozza",iscritti:[],coppie:[],partecipanti:[],configurazione};
+  adminState.tornei=Array.isArray(adminState.tornei)?adminState.tornei.filter(t=>!String(t.id).startsWith("temp_")):[];
+  adminState.tornei.push(nuovoTorneo);
+  adminState.torneoSelezionato=nuovoId;
+  salvaAdminState();
+  try{
+    const {error}=await sb.from("tornei").insert({id:nuovoId,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:"bozza",pubblicato:false,iscrizioni_chiuse:false,configurazione});
+    if(error) throw error;
+    renderAdmin();
+    window.open("Bove.html?torneo="+encodeURIComponent(JSON.stringify(nuovoTorneo))+"&apriRegole=true","_blank");
+    return true;
+  }catch(error){
+    adminState.tornei=adminState.tornei.filter(t=>String(t.id)!==String(nuovoId));
+    adminState.torneoSelezionato=null;
+    salvaAdminState();
+    renderAdmin();
+    console.error("Errore creazione torneo:",error);
+    alert("Creazione torneo non riuscita: "+(error?.message||error));
+    return false;
+  }
 }
 
 function renderListaTornei(){
