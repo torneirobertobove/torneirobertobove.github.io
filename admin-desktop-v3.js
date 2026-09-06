@@ -1,9 +1,9 @@
-/* ADMIN DESKTOP V12 - load current tournament wizard and creation repair */
+/* ADMIN DESKTOP V13 - load current tournament wizard and creation repair */
 (function(){
 'use strict';
 function area(){return document.getElementById('areaAdmin');}
 function alias(p){p=String(p||'').toLowerCase();return p==='config'?'configurazione':(p==='links'?'link':p);}
-function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V12] '+name,e);return false;}}
+function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V13] '+name,e);return false;}}
 function openPage(page){
  page=alias(page||'dashboard');var target=document.getElementById('page-'+page);if(!target)return false;
  document.querySelectorAll('#areaAdmin .admin-page').forEach(function(p){p.classList.remove('active');});target.classList.add('active');
@@ -15,7 +15,7 @@ function aggiorna(){var r=call('caricaTorneiSupabase');call('caricaRichiesteIscr
 function loadScript(src,flag,ready){
  if(window[flag])return;
  window[flag]=true;
- var s=document.createElement('script');s.src=src;s.onload=ready;s.onerror=function(e){console.error('[ADMIN V12] load failed',src,e);};document.head.appendChild(s);
+ var s=document.createElement('script');s.src=src;s.onload=ready;s.onerror=function(e){console.error('[ADMIN V13] load failed',src,e);};document.head.appendChild(s);
 }
 function loadCurrentWizard(){
  if(window.__currentWizardLoaded)return;
@@ -23,11 +23,11 @@ function loadCurrentWizard(){
  var s=document.createElement('script');
  s.src='admin-'+'function-fixes-v1.js?v=18';
  s.onload=function(){window.__currentWizardReady=true;replaceLegacyWizard();loadRepair();};
- s.onerror=function(e){console.error('[ADMIN V12] current wizard load failed',e);loadRepair();};
+ s.onerror=function(e){console.error('[ADMIN V13] current wizard load failed',e);loadRepair();};
  document.head.appendChild(s);
 }
 function loadRepair(){
- loadScript('admin-creation-repair-v1.js?v=2','__creationRepairLoadedV2',function(){window.__creationRepairReady=true;replaceLegacyWizard();});
+ loadScript('admin-creation-repair-v1.js?v=3','__creationRepairLoadedV3',function(){window.__creationRepairReady=true;replaceLegacyWizard();});
 }
 function replaceLegacyWizard(){
  ['adminFlowV15','adminFlowV16','adminFlowV17'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
@@ -36,8 +36,8 @@ function replaceLegacyWizard(){
 }
 function start(){
  var a=area();
- if(a&&a.dataset.adminNavBound!=='v12'){
-  a.dataset.adminNavBound='v12';
+ if(a&&a.dataset.adminNavBound!=='v13'){
+  a.dataset.adminNavBound='v13';
   document.addEventListener('click',function(e){
    var b=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;if(!b||!a.contains(b))return;
    if(b.id==='btnAggiorna'){e.preventDefault();e.stopImmediatePropagation();aggiorna();return;}
