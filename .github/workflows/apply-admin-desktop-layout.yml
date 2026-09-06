@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Remove obsolete admin runtime injectors
         shell: python
         run: |
@@ -30,8 +33,21 @@ jobs:
           s = re.sub(r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?', '', s, flags=re.S)
           s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
 
-          # Remove legacy click-fix runtime if it was injected by an old workflow.
+          # Remove legacy click-fix runtime if an old workflow injected it.
           s = re.sub(r'\s*<script\s+src=["\']admin-final-click-fix-v1\.js(?:\?v=[^"\']+)?["\']\s*></script>', '', s, flags=re.I)
+
+          # Remove the old FINAL_ADMIN_RUNTIME_FIX wrapper and its inline repair loop.
+          # Re-add only the three authoritative runtime scripts directly.
+          s = re.sub(r'\s*<!-- FINAL_ADMIN_RUNTIME_FIX -->.*?(?=<script\s+src=["\']admin-random-pairs\.js)', '\n', s, flags=re.S | re.I)
+          direct = ('<script src="admin-function-fixes-v1.js?v=12"></script>\n'
+                    '<script src="admin-organization-v1.js?v=12"></script>\n'
+                    '<script src="admin-desktop-v3.js?v=4"></script>\n')
+          if 'admin-function-fixes-v1.js?v=12' not in s:
+              marker = '<script src="admin-random-pairs.js?v=2"></script>'
+              if marker in s:
+                  s = s.replace(marker, direct + marker, 1)
+              else:
+                  s = s.replace('</body>', direct + '</body>', 1)
 
           # Keep exactly one desktop stylesheet include.
           link = '<link rel="stylesheet" href="admin-desktop.css?v=4">'
@@ -39,26 +55,36 @@ jobs:
           if first >= 0:
               s = s[:first + len(link)] + s[first + len(link):].replace(link, '')
 
+          # Remove obsolete marker and literal escaped newlines.
+          s = s.replace('<!-- ADMIN-DESKTOP-V2 -->', '')
+          s = s.replace('\\n<!-- ADMIN-DESKTOP-V2 -->\\n', '')
+
           if s != original:
               p.write_text(s, encoding='utf-8')
-              print('admin.html cleaned')
+              print('admin.html cleaned and runtime normalized')
           else:
               print('admin.html already clean')
+
       - name: Verify admin.html
         shell: python
         run: |
           from pathlib import Path
           s = Path('admin.html').read_text(encoding='utf-8')
           assert 'ADMIN_DESKTOP_APPROVED_V2' not in s
-          assert s.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') == 1
           assert 'admin-final-click-fix-v1.js' not in s
+          assert 'FINAL_ADMIN_RUNTIME_FIX' not in s
+          assert s.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') == 1
+          assert s.count('admin-function-fixes-v1.js?v=12') == 1
+          assert s.count('admin-organization-v1.js?v=12') == 1
+          assert s.count('admin-desktop-v3.js?v=4') == 1
           assert '\\n<!--' not in s
           print('admin.html verification passed')
+
       - name: Commit cleanup
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add admin.html
           git diff --cached --quiet && exit 0
-          git commit -m 'fix: remove obsolete admin runtime injectors'
+          git commit -m 'fix: normalize admin runtime without blocking loader'
           git push
