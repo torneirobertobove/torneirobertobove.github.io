@@ -1,7 +1,7 @@
-/* ADMIN CREATION REPAIR V1 - harden live tournament creation wizard */
+/* ADMIN CREATION REPAIR V2 - harden live tournament creation wizard */
 (()=>{
 'use strict';
-const KEY='adminCreationRepairV1';
+const KEY='adminCreationRepairV2';
 if(window[KEY])return;
 window[KEY]=true;
 const q=s=>document.querySelector(s);
@@ -38,6 +38,7 @@ function ensure(){
 function open(e){
  const b=e.target&&e.target.closest?e.target.closest('[data-action="create"],button,[role="button"]'):null;
  if(!b)return;
+ if(b.closest('#adminFlowV18'))return;
  const text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
  if(text.indexOf('nuovo torneo')<0&&text.indexOf('crea torneo')<0)return;
  if(typeof window.apriWizardTorneo!=='function')return;
