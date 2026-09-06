@@ -1,0 +1,49 @@
+name: Fix tournament creation flow
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Fix real admin source and remove obsolete one-time workflow
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('admin-functions.js')
+          text = p.read_text(encoding='utf-8')
+          pat = r'function apriRegoleNuovoTorneo\(\)\s*\{.*?\n\}\n\nasync function creaNuovoTorneo\(\)'
+          replacement = 'function apriRegoleNuovoTorneo(){\n  return creaNuovoTorneo();\n}\n\nasync function creaNuovoTorneo()'
+          text, n = re.subn(pat, replacement, text, count=1, flags=re.S)
+          if n != 1:
+            raise SystemExit('ERRORE: implementazione temp_ di apriRegoleNuovoTorneo non trovata')
+          p.write_text(text, encoding='utf-8')
+
+          # The obsolete workflow was repeatedly running on every push and could fail after its one-time job.
+          for f in [
+              '.github/workflows/one-time-save-reset-push.yml',
+              '.github/workflows/pr-save-reset.yml',
+              '.github/workflows/one-time-save-reset.yml',
+          ]:
+              Path(f).unlink(missing_ok=True)
+
+          # Validate that the real source no longer creates temp tournament IDs.
+          if 'const tempId="temp_"' in text or 'idTorneo="+encodeURIComponent(tempId)' in text:
+              raise SystemExit('ERRORE: temp tournament flow ancora presente')
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin-functions.js .github/workflows/one-time-save-reset-push.yml .github/workflows/pr-save-reset.yml .github/workflows/one-time-save-reset.yml .github/workflows/fix-tournament-flow.yml
+          git commit -m 'Fix real tournament creation flow and remove obsolete workflow'
+          git push origin HEAD:main
