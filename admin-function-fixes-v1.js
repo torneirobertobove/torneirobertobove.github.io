@@ -1,53 +1,111 @@
-/* ADMIN FUNCTION FIXES V9 - complete verifier compatibility + visible WhatsApp menu */
+/* ADMIN FLOW FIX - minimal and isolated.
+   This file must not intercept navigation or rewrite unrelated buttons.
+   It only provides the new-tournament handoff used by the existing Admin UI. */
 (()=>{
 'use strict';
-const $=id=>document.getElementById(id), STORAGE_LINK='padel_admin_generated_link';
-function errorText(e){return e?.message||e?.error_description||String(e||'Operazione non riuscita')}
-function report(label,e){console.error('[ADMIN]',label,e);alert(label+': '+errorText(e))}
-function selectTournament(id){if(window.adminState){window.adminState.torneoSelezionato=id;try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState))}catch{}}}
-function buildTournamentLink(id){return location.origin+location.pathname.replace(/[^/]*$/,'')+'Bove.html?idTorneo='+encodeURIComponent(String(id))}
-function applyGeneratedLink(v){if(!v)return;const a=$('linkBoveGenerato'),b=$('linkBoveGeneratoMirror');if(a)a.value=v;if(b)b.value=v}
-window.generaLinkPerId=function(id){if(id===undefined||id===null||String(id).trim()===''){alert('Seleziona prima un torneo');return false}selectTournament(id);const v=buildTournamentLink(id);try{localStorage.setItem(STORAGE_LINK,v)}catch{};if(typeof window.openAdminPage==='function')window.openAdminPage('links');applyGeneratedLink(v);[0,150,500].forEach(ms=>setTimeout(()=>applyGeneratedLink(v),ms));return v};
-window.generaLinkBove=function(){const id=window.adminState?.torneoSelezionato;return id==null?(alert('Seleziona prima un torneo'),false):window.generaLinkPerId(id)};
-window.copiaLinkBove=async function(){let v=$('linkBoveGenerato')?.value||$('linkBoveGeneratoMirror')?.value||'';if(!v)try{v=localStorage.getItem(STORAGE_LINK)||''}catch{};if(!v&&window.adminState?.torneoSelezionato!=null){window.generaLinkPerId(window.adminState.torneoSelezionato);try{v=localStorage.getItem(STORAGE_LINK)||''}catch{}};if(!v){alert('Seleziona prima un torneo e genera il link.');return false}try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(v);else{const ta=document.createElement('textarea');ta.value=v;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();if(!document.execCommand('copy'))throw Error('Copia non disponibile');ta.remove()}alert('Link copiato negli appunti!');return true}catch(e){const i=$('linkBoveGenerato')||$('linkBoveGeneratoMirror');if(i){i.value=v;i.focus();i.select()}alert('Il link è pronto: selezionalo e copialo manualmente.');return false}};
-window.apriBoveConTorneo=function(id){if(id===undefined||id===null||String(id).trim()===''){alert('Seleziona prima un torneo');return false}const u='Bove.html?idTorneo='+encodeURIComponent(String(id)),w=window.open(u,'_blank','noopener');if(!w)window.location.href=u;return true};
-window.caricaRichiesteIscrizione=async function(){const id=Number(window.adminState?.torneoSelezionato);if(!Number.isFinite(id)||id<=0){window.iscrizioniTorneo=[];window.renderGestioneTorneo?.();window.renderPartecipanti?.();window.renderCoppie?.();return true}try{const {data,error}=await window.sb.from('iscrizioni').select('*').eq('torneo_id',id);if(error)throw error;window.iscrizioniTorneo=Array.isArray(data)?data:[];window.renderGestioneTorneo?.();window.renderPartecipanti?.();window.renderCoppie?.();return true}catch(e){window.iscrizioniTorneo=[];window.renderGestioneTorneo?.();window.renderPartecipanti?.();window.renderCoppie?.();report('Caricamento iscrizioni non riuscito',e);return false}};
-window.creaNuovoTorneo=async function(){const st=window.adminState;if(!st)return false;const nome=$('adminNomeTorneo')?.value.trim()||'Nuovo Torneo',data=$('adminDataTorneo')?.value||'',posti=Number($('adminPosti')?.value)||8,descrizione=$('adminDescrizione')?.value.trim()||'';if(!data){alert('Inserisci la data del torneo.');return false}const old=Array.isArray(st.tornei)?st.tornei.slice():[],sel=st.torneoSelezionato,id=Date.now(),numeroGironi=Math.ceil(posti/4);const config={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:'',formatoTorneo:'',numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:'',formulaFinale:''}};const t={id,nome,data,posti,descrizione,formula:'',stato:'bozza',iscritti:[],coppie:[],partecipanti:[],configurazione:config};st.tornei=st.tornei.filter(t=>!String(t.id).startsWith('temp_'));st.tornei.push(t);st.torneoSelezionato=id;window.adminState=st;try{localStorage.setItem('padel_admin_state',JSON.stringify(st))}catch{}try{const {error}=await window.sb.from('tornei').insert({id,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:'bozza',pubblicato:false,iscrizioni_chiuse:false,configurazione:config});if(error)throw error;window.renderAdmin?.();window.__adminDesktopRender?.();window.open('Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true','_blank');return true}catch(e){st.tornei=old;st.torneoSelezionato=sel;window.adminState=st;try{localStorage.setItem('padel_admin_state',JSON.stringify(st))}catch{};window.renderAdmin?.();report('Creazione torneo non riuscita',e);return false}};
-/* IMPORTANT: admin-functions.js still contains the legacy temp_ implementation of this name.
-   Always route legacy callers to the neutral persisted creation flow above. */
-window.apriRegoleNuovoTorneo=async function(){return window.creaNuovoTorneo();};
-async function createPair(){if(typeof window.generaAccoppiamentiCasuali==='function')return window.generaAccoppiamentiCasuali();if(typeof window.generaCoppieAdmin==='function'&&window.generaCoppieAdmin!==window.creaCoppieAdmin)return window.generaCoppieAdmin();if(typeof window.generaCoppie==='function')return window.generaCoppie();if(typeof window.generaCoppieCasuali==='function')return window.generaCoppieCasuali();if(typeof window.openAdminPage==='function'){window.openAdminPage('coppie');return true}return false}
-window.creaCoppieAdmin=window.creaCoppieAdmin||createPair;
-window.creaCoppia=window.creaCoppia||createPair;
-function ensureCompatElements(){const area=$('areaAdmin');if(!area)return;let news=area.querySelector('section#newsPanel[data-page="news"]')||area.querySelector('#org-page-news');if(news)news.id='newsPanel';let sponsor=$('sponsorPanel')||area.querySelector('#org-page-sponsor');if(sponsor)sponsor.id='sponsorPanel';else{sponsor=document.createElement('div');sponsor.id='sponsorPanel';sponsor.hidden=true;sponsor.setAttribute('aria-hidden','true');area.appendChild(sponsor)}let iscr=$('listaIscrittiAdmin');if(!iscr){iscr=document.createElement('div');iscr.id='listaIscrittiAdmin';iscr.hidden=true;iscr.setAttribute('aria-hidden','true');area.appendChild(iscr)}let tab=$('tabelloneAdmin');if(!tab){tab=document.createElement('div');tab.id='tabelloneAdmin';tab.hidden=true;tab.setAttribute('aria-hidden','true');area.appendChild(tab)}const cal=area.querySelector('[data-admin-calendar],#adminCalendar,#calendarioAdmin,.admin-calendar');if(!cal){const c=document.createElement('div');c.id='adminCalendar';c.hidden=true;c.setAttribute('aria-hidden','true');area.appendChild(c)}}
-function compatibility(){const area=$('areaAdmin');if(!area)return;ensureCompatElements();const bs=[...area.querySelectorAll('button')];bs.forEach(b=>{const text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(!b.getAttribute('onclick')){if(text==='⚙️ configurazione'||text.includes('impostazioni'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('config')");else if(text==='🔗 link pubblici'||text.includes('link pubblici'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('links')");else if(text.includes('nuovo torneo')||text.includes('＋ crea torneo'))b.setAttribute('onclick','window.creaNuovoTorneo&&window.creaNuovoTorneo();');else if(text.includes('gestisci le richieste')||text.includes('approva iscritti'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('iscritti')");else if(text.includes('genera le sfide'))b.setAttribute('onclick',"window.openAdminPage&&window.openAdminPage('coppie')");else if(text.includes('apri tabellone')||text.includes('visualizza il torneo'))b.setAttribute('onclick',"window.apriBoveConTorneo&&window.apriBoveConTorneo(window.adminState&&window.adminState.torneoSelezionato);");else if(text.includes('accoppia a caso'))b.setAttribute('onclick','window.creaCoppieAdmin&&window.creaCoppieAdmin();');else if(text.includes('copia link'))b.setAttribute('onclick','window.copiaLinkBove&&window.copiaLinkBove();')}});area.querySelectorAll('button[onclick*="generaLinkBove"]').forEach(b=>b.setAttribute('onclick','window.generaLinkBove&&window.generaLinkBove();document.getElementById(\'linkBoveGeneratoMirror\')&&document.getElementById(\'linkBoveGenerato\')&&(document.getElementById(\'linkBoveGeneratoMirror\').value=document.getElementById(\'linkBoveGenerato\').value);'));let v='';try{v=localStorage.getItem(STORAGE_LINK)||''}catch{}if(v)applyGeneratedLink(v)}
-window.inviaWhatsAppTutti=function(){const msg=$('messaggioWhatsApp')?.value.trim();if(!msg){alert('Scrivi un messaggio');return false}window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank','noopener');return true};
-window.inviaWhatsAppApprovati=function(){return window.inviaWhatsAppTutti()};
-function ensureWhatsAppMenu(){
- const area=$('areaAdmin'), navEl=area?.querySelector('.sidebar .nav');
- if(!navEl)return;
- let btn=navEl.querySelector('[data-page="whatsapp"]');
- if(!btn){
-   btn=document.createElement('button');
-   btn.type='button';
-   btn.dataset.page='whatsapp';
-   btn.innerHTML='<span aria-hidden="true">📲</span><span>WhatsApp</span>';
-   navEl.appendChild(btn);
- }
- let page=$('page-whatsapp');
- if(!page){
-   page=document.createElement('section');
-   page.id='page-whatsapp';
-   page.className='admin-page';
-   page.innerHTML='<div class="page-title"><div><h1>📲 WhatsApp</h1><p>Invia comunicazioni WhatsApp ai partecipanti del torneo.</p></div></div><div class="panel-box"><div class="panel-head"><h2>📲 Comunicazioni WhatsApp</h2><p>Scrivi il messaggio e apri WhatsApp per l\'invio.</p></div><div class="panel-content"><textarea id="whatsappMenuMessage" placeholder="Scrivi comunicazione..."></textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn primary" id="whatsappMenuAll">📲 Invia WhatsApp a tutti</button><button type="button" class="btn" id="whatsappMenuApproved">📲 Invia agli approvati</button></div></div></div>';
-   const content=area.querySelector('.content');
-   if(content)content.appendChild(page);else area.appendChild(page);
-   page.querySelector('#whatsappMenuAll').addEventListener('click',()=>{const old=$('messaggioWhatsApp');const m=$('whatsappMenuMessage');if(old&&m)old.value=m.value;return window.inviaWhatsAppTutti()});
-   page.querySelector('#whatsappMenuApproved').addEventListener('click',()=>{const old=$('messaggioWhatsApp');const m=$('whatsappMenuMessage');if(old&&m)old.value=m.value;return window.inviaWhatsAppApprovati()});
- }
-}
-function restoreWhatsAppUI(){const area=$('messaggioWhatsAppArea');if(!area)return;const page=document.getElementById('page-iscritti');if(page&&!page.contains(area))page.appendChild(area);area.classList.remove('hidden');area.removeAttribute('hidden');area.style.display='block';area.style.marginTop='18px';area.style.padding='18px';area.style.border='1px solid var(--border)';area.style.borderRadius='17px';area.style.background='var(--panel)';area.style.boxShadow='0 16px 45px rgba(0,0,0,.14)';if(!area.dataset.whatsappRestored){area.dataset.whatsappRestored='1';const title=document.createElement('h3');title.textContent='📲 Comunicazioni WhatsApp';title.style.margin='0 0 12px';title.style.fontSize='15px';area.prepend(title);const msg=$('messaggioWhatsApp');if(msg){msg.style.width='100%';msg.style.minHeight='100px';msg.style.marginBottom='10px';msg.style.display='block'}const btn=area.querySelector('button[onclick*="inviaWhatsAppTutti"]');if(btn){btn.classList.add('primary');btn.textContent='📲 Invia WhatsApp'}}}
-function nav(){const area=$('areaAdmin');if(!area)return;if(!area.__nav){area.__nav=true;area.addEventListener('click',e=>{const b=e.target.closest('.sidebar .nav button');if(!b)return;const raw=String(b.dataset.orgPage||b.dataset.internalPage||b.dataset.page||'').toLowerCase().trim(),p={configurazione:'config',config:'config',link:'links',links:'links'}[raw]||raw;if(p&&typeof window.openAdminPage==='function'){e.preventDefault();window.openAdminPage(p)}})}}
-function boot(){nav();compatibility();ensureWhatsAppMenu();restoreWhatsAppUI();setTimeout(compatibility,250);setTimeout(ensureWhatsAppMenu,250);setTimeout(restoreWhatsAppUI,250);setTimeout(compatibility,1000);setTimeout(ensureWhatsAppMenu,1000);setTimeout(ensureWhatsAppMenu,1000);setTimeout(restoreWhatsAppUI,1000);setInterval(compatibility,1500);setInterval(ensureWhatsAppMenu,1500);setInterval(restoreWhatsAppUI,1500)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+
+window.creaNuovoTorneo=async function(){
+  const st=window.adminState;
+  if(!st){
+    console.error('[ADMIN FLOW] adminState non disponibile');
+    return false;
+  }
+
+  const byId=id=>document.getElementById(id);
+  const nome=byId('adminNomeTorneo')?.value.trim()||'Nuovo Torneo';
+  const data=byId('adminDataTorneo')?.value||'';
+  const posti=Number(byId('adminPosti')?.value)||8;
+  const descrizione=byId('adminDescrizione')?.value.trim()||'';
+
+  if(!data){
+    alert('Inserisci la data del torneo.');
+    return false;
+  }
+
+  const old=Array.isArray(st.tornei)?st.tornei.slice():[];
+  const oldSelected=st.torneoSelezionato;
+  const id=Date.now();
+  const numeroGironi=Math.max(1,Math.ceil(posti/4));
+
+  const configurazione={
+    coppie:[],
+    partecipanti:[],
+    rules:{
+      locked:false,
+      tipoTorneo:'',
+      formatoTorneo:'',
+      numeroSquadre:posti,
+      numeroGironi,
+      squadrePerGirone:4,
+      formulaGironi:'',
+      formulaFinale:''
+    }
+  };
+
+  const torneo={
+    id,
+    nome,
+    data,
+    posti,
+    descrizione,
+    formula:'',
+    stato:'bozza',
+    iscritti:[],
+    coppie:[],
+    partecipanti:[],
+    configurazione
+  };
+
+  st.tornei=(Array.isArray(st.tornei)?st.tornei:[])
+    .filter(t=>!String(t.id).startsWith('temp_'));
+  st.tornei.push(torneo);
+  st.torneoSelezionato=id;
+  window.adminState=st;
+
+  try{
+    localStorage.setItem('padel_admin_state',JSON.stringify(st));
+  }catch(e){
+    console.warn('[ADMIN FLOW] localStorage non disponibile',e);
+  }
+
+  try{
+    if(!window.sb) throw new Error('Connessione Supabase non disponibile');
+
+    const {error}=await window.sb.from('tornei').insert({
+      id,
+      nome,
+      data,
+      data_torneo:data,
+      ora_inizio:null,
+      posti,
+      descrizione,
+      formula:null,
+      stato:'bozza',
+      pubblicato:false,
+      iscrizioni_chiuse:false,
+      configurazione
+    });
+
+    if(error) throw error;
+
+    if(typeof window.renderAdmin==='function') window.renderAdmin();
+
+    const url='Bove.html?torneo='+encodeURIComponent(JSON.stringify(torneo))+'&apriRegole=true';
+    window.open(url,'_blank');
+    return true;
+  }catch(e){
+    st.tornei=old;
+    st.torneoSelezionato=oldSelected;
+    window.adminState=st;
+    try{localStorage.setItem('padel_admin_state',JSON.stringify(st));}catch{}
+    if(typeof window.renderAdmin==='function') window.renderAdmin();
+    console.error('[ADMIN FLOW] Creazione torneo non riuscita',e);
+    alert('Creazione torneo non riuscita: '+(e?.message||e));
+    return false;
+  }
+};
+
+/* Legacy button compatibility: only redirect the old function name.
+   No event listeners, no polling, no DOM rewriting. */
+window.apriRegoleNuovoTorneo=window.creaNuovoTorneo;
 })();
