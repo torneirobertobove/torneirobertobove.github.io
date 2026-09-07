@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare compatible admin page
+      - name: Prepare admin page
         shell: python
         run: |
           from pathlib import Path
@@ -55,11 +55,7 @@ jobs:
         run: |
           node --check admin-function-fixes-v1.js
           node --check admin-delete-fix.js
-
-      - name: Keep working admin compatibility entry point
-        shell: bash
-        run: |
-          printf '%s\n' '/* Compatibility entry point for the real admin tournament wizard. */' 'window.adminMasterLoaded = true;' > admin-master.js
+          node --check admin-master.js
 
       - name: Verify payload
         shell: python
@@ -67,10 +63,13 @@ jobs:
           from pathlib import Path
           html=Path('admin.html').read_text(encoding='utf-8')
           delete_js=Path('admin-delete-fix.js').read_text(encoding='utf-8')
+          master=Path('admin-master.js').read_text(encoding='utf-8')
           assert 'admin-function-fixes-v1.js?v=24' in html
           assert 'admin-delete-fix.js?v=1' in html
           assert 'eliminaTorneo' in delete_js
           assert 'admin-master.js' in html
+          assert 'classList.remove("hidden")' in master
+          assert 'areaAdmin.style.display = "flex"' in master
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
