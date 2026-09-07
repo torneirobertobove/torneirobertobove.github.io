@@ -1,86 +1,99 @@
-/* ADMIN DESKTOP V15 - support organized admin pages and current tournament wizard */
+/* ADMIN DESKTOP V16 - restore real menu content + current tournament wizard */
 (function(){
 'use strict';
 function area(){return document.getElementById('areaAdmin');}
 function alias(p){p=String(p||'').toLowerCase();return p==='config'?'configurazione':(p==='links'?'link':p);}
-function targetFor(page){
- page=alias(page||'dashboard');
- return document.getElementById('org-page-'+page)||document.getElementById('page-'+page)||null;
+function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V16] '+name,e);return false;}}
+function targetFor(page){page=alias(page||'dashboard');return document.getElementById('page-'+page)||document.getElementById('org-page-'+page)||null;}
+function restoreRealPages(){
+ var a=area(),content=a&&a.querySelector('.content');if(!a||!content)return false;
+ var names=['dashboard','iscritti','coppie','tabellone','news','sponsor','configurazione','link'];
+ names.forEach(function(name){
+  var p=document.getElementById('page-'+name);if(!p)return;
+  if(p.parentElement!==content)content.appendChild(p);
+  p.classList.remove('org-installed-hidden');
+  p.style.display='';
+ });
+ a.querySelectorAll('.org-page').forEach(function(p){p.classList.remove('org-active');p.style.display='none';});
+ a.classList.remove('admin-organized');
+ return true;
 }
-function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V15] '+name,e);return false;}}
 function openPage(page){
- page=alias(page||'dashboard');
- var target=targetFor(page);if(!target)return false;
- document.querySelectorAll('#areaAdmin .admin-page,#areaAdmin .org-page').forEach(function(p){p.classList.remove('active','org-active');});
- if(target.classList.contains('org-page'))target.classList.add('org-active');else target.classList.add('active');
- document.querySelectorAll('#areaAdmin .sidebar [data-page]').forEach(function(b){b.classList.toggle('active',alias(b.dataset.page||'')===page);});
+ page=alias(page||'dashboard');restoreRealPages();
+ var target=document.getElementById('page-'+page);if(!target)return false;
+ document.querySelectorAll('#areaAdmin .admin-page').forEach(function(p){p.classList.remove('active');});
+ target.classList.add('active');
+ document.querySelectorAll('#areaAdmin .sidebar [data-page],#areaAdmin .sidebar [data-org-page]').forEach(function(b){b.classList.toggle('active',alias(b.dataset.page||b.dataset.orgPage||'')===page);});
  var title=document.getElementById('breadcrumbTitle');
  var titles={dashboard:'Tornei',iscritti:'Iscritti',coppie:'Accoppiamenti',tabellone:'Tabellone',news:'News',sponsor:'Sponsor',configurazione:'Configurazione',link:'Link pubblici'};
  if(title)title.textContent=titles[page]||'Gestione';
  try{history.replaceState(null,'','#'+page);}catch(e){}
+ if(page==='iscritti')call('caricaRichiesteIscrizione');
+ if(page==='dashboard')call('renderAdmin');
  return true;
 }
-function aggiorna(){var r=call('caricaTorneiSupabase');call('caricaRichiesteIscrizione');return r!==false;}
-function loadScript(src,flag,ready){
- if(window[flag])return;
- window[flag]=true;
- var s=document.createElement('script');s.src=src;s.onload=ready;s.onerror=function(e){console.error('[ADMIN V15] load failed',src,e);};document.head.appendChild(s);
-}
+function aggiorna(){var r=call('caricaTorneiSupabase');call('caricaRichiesteIscrizione');setTimeout(restoreRealPages,100);return r!==false;}
+function loadScript(src,flag,ready){if(window[flag])return;window[flag]=true;var s=document.createElement('script');s.src=src;s.onload=ready;s.onerror=function(e){console.error('[ADMIN V16] load failed',src,e);};document.head.appendChild(s);}
 function loadCurrentWizard(){
  if(window.__currentWizardLoaded)return;
  window.__currentWizardLoaded=true;
- var s=document.createElement('script');
- s.src='admin-'+'function-fixes-v1.js?v=18';
+ var s=document.createElement('script');s.src='admin-function-fixes-v1.js?v=18';
  s.onload=function(){window.__currentWizardReady=true;replaceLegacyWizard();loadRepair();};
- s.onerror=function(e){console.error('[ADMIN V15] current wizard load failed',e);loadRepair();};
+ s.onerror=function(e){console.error('[ADMIN V16] wizard load failed',e);loadRepair();};
  document.head.appendChild(s);
 }
-function loadRepair(){
- loadScript('admin-creation-repair-v1.js?v=3','__creationRepairLoadedV3',function(){window.__creationRepairReady=true;replaceLegacyWizard();});
-}
-function replaceLegacyWizard(){
- ['adminFlowV15','adminFlowV16','adminFlowV17'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
- return typeof window.apriWizardTorneo==='function';
-}
-function isCreateButton(b){
- var text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
- return text.indexOf('nuovo torneo')>=0||text.indexOf('crea torneo')>=0;
-}
-function openCreation(){
- if(typeof window.apriWizardTorneo!=='function'){
-  console.error('[ADMIN V15] apriWizardTorneo non disponibile');
-  return false;
- }
+function loadRepair(){loadScript('admin-creation-repair-v1.js?v=3','__creationRepairLoadedV3',function(){window.__creationRepairReady=true;replaceLegacyWizard();});}
+function replaceLegacyWizard(){['adminFlowV15','adminFlowV16','adminFlowV17'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});return typeof window.apriWizardTorneo==='function';}
+function isCreateButton(b){var text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();return text.indexOf('nuovo torneo')>=0||text.indexOf('crea torneo')>=0;}
+function openCreation(){if(typeof window.apriWizardTorneo!=='function'){console.error('[ADMIN V16] apriWizardTorneo non disponibile');return false;}try{replaceLegacyWizard();window.apriWizardTorneo();return true;}catch(e){console.error('[ADMIN V16] apertura wizard',e);return false;}}
+function exposeAdminStateCompat(){
  try{
-  replaceLegacyWizard();
-  window.apriWizardTorneo();
-  return true;
- }catch(e){console.error('[ADMIN V15] apertura wizard',e);return false;}
+  var raw=localStorage.getItem('padel_admin_state');
+  var saved=raw?JSON.parse(raw):{};
+  if(!window.adminState)window.adminState=saved||{};
+  if(!Array.isArray(window.adminState.tornei))window.adminState.tornei=Array.isArray(saved.tornei)?saved.tornei:[];
+  if(!Array.isArray(window.adminState.sponsor))window.adminState.sponsor=Array.isArray(saved.sponsor)?saved.sponsor:[];
+  if(!Array.isArray(window.adminState.news))window.adminState.news=Array.isArray(saved.news)?saved.news:[];
+  if(window.adminState.torneoSelezionato==null&&saved.torneoSelezionato!=null)window.adminState.torneoSelezionato=saved.torneoSelezionato;
+ }catch(e){console.warn('[ADMIN V16] state compatibility',e)}
+}
+function bind(){
+ var a=area();if(!a||a.dataset.adminNavBound==='v16')return;
+ a.dataset.adminNavBound='v16';
+ document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;if(!b||!a.contains(b))return;
+  if(isCreateButton(b)){e.preventDefault();e.stopImmediatePropagation();openCreation();return;}
+  if(b.id==='btnAggiorna'){e.preventDefault();e.stopImmediatePropagation();aggiorna();return;}
+  var page=b.getAttribute('data-page')||b.getAttribute('data-org-page');if(!page)return;
+  page=alias(page);
+  if(targetFor(page)){e.preventDefault();e.stopImmediatePropagation();openPage(page);}
+ },true);
 }
 function start(){
- var a=area();
- if(a&&a.dataset.adminNavBound!=='v15'){
-  a.dataset.adminNavBound='v15';
-  document.addEventListener('click',function(e){
-   var b=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;if(!b||!a.contains(b))return;
-   if(b.id==='btnAggiorna'){e.preventDefault();e.stopImmediatePropagation();aggiorna();return;}
-   var page=b.getAttribute('data-page');
-   if(isCreateButton(b)){
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    openCreation();
-    return;
-   }
-   if(!page)return;
-   var p=alias(page);
-   if(targetFor(p)){e.preventDefault();e.stopImmediatePropagation();openPage(p);}
-  },true);
- }
+ var a=area();if(!a)return;
+ exposeAdminStateCompat();
+ restoreRealPages();
+ bind();
  loadCurrentWizard();
  loadRepair();
  replaceLegacyWizard();
+ var h=alias(String(location.hash||'').replace(/^#/,'')||'dashboard');
+ openPage(document.getElementById('page-'+h)?h:'dashboard');
+ setTimeout(function(){restoreRealPages();openPage(h);},250);
+ setTimeout(function(){restoreRealPages();},1000);
+ setTimeout(function(){restoreRealPages();},2500);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 window.addEventListener('load',start);
 window.openAdminPage=openPage;window.goAdminPage=openPage;window.adminGoPage=openPage;window.aggiornaAdmin=aggiorna;
+window.nuovoTorneoAdmin=openCreation;
+window.gestisciTorneoAdmin=function(id){return call('selezionaTorneoAdmin',id);};
+window.eliminaTorneoAdmin=function(id){return call('eliminaTorneoAdmin',id);};
+window.pubblicaTorneoAdmin=function(){return call('pubblicaTorneo');};
+window.chiudiIscrizioniAdmin=function(){return call('chiudiIscrizioniTorneo');};
+window.apriBoveAdmin=function(id){return call('apriBoveConTorneo',id);};
+window.generaLinkAdmin=function(id){return id!=null?call('generaLinkPerId',id):call('generaLinkBove');};
+window.copiaLinkAdmin=function(){return call('copiaLinkBove');};
+window.creaNewsAdmin=function(){return call('creaNews');};
+window.salvaSponsorAdmin=function(){return call('salvaSponsor');};
 })();
