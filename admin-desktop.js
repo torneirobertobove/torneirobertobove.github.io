@@ -91,10 +91,15 @@
       if (typeof caricaSponsorAdmin === 'function') caricaSponsorAdmin();
     });
     const settings = button('⚙ Impostazioni');
+    const exit = button('↪ Esci', '', () => {
+      if (typeof logoutAdmin === 'function') {
+        logoutAdmin();
+      }
+    });
     const newTop = button('＋ Nuovo torneo', 'primary', () => {
       if (old.create) { old.create.open = true; lower.scrollIntoView({behavior:'smooth'}); }
     });
-    top.append(refresh, settings, newTop);
+    top.append(refresh, settings, newTop, exit);
     titleActions.appendChild(button('＋ Crea torneo', 'primary', () => {
       if (old.create) { old.create.open = true; lower.scrollIntoView({behavior:'smooth'}); }
     }));
@@ -125,6 +130,9 @@
         const actions=document.createElement('div'); actions.className='desktop-actions';
         actions.appendChild(button('Gestisci','',()=>{ if(typeof selezionaTorneoAdmin==='function') selezionaTorneoAdmin(t.id); setTimeout(()=>renderAll(),150); }));
         actions.appendChild(button('🔗','',()=>{ if(typeof generaLinkBove==='function'){ if(typeof selezionaTorneoAdmin==='function') selezionaTorneoAdmin(t.id); setTimeout(()=>generaLinkBove(),150); } }));
+        actions.appendChild(button('Elimina','',()=>{
+          if (typeof eliminaTorneo === 'function') eliminaTorneo(t.id);
+        }));
         row.append(info,actions); tournamentBody.appendChild(row);
       });
     }
