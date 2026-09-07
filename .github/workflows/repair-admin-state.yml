@@ -1,0 +1,48 @@
+name: Repair Admin State Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-functions.js'
+      - 'admin-desktop-v3.js'
+      - '.github/workflows/repair-admin-state.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !startsWith(github.event.head_commit.message, 'Fix: expose live admin state') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expose live admin state to window
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('admin-functions.js')
+          s=p.read_text(encoding='utf-8')
+          marker='// LIVE ADMIN STATE BRIDGE V1'
+          if marker not in s:
+              needle='let adminState = {'
+              i=s.find(needle)
+              if i<0: raise SystemExit('adminState declaration not found')
+              end=s.find('\n};',i)
+              if end<0: raise SystemExit('adminState end not found')
+              end += 3
+              bridge='''\n\n// LIVE ADMIN STATE BRIDGE V1\n// Keeps legacy lexical state and newer window-based admin modules synchronized.\nObject.defineProperty(window,"adminState",{configurable:true,get:()=>adminState,set:v=>{adminState=v;}});\n'''
+              s=s[:end]+bridge+s[end:]
+              p.write_text(s,encoding='utf-8')
+      - name: Verify bridge
+        run: |
+          grep -q 'LIVE ADMIN STATE BRIDGE V1' admin-functions.js
+          grep -q 'defineProperty(window,"adminState"' admin-functions.js
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin-functions.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix: expose live admin state'
+          git push origin main
