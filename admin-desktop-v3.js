@@ -56,6 +56,41 @@ function exposeAdminStateCompat(){
   if(window.adminState.torneoSelezionato==null&&saved.torneoSelezionato!=null)window.adminState.torneoSelezionato=saved.torneoSelezionato;
  }catch(e){console.warn('[ADMIN V17] state compatibility',e)}
 }
+function logoutAdmin(){
+ try{if(window.sb&&window.sb.auth)window.sb.auth.signOut();}catch(e){console.warn('[ADMIN V17] logout',e)}
+ try{localStorage.removeItem('padel_admin_state');}catch(e){}
+ var areaEl=area(),login=document.getElementById('boxLoginAdmin');
+ if(areaEl)areaEl.classList.add('hidden');
+ if(login)login.classList.remove('hidden');
+}
+function installDashboardActions(){
+ var a=area();if(!a)return;
+ var top=a.querySelector('.top-actions');
+ if(top&&!top.querySelector('[data-admin-exit]')){
+  var b=document.createElement('button');b.type='button';b.className='btn';b.textContent='↪ Esci';b.setAttribute('data-admin-exit','1');b.addEventListener('click',logoutAdmin);top.appendChild(b);
+ }
+ var list=document.getElementById('listaTorneiAdmin');
+ if(list&&!list.__deleteObserver){
+  var addDeletes=function(){
+   list.querySelectorAll('.tournament-row').forEach(function(row){
+    var actions=row.querySelector('.actions');if(!actions||actions.querySelector('[data-admin-delete]'))return;
+    var manage=actions.querySelector('button');if(!manage)return;
+    var raw=String(manage.getAttribute('onclick')||'');var m=raw.match(/selezionaTorneoAdmin\((.+)\)/);if(!m)return;
+    var id;
+    try{id=JSON.parse(m[1]);}catch(e){id=m[1];}
+    var del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Elimina';del.setAttribute('data-admin-delete','1');
+    del.addEventListener('click',function(){if(typeof window.eliminaTorneoAdmin==='function')window.eliminaTorneoAdmin(id);else if(typeof window.eliminaTorneo==='function')window.eliminaTorneo(id);});
+    actions.appendChild(del);
+   });
+  };
+  list.__deleteObserver=new MutationObserver(addDeletes);list.__deleteObserver.observe(list,{childList:true,subtree:true});addDeletes();
+ }
+ var tab=document.getElementById('page-tabellone');
+ if(tab&&!tab.querySelector('[data-admin-exit-tabellone]')){
+  var title=tab.querySelector('.page-title');
+  if(title){var b2=document.createElement('button');b2.type='button';b2.className='btn';b2.textContent='↩ Esci da tabellone';b2.setAttribute('data-admin-exit-tabellone','1');b2.addEventListener('click',function(){openPage('dashboard');});title.appendChild(b2);}
+ }
+}
 function bind(){
  var a=area();if(!a||a.dataset.adminNavBound==='v17')return;
  a.dataset.adminNavBound='v17';
@@ -75,16 +110,19 @@ function start(){
  bind();
  loadCurrentWizard();
  replaceLegacyWizard();
+ installDashboardActions();
  var h=alias(String(location.hash||'').replace(/^#/,'')||'dashboard');
  openPage(document.getElementById('page-'+h)?h:'dashboard');
- setTimeout(function(){restoreRealPages();openPage(h);},250);
- setTimeout(function(){restoreRealPages();},1000);
- setTimeout(function(){restoreRealPages();},2500);
+ installDashboardActions();
+ setTimeout(function(){restoreRealPages();openPage(h);installDashboardActions();},250);
+ setTimeout(function(){restoreRealPages();installDashboardActions();},1000);
+ setTimeout(function(){restoreRealPages();installDashboardActions();},2500);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 window.addEventListener('load',start);
 window.openAdminPage=openPage;window.goAdminPage=openPage;window.adminGoPage=openPage;window.aggiornaAdmin=aggiorna;
 window.nuovoTorneoAdmin=openCreation;
+window.logoutAdmin=logoutAdmin;
 window.gestisciTorneoAdmin=function(id){return call('selezionaTorneoAdmin',id);};
 window.eliminaTorneoAdmin=function(id){return call('eliminaTorneoAdmin',id);};
 window.pubblicaTorneoAdmin=function(){return call('pubblicaTorneo');};
