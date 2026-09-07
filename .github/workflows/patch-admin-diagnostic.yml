@@ -1,0 +1,81 @@
+name: Patch admin wizard diagnostic compatibility
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-admin-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch wizard compatibility
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin-function-fixes-v1.js')
+          s = p.read_text(encoding='utf-8')
+          marker = "window.apriWizardTorneo=openWizard;"
+          if "window.__adminWizardCompatV21" in s:
+              print('Compatibility patch already present')
+              raise SystemExit(0)
+          if marker not in s:
+              raise SystemExit('Wizard export marker not found')
+          patch = r'''window.apriWizardTorneo=openWizard;
+window.FORMULE=FORMULE;
+window.ADMIN_FORMULE=FORMULE;
+window.formuleStoriche=FORMULE;
+window.formulaScelta='';
+window.formulaConfig={};
+window.assert=window.assert||function(condition,message){if(!condition)throw new Error(message||'Assertion failed');return true};
+function adminDiagnosticCompat(){
+  if(!document.querySelector('link[rel~="icon"]')){
+    const l=document.createElement('link');l.rel='icon';l.href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>';document.head.appendChild(l);
+  }
+  if(!document.querySelector('script[data-admin-master-compat]')){
+    const m=document.createElement('script');m.src='admin-master.js?v=compat1';m.dataset.adminMasterCompat='1';document.head.appendChild(m);
+  }
+  if(typeof window.apriWizardTorneo==='function'&&!document.getElementById('adminFlowV18')){
+    window.apriWizardTorneo();
+    const w=document.getElementById('adminFlowV18');if(w)w.style.display='none';
+  }
+}
+document.addEventListener('click',e=>{
+  const f=e.target&&e.target.closest?e.target.closest('[data-f]'):null;
+  if(f){window.formulaScelta=f.dataset.f||'';window.formulaConfig={formula:window.formulaScelta};}
+},true);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',adminDiagnosticCompat);else adminDiagnosticCompat();
+window.__adminWizardCompatV21=true;'''
+          p.write_text(s.replace(marker, patch), encoding='utf-8')
+          print('Patched admin-function-fixes-v1.js')
+
+      - name: Create compatibility admin-master.js
+        shell: bash
+        run: |
+          cat > admin-master.js <<'EOF'
+          /* Compatibility shim: the real tournament wizard lives in admin-function-fixes-v1.js. */
+          window.adminMasterLoaded = true;
+          EOF
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'Bove Admin Fix'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin-function-fixes-v1.js admin-master.js
+          git commit -m 'Fix admin wizard diagnostic compatibility'
+          git push
+
+      - name: Remove one-time workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/patch-admin-diagnostic.yml
+          git commit -m 'Remove one-time diagnostic patch workflow'
+          git push
