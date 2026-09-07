@@ -1,0 +1,45 @@
+name: Restore admin runtime
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: ${{ !startsWith(github.event.head_commit.message, 'Fix: restore admin runtime scripts on live admin page') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore admin runtime scripts
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin.html')
+          s = p.read_text(encoding='utf-8')
+          marker = 'admin-functions.js?v=18'
+          if marker not in s:
+              injection = '''\n<script src="admin-functions.js?v=18"></script>\n<script src="admin-desktop-v3.js?v=15"></script>\n<script src="admin-function-fixes-v1.js?v=18"></script>\n<script src="admin-creation-repair-v1.js?v=3"></script>\n'''
+              if '</body>' not in s:
+                  raise SystemExit('admin.html non contiene </body>')
+              s = s.replace('</body>', injection + '</body>', 1)
+              p.write_text(s, encoding='utf-8')
+          else:
+              print('Runtime scripts already present')
+
+      - name: Commit runtime restoration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Fix: restore admin runtime scripts on live admin page"
+          git push
