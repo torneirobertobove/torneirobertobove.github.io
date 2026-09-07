@@ -1,12 +1,10 @@
 name: Admin Wizard Fix Deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -24,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare and validate REAL admin wizard V24.2
+      - name: Validate REAL admin wizard V24.2
         shell: python
         run: |
           from pathlib import Path
@@ -43,39 +41,14 @@ jobs:
           if missing:
               raise SystemExit('V24 validation failed: ' + ', '.join(missing))
 
-          html = re.sub(r"admin-function-fixes-v1\.js\?v=[^\"']+", 'admin-function-fixes-v1.js?v=24', html)
-          if 'admin-function-fixes-v1.js?v=24' not in html:
+          if not re.search(r'admin-function-fixes-v1\\.js\\?v=24', html):
               raise SystemExit('admin.html does not reference V24 wizard')
 
-          if 'data-admin-favicon' not in html:
-              html = html.replace(
-                  '</head>',
-                  '<link rel="icon" data-admin-favicon href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>">\n</head>',
-                  1
-              )
-          Path('admin.html').write_text(html, encoding='utf-8')
-
-      - name: Fix delete action in cloned tournament archive
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('admin-random-pairs.js')
-          s = p.read_text(encoding='utf-8')
-          old = "if(cloned){cloned.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});const cy=cloned.querySelector('#cleanYear')"
-          new = "if(cloned){cloned.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});cloned.querySelectorAll('[data-clean-delete]').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const fn=window.eliminaTorneo;if(typeof fn!=='function'){alert('Funzione eliminazione torneo non disponibile.');return;}const ok=await fn(b.getAttribute('data-clean-delete'));if(ok){closeArchive();setTimeout(()=>openArchive(),150);}});const cy=cloned.querySelector('#cleanYear')"
-          if old not in s:
-              raise SystemExit('delete-handler target not found; admin-random-pairs.js left unchanged')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
-          print('archive delete handler patched')
+          print('REAL V24 PAYLOAD VERIFIED')
 
       - name: Validate JavaScript syntax
         shell: bash
         run: node --check admin-function-fixes-v1.js
-
-      - name: Ensure admin-master.js
-        shell: bash
-        run: |
-          printf '%s\n' '/* Compatibility entry point for the real admin tournament wizard. */' 'window.adminMasterLoaded = true;' > admin-master.js
 
       - name: Verify deployment payload
         shell: python
@@ -88,7 +61,8 @@ jobs:
           assert 'afNext' in js
           assert 'formulaScelta' in js and 'formulaConfig' in js
           assert "stato:'bozza'" in js and 'pubblicato:false' in js
-          print('REAL V24 PAYLOAD VERIFIED')
+          assert 'admin-master.js' in html
+          print('DEPLOYMENT PAYLOAD VERIFIED')
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -101,15 +75,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Commit archive fix and restore workflow
-        shell: bash
-        run: |
-          git checkout HEAD^ -- .github/workflows/admin-wizard-fix-deploy.yml
-          if [ -f .github/workflows/fix-archive-delete.yml ]; then git rm .github/workflows/fix-archive-delete.yml; fi
-          if [ -f .github/workflows/sponsor-separate.yml ]; then git checkout HEAD^ -- .github/workflows/sponsor-separate.yml; fi
-          git config user.name 'Bove Repair'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add admin-random-pairs.js .github/workflows/admin-wizard-fix-deploy.yml .github/workflows/sponsor-separate.yml
-          git diff --cached --quiet || git commit -m 'Fix delete action in archive modal'
-          git push
