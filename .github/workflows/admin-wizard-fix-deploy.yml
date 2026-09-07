@@ -6,56 +6,76 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
 concurrency:
   group: admin-wizard-fix
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare and validate real admin wizard V24.1
+      - name: Validate and prepare REAL V24 wizard
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          js = Path('admin-function-fixes-v1.js')
-          s = js.read_text(encoding='utf-8')
-          h = Path('admin.html')
-          hs = h.read_text(encoding='utf-8')
+          js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
+          html = Path('admin.html').read_text(encoding='utf-8')
 
-          if 'ADMIN FLOW FIX V24' not in s:
-              raise SystemExit('Expected ADMIN FLOW FIX V24 is missing')
           required = [
+              'ADMIN FLOW FIX V24',
               'italiana','gironiFinale','eliminazione','svizzero','americano','mexicano','king','short','manuale',
-              'id=\'afNext\'','formulaScelta','formulaConfig',"stato:'bozza'",'pubblicato:false','window.assert'
+              'id=\'afNext\'', 'formulaScelta', 'formulaConfig',
+              "stato:'bozza'", 'pubblicato:false', 'window.assert'
           ]
-          missing = [x for x in required if x not in s]
+          missing = [x for x in required if x not in js]
           if missing:
-              raise SystemExit('Admin wizard validation failed: ' + ', '.join(missing))
+              raise SystemExit('V24 validation failed: ' + ', '.join(missing))
 
-          hs = re.sub(r'admin-function-fixes-v1\\.js\\?v=[^"\\\']+', 'admin-function-fixes-v1.js?v=24', hs)
-          if 'data-admin-favicon' not in hs:
-              hs = hs.replace('</head>', '<link rel="icon" data-admin-favicon href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>">\n</head>', 1)
-          h.write_text(hs, encoding='utf-8')
+          html = re.sub(r'admin-function-fixes-v1\.js\?v=[^"\']+', 'admin-function-fixes-v1.js?v=24', html)
+          if 'admin-function-fixes-v1.js?v=24' not in html:
+              raise SystemExit('admin.html does not reference V24 wizard')
+
+          if 'data-admin-favicon' not in html:
+              html = html.replace(
+                  '</head>',
+                  '<link rel="icon" data-admin-favicon href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>">\n</head>',
+                  1
+              )
+          Path('admin.html').write_text(html, encoding='utf-8')
+
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: node --check admin-function-fixes-v1.js
 
       - name: Ensure admin-master.js
         shell: bash
         run: |
-          cat > admin-master.js <<'EOF'
-          /* Compatibility entry point for the real admin tournament wizard. */
-          window.adminMasterLoaded = true;
-          EOF
+          printf '%s\n' '/* Compatibility entry point for the real admin tournament wizard. */' 'window.adminMasterLoaded = true;' > admin-master.js
+
+      - name: Verify deployment payload
+        shell: python
+        run: |
+          from pathlib import Path
+          html = Path('admin.html').read_text(encoding='utf-8')
+          js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
+          assert 'admin-function-fixes-v1.js?v=24' in html
+          assert 'ADMIN FLOW FIX V24' in js
+          assert 'id=\'afNext\'' in js
+          assert 'formulaScelta' in js and 'formulaConfig' in js
+          assert "stato:'bozza'" in js and 'pubblicato:false' in js
+          print('REAL V24 PAYLOAD VERIFIED')
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
