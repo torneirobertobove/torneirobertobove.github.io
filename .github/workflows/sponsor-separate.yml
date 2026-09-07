@@ -118,6 +118,19 @@ ${String(x.n || "")}
               p.write_text(s, encoding='utf-8')
               print('renderClass restored')
 
+      - name: Fix delete action in cloned tournament archive
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('admin-random-pairs.js')
+          s = p.read_text(encoding='utf-8')
+          old = "if(cloned){cloned.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});const cy=cloned.querySelector('#cleanYear')"
+          new = "if(cloned){cloned.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});cloned.querySelectorAll('[data-clean-delete]').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const fn=window.eliminaTorneo;if(typeof fn!=='function'){alert('Funzione eliminazione torneo non disponibile.');return;}const ok=await fn(b.getAttribute('data-clean-delete'));if(ok){closeArchive();setTimeout(()=>openArchive(),150);}});const cy=cloned.querySelector('#cleanYear')"
+          if old not in s:
+              raise SystemExit('delete-handler target not found; admin-random-pairs.js left unchanged')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          print('archive delete handler patched')
+
       - name: Validate Bove.html
         shell: bash
         run: |
@@ -133,13 +146,14 @@ ${String(x.n || "")}
           PY
           node --check /tmp/bove-js.js
 
-      - name: Commit Bove and cleanup
+      - name: Commit Bove, archive fix and cleanup
         shell: bash
         run: |
           git config user.name 'Bove Repair'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Bove.html
+          git add Bove.html admin-random-pairs.js
           git rm .github/workflows/sponsor-separate.yml
+          if [ -f .github/workflows/fix-archive-delete.yml ]; then git rm .github/workflows/fix-archive-delete.yml; fi
           if git ls-files --error-unmatch SPONSOR_SEPARATE_TRIGGER.txt >/dev/null 2>&1; then git rm SPONSOR_SEPARATE_TRIGGER.txt; fi
-          git commit -m 'Restore classification renderer without changing other functions'
+          git diff --cached --quiet || git commit -m 'Fix delete action in archive modal'
           git push
