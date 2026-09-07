@@ -1,123 +1,15 @@
 name: Clean Admin Desktop Override
 
+# DISABLED: this legacy self-mutating workflow rewrote the live admin shell
+# and downgraded the runtime scripts. The native admin files are authoritative.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'admin.html'
-      - 'admin-function-fixes-v1.js'
-      - 'Bove.html'
-      - '.github/workflows/apply-admin-desktop-layout.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  cleanup:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Remove obsolete admin runtime injectors
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-          p = Path('admin.html')
-          s = p.read_text(encoding='utf-8')
-          original = s
-          s = re.sub(r'(?:\\n)?<!-- ADMIN_DESKTOP_APPROVED_V2 -->(?:\\n)?<script>.*?</script>(?:\\n)?', '', s, flags=re.S)
-          s = s.replace('\\n<!-- ADMIN_DESKTOP_APPROVED_V2 -->\\n', '')
-          s = re.sub(r'\s*<script\s+src=["\']admin-final-click-fix-v1\.js(?:\?v=[^"\']+)?["\']\s*></script>', '', s, flags=re.I)
-          marker = 'FINAL_ADMIN_RUNTIME_FIX'
-          if marker in s:
-              pos = s.find(marker)
-              start = s.rfind('<!--', 0, pos)
-              if start < 0:
-                  start = pos
-              end = s.find('</script>', pos)
-              if end >= 0:
-                  end += len('</script>')
-                  s = s[:start] + '\n' + s[end:]
-              else:
-                  s = s[:start]
-          direct = ('<script src="admin-function-fixes-v1.js?v=12"></script>\n'
-                    '<script src="admin-organization-v1.js?v=12"></script>\n'
-                    '<script src="admin-desktop-v3.js?v=4"></script>\n')
-          if 'admin-function-fixes-v1.js?v=12' not in s:
-              marker = '<script src="admin-random-pairs.js?v=2"></script>'
-              if marker in s:
-                  s = s.replace(marker, direct + marker, 1)
-              else:
-                  s = s.replace('</body>', direct + '</body>', 1)
-          link = '<link rel="stylesheet" href="admin-desktop.css?v=4">'
-          first = s.find(link)
-          if first >= 0:
-              s = s[:first + len(link)] + s[first + len(link):].replace(link, '')
-          s = s.replace('<!-- ADMIN-DESKTOP-V2 -->', '')
-          s = s.replace('\\n<!-- ADMIN-DESKTOP-V2 -->\\n', '')
-          if s != original:
-              p.write_text(s, encoding='utf-8')
-
-      - name: Restore neutral new-tournament creation state
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('admin-function-fixes-v1.js')
-          s = p.read_text(encoding='utf-8')
-          old = "window.creaNuovoTorneo=async function(){"
-          start = s.find(old)
-          if start < 0:
-              raise SystemExit('creaNuovoTorneo not found')
-          end = s.find('\nasync function createPair()', start)
-          if end < 0:
-              raise SystemExit('createPair boundary not found')
-          fn = '''window.creaNuovoTorneo=async function(){const st=window.adminState;if(!st)return false;const nome=$(\'adminNomeTorneo\')?.value.trim()||\'Nuovo Torneo\',data=$(\'adminDataTorneo\')?.value||\'\',posti=Number($(\'adminPosti\')?.value)||8,descrizione=$(\'adminDescrizione\')?.value.trim()||\'\';if(!data){alert(\'Inserisci la data del torneo.\');return false}const old=Array.isArray(st.tornei)?st.tornei.slice():[],sel=st.torneoSelezionato,id=Date.now(),numeroGironi=Math.ceil(posti/4);const config={coppie:[],partecipanti:[],rules:{locked:false,tipoTorneo:\'\',formatoTorneo:\'\',numeroSquadre:posti,numeroGironi,squadrePerGirone:4,formulaGironi:\'\',formulaFinale:\'\'}};const t={id,nome,data,posti,descrizione,formula:\'\',stato:\'bozza\',iscritti:[],coppie:[],partecipanti:[],configurazione:config};st.tornei=st.tornei.filter(t=>!String(t.id).startsWith(\'temp_\'));st.tornei.push(t);st.torneoSelezionato=id;window.adminState=st;try{localStorage.setItem(\'padel_admin_state\',JSON.stringify(st))}catch{}try{const {error}=await window.sb.from(\'tornei\').insert({id,nome,data,data_torneo:data,ora_inizio:null,posti,descrizione,formula:null,stato:\'bozza\',pubblicato:false,iscrizioni_chiuse:false,configurazione:config});if(error)throw error;window.renderAdmin?.();window.__adminDesktopRender?.();window.open(\'Bove.html?torneo=\'+encodeURIComponent(JSON.stringify(t))+\'&apriRegole=true\',\'_blank\');return true}catch(e){st.tornei=old;st.torneoSelezionato=sel;window.adminState=st;try{localStorage.setItem(\'padel_admin_state\',JSON.stringify(st))}catch{};window.renderAdmin?.();report(\'Creazione torneo non riuscita\',e);return false}};'''
-          s = s[:start] + fn + s[end:]
-          p.write_text(s, encoding='utf-8')
-
-      - name: Restore the real Bove formula handoff
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('Bove.html')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('rulesAdmin.formatoTorneo ||\n                            "gironiFinale"', 'rulesAdmin.formatoTorneo ??\n                            "gironiFinale"', 1)
-          s = s.replace('rulesAdmin.tipoTorneo ||\n                            "gironiFinale"', 'rulesAdmin.tipoTorneo ??\n                            "gironiFinale"', 1)
-          tag = '<script src="bove-admin-flow-fix.js?v=1"></script>'
-          if tag not in s:
-              s = s.replace('</body>', tag + '\n</body>', 1)
-          p.write_text(s, encoding='utf-8')
-
-      - name: Verify admin and Bove flow
-        shell: python
-        run: |
-          from pathlib import Path
-          h = Path('admin.html').read_text(encoding='utf-8')
-          j = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
-          b = Path('Bove.html').read_text(encoding='utf-8')
-          assert 'ADMIN_DESKTOP_APPROVED_V2' not in h
-          assert 'admin-final-click-fix-v1.js' not in h
-          assert 'FINAL_ADMIN_RUNTIME_FIX' not in h
-          assert h.count('<link rel="stylesheet" href="admin-desktop.css?v=4">') == 1
-          assert 'formula:\'gironiFinale\'' not in j
-          assert 'formula:null' in j
-          assert 'ora_inizio:null' in j
-          assert 'Bove.html?torneo='+encodeURIComponent(JSON.stringify(t))+'&apriRegole=true' in j
-          assert 'rulesAdmin.tipoTorneo ||' not in b
-          assert 'rulesAdmin.formatoTorneo ||' not in b
-          assert 'bove-admin-flow-fix.js?v=1' in b
-          print('Admin + real Bove tournament flow verified')
-
-      - name: Commit cleanup
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add admin.html admin-function-fixes-v1.js Bove.html
-          git diff --cached --quiet && exit 0
-          git commit -m 'fix: restore real tournament formula flow'
-          git push
+      - run: echo "Legacy Admin Desktop Override disabled."
