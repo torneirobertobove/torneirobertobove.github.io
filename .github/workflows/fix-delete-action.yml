@@ -1,0 +1,44 @@
+name: Fix delete action
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-delete-action.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch delete handler
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('admin-random-pairs.js')
+          s=p.read_text()
+          old='''<button type="button" class="btn" data-clean-delete="'+esc(idOf(t))+'" onclick="event.stopPropagation();window.eliminaTorneo && window.eliminaTorneo('+Number(t.id)+')">Elimina</button>'''
+          new='''<button type="button" class="btn" data-clean-delete="'+esc(idOf(t))+'">Elimina</button>'''
+          if old not in s:
+              raise SystemExit('delete button marker not found')
+          s=s.replace(old,new,1)
+          marker="tree.innerHTML=out;tree.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});}"
+          replacement="""tree.innerHTML=out;tree.querySelectorAll('[data-clean-select]').forEach(b=>b.onclick=()=>{selectTournament(b.getAttribute('data-clean-select'));closeArchive();});tree.querySelectorAll('[data-clean-delete]').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const fn=window.eliminaTorneo;if(typeof fn!=='function'){alert('Funzione eliminazione torneo non disponibile.');return;}const ok=await fn(b.getAttribute('data-clean-delete'));if(ok&&typeof window.openArchivioTornei==='function')setTimeout(()=>window.openArchivioTornei(),150);});}"""
+          if marker not in s:
+              raise SystemExit('renderTree marker not found')
+          s=s.replace(marker,replacement,1)
+          p.write_text(s)
+          PY
+          node --check admin-random-pairs.js
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add admin-random-pairs.js
+          git commit -m "Fix Elimina tournament action" || exit 0
+          git push
+      - name: Remove temporary workflow
+        run: |
+          rm -f .github/workflows/fix-delete-action.yml
+          git add -u .github/workflows/fix-delete-action.yml
+          git commit -m "Remove temporary delete fix workflow" || exit 0
+          git push
