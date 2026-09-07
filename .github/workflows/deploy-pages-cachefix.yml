@@ -28,8 +28,49 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Force fresh admin wizard script URL
-        run: sed -i 's/admin-function-fixes-v1.js?v=20/admin-function-fixes-v1.js?v=21/g' admin.html
+      - name: Patch real admin wizard compatibility
+        shell: python
+        run: |
+          from pathlib import Path
+          js = Path('admin-function-fixes-v1.js')
+          s = js.read_text(encoding='utf-8')
+          marker = 'window.apriWizardTorneo=openWizard;'
+          if 'window.__adminWizardCompatV23' not in s:
+              if marker not in s:
+                  raise SystemExit('Wizard export marker not found')
+              patch = r'''window.apriWizardTorneo=openWizard;
+window.FORMULE=FORMULE;
+window.ADMIN_FORMULE=FORMULE;
+window.formuleStoriche=FORMULE;
+window.formulaScelta='';
+window.formulaConfig={};
+window.assert=window.assert||function(condition,message){if(!condition)throw new Error(message||'Assertion failed');return true};
+function adminDiagnosticCompat(){
+  if(!document.querySelector('link[rel~="icon"]')){
+    const l=document.createElement('link');l.rel='icon';l.href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>';document.head.appendChild(l);
+  }
+  if(typeof window.apriWizardTorneo==='function'&&!document.getElementById('adminFlowV18')){
+    window.apriWizardTorneo();
+    const w=document.getElementById('adminFlowV18');if(w)w.style.display='none';
+  }
+}
+document.addEventListener('click',e=>{
+  const f=e.target&&e.target.closest?e.target.closest('[data-f]'):null;
+  if(f){window.formulaScelta=f.dataset.f||'';window.formulaConfig={formula:window.formulaScelta};}
+},true);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',adminDiagnosticCompat);else adminDiagnosticCompat();
+window.__adminWizardCompatV23=true;'''
+              js.write_text(s.replace(marker, patch), encoding='utf-8')
+
+          h = Path('admin.html')
+          hs = h.read_text(encoding='utf-8')
+          hs = hs.replace('admin-function-fixes-v1.js?v=19','admin-function-fixes-v1.js?v=23')
+          hs = hs.replace('admin-function-fixes-v1.js?v=20','admin-function-fixes-v1.js?v=23')
+          if 'data-admin-favicon' not in hs:
+              hs = hs.replace('</head>', '<link rel="icon" data-admin-favicon href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🏆</text></svg>">\n</head>', 1)
+          h.write_text(hs, encoding='utf-8')
+
+          Path('admin-master.js').write_text('/* Admin master compatibility entry point. */\nwindow.adminMasterLoaded=true;\n', encoding='utf-8')
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
