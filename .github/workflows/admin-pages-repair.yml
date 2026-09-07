@@ -1,0 +1,85 @@
+name: Admin Pages Repair Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: admin-pages-repair
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare compatible admin page
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          html = Path('admin.html').read_text(encoding='utf-8')
+          js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
+
+          required = [
+              'ADMIN FLOW FIX V24',
+              'italiana','gironiFinale','eliminazione','svizzero','americano','mexicano','king','short','manuale',
+              'afNext','formulaScelta','formulaConfig',
+              "stato:'bozza'",'pubblicato:false','window.assert'
+          ]
+          missing=[x for x in required if x not in js]
+          if missing:
+              raise SystemExit('V24 validation failed: '+', '.join(missing))
+
+          html=re.sub(r'admin-function-fixes-v1\.js\?v=[^\"\']+','admin-function-fixes-v1.js?v=24',html)
+
+          if 'admin-delete-fix.js?v=1' not in html:
+              html=html.replace('</body>','<script src="admin-delete-fix.js?v=1"></script>\n</body>',1)
+
+          Path('admin.html').write_text(html,encoding='utf-8')
+
+      - name: Validate JavaScript
+        shell: bash
+        run: |
+          node --check admin-function-fixes-v1.js
+          node --check admin-delete-fix.js
+
+      - name: Keep working admin compatibility entry point
+        shell: bash
+        run: |
+          printf '%s\n' '/* Compatibility entry point for the real admin tournament wizard. */' 'window.adminMasterLoaded = true;' > admin-master.js
+
+      - name: Verify payload
+        shell: python
+        run: |
+          from pathlib import Path
+          html=Path('admin.html').read_text(encoding='utf-8')
+          delete_js=Path('admin-delete-fix.js').read_text(encoding='utf-8')
+          assert 'admin-function-fixes-v1.js?v=24' in html
+          assert 'admin-delete-fix.js?v=1' in html
+          assert 'eliminaTorneo' in delete_js
+          assert 'admin-master.js' in html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
