@@ -1,4 +1,4 @@
-/* TORNEO FLOW PUBLIC FIX V1 */
+/* TORNEO FLOW PUBLIC FIX V2 */
 (function(){
 'use strict';
 const URL_SUPABASE='https://iybjvtmfaupgthqqsngd.supabase.co';
@@ -10,7 +10,7 @@ async function run(){
  const box=document.getElementById('lista-tornei'); if(!box)return;
  const {data,error}=await sb.from('tornei').select('id,nome,data,stato,pubblicato,iscrizioni_chiuse,formula,configurazione').order('data',{ascending:true});
  if(error){console.error('[PUBLIC FLOW] ',error);return;}
- const visible=(data||[]).filter(t=>t.pubblicato===true);
+ const visible=(data||[]).filter(t=>t.pubblicato===true || t.stato==='attivo');
  if(!visible.length){box.innerHTML='<div class="torneo-item">Nessun torneo disponibile</div>';return;}
  box.innerHTML=visible.map(t=>{
    const closed=t.iscrizioni_chiuse===true || t.stato==='chiuso';
