@@ -1,0 +1,54 @@
+name: One-time admin logout markup fix v3
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-admin-logout-fix-v3.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Normalize injected script
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text(encoding='utf-8')
+          bad='''\\n<!-- ADMIN_LOGOUT_VISIBILITY_FIX_V1 -->\\n<script>\\n(function(){\\n  function syncLoginBox(){\\n    const loginBox=document.getElementById('boxLoginAdmin');\\n    const areaAdmin=document.getElementById('areaAdmin');\\n    if(!loginBox || !areaAdmin) return;\\n    if(areaAdmin.classList.contains('hidden') || areaAdmin.style.display==='none'){\\n      loginBox.classList.remove('hidden');\\n      loginBox.style.display='flex';\\n    }\\n  }\\n  function start(){\\n    const areaAdmin=document.getElementById('areaAdmin');\\n    if(!areaAdmin) return;\\n    new MutationObserver(syncLoginBox).observe(areaAdmin,{attributes:true,attributeFilter:['class','style']});\\n    syncLoginBox();\\n  }\\n  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);\\n  else start();\\n})();\\n</script>\\n'''
+          good='''
+<!-- ADMIN_LOGOUT_VISIBILITY_FIX_V1 -->
+<script>
+(function(){
+  function syncLoginBox(){
+    const loginBox=document.getElementById('boxLoginAdmin');
+    const areaAdmin=document.getElementById('areaAdmin');
+    if(!loginBox || !areaAdmin) return;
+    if(areaAdmin.classList.contains('hidden') || areaAdmin.style.display==='none'){
+      loginBox.classList.remove('hidden');
+      loginBox.style.display='flex';
+    }
+  }
+  function start(){
+    const areaAdmin=document.getElementById('areaAdmin');
+    if(!areaAdmin) return;
+    new MutationObserver(syncLoginBox).observe(areaAdmin,{attributes:true,attributeFilter:['class','style']});
+    syncLoginBox();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
+</script>
+'''
+          if bad not in s:
+              raise SystemExit('Expected literal-\\n patch not found; refusing unrelated changes')
+          p.write_text(s.replace(bad,good,1),encoding='utf-8')
+      - name: Commit and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git rm .github/workflows/one-time-admin-logout-fix-v3.yml
+          git commit -m "fix: normalize admin logout patch markup"
+          git push
