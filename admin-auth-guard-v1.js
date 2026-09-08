@@ -1,4 +1,4 @@
-/* ADMIN AUTH GUARD V3 */
+/* ADMIN AUTH GUARD V4 */
 (function(){
   'use strict';
   const SUPABASE_URL='https://iybjvtmfaupgthqqsngd.supabase.co';
@@ -16,19 +16,15 @@
   function hideAdmin(){
     const area=document.getElementById('areaAdmin');
     if(area){ area.classList.add('hidden'); area.style.display='none'; }
-    const login=document.getElementById('boxLoginAdmin');
-    if(login){ login.classList.add('hidden'); login.style.display='none'; }
   }
 
   function showAdmin(){
     const area=document.getElementById('areaAdmin');
     if(area){ area.classList.remove('hidden'); area.style.display='flex'; }
-    const login=document.getElementById('boxLoginAdmin');
-    if(login){ login.classList.add('hidden'); login.style.display='none'; }
   }
 
   function goOut(){
-    window.location.replace('Bove.html');
+    window.location.replace('index.html');
   }
 
   function installLogoutOverride(){
