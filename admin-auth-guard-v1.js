@@ -36,9 +36,6 @@
 
   function installLogoutOverride(){
     window.logoutAdmin=performLogout;
-
-    /* Intercept the real Esci button before any legacy handler can show
-       an intermediate "sessione terminata" screen. */
     document.addEventListener('click',function(e){
       const target=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;
       if(!target)return;
@@ -51,6 +48,14 @@
         performLogout();
       }
     },true);
+  }
+
+  function loadTournamentManagement(){
+    if(document.querySelector('script[data-admin-tournament-management]'))return;
+    const s=document.createElement('script');
+    s.src='admin-torneo-management-v1.js?v=1';
+    s.dataset.adminTournamentManagement='1';
+    document.head.appendChild(s);
   }
 
   async function guard(){
@@ -69,6 +74,7 @@
         return;
       }
       showAdmin();
+      loadTournamentManagement();
     }catch(err){
       console.error('[Admin Auth Guard] errore:',err);
       try{await client.auth.signOut();}catch(_){ }
