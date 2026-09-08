@@ -37,14 +37,14 @@ function loadScript(src,flag,ready){if(window[flag])return;window[flag]=true;var
 function loadCurrentWizard(){
  if(window.__currentWizardLoaded)return;
  window.__currentWizardLoaded=true;
- var s=document.createElement('script');s.src='admin-function-fixes-v1.js?v=24';
+ var s=document.createElement('script');s.src='admin-function-fixes-v1.js?v=19';
  s.onload=function(){window.__currentWizardReady=true;replaceLegacyWizard();};
- s.onerror=function(e){console.error('[ADMIN V24] wizard load failed',e);};
+ s.onerror=function(e){console.error('[ADMIN V17] wizard load failed',e);};
  document.head.appendChild(s);
 }
 function replaceLegacyWizard(){['adminFlowV15','adminFlowV16','adminFlowV17'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});return typeof window.apriWizardTorneo==='function';}
 function isCreateButton(b){var text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();return text.indexOf('nuovo torneo')>=0||text.indexOf('crea torneo')>=0;}
-function openCreation(){if(typeof window.apriWizardTorneo!=='function'){console.error('[ADMIN V24] apriWizardTorneo non disponibile');return false;}try{replaceLegacyWizard();window.apriWizardTorneo();return true}catch(e){console.error('[ADMIN V24] apertura wizard',e);return false;}}
+function openCreation(){if(typeof window.apriWizardTorneo!=='function'){console.error('[ADMIN V17] apriWizardTorneo non disponibile');return false;}try{replaceLegacyWizard();window.apriWizardTorneo();return true}catch(e){console.error('[ADMIN V17] apertura wizard',e);return false;}}
 function exposeAdminStateCompat(){
  try{
   var raw=localStorage.getItem('padel_admin_state');
