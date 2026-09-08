@@ -1,94 +1,13 @@
-/* ADMIN AUTH GUARD V5 */
+/* ADMIN AUTH GUARD V6 - clean layout */
 (function(){
-  'use strict';
-  const SUPABASE_URL='https://iybjvtmfaupgthqqsngd.supabase.co';
-  const SUPABASE_KEY='sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
-
-  function getClient(){
-    let client=window.supabaseClient||window.sb||window._supabase;
-    if(!client && window.supabase && typeof window.supabase.createClient==='function'){
-      client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-      window.supabaseClient=client;
-    }
-    return client;
-  }
-
-  function hideAdmin(){
-    const area=document.getElementById('areaAdmin');
-    if(area){ area.classList.add('hidden'); area.style.display='none'; }
-  }
-
-  function showAdmin(){
-    const area=document.getElementById('areaAdmin');
-    if(area){ area.classList.remove('hidden'); area.style.display='flex'; }
-  }
-
-  function goOut(){
-    window.location.replace('index.html');
-  }
-
-  async function performLogout(){
-    hideAdmin();
-    const client=getClient();
-    try{ if(client && client.auth) await client.auth.signOut(); }catch(err){ console.error('[Admin Auth Guard] logout:',err); }
-    goOut();
-  }
-
-  function installLogoutOverride(){
-    window.logoutAdmin=performLogout;
-    document.addEventListener('click',function(e){
-      const target=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;
-      if(!target)return;
-      const text=String(target.textContent||target.innerText||'').replace(/\s+/g,' ').trim().toLowerCase();
-      const id=String(target.id||'').toLowerCase();
-      const action=String(target.getAttribute('onclick')||'').toLowerCase();
-      if(text==='esci'||text==='logout'||text.indexOf('esci ')===0||text.endsWith(' esci')||id.indexOf('logout')>=0||action.indexOf('logout')>=0){
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        performLogout();
-      }
-    },true);
-  }
-
-  function loadTournamentManagement(){
-    if(document.querySelector('script[data-admin-tournament-management]'))return;
-    const s=document.createElement('script');
-    s.src='admin-torneo-management-v1.js?v=1';
-    s.dataset.adminTournamentManagement='1';
-    document.head.appendChild(s);
-  }
-
-  async function guard(){
-    hideAdmin();
-    const client=getClient();
-    if(!client||!client.auth){ goOut(); return; }
-    try{
-      const sr=await client.auth.getSession();
-      const session=sr&&sr.data?sr.data.session:null;
-      if(!session){ goOut(); return; }
-      const pr=await client.from('profili').select('ruolo').eq('user_id',session.user.id).maybeSingle();
-      const role=pr&&pr.data?String(pr.data.ruolo||'').trim().toLowerCase():'';
-      if(role!=='admin'){
-        try{await client.auth.signOut();}catch(_){ }
-        goOut();
-        return;
-      }
-      showAdmin();
-      loadTournamentManagement();
-    }catch(err){
-      console.error('[Admin Auth Guard] errore:',err);
-      try{await client.auth.signOut();}catch(_){ }
-      goOut();
-    }
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){
-      installLogoutOverride();
-      guard();
-    },{once:true});
-  }else{
-    installLogoutOverride();
-    guard();
-  }
+'use strict';
+const SUPABASE_URL='https://iybjvtmfaupgthqqsngd.supabase.co';
+const SUPABASE_KEY='sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
+function getClient(){let client=window.supabaseClient||window.sb;if(!client&&window.supabase&&typeof window.supabase.createClient==='function'){client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);window.supabaseClient=client;window.sb=client}return client}
+function hide(){const a=document.getElementById('areaAdmin');if(a){a.classList.add('hidden');a.style.display='none'}}
+function show(){const a=document.getElementById('areaAdmin');if(a){a.classList.remove('hidden');a.style.display='flex'}}
+async function logout(){hide();try{await getClient()?.auth?.signOut()}catch(e){console.error(e)}window.location.replace('index.html')}
+function installLogout(){window.logoutAdmin=logout;document.addEventListener('click',e=>{const b=e.target?.closest?.('button,a,[role="button"]');if(!b)return;const text=String(b.textContent||'').trim().toLowerCase();if(text==='esci'||text==='logout'||b.id?.toLowerCase().includes('logout')){e.preventDefault();e.stopImmediatePropagation();logout()}},true)}
+async function guard(){hide();const client=getClient();if(!client?.auth){window.location.replace('index.html');return}try{const{data}=await client.auth.getSession();const session=data?.session;if(!session){window.location.replace('index.html');return}const{data:profile}=await client.from('profili').select('ruolo').eq('user_id',session.user.id).maybeSingle();if(String(profile?.ruolo||'').trim().toLowerCase()!=='admin'){await client.auth.signOut();window.location.replace('index.html');return}show();window.adminState=window.adminState||{};window.adminState.adminLoggato=true;window.adminState.adminEmail=session.user.email||'Admin';window.salvaAdminState?.();window.renderCleanAdmin?.()}catch(e){console.error('[Admin Auth Guard]',e);try{await client.auth.signOut()}catch(_){}window.location.replace('index.html')}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installLogout();guard()},{once:true});else{installLogout();guard()}
 })();
