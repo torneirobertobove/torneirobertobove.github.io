@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -54,6 +54,16 @@ jobs:
               html=html.replace('</body>','<script src="admin-delete-fix.js?v=1"></script>\n</body>',1)
 
           Path('admin.html').write_text(html,encoding='utf-8')
+
+      - name: Persist normalized admin page
+        shell: bash
+        run: |
+          if git diff --quiet -- admin.html; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html
+          git commit -m "fix: normalize admin logout patch markup"
+          git push
 
       - name: Validate JavaScript
         shell: bash
