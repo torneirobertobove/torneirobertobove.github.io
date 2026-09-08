@@ -1,4 +1,4 @@
-/* ADMIN AUTH GUARD V4 */
+/* ADMIN AUTH GUARD V5 */
 (function(){
   'use strict';
   const SUPABASE_URL='https://iybjvtmfaupgthqqsngd.supabase.co';
@@ -27,13 +27,30 @@
     window.location.replace('index.html');
   }
 
-  function installLogoutOverride(){
+  async function performLogout(){
+    hideAdmin();
     const client=getClient();
-    window.logoutAdmin=async function(){
-      hideAdmin();
-      try{ if(client && client.auth) await client.auth.signOut(); }catch(err){ console.error('[Admin Auth Guard] logout:',err); }
-      goOut();
-    };
+    try{ if(client && client.auth) await client.auth.signOut(); }catch(err){ console.error('[Admin Auth Guard] logout:',err); }
+    goOut();
+  }
+
+  function installLogoutOverride(){
+    window.logoutAdmin=performLogout;
+
+    /* Intercept the real Esci button before any legacy handler can show
+       an intermediate "sessione terminata" screen. */
+    document.addEventListener('click',function(e){
+      const target=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;
+      if(!target)return;
+      const text=String(target.textContent||target.innerText||'').replace(/\s+/g,' ').trim().toLowerCase();
+      const id=String(target.id||'').toLowerCase();
+      const action=String(target.getAttribute('onclick')||'').toLowerCase();
+      if(text==='esci'||text==='logout'||text.indexOf('esci ')===0||text.endsWith(' esci')||id.indexOf('logout')>=0||action.indexOf('logout')>=0){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        performLogout();
+      }
+    },true);
   }
 
   async function guard(){
