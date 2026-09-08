@@ -3,6 +3,11 @@
 */
 (()=>{
 'use strict';
+/* Un solo comando "Nuovo torneo": admin.html ne fornisce già uno nella topbar. */
+const style=document.createElement('style');
+style.id='admin-single-new-tournament';
+style.textContent='#appContent #newTournament{display:none !important;}';
+(document.head||document.documentElement).appendChild(style);
 const $=id=>document.getElementById(id);
 const state=()=>window.adminState||{};
 const selected=()=>window.getTorneoAdminCorrente?.()||((state().tornei||[]).find(t=>String(t.id)===String(state().torneoSelezionato))||null);
