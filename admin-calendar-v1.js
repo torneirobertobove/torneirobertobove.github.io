@@ -52,4 +52,5 @@ function bind(){
  document.querySelectorAll('[data-calendar-open]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.calendarOpen;const s=state();s.torneoSelezionato=id;try{localStorage.setItem('padel_admin_state',JSON.stringify(s))}catch(e){};window.openAdminPage?.('torneo')}));
 }
 window.openAdminCalendar=()=>{const t=allTournaments().find(x=>String(x.id)===String(state().torneoSelezionato));const d=t?parseDate(tournamentDate(t)):new Date();cursor=new Date((d||new Date()).getFullYear(),(d||new Date()).getMonth(),1);selectedDay=t&&d?iso(d):null;renderCalendar()};
+document.addEventListener('click',e=>{const b=e.target.closest('#calendar');if(b){e.preventDefault();window.openAdminCalendar?.()}});
 })();
