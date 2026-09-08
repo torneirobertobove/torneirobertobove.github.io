@@ -1,9 +1,9 @@
-/* ADMIN DESKTOP V17 - restore real menu content + current tournament wizard */
+/* ADMIN DESKTOP V18 - restore real menu content + isolated tournament wizard */
 (function(){
 'use strict';
 function area(){return document.getElementById('areaAdmin');}
 function alias(p){p=String(p||'').toLowerCase();return p==='config'?'configurazione':(p==='links'?'link':p);}
-function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V17] '+name,e);return false;}}
+function call(name){var fn=window[name];if(typeof fn!=='function')return false;try{return fn.apply(window,Array.prototype.slice.call(arguments,1));}catch(e){console.error('[ADMIN V18] '+name,e);return false;}}
 function targetFor(page){page=alias(page||'dashboard');return document.getElementById('page-'+page)||document.getElementById('org-page-'+page)||null;}
 function restoreRealPages(){
  var a=area(),content=a&&a.querySelector('.content');if(!a||!content)return false;
@@ -33,18 +33,16 @@ function openPage(page){
  return true;
 }
 function aggiorna(){var r=call('caricaTorneiSupabase');call('caricaRichiesteIscrizione');setTimeout(restoreRealPages,100);return r!==false;}
-function loadScript(src,flag,ready){if(window[flag])return;window[flag]=true;var s=document.createElement('script');s.src=src;s.onload=ready;s.onerror=function(e){console.error('[ADMIN V17] load failed',src,e);};document.head.appendChild(s);}
 function loadCurrentWizard(){
  if(window.__currentWizardLoaded)return;
  window.__currentWizardLoaded=true;
- var s=document.createElement('script');s.src='admin-function-fixes-v1.js?v=19';
+ var s=document.createElement('script');s.src='admin-function-fixes-v1.js?v=25';
  s.onload=function(){window.__currentWizardReady=true;replaceLegacyWizard();};
- s.onerror=function(e){console.error('[ADMIN V17] wizard load failed',e);};
+ s.onerror=function(e){console.error('[ADMIN V18] wizard load failed',e);};
  document.head.appendChild(s);
 }
 function replaceLegacyWizard(){['adminFlowV15','adminFlowV16','adminFlowV17'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});return typeof window.apriWizardTorneo==='function';}
-function isCreateButton(b){var text=(b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();return text.indexOf('nuovo torneo')>=0||text.indexOf('crea torneo')>=0;}
-function openCreation(){if(typeof window.apriWizardTorneo!=='function'){console.error('[ADMIN V17] apriWizardTorneo non disponibile');return false;}try{replaceLegacyWizard();window.apriWizardTorneo();return true}catch(e){console.error('[ADMIN V17] apertura wizard',e);return false;}}
+function openCreation(){if(typeof window.apriWizardTorneo!=='function'){console.error('[ADMIN V18] apriWizardTorneo non disponibile');return false;}try{replaceLegacyWizard();window.apriWizardTorneo();return true}catch(e){console.error('[ADMIN V18] apertura wizard',e);return false;}}
 function exposeAdminStateCompat(){
  try{
   var raw=localStorage.getItem('padel_admin_state');
@@ -54,14 +52,13 @@ function exposeAdminStateCompat(){
   if(!Array.isArray(window.adminState.sponsor))window.adminState.sponsor=Array.isArray(saved.sponsor)?saved.sponsor:[];
   if(!Array.isArray(window.adminState.news))window.adminState.news=Array.isArray(saved.news)?saved.news:[];
   if(window.adminState.torneoSelezionato==null&&saved.torneoSelezionato!=null)window.adminState.torneoSelezionato=saved.torneoSelezionato;
- }catch(e){console.warn('[ADMIN V17] state compatibility',e)}
+ }catch(e){console.warn('[ADMIN V18] state compatibility',e)}
 }
 function bind(){
- var a=area();if(!a||a.dataset.adminNavBound==='v17')return;
- a.dataset.adminNavBound='v17';
+ var a=area();if(!a||a.dataset.adminNavBound==='v18')return;
+ a.dataset.adminNavBound='v18';
  document.addEventListener('click',function(e){
   var b=e.target&&e.target.closest?e.target.closest('button,a,[role="button"]'):null;if(!b||!a.contains(b))return;
-  if(isCreateButton(b)){e.preventDefault();e.stopImmediatePropagation();openCreation();return;}
   if(b.id==='btnAggiorna'){e.preventDefault();e.stopImmediatePropagation();aggiorna();return;}
   var page=b.getAttribute('data-page')||b.getAttribute('data-org-page');if(!page)return;
   page=alias(page);
