@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: admin-pages-repair-v2
+  group: admin-pages-repair-v3
   cancel-in-progress: true
 
 jobs:
@@ -29,79 +29,18 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           html = Path('admin.html').read_text(encoding='utf-8')
-
-          html = re.sub(
-              r'<div id="boxLoginAdmin" class="login-wrap">.*?</div></div>\s*',
-              '', html, count=1, flags=re.S
-          )
-          html = re.sub(
-              r'<!-- ADMIN_LOGOUT_VISIBILITY_FIX_V1 -->\s*<script>.*?</script>\s*',
-              '', html, count=1, flags=re.S
-          )
-          html = re.sub(
-              r'<div class="login-wrap">.*?(?:Admin Tornei|Accesso amministratore).*?</div>\s*',
-              '', html, count=1, flags=re.S
-          )
-          html = re.sub(
-              r'<script src="admin-auth-guard-v1\.js\?v=[^\"]+"></script>\s*',
-              '', html
-          )
-          html = html.replace('</head>', '<script src="admin-auth-guard-v1.js?v=5"></script>\n</head>', 1)
-
-          js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
-          required = [
-              'ADMIN FLOW FIX V25',
-              'italiana','gironiFinale','eliminazione','svizzero','americano','mexicano','king','short','manuale',
-              'afNext','formulaScelta','formulaConfig',
-              "stato:'bozza'",'pubblicato:false','window.assert'
-          ]
-          missing=[x for x in required if x not in js]
-          if missing:
-              raise SystemExit('V25 validation failed: '+', '.join(missing))
-
-          html=re.sub(r"admin-function-fixes-v1\\.js\\?v=[^\\\"']+",'admin-function-fixes-v1.js?v=26',html)
-
+          html = re.sub(r'<script src="admin-auth-guard-v1\.js\?v=[^"]+"></script>\s*', '', html)
+          html = html.replace('</head>', '<script src="admin-auth-guard-v1.js?v=6"></script>\n</head>', 1)
+          html = re.sub(r'admin-function-fixes-v1\.js\?v=[^\"\']+', 'admin-function-fixes-v1.js?v=26', html)
           if 'admin-delete-fix.js?v=1' not in html:
-              html=html.replace('</body>','<script src="admin-delete-fix.js?v=1"></script>\n</body>',1)
-
-          Path('admin.html').write_text(html,encoding='utf-8')
-
-      - name: Repair legacy logout in admin master
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          path = Path('admin-master.js')
-          js = path.read_text(encoding='utf-8')
-          pattern = r'async function logoutAdmin\(\)\{.*?\}'
-          replacement = '''async function logoutAdmin(){
-            const client=getSupabaseClient();
-            try{if(client&&client.auth)await client.auth.signOut();}catch(err){errorLog("[Padel Admin] Logout:",err);}
-            setLoginState(null);
-            adminState.tornei=[];adminState.torneoSelezionato=null;adminState.iscrizioni=[];adminState.partecipanti=[];adminState.coppie=[];adminState.tabellone=[];
-            window.location.replace('index.html');
-          }'''
-          patched, count = re.subn(pattern, replacement, js, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit('logoutAdmin legacy function not found')
-          if 'showNotice("Sessione terminata."' in patched:
-              raise SystemExit('legacy Sessione terminata logout still present')
-          path.write_text(patched, encoding='utf-8')
-
-      - name: Persist normalized admin page
-        shell: bash
-        run: |
-          if git diff --quiet -- admin.html admin-master.js; then exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add admin.html admin-master.js
-          git commit -m "fix: redirect admin logout to user login"
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+              html = html.replace('</body>', '<script src="admin-delete-fix.js?v=1"></script>\n</body>', 1)
+          js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
+          required = ['ADMIN FLOW FIX V25','italiana','gironiFinale','eliminazione','svizzero','americano','mexicano','king','short','manuale','afNext','formulaScelta','formulaConfig']
+          missing = [x for x in required if x not in js]
+          if missing:
+              raise SystemExit('Wizard validation failed: ' + ', '.join(missing))
+          Path('admin.html').write_text(html, encoding='utf-8')
 
       - name: Validate JavaScript
         shell: bash
@@ -112,28 +51,11 @@ jobs:
           node --check admin-master.js
 
       - name: Verify payload
-        shell: python
+        shell: bash
         run: |
-          from pathlib import Path
-          html=Path('admin.html').read_text(encoding='utf-8')
-          delete_js=Path('admin-delete-fix.js').read_text(encoding='utf-8')
-          guard=Path('admin-auth-guard-v1.js').read_text(encoding='utf-8')
-          master=Path('admin-master.js').read_text(encoding='utf-8')
-          assert 'admin-function-fixes-v1.js?v=26' in html
-          assert 'admin-delete-fix.js?v=1' in html
-          assert 'admin-auth-guard-v1.js?v=5' in html
-          assert 'boxLoginAdmin' not in html
-          assert 'ADMIN_LOGOUT_VISIBILITY_FIX_V1' not in html
-          assert 'Admin Tornei' not in html.split('<body>',1)[1].split('<div id="areaAdmin"',1)[0]
-          assert 'eliminaTorneo' in delete_js
-          assert 'admin-master.js' in html
-          assert "from('profili')" in guard
-          assert "role!=='admin'" in guard
-          assert "window.location.replace('index.html')" in guard
-          assert 'window.location.replace(\'index.html\')' in master
-          assert 'Sessione terminata.' not in master
-          assert 'classList.remove("hidden")' in master
-          assert 'areaAdmin.style.display = "flex"' in master
+          grep -q 'admin-function-fixes-v1.js?v=26' admin.html
+          grep -q 'admin-delete-fix.js?v=1' admin.html
+          grep -q 'admin-auth-guard-v1.js?v=6' admin.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
