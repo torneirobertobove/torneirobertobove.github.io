@@ -14,9 +14,6 @@ concurrency:
   group: admin-pages-repair-v2
   cancel-in-progress: true
 
-env:
-  ADMIN_GUARD_VERSION: 5
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -35,26 +32,18 @@ jobs:
 
           html = Path('admin.html').read_text(encoding='utf-8')
 
-          # Rimuove definitivamente il secondo login locale inserito nella pagina admin.
           html = re.sub(
               r'<div id="boxLoginAdmin" class="login-wrap">.*?</div></div>\s*',
               '', html, count=1, flags=re.S
           )
-
-          # Rimuove anche il vecchio script che faceva riapparire il login locale dopo Esci.
           html = re.sub(
               r'<!-- ADMIN_LOGOUT_VISIBILITY_FIX_V1 -->\s*<script>.*?</script>\s*',
               '', html, count=1, flags=re.S
           )
-
-          # Rimuove eventuali blocchi residui del secondo login, anche se non hanno più l'id originale.
           html = re.sub(
               r'<div class="login-wrap">.*?(?:Admin Tornei|Accesso amministratore).*?</div>\s*',
               '', html, count=1, flags=re.S
           )
-
-          # Mantiene una sola istanza del guard e forza V5, che intercetta il vero pulsante Esci
-          # prima dei vecchi handler e porta direttamente alla pagina di login utenti.
           html = re.sub(
               r'<script src="admin-auth-guard-v1\.js\?v=[^\"]+"></script>\s*',
               '', html
@@ -62,7 +51,6 @@ jobs:
           html = html.replace('</head>', '<script src="admin-auth-guard-v1.js?v=5"></script>\n</head>', 1)
 
           js = Path('admin-function-fixes-v1.js').read_text(encoding='utf-8')
-
           required = [
               'ADMIN FLOW FIX V24',
               'italiana','gironiFinale','eliminazione','svizzero','americano','mexicano','king','short','manuale',
@@ -80,14 +68,37 @@ jobs:
 
           Path('admin.html').write_text(html,encoding='utf-8')
 
+      - name: Repair legacy logout in admin master
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('admin-master.js')
+          js = path.read_text(encoding='utf-8')
+          pattern = r'async function logoutAdmin\(\)\{.*?\}'
+          replacement = '''async function logoutAdmin(){
+            const client=getSupabaseClient();
+            try{if(client&&client.auth)await client.auth.signOut();}catch(err){errorLog("[Padel Admin] Logout:",err);}
+            setLoginState(null);
+            adminState.tornei=[];adminState.torneoSelezionato=null;adminState.iscrizioni=[];adminState.partecipanti=[];adminState.coppie=[];adminState.tabellone=[];
+            window.location.replace('index.html');
+          }'''
+          patched, count = re.subn(pattern, replacement, js, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('logoutAdmin legacy function not found')
+          if 'showNotice("Sessione terminata."' in patched:
+              raise SystemExit('legacy Sessione terminata logout still present')
+          path.write_text(patched, encoding='utf-8')
+
       - name: Persist normalized admin page
         shell: bash
         run: |
-          if git diff --quiet -- admin.html; then exit 0; fi
+          if git diff --quiet -- admin.html admin-master.js; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add admin.html
-          git commit -m "fix: force admin logout guard v5"
+          git add admin.html admin-master.js
+          git commit -m "fix: redirect admin logout to user login"
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
@@ -119,9 +130,9 @@ jobs:
           assert "from('profili')" in guard
           assert "role!=='admin'" in guard
           assert "window.location.replace('index.html')" in guard
-          assert 'stopImmediatePropagation' in guard
-          assert "text==='esci'" in guard
           assert 'boxLoginAdmin' not in guard
+          assert 'window.location.replace(\'index.html\')' in master
+          assert 'Sessione terminata.' not in master
           assert 'classList.remove("hidden")' in master
           assert 'areaAdmin.style.display = "flex"' in master
 
