@@ -38,6 +38,18 @@ jobs:
               '', html, count=1, flags=re.S
           )
 
+          # Rimuove anche il vecchio script che faceva riapparire il login locale dopo Esci.
+          html = re.sub(
+              r'<!-- ADMIN_LOGOUT_VISIBILITY_FIX_V1 -->\s*<script>.*?</script>\s*',
+              '', html, count=1, flags=re.S
+          )
+
+          # Rimuove eventuali blocchi residui del secondo login, anche se non hanno più l'id originale.
+          html = re.sub(
+              r'<div class="login-wrap">.*?(?:Admin Tornei|Accesso amministratore).*?</div>\s*',
+              '', html, count=1, flags=re.S
+          )
+
           # Mantiene una sola istanza del guard.
           html = re.sub(
               r'<script src="admin-auth-guard-v1\.js\?v=[^\"]+"></script>\s*',
@@ -96,6 +108,8 @@ jobs:
           assert 'admin-delete-fix.js?v=1' in html
           assert 'admin-auth-guard-v1.js?v=3' in html
           assert 'boxLoginAdmin' not in html
+          assert 'ADMIN_LOGOUT_VISIBILITY_FIX_V1' not in html
+          assert 'Admin Tornei' not in html.split('<body>',1)[1].split('<div id="areaAdmin"',1)[0]
           assert 'eliminaTorneo' in delete_js
           assert 'admin-master.js' in html
           assert "from('profili')" in guard
