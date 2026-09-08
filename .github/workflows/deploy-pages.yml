@@ -1,15 +1,50 @@
-name: Deploy GitHub Pages (DISABLED)
+name: Deploy GitHub Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
 jobs:
-  disabled:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - run: echo "Legacy Pages workflow disabled. Use Admin Wizard Fix Deploy."
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate live admin wizard
+        shell: bash
+        run: |
+          node --check admin-function-fixes-v1.js
+          node --check admin-auth-guard-v1.js
+          node --check admin-desktop-v3.js
+          test -f admin-delete-fix.js
+          grep -q 'ADMIN FLOW FIX V25' admin-function-fixes-v1.js
+          for f in italiana gironiFinale eliminazione svizzero americano mexicano king short manuale; do grep -q "$f" admin-function-fixes-v1.js; done
+          grep -q 'afNext' admin-function-fixes-v1.js
+          grep -q 'formulaScelta' admin-function-fixes-v1.js
+          grep -q 'formulaConfig' admin-function-fixes-v1.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
