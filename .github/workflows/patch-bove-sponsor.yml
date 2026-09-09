@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/patch-bove-sponsor.yml'
+      - 'sponsor-global-fix.js'
 
 permissions:
   contents: write
@@ -15,16 +16,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inserisci solo script sponsor
+      - name: Inserisci script sponsor
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('Bove.html')
           s = p.read_text(encoding='utf-8')
-          tag = '<script src="tabellone-fix.js?v=sponsor"></script>'
-          if tag not in s:
-              s = s.replace('</body>', '  ' + tag + '\n</body>')
-              p.write_text(s, encoding='utf-8')
+          tags = [
+              '<script src="tabellone-fix.js?v=sponsor"></script>',
+              '<script src="sponsor-global-fix.js?v=1"></script>'
+          ]
+          for tag in tags:
+              if tag not in s:
+                  s = s.replace('</body>', '  ' + tag + '\n</body>')
+          p.write_text(s, encoding='utf-8')
           PY
 
       - name: Commit sponsor
@@ -32,5 +37,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html
-          git diff --cached --quiet || git commit -m 'Inserisce sponsor nel tabellone Bove'
+          git diff --cached --quiet || git commit -m 'Collega sponsor globali al tabellone Bove'
           git push
