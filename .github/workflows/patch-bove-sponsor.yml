@@ -18,27 +18,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Correggi caricamento sponsor e versioni cache
+      - name: Installa gli script sponsor senza duplicati
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          for name in ['Bove.html','2Page.html']:
-              p=Path(name)
-              s=p.read_text(encoding='utf-8')
-              s=s.replace('sponsor-global-fix.js?v=3','sponsor-global-fix.js?v=4')
-              s=s.replace('sponsor-public-v2.js?v=1','sponsor-public-v2.js?v=2')
-              s=s.replace('tabellone-fix.js?v=sponsor3','tabellone-fix.js?v=sponsor4')
-              if name=='2Page.html':
-                  s=s.replace('await loadSponsors();','/* sponsor gestiti da sponsor-public-v2.js */')
-              tags=[
-                  '<script src="tabellone-fix.js?v=sponsor4"></script>',
-                  '<script src="sponsor-global-fix.js?v=4"></script>',
-                  '<script src="sponsor-public-v2.js?v=2"></script>'
-              ]
-              for tag in tags:
-                  if tag not in s:
-                      s=s.replace('</body>','  '+tag+'\n</body>')
-              p.write_text(s,encoding='utf-8')
+          import re
+
+          # 2Page deve avere SOLO lo script pubblico sponsor.
+          p=Path('2Page.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
+          s=s.replace('</body>', '  <script src="sponsor-public-v2.js?v=3"></script>\n</body>')
+          p.write_text(s,encoding='utf-8')
+
+          # Bove: conserva il tabellone e aggiunge i due gestori sponsor.
+          p=Path('Bove.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
+          tags='  <script src="tabellone-fix.js?v=sponsor5"></script>\n  <script src="sponsor-global-fix.js?v=5"></script>\n  <script src="sponsor-public-v2.js?v=3"></script>\n'
+          s=s.replace('</body>', tags+'</body>')
+          p.write_text(s,encoding='utf-8')
           PY
 
       - name: Commit sponsor
@@ -46,5 +45,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html 2Page.html
-          git diff --cached --quiet || git commit -m 'Corregge caricamento sponsor globali'
+          git diff --cached --quiet || git commit -m 'Corregge caricamento sponsor e carosello'
           git push
