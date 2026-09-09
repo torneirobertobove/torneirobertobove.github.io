@@ -1,0 +1,27 @@
+/* SPONSOR GLOBAL FIX
+   Gli sponsor sono comuni a tutti i tornei.
+   Non modifica funzioni di partecipanti, coppie, tabellone o calendario.
+*/
+(()=>{
+'use strict';
+const URL='https://iybjvtmfaupgthqqsngd.supabase.co';
+const KEY='sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
+const client=window.supabaseClient||window.sb||window.supabase?.createClient(URL,KEY);
+if(!client)return;
+const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
+async function getTornei(){const {data,error}=await client.from('tornei').select('id,configurazione');if(error)throw error;return Array.isArray(data)?data:[]}
+function collect(rows){const out=[],seen=new Set();(rows||[]).forEach(t=>{const list=Array.isArray(t?.configurazione?.sponsor)?t.configurazione.sponsor:[];list.forEach(s=>{const nome=String(s?.nome||'').trim(),url=String(s?.url||'').trim(),descrizione=String(s?.descrizione||'').trim();if(!nome)return;const key=String(s?.id||'')||nome+'|'+url;if(seen.has(key))return;seen.add(key);out.push({id:String(s?.id||('sponsor-'+nome+'-'+url)),nome,url,descrizione})})});return out}
+async function saveAll(rows,sponsors){for(const t of rows){const cfg={...(t.configurazione||{}),sponsor:sponsors};const {error}=await client.from('tornei').update({configurazione:cfg}).eq('id',t.id);if(error)throw error}}
+function renderAdmin(sponsors){
+ const root=document.getElementById('appContent');if(!root)return;
+ root.innerHTML=`<div class="page-head"><div><h1>Sponsor</h1><p>Sponsor globali dell'app · visibili in tutti i tornei</p></div><button class="btn" id="globalSponsorBack">← Torna al torneo</button></div><div class="card feature-card"><div class="card-head"><div><h2>Gestione Sponsor</h2><span class="notice">Questi sponsor vengono visualizzati in ogni tabellone.</span></div></div><div class="card-body"><div class="section-grid"><div class="feature-form"><label>Nome sponsor</label><input id="globalSponsorName" class="input" placeholder="Nome sponsor"><label>Link sponsor</label><input id="globalSponsorUrl" class="input" placeholder="https://..."><label>Descrizione</label><textarea id="globalSponsorText" class="input" rows="4" placeholder="Descrizione o messaggio"></textarea><button class="btn primary" id="globalSponsorSave">＋ Aggiungi sponsor</button></div><div><h3>Sponsor globali</h3><div id="globalSponsorList" class="feature-list">${sponsors.length?sponsors.map((s,i)=>`<div class="list-item"><strong>${esc(s.nome)}</strong><small>${esc(s.descrizione||'')}${s.url?' · '+esc(s.url):''}</small><button class="btn small danger" data-global-sponsor-del="${i}">Elimina</button></div>`).join(''):'<div class="empty">Nessuno sponsor configurato.</div>'}</div></div></div></div></div>`;
+ document.getElementById('globalSponsorBack')?.addEventListener('click',()=>window.openAdminPage?.('torneo'));
+ document.getElementById('globalSponsorSave')?.addEventListener('click',async()=>{const nome=document.getElementById('globalSponsorName')?.value.trim(),url=document.getElementById('globalSponsorUrl')?.value.trim(),descrizione=document.getElementById('globalSponsorText')?.value.trim();if(!nome){alert('Inserisci il nome dello sponsor.');return}try{const rows=await getTornei(),all=collect(rows),next=[...all,{id:'sponsor-'+Date.now(),nome,url,descrizione}];await saveAll(rows,next);renderAdmin(next)}catch(e){console.error(e);alert('Errore salvataggio sponsor: '+(e?.message||e))}});
+ document.querySelectorAll('[data-global-sponsor-del]').forEach(b=>b.addEventListener('click',async()=>{try{const rows=await getTornei(),all=collect(rows),next=all.filter((_,i)=>i!==Number(b.dataset.globalSponsorDel));await saveAll(rows,next);renderAdmin(next)}catch(e){console.error(e);alert('Errore eliminazione sponsor: '+(e?.message||e))}}));
+}
+async function openGlobalAdmin(){try{const rows=await getTornei(),sponsors=collect(rows);renderAdmin(sponsors);if(rows.length&&sponsors.length)await saveAll(rows,sponsors)}catch(e){console.error('SPONSOR GLOBAL ADMIN:',e);alert('Impossibile caricare gli sponsor: '+(e?.message||e))}}
+function hookAdmin(){document.querySelectorAll('[data-com-page="sponsor"]').forEach(b=>{if(b.dataset.globalSponsorBound)return;b.dataset.globalSponsorBound='1';b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();document.getElementById('mobileOverlay')?.classList.remove('open');openGlobalAdmin()},true)});}
+if(location.pathname.endsWith('admin.html')){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hookAdmin,{once:true});else hookAdmin();}
+async function renderBoardGlobal(){const banner=document.getElementById('tabelloneSponsor');if(!banner)return false;const track=banner.querySelector('.sponsor-track');if(!track)return false;try{const sponsors=collect(await getTornei());if(!sponsors.length){track.innerHTML='<div class="sponsor-empty">Nessuno sponsor configurato</div>';return true}track.innerHTML=sponsors.map(s=>{const inner=`<span class="sponsor-name">${esc(s.nome)}</span>${s.descrizione?`<span class="sponsor-desc">${esc(s.descrizione)}</span>`:''}`;return s.url?`<a class="sponsor-item" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`:`<div class="sponsor-item">${inner}</div>`}).join('');return true}catch(e){console.error('SPONSOR GLOBAL TABELLONE:',e);return false}}
+if(!location.pathname.endsWith('admin.html')){let n=0;const timer=setInterval(async()=>{n++;if(await renderBoardGlobal()||n>=120)clearInterval(timer)},500)}
+})();
