@@ -24,6 +24,65 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Inserisci sponsor nel tabellone
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          if 'id="tabelloneSponsor"' not in s:
+              block = r'''
+<style id="tabelloneSponsorStyle">
+#tabelloneSponsor{margin:22px auto 10px;max-width:1000px;padding:16px;border-radius:15px;background:rgba(17,24,39,.15);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.4);color:#e5e7eb;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+#tabelloneSponsor .sponsor-title{font-size:14px;font-weight:800;letter-spacing:.04em;margin-bottom:12px}
+#tabelloneSponsor .sponsor-track{display:flex;justify-content:center;align-items:stretch;gap:10px;flex-wrap:wrap}
+#tabelloneSponsor .sponsor-card{width:185px;padding:10px;border-radius:11px;background:rgba(17,24,39,.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.28);color:#fff;text-decoration:none;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:58px}
+#tabelloneSponsor .sponsor-name{font-weight:800;font-size:14px}
+#tabelloneSponsor .sponsor-desc{font-size:11px;color:#cbd5e1;line-height:1.25}
+#tabelloneSponsor .sponsor-empty{font-size:12px;color:#94a3b8}
+@media(max-width:599px){#tabelloneSponsor{margin:16px 0 8px;padding:12px 8px}#tabelloneSponsor .sponsor-track{gap:8px}#tabelloneSponsor .sponsor-card{width:155px}}
+</style>
+<section id="tabelloneSponsor" aria-label="I nostri sponsor">
+  <div class="sponsor-title">I nostri sponsor</div>
+  <div class="sponsor-track"><div class="sponsor-empty">Caricamento sponsor...</div></div>
+</section>
+<script>
+(function(){
+  async function loadTabelloneSponsors(){
+    const box=document.getElementById('tabelloneSponsor');
+    if(!box || typeof sb==='undefined') return;
+    const track=box.querySelector('.sponsor-track');
+    try{
+      const id=new URLSearchParams(location.search).get('idTorneo') || (window.state && state.idTorneo);
+      let q=sb.from('tornei').select('id,configurazione');
+      if(id) q=q.eq('id',id);
+      const {data,error}=await q;
+      if(error) throw error;
+      const items=[];
+      (data||[]).forEach(t=>{
+        const sponsors=t?.configurazione?.sponsor;
+        if(Array.isArray(sponsors)) sponsors.forEach(x=>{if(x?.nome && !items.some(y=>y.nome===x.nome)) items.push(x);});
+      });
+      if(!items.length){track.innerHTML='<div class="sponsor-empty">Nessuno sponsor configurato</div>';return;}
+      track.innerHTML=items.map(x=>{
+        const name=String(x.nome||'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+        const desc=String(x.descrizione||'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+        const tag=x.url?'a':'div';
+        const href=x.url?' href="'+String(x.url).replace(/"/g,'%22')+'" target="_blank" rel="noopener noreferrer"':'';
+        return '<'+tag+' class="sponsor-card"'+href+'><span class="sponsor-name">'+name+'</span>'+(desc?'<span class="sponsor-desc">'+desc+'</span>':'')+'</'+tag+'>';
+      }).join('');
+    }catch(e){
+      track.innerHTML='<div class="sponsor-empty">Sponsor non disponibili</div>';
+      console.error('Errore sponsor tabellone:',e);
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',loadTabelloneSponsors,{once:true}); else loadTabelloneSponsors();
+})();
+</script>
+'''
+              s = s.replace('</body>', block + '\n</body>')
+              p.write_text(s, encoding='utf-8')
+
       - name: Validate live admin wizard
         shell: bash
         run: |
