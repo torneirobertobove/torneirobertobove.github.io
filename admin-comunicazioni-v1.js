@@ -1,15 +1,23 @@
-/* ADMIN COMUNICAZIONI V1 — News / Sponsor / WhatsApp.
-   Non modifica schema Supabase: salva i dati in tornei.configurazione.
-*/
+/* ADMIN COMUNICAZIONI V2 — News / Sponsor / WhatsApp. */
 (()=>{
 'use strict';
-/* La navigazione Comunicazioni è già presente in admin.html: non crearne una seconda. */
 const $=id=>document.getElementById(id);
 const state=()=>window.adminState||{};
 const selected=()=>window.getTorneoAdminCorrente?.()||((state().tornei||[]).find(t=>String(t.id)===String(state().torneoSelezionato))||null);
 const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
 const cfgOf=t=>t?.configurazione&&typeof t.configurazione==='object'?{...t.configurazione}:{};
-async function saveCfg(t,cfg){const sb=window.supabaseClient||window.sb;if(!sb||!t){alert('Torneo o connessione Supabase non disponibile.');return false}const{error}=await sb.from('tornei').update({configurazione:cfg}).eq('id',t.id);if(error){console.error(error);alert('Errore salvataggio: '+error.message);return false}t.configurazione=cfg;window.adminState=state();try{localStorage.setItem('padel_admin_state',JSON.stringify(state()))}catch(e){}return true}
+async function saveCfg(t,cfg){
+ const sb=window.supabaseClient||window.sb;
+ if(!sb||!t){alert('Torneo o connessione Supabase non disponibile.');return false}
+ const cleanCfg={...(cfg||{})};
+ const {data,error}=await sb.from('tornei').update({configurazione:cleanCfg}).eq('id',t.id).select('id,configurazione').maybeSingle();
+ if(error){console.error('Errore salvataggio configurazione:',error);alert('Errore salvataggio: '+error.message);return false}
+ if(!data){alert('Sponsor non salvato: il torneo selezionato non è stato aggiornato.');return false}
+ t.configurazione=data.configurazione||cleanCfg;
+ window.adminState=state();
+ try{localStorage.setItem('padel_admin_state',JSON.stringify(state()))}catch(e){}
+ return true
+}
 function shell(title,sub,body){const root=$('appContent');if(!root)return;root.innerHTML=`<div class="page-head"><div><h1>${title}</h1><p>${sub}</p></div><button class="btn" id="comBack">← Torna al torneo</button></div>${body}`;$('comBack')?.addEventListener('click',()=>window.openAdminPage?.('torneo'))}
 function news(){const t=selected();if(!t){alert('Seleziona prima un torneo');return}const c=cfgOf(t),items=Array.isArray(c.news)?c.news:[];shell('News',`${esc(t.nome)} · ID ${esc(t.id)}`,`<div class="card feature-card"><div class="card-head"><div><h2>Gestione News</h2><span class="notice">Pubblica e gestisci le comunicazioni del torneo</span></div></div><div class="card-body"><div class="section-grid"><div class="feature-form"><label>Titolo</label><input id="newsTitle" class="input" placeholder="Titolo della news"><label>Testo</label><textarea id="newsText" class="input" rows="6" placeholder="Testo della comunicazione"></textarea><button class="btn primary" id="newsSave">＋ Pubblica news</button></div><div><h3>News del torneo</h3><div id="newsList" class="feature-list">${items.length?items.map((n,i)=>`<div class="list-item"><strong>${esc(n.titolo)}</strong><small>${esc(n.testo)}</small><button class="btn small danger" data-news-del="${i}">Elimina</button></div>`).join(''):'<div class="empty">Nessuna news pubblicata.</div>'}</div></div></div></div></div>`);$('newsSave').onclick=async()=>{const titolo=$('newsTitle')?.value.trim(),testo=$('newsText')?.value.trim();if(!titolo||!testo){alert('Inserisci titolo e testo della news.');return}const next=[...items,{id:'news-'+Date.now(),titolo,testo,data:new Date().toISOString()}];if(await saveCfg(t,{...c,news:next}))news()};document.querySelectorAll('[data-news-del]').forEach(b=>b.onclick=async()=>{const next=items.filter((_,i)=>i!==Number(b.dataset.newsDel));if(await saveCfg(t,{...c,news:next}))news()})}
 function sponsor(){const t=selected();if(!t){alert('Seleziona prima un torneo');return}const c=cfgOf(t),items=Array.isArray(c.sponsor)?c.sponsor:[];shell('Sponsor',`${esc(t.nome)} · ID ${esc(t.id)}`,`<div class="card feature-card"><div class="card-head"><div><h2>Gestione Sponsor</h2><span class="notice">Gestisci i partner associati al torneo</span></div></div><div class="card-body"><div class="section-grid"><div class="feature-form"><label>Nome sponsor</label><input id="sponsorName" class="input" placeholder="Nome sponsor"><label>Link sponsor</label><input id="sponsorUrl" class="input" placeholder="https://..."><label>Descrizione</label><textarea id="sponsorText" class="input" rows="4" placeholder="Descrizione o messaggio"></textarea><button class="btn primary" id="sponsorSave">＋ Aggiungi sponsor</button></div><div><h3>Sponsor del torneo</h3><div id="sponsorList" class="feature-list">${items.length?items.map((n,i)=>`<div class="list-item"><strong>${esc(n.nome)}</strong><small>${esc(n.descrizione||'')}${n.url?' · '+esc(n.url):''}</small><button class="btn small danger" data-sponsor-del="${i}">Elimina</button></div>`).join(''):'<div class="empty">Nessuno sponsor configurato.</div>'}</div></div></div></div></div>`);$('sponsorSave').onclick=async()=>{const nome=$('sponsorName')?.value.trim(),url=$('sponsorUrl')?.value.trim(),descrizione=$('sponsorText')?.value.trim();if(!nome){alert('Inserisci il nome dello sponsor.');return}const next=[...items,{id:'sponsor-'+Date.now(),nome,url,descrizione}];if(await saveCfg(t,{...c,sponsor:next}))sponsor()};document.querySelectorAll('[data-sponsor-del]').forEach(b=>b.onclick=async()=>{const next=items.filter((_,i)=>i!==Number(b.dataset.sponsorDel));if(await saveCfg(t,{...c,sponsor:next}))sponsor()})}
