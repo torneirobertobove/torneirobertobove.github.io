@@ -210,3 +210,144 @@
     },500);
 
 })();
+
+/* ============================================================
+   SPONSOR TABELLONE
+   SOLO INSERIMENTO PUBBLICITARIO.
+   Non modifica nessuna funzione del tabellone sopra.
+   ============================================================ */
+(function(){
+    function installaSponsor(){
+        if(document.getElementById("tabelloneSponsor")) return true;
+
+        const container=document.querySelector(".container");
+        if(!container) return false;
+
+        const style=document.createElement("style");
+        style.id="tabelloneSponsorStyle";
+        style.textContent=`
+            #tabelloneSponsor{
+                width:100%;
+                margin:28px auto 8px;
+                padding:14px 0 6px;
+                text-align:center;
+            }
+            #tabelloneSponsor .sponsor-title{
+                font-size:14px;
+                font-weight:800;
+                letter-spacing:1.4px;
+                text-transform:uppercase;
+                margin-bottom:10px;
+                color:#e5e7eb;
+            }
+            #tabelloneSponsor .sponsor-window{
+                width:100%;
+                overflow:hidden;
+                border-radius:14px;
+                background:rgba(17,24,39,.15);
+                backdrop-filter:blur(6px);
+                -webkit-backdrop-filter:blur(6px);
+                border:1px solid rgba(255,255,255,.4);
+            }
+            #tabelloneSponsor .sponsor-track{
+                display:flex;
+                align-items:stretch;
+                justify-content:center;
+                gap:12px;
+                width:max-content;
+                min-width:100%;
+                padding:9px;
+            }
+            #tabelloneSponsor .sponsor-item{
+                width:185px;
+                min-height:58px;
+                padding:9px 12px;
+                border-radius:11px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                background:rgba(17,24,39,.15);
+                backdrop-filter:blur(6px);
+                -webkit-backdrop-filter:blur(6px);
+                border:1px solid rgba(255,255,255,.4);
+                color:#e5e7eb;
+                text-decoration:none;
+                box-sizing:border-box;
+            }
+            #tabelloneSponsor .sponsor-name{font-weight:800;font-size:13px;line-height:1.2}
+            #tabelloneSponsor .sponsor-desc{font-size:11px;opacity:.82;margin-top:4px;line-height:1.2}
+            #tabelloneSponsor .sponsor-empty{padding:12px;font-size:12px;opacity:.78}
+            @media(max-width:600px){
+                #tabelloneSponsor{margin-top:22px}
+                #tabelloneSponsor .sponsor-item{width:155px;min-height:54px}
+                #tabelloneSponsor .sponsor-title{font-size:13px}
+            }
+        `;
+        document.head.appendChild(style);
+
+        const banner=document.createElement("section");
+        banner.id="tabelloneSponsor";
+        banner.innerHTML=`<div class="sponsor-title">I nostri sponsor</div><div class="sponsor-window"><div class="sponsor-track"><div class="sponsor-empty">Caricamento sponsor...</div></div></div>`;
+        container.appendChild(banner);
+
+        const track=banner.querySelector(".sponsor-track");
+        const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+
+        const supabaseUrl="https://iybjvtmfaupgthqqsngd.supabase.co";
+        const supabaseKey="sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl";
+        const client=window.supabase?.createClient(supabaseUrl,supabaseKey);
+        if(!client){
+            track.innerHTML=`<div class="sponsor-empty">Sponsor non disponibili</div>`;
+            return true;
+        }
+
+        (async()=>{
+            try{
+                const id=new URLSearchParams(location.search).get("idTorneo");
+                let query=client.from("tornei").select("id,configurazione");
+                if(id) query=query.eq("id",id);
+                const {data,error}=await query;
+                if(error) throw error;
+
+                const sponsors=[];
+                const seen=new Set();
+                (data||[]).forEach(t=>{
+                    const list=Array.isArray(t.configurazione?.sponsor)?t.configurazione.sponsor:[];
+                    list.forEach(s=>{
+                        const nome=String(s?.nome||"").trim();
+                        const url=String(s?.url||"").trim();
+                        const descrizione=String(s?.descrizione||"").trim();
+                        if(!nome) return;
+                        const key=String(s?.id||"")||`${nome}|${url}`;
+                        if(seen.has(key)) return;
+                        seen.add(key);
+                        sponsors.push({nome,url,descrizione});
+                    });
+                });
+
+                if(!sponsors.length){
+                    track.innerHTML=`<div class="sponsor-empty">Nessuno sponsor configurato</div>`;
+                    return;
+                }
+
+                track.innerHTML=sponsors.map(s=>{
+                    const inner=`<span class="sponsor-name">${esc(s.nome)}</span>${s.descrizione?`<span class="sponsor-desc">${esc(s.descrizione)}</span>`:""}`;
+                    return s.url?`<a class="sponsor-item" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`:`<div class="sponsor-item">${inner}</div>`;
+                }).join("");
+            }catch(e){
+                console.error("SPONSOR TABELLONE:",e);
+                track.innerHTML=`<div class="sponsor-empty">Sponsor non disponibili</div>`;
+            }
+        })();
+
+        return true;
+    }
+
+    if(installaSponsor()) return;
+    let tentativiSponsor=0;
+    const timerSponsor=setInterval(()=>{
+        tentativiSponsor++;
+        if(installaSponsor() || tentativiSponsor>=120) clearInterval(timerSponsor);
+    },500);
+})();
