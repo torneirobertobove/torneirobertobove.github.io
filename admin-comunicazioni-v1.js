@@ -34,22 +34,41 @@ function news(){const t=selected();if(!t){alert('Seleziona prima un torneo');ret
 
 async function sponsor(){
  const items=await loadGlobalSponsors();
- shell('Sponsor','Sponsor globali · visibili in tutti i tabelloni',`<div class="card feature-card"><div class="card-head"><div><h2>Gestione Sponsor</h2><span class="notice">Gli sponsor sono globali e vengono mostrati in ogni tabellone.</span></div></div><div class="card-body"><div class="section-grid"><div class="feature-form"><label>Nome sponsor</label><input id="sponsorName" class="input" placeholder="Nome sponsor"><label>Link sponsor</label><input id="sponsorUrl" class="input" placeholder="https://..."><button class="btn primary" id="sponsorSave">＋ Aggiungi sponsor</button></div><div><h3>Sponsor globali</h3><div id="sponsorList" class="feature-list">${items.length?items.map(n=>`<div class="list-item" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><strong>${esc(n.nome||'')}</strong><small style="flex:1;min-width:220px">${n.link?`<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">${esc(n.link)}</a>`:'Nessun link'}</small><button type="button" class="btn small danger" data-sponsor-del="${esc(n.id)}">Elimina</button></div>`).join(''):'<div class="empty">Nessuno sponsor configurato.</div>'}</div></div></div></div>`);
- $('sponsorSave').onclick=async()=>{
-   const nome=$('sponsorName')?.value.trim(),link=$('sponsorUrl')?.value.trim();
-   if(!nome){alert('Inserisci il nome dello sponsor.');return}
-   const sb=window.supabaseClient||window.sb;
-   if(!sb){alert('Connessione Supabase non disponibile.');return}
-   const {error}=await sb.from('sponsor').insert({nome,link});
-   if(error){console.error('Errore inserimento sponsor:',error);alert('Errore salvataggio sponsor: '+error.message);return}
-   sponsor();
+ const form=(editing=null)=>{
+   const s=editing||{};
+   return `<div class="feature-form" id="sponsorForm"><h3>${editing?'Modifica sponsor':'Nuovo sponsor'}</h3><label>Nome sponsor</label><input id="sponsorName" class="input" value="${esc(s.nome||'')}" placeholder="Nome sponsor"><label>Immagine sponsor</label><input id="sponsorImage" class="input" value="${esc(s.immagine||'')}" placeholder="https://.../immagine.jpg"><small class="notice">Inserisci l'URL dell'immagine da mostrare nel tabellone.</small><label>Video sponsor</label><input id="sponsorVideo" class="input" value="${esc(s.video||'')}" placeholder="https://.../video"><small class="notice">URL del video o della pagina video.</small><label>Link sponsor</label><input id="sponsorUrl" class="input" value="${esc(s.link||'')}" placeholder="https://.../"><div class="admin-feature-actions"><button class="btn primary" id="sponsorSave">${editing?'💾 Salva modifiche':'＋ Aggiungi sponsor'}</button>${editing?'<button type="button" class="btn" id="sponsorCancel">Annulla</button>':''}</div></div>`;
  };
+ const list=items.length?items.map(n=>`<div class="list-item" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="width:90px;min-width:90px;height:60px;border-radius:10px;overflow:hidden;background:rgba(15,23,42,.12);display:flex;align-items:center;justify-content:center">${n.immagine?`<img src="${esc(n.immagine)}" alt="${esc(n.nome||'Sponsor')}" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.style.display='none';this.parentElement.innerHTML='🖼️'">`:'<span style="font-size:24px">🏢</span>'}</div><div style="flex:1;min-width:220px"><strong style="display:block;font-size:15px">${esc(n.nome||'Sponsor senza nome')}</strong><small style="display:block;margin-top:4px">${n.link?`Link: <a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">${esc(n.link)}</a>`:'Nessun link'}</small><small style="display:block;margin-top:3px">${n.immagine?`Immagine: <a href="${esc(n.immagine)}" target="_blank" rel="noopener noreferrer">Apri immagine</a>`:'Nessuna immagine'} · ${n.video?`Video: <a href="${esc(n.video)}" target="_blank" rel="noopener noreferrer">Apri video</a>`:'Nessun video'}</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small" data-sponsor-edit="${esc(n.id)}">✏️ Modifica</button><button type="button" class="btn small danger" data-sponsor-del="${esc(n.id)}">Elimina</button></div></div>`).join(''):'<div class="empty">Nessuno sponsor configurato. Inserisci il primo sponsor usando il modulo qui accanto.</div>';
+ shell('Sponsor','Sponsor globali · visibili in tutti i tabelloni',`<div class="card feature-card"><div class="card-head"><div><h2>Gestione Sponsor</h2><span class="notice">Gestione completa degli sponsor globali: ogni sponsor viene salvato nella tabella pubblica e può essere mostrato in tutte le pagine e in tutti i tabelloni.</span></div></div><div class="card-body"><div class="section-grid"><div id="sponsorEditor">${form()}</div><div><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><h3>Sponsor globali</h3><p class="notice">${items.length} sponsor configurat${items.length===1?'o':'i'}</p></div></div><div id="sponsorList" class="feature-list">${list}</div></div></div></div></div>`);
+ const reset=()=>{const box=$('sponsorEditor');if(box)box.innerHTML=form() ;bindForm()};
+ const bindForm=()=>{
+   $('sponsorCancel')?.addEventListener('click',reset);
+   $('sponsorSave')?.addEventListener('click',async()=>{
+     const nome=$('sponsorName')?.value.trim(),immagine=$('sponsorImage')?.value.trim(),video=$('sponsorVideo')?.value.trim(),link=$('sponsorUrl')?.value.trim();
+     if(!nome){alert('Inserisci il nome dello sponsor.');return}
+     const sb=window.supabaseClient||window.sb;
+     if(!sb){alert('Connessione Supabase non disponibile.');return}
+     const editId=$('sponsorSave').dataset.editId;
+     const payload={nome,immagine,video,link};
+     const result=editId?await sb.from('sponsor').update(payload).eq('id',editId):await sb.from('sponsor').insert(payload);
+     if(result.error){console.error('Errore salvataggio sponsor:',result.error);alert('Errore salvataggio sponsor: '+result.error.message);return}
+     await sponsor();
+   });
+ };
+ bindForm();
+ document.querySelectorAll('[data-sponsor-edit]').forEach(b=>b.onclick=()=>{
+   const item=items.find(x=>String(x.id)===String(b.dataset.sponsorEdit));
+   if(!item)return;
+   const box=$('sponsorEditor');
+   if(box){box.innerHTML=form(item);const save=$('sponsorSave');if(save)save.dataset.editId=item.id;bindForm();box.scrollIntoView({behavior:'smooth',block:'nearest'})}
+ });
  document.querySelectorAll('[data-sponsor-del]').forEach(b=>b.onclick=async()=>{
+   if(!confirm('Eliminare questo sponsor globale?'))return;
    const sb=window.supabaseClient||window.sb;
    if(!sb)return;
    const {error}=await sb.from('sponsor').delete().eq('id',b.dataset.sponsorDel);
    if(error){console.error('Errore eliminazione sponsor:',error);alert('Errore eliminazione sponsor: '+error.message);return}
-   sponsor();
+   await sponsor();
  });
 }
 
