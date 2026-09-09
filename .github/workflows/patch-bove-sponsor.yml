@@ -18,23 +18,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inserisci script sponsor globali
+      - name: Correggi caricamento sponsor e versioni cache
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          files = ['Bove.html', '2Page.html']
-          tags = [
-              '<script src="tabellone-fix.js?v=sponsor3"></script>',
-              '<script src="sponsor-global-fix.js?v=3"></script>',
-              '<script src="sponsor-public-v2.js?v=1"></script>'
-          ]
-          for name in files:
-              p = Path(name)
-              s = p.read_text(encoding='utf-8')
+          for name in ['Bove.html','2Page.html']:
+              p=Path(name)
+              s=p.read_text(encoding='utf-8')
+              s=s.replace('sponsor-global-fix.js?v=3','sponsor-global-fix.js?v=4')
+              s=s.replace('sponsor-public-v2.js?v=1','sponsor-public-v2.js?v=2')
+              s=s.replace('tabellone-fix.js?v=sponsor3','tabellone-fix.js?v=sponsor4')
+              if name=='2Page.html':
+                  s=s.replace('await loadSponsors();','/* sponsor gestiti da sponsor-public-v2.js */')
+              tags=[
+                  '<script src="tabellone-fix.js?v=sponsor4"></script>',
+                  '<script src="sponsor-global-fix.js?v=4"></script>',
+                  '<script src="sponsor-public-v2.js?v=2"></script>'
+              ]
               for tag in tags:
                   if tag not in s:
-                      s = s.replace('</body>', '  ' + tag + '\n</body>')
-              p.write_text(s, encoding='utf-8')
+                      s=s.replace('</body>','  '+tag+'\n</body>')
+              p.write_text(s,encoding='utf-8')
           PY
 
       - name: Commit sponsor
@@ -42,5 +46,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html 2Page.html
-          git diff --cached --quiet || git commit -m 'Attiva sponsor globali su home e tabellone'
+          git diff --cached --quiet || git commit -m 'Corregge caricamento sponsor globali'
           git push
