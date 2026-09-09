@@ -17,36 +17,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Installa il gestore sponsor senza modificare le funzioni del tabellone
+      - name: Installa il gestore sponsor globale senza modificare la logica del tabellone
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
+          PAGES = [
+              '2Page.html',
+              'Bove.html',
+              'visitatore.html',
+              'tornei.html',
+              'news.html',
+              'mercatino.html',
+              'eventi.html',
+              'informazioni.html',
+              'contatti.html'
+          ]
+
           def patch_page(filename):
               p=Path(filename)
+              if not p.exists():
+                  return False
               s=p.read_text(encoding='utf-8')
+              original=s
 
-              # Elimina esclusivamente i vecchi script sponsor/fix.
+              # Elimina esclusivamente vecchi script sponsor/fix.
               s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
 
-              # Espone il SOLO client Supabase già creato dalla pagina.
-              # Nessuna funzione del torneo viene modificata.
+              # Espone il client Supabase già creato dalla pagina, quando la pagina lo crea localmente.
               s=s.replace('const sb = supabase.createClient(', 'const sb = window.sb = supabase.createClient(', 1)
               s=s.replace('const sb=supabase.createClient(', 'const sb=window.sb=supabase.createClient(', 1)
 
-              # Carica esclusivamente il gestore sponsor globale.
-              s=s.replace('</body>', '  <script src="sponsor-public-v2.js?v=7"></script>\n</body>', 1)
+              # Carica una sola volta il gestore sponsor globale.
+              s=s.replace('</body>', '  <script src="sponsor-public-v2.js?v=8"></script>\n</body>', 1)
               p.write_text(s,encoding='utf-8')
+              return s != original
 
-          patch_page('Bove.html')
-          patch_page('2Page.html')
+          changed=[]
+          for page in PAGES:
+              if patch_page(page):
+                  changed.append(page)
+          print('Pagine sponsor aggiornate:', changed)
           PY
 
       - name: Commit sponsor
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Bove.html 2Page.html
-          git diff --cached --quiet || git commit -m 'Carica sponsor globali dalla tabella sponsor'
+          git add 2Page.html Bove.html visitatore.html tornei.html news.html mercatino.html eventi.html informazioni.html contatti.html
+          git diff --cached --quiet || git commit -m 'Mostra sponsor globali in tutte le pagine pubbliche'
           git push
