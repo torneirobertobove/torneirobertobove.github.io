@@ -1,30 +1,43 @@
-(()=>{
-'use strict';
-const URL='https://iybjvtmfaupgthqqsngd.supabase.co';
-const KEY='sb_publishable_oLLML3_ne0I1dWKIinSRNA_K1Ao5SOl';
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
-function cfg(t){let c=t?.configurazione;if(typeof c==='string'){try{c=JSON.parse(c)}catch{return {}}}return c&&typeof c==='object'?c:{}}
-function collect(rows){const out=[],seen=new Set();(rows||[]).forEach(t=>{const list=Array.isArray(cfg(t).sponsor)?cfg(t).sponsor:[];list.forEach(s=>{const nome=String(s?.nome||'').trim(),url=String(s?.url||'').trim(),descrizione=String(s?.descrizione||'').trim();if(!nome)return;const k=String(s?.id||'')||nome+'|'+url;if(seen.has(k))return;seen.add(k);out.push({id:k,nome,url,descrizione})})});return out}
-function localSponsors(){try{const a=JSON.parse(localStorage.getItem('padel_admin_state')||'null');return collect(a?.tornei||[])}catch{return[]}}
-function logos(url){try{const d=new URL(url).hostname.replace(/^www\./,'');return[`https://${d}/logo.svg`,`https://${d}/logo.png`,`https://${d}/assets/logo.svg`,`https://${d}/assets/logo.png`,`https://${d}/images/logo.svg`,`https://${d}/images/logo.png`,`https://logo.clearbit.com/${d}`,`https://www.google.com/s2/favicons?domain=${d}&sz=128`]}catch{return[]}}
-function renderHome(track,sponsors){
- if(!sponsors.length){track.innerHTML='<div class="sponsor-empty">Nessuno sponsor configurato</div>';track.style.animation='none';return}
- const item=s=>{const ls=logos(s.url),img=ls.length?`<img src="${esc(ls[0])}" data-ls="${esc(JSON.stringify(ls))}" data-li="0" onerror="this.dataset.li=String(Number(this.dataset.li)+1);let a=JSON.parse(this.dataset.ls);if(Number(this.dataset.li)<a.length)this.src=a[Number(this.dataset.li)];else this.style.display='none'" alt="Logo ${esc(s.nome)}">`:'';const body=`<span class="sp-logo">${img||esc(s.nome.slice(0,1).toUpperCase())}</span><strong>${esc(s.nome)}</strong>${s.descrizione?`<span>${esc(s.descrizione)}</span>`:''}`;return s.url?`<a class="sponsor-slide" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${body}</a>`:`<div class="sponsor-slide">${body}</div>`};
- track.innerHTML=sponsors.map(item).join('')+(sponsors.length>1?sponsors.map(item).join(''):'');
- track.style.justifyContent=sponsors.length===1?'center':'';
- track.style.animation=sponsors.length>1?'sponsorScroll 18s linear infinite':'none';
-}
-function renderBoard(track,sponsors){
- if(!sponsors.length){track.innerHTML='<div class="sponsor-empty">Nessuno sponsor configurato</div>';return}
- const item=s=>{const ls=logos(s.url),img=ls.length?`<img class="sponsor-logo" src="${esc(ls[0])}" data-ls="${esc(JSON.stringify(ls))}" data-li="0" onerror="this.dataset.li=String(Number(this.dataset.li)+1);let a=JSON.parse(this.dataset.ls);if(Number(this.dataset.li)<a.length)this.src=a[Number(this.dataset.li)];else this.style.display='none'" alt="Logo ${esc(s.nome)}">`:'';const body=`<div class="sponsor-logo-wrap">${img}<span class="sponsor-fallback">${esc(s.nome.slice(0,1).toUpperCase())}</span></div><strong class="sponsor-name">${esc(s.nome)}</strong>${s.descrizione?`<span class="sponsor-desc">${esc(s.descrizione)}</span>`:''}`;return s.url?`<a class="sponsor-item" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${body}</a>`:`<div class="sponsor-item">${body}</div>`};
- track.innerHTML=sponsors.map(item).join('');
- track.style.width='100%';track.style.gap='0';track.style.transform='translate3d(0,0,0)';
- const items=[...track.querySelectorAll('.sponsor-item')];let i=0;
- if(items.length>1){clearInterval(track.__sponsorTimer);track.__sponsorTimer=setInterval(()=>{i=(i+1)%items.length;track.style.transform=`translate3d(-${i*100}%,0,0)`},4500)}
-}
-function style(){if(document.getElementById('sponsorPublicV3Style'))return;const st=document.createElement('style');st.id='sponsorPublicV3Style';st.textContent=`#sponsorTrack .sponsor-slide{gap:3px}.sp-logo{height:34px;min-width:80px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;font-weight:900;font-size:20px}.sp-logo img{max-width:110px;max-height:32px;object-fit:contain}#tabelloneSponsor .sponsor-track{display:flex!important;align-items:stretch!important;justify-content:flex-start!important;overflow:visible!important;transition:transform .7s ease!important;width:100%!important;min-width:100%!important;gap:0!important}#tabelloneSponsor .sponsor-item{flex:0 0 100%!important;min-width:100%!important;box-sizing:border-box}.sponsor-logo-wrap{height:64px;min-width:120px;display:flex;align-items:center;justify-content:center;margin-bottom:9px;position:relative}.sponsor-logo{display:block;max-width:210px;max-height:60px;width:auto;height:auto;object-fit:contain}.sponsor-fallback{display:none;width:58px;height:58px;line-height:58px;text-align:center;border-radius:50%;font-weight:900;font-size:28px;background:#fff;color:#111827;border:1px solid #d1d5db}.sponsor-fallback.show{display:block}`;document.head.appendChild(st)}
-async function getClient(){for(let i=0;i<80;i++){const c=window.supabaseClient||window.sb;if(c?.from)return c;if(window.supabase?.createClient){try{return window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}})}catch{}}await sleep(250)}return null}
-async function load(){style();const sb=await getClient();if(!sb){console.error('SPONSOR PUBLIC V3: client Supabase non disponibile');return}try{const {data,error}=await sb.from('tornei').select('id,nome,configurazione');if(error)throw error;let sponsors=collect(data);if(!sponsors.length)sponsors=localSponsors();const home=document.getElementById('sponsorTrack');if(home)renderHome(home,sponsors);const board=document.querySelector('#tabelloneSponsor .sponsor-track');if(board)renderBoard(board,sponsors)}catch(e){console.error('SPONSOR PUBLIC V3:',e)}}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
+/* SPONSOR PUBBLICI — usa esclusivamente il client Supabase già esistente */
+(function(){
+    function client(){ return window.supabaseClient || window.sb || null; }
+    function parse(v){
+        if(v && typeof v==='object') return v;
+        if(typeof v==='string'){ try{return JSON.parse(v)||{};}catch(e){return {};} }
+        return {};
+    }
+    function sponsorsFrom(data){
+        const out=[],seen=new Set();
+        (data||[]).forEach(t=>{
+            const cfg=parse(t.configurazione);
+            const list=Array.isArray(cfg.sponsor)?cfg.sponsor:[];
+            list.forEach(s=>{
+                const nome=String(s?.nome||'').trim(),url=String(s?.url||'').trim(),descrizione=String(s?.descrizione||'').trim();
+                if(!nome)return;
+                const key=String(s?.id||'')||`${nome}|${url}`;
+                if(seen.has(key))return;
+                seen.add(key);out.push({nome,url,descrizione});
+            });
+        });
+        return out;
+    }
+    function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+    async function load(){
+        const sb=client();
+        if(!sb)return;
+        try{
+            const {data,error}=await sb.from('tornei').select('id,configurazione');
+            if(error)throw error;
+            const sponsors=sponsorsFrom(data);
+            document.querySelectorAll('.sponsor-track').forEach(track=>{
+                if(!sponsors.length){track.innerHTML='<div class="sponsor-empty">Nessuno sponsor configurato</div>';return;}
+                const html=sponsors.map(s=>{
+                    const inner=`<span class="sponsor-name">${esc(s.nome)}</span>${s.descrizione?`<span class="sponsor-desc">${esc(s.descrizione)}</span>`:''}`;
+                    return s.url?`<a class="sponsor-item" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`:`<div class="sponsor-item">${inner}</div>`;
+                }).join('');
+                track.innerHTML=html;
+            });
+        }catch(e){console.error('SPONSOR PUBBLICI:',e);}
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
 })();
