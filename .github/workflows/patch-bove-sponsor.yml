@@ -1,0 +1,36 @@
+name: Patch sponsor Bove
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-bove-sponsor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inserisci solo script sponsor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('Bove.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script src="tabellone-fix.js?v=sponsor"></script>'
+          if tag not in s:
+              s = s.replace('</body>', '  ' + tag + '\n</body>')
+              p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit sponsor
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Bove.html
+          git diff --cached --quiet || git commit -m 'Inserisce sponsor nel tabellone Bove'
+          git push
