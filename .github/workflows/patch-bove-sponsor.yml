@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - '.github/workflows/patch-bove-sponsor.yml'
-      - 'sponsor-global-fix.js'
       - 'sponsor-public-v2.js'
       - '2Page.html'
 
@@ -18,26 +17,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Installa gli script sponsor senza duplicati
+      - name: Installa il gestore sponsor senza modificare le funzioni del tabellone
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          # 2Page deve avere SOLO lo script pubblico sponsor.
-          p=Path('2Page.html')
-          s=p.read_text(encoding='utf-8')
-          s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
-          s=s.replace('</body>', '  <script src="sponsor-public-v2.js?v=3"></script>\n</body>')
-          p.write_text(s,encoding='utf-8')
+          def patch_page(filename):
+              p=Path(filename)
+              s=p.read_text(encoding='utf-8')
 
-          # Bove: conserva il tabellone e aggiunge i due gestori sponsor.
-          p=Path('Bove.html')
-          s=p.read_text(encoding='utf-8')
-          s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
-          tags='  <script src="tabellone-fix.js?v=sponsor5"></script>\n  <script src="sponsor-global-fix.js?v=5"></script>\n  <script src="sponsor-public-v2.js?v=3"></script>\n'
-          s=s.replace('</body>', tags+'</body>')
-          p.write_text(s,encoding='utf-8')
+              # Rimuove eventuali vecchi script sponsor/fix dal markup della pagina.
+              s=re.sub(r'\s*<script[^>]+(?:tabellone-fix\.js|sponsor-global-fix\.js|sponsor-public-v2\.js)[^>]*></script>', '', s, flags=re.I)
+
+              # Espone il SOLO client Supabase già creato dalla pagina.
+              # Non modifica alcuna funzione del torneo.
+              s=s.replace('const sb = supabase.createClient(', 'const sb = window.sb = supabase.createClient(', 1)
+              s=s.replace('const sb=supabase.createClient(', 'const sb=window.sb=supabase.createClient(', 1)
+
+              # Carica esclusivamente il gestore sponsor pubblico.
+              s=s.replace('</body>', '  <script src="sponsor-public-v2.js?v=6"></script>\n</body>', 1)
+              p.write_text(s,encoding='utf-8')
+
+          patch_page('Bove.html')
+          patch_page('2Page.html')
           PY
 
       - name: Commit sponsor
@@ -45,5 +48,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Bove.html 2Page.html
-          git diff --cached --quiet || git commit -m 'Corregge caricamento sponsor e carosello'
+          git diff --cached --quiet || git commit -m 'Mostra sponsor globali senza toccare il tabellone'
           git push
