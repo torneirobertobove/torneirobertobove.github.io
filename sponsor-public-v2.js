@@ -1,4 +1,4 @@
-content = r'''/* SPONSOR PUBBLICI — pulsante "Sponsorizzato da" con logo */
+/* SPONSOR PUBBLICI — pulsante "Sponsorizzato da" con logo */
 (function () {
     'use strict';
 
@@ -703,17 +703,3 @@ content = r'''/* SPONSOR PUBBLICI — pulsante "Sponsorizzato da" con logo */
         start();
     }
 })();
-'''
-
-path = "/mnt/data/sponsor-public-v2.js"
-with open(path, "w", encoding="utf-8", newline="\n") as f:
-    f.write(content)
-
-# Concrete cleanliness checks
-assert "```" not in content
-assert content.startswith('/* SPONSOR PUBBLICI')
-assert content.rstrip().endswith('})();')
-print(f"Creato: {path}")
-print(f"Dimensione: {len(content)} caratteri")
-print("Controllo caratteri Markdown ```: PASS")
-print("Controllo inizio/fine file: PASS")
