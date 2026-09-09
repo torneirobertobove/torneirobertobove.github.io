@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const state=()=>window.adminState||{};
 const selected=()=>window.getTorneoAdminCorrente?.()||((state().tornei||[]).find(t=>String(t.id)===String(state().torneoSelezionato))||null);
-const esc=v=>String(v??'').replace(/[&<>"]/g,m=>({'&':'&','<':'<','>':'>','"':'"'}[m]));
+const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
 const cfgOf=t=>t?.configurazione&&typeof t.configurazione==='object'?{...t.configurazione}:{};
 
 async function saveCfg(t,cfg){
@@ -61,7 +61,7 @@ const file=$('sponsorImageFile')?.files?.[0];
 if(!file)return;
 
 if(!file.type.startsWith('image/')){
-alert('Il file selezionato non è un'immagine.');
+alert('Il file selezionato non è un\'immagine.');
 $('sponsorImageFile').value='';
 return;
 }
@@ -115,11 +115,11 @@ try{
 if(file){
 
 if(!file.type.startsWith('image/')){
-throw new Error('Il file selezionato non è un'immagine.');
+throw new Error('Il file selezionato non è un\'immagine.');
 }
 
 if(file.size>6*1024*1024){
-throw new Error('Il logo è troppo grande. Usa un'immagine inferiore a 6 MB.');
+throw new Error('Il logo è troppo grande. Usa un\'immagine inferiore a 6 MB.');
 }
 
 const originalName=file.name||'logo';
@@ -132,7 +132,7 @@ originalName.includes('.')
 
 const baseName=(
 originalName
-.replace(/.[^/.]+$/,'')
+.replace(/\.[^/.]+$/,'')
 .replace(/[^a-zA-Z0-9_-]/g,'_')
 .substring(0,80)
 )||'logo';
@@ -163,7 +163,7 @@ const {data:urlData}=sb
 .getPublicUrl(uploadData.path);
 
 if(!urlData?.publicUrl){
-throw new Error('Impossibile ottenere l'URL pubblico del logo.');
+throw new Error('Impossibile ottenere l\'URL pubblico del logo.');
 }
 
 immagine=urlData.publicUrl;
@@ -221,9 +221,15 @@ await sponsor();
 }
 
 function whatsapp(){const t=selected();if(!t){alert('Seleziona prima un torneo');return}const link=location.origin+'/Bove.html?idTorneo='+encodeURIComponent(t.id);shell('WhatsApp',`${esc(t.nome)} · ID ${esc(t.id)}`,`<div class="card feature-card"><div class="card-head"><div><h2>Comunicazioni WhatsApp</h2><span class="notice">Messaggio pronto con il link del torneo selezionato</span></div></div><div class="card-body"><label>Messaggio</label><textarea id="waText" class="input" rows="6">Ciao! Ti invitiamo al torneo ${esc(t.nome)} del ${esc(t.data||t.data_torneo||'')}.\n\n${esc(link)}</textarea><div class="admin-feature-actions"><button class="btn primary" id="waOpen">📱 Apri WhatsApp</button><button class="btn" id="waCopy">📋 Copia link torneo</button></div><div class="notice" style="margin-top:14px">Il link è sempre riferito al torneo attualmente selezionato.</div></div></div>`);$('waOpen').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent($('waText')?.value||''),'_blank');$('waCopy').onclick=()=>navigator.clipboard?.writeText(link).then(()=>alert('Link copiato negli appunti.'))}
+
 function bindComLinks(){document.querySelectorAll('[data-com-page]').forEach(b=>{if(b.dataset.comBound)return;b.dataset.comBound='1';b.addEventListener('click',()=>{document.getElementById('mobileOverlay')?.classList.remove('open');const p=b.dataset.comPage;if(p==='news')news();else if(p==='sponsor')sponsor();else if(p==='whatsapp')whatsapp()})})}
+
 function bindSidebar(){document.querySelectorAll('#areaAdmin .sidebar [data-page]').forEach(b=>{if(b.dataset.sidebarBound)return;b.dataset.sidebarBound='1';b.addEventListener('click',async()=>{const page=b.dataset.page;if(!page)return;document.querySelectorAll('#areaAdmin .sidebar [data-page]').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(typeof window.openAdminPage==='function')await window.openAdminPage(page)})})}
+
 function bindAll(){bindSidebar();bindComLinks()}
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindAll,{once:true});else bindAll();
+
 window.openAdminComPage=p=>p==='news'?news():p==='sponsor'?sponsor():whatsapp();
+
 })();
