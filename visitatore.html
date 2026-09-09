@@ -13,7 +13,7 @@
 </head>
 <body>
 <button class="back-btn" onclick="history.back()">⬅ Indietro</button>
-<div id="menu" class="menu"><div class="chiudi" onclick="chiudiMenu()">✖</div><a href="#">⌂ Home</a><a href="#tornei">♛ Tornei</a><a href="#news">▣ News</a><a href="javascript:apriMercatino()">□ Mercatino</a><a href="#calendario">▦ Eventi</a><a href="javascript:apriContatti()">○ Contatti</a></div>
+<div id="menu" class="menu"><div class="chiudi" onclick="chiudiMenu()">✖</div><a href="#">⌂ Home</a><a href="#tornei">♛ Tornei</a><a href="#news">▣ News</a><a href="javascript:apriMercatino()">□ Mercatino</a><a href="#calendario">▦ Eventi</a><a href="javascript:apriContatti()">○ Contatti</a><a href="javascript:esciVisitatore()">🚪 Esci</a></div>
 <div class="container"><header><button class="menu-btn" onclick="apriMenu()">☰</button><img src="logo.jpg" class="logo" alt="Logo"><a href="index.html" class="login-btn">👤</a></header>
 <div class="card" id="boxUtente">⏳ Caricamento...</div>
 <div class="card" id="mioTorneo"><h2 class="sezione-titolo">🏆 Il mio torneo</h2><div id="contenutoMioTorneo" class="news-item">Caricamento torneo personale...</div></div>
@@ -27,6 +27,7 @@ function apriMenu(){document.getElementById("menu")?.classList.add("aperto")}
 function chiudiMenu(){document.getElementById("menu")?.classList.remove("aperto")}
 function apriMercatino(){window.location.href="mercatino.html"}
 function apriContatti(){window.location.href="contatti.html"}
+async function esciVisitatore(){try{await sb.auth.signOut()}finally{window.location.href="index.html"}}
 async function caricaNewsVisitatore(){const box=document.getElementById("listaNewsVisitatore");if(!box)return;const {data,error}=await sb.from("news").select("*").order("created_at",{ascending:false});if(error){console.error("Errore caricamento news:",error);box.innerHTML='<div class="news-item">❌ Errore caricamento news</div>';return}if(!data?.length){box.innerHTML='<div class="news-item">Nessuna news disponibile</div>';return}box.innerHTML=data.map(n=>`<div class="news-item"><h3>${n.titolo||""}</h3><p>${n.testo||""}</p></div>`).join("")}
 async function caricaTornei(){const box=document.getElementById("lista-tornei");if(!box)return;const {data,error}=await sb.from("tornei").select("id,nome,data,stato,pubblicato,iscrizioni_chiuse,formula,configurazione").order("data",{ascending:true});if(error){console.error("Errore caricamento tornei:",error);box.innerHTML='<div class="torneo-item">❌ Errore caricamento tornei</div>';return}const torneiVisibili=(data||[]).filter(t=>t.pubblicato===true||t.stato==="attivo");if(!torneiVisibili.length){box.innerHTML='<div class="torneo-item">Nessun torneo disponibile</div>';return}box.innerHTML=torneiVisibili.map(t=>{const chiuso=t.iscrizioni_chiuse===true||t.stato==="chiuso";return `<div class="torneo-item"><h3>🏆 ${t.nome||"Torneo"}</h3><p>📅 ${t.data||"-"}</p><p>🎾 Formula: ${t.formula||t.configurazione?.rules?.tipoTorneo||"Padel"}</p><p>📌 ${chiuso?"Iscrizioni chiuse":"Iscrizioni aperte"}</p><button class="btn-iscriviti" ${chiuso?"disabled":""} onclick="vaiIscrizione(${Number(t.id)})">${chiuso?"ISCRIZIONI CHIUSE":"ISCRIVITI"}</button></div>`}).join("")}
 function vaiIscrizione(id){if(!id){alert("Torneo non valido");return}window.location.href="iscrizione.html?torneo="+encodeURIComponent(id)}
