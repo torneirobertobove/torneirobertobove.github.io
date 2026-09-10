@@ -62,10 +62,8 @@ bindSponsorLogoPreview();
 function selectedTournament(){
   const s=window.adminState||{};
 
-  return window.getTorneoAdminCorrente?.() ||
-    ((s.tornei||[]).find(
-      t=>String(t.id)===String(s.torneoSelezionato)
-    )||null);
+  return window.getTorneoAdminCorrente?.()||
+    ((s.tornei||[]).find(t=>String(t.id)===String(s.torneoSelezionato))||null);
 }
 
 function esc(v){
@@ -99,10 +97,8 @@ function findPhone(obj){
     if(typeof v==='string'||typeof v==='number'){
       if(re.test(String(k||''))){
         const p=normalPhone(v);
-
         if(p.length>=8)return p;
       }
-
       return '';
     }
 
@@ -113,7 +109,6 @@ function findPhone(obj){
 
     for(const key of Object.keys(v)){
       const p=walk(v[key],key);
-
       if(p)return p;
     }
 
@@ -124,23 +119,20 @@ function findPhone(obj){
 }
 
 function participantName(p){
-  return p?.nome_giocatore ||
-    p?.nome ||
-    p?.nominativo ||
-    [p?.nome,p?.cognome].filter(Boolean).join(' ') ||
-    p?.email ||
+  return p?.nome_giocatore||
+    p?.nome||
+    p?.nominativo||
+    [p?.nome,p?.cognome].filter(Boolean).join(' ')||
+    p?.email||
     'Partecipante';
 }
 
 async function getParticipants(t){
-  const cfg=t?.configurazione&&
-    typeof t.configurazione==='object'
-    ? t.configurazione
-    : {};
+  const cfg=t?.configurazione&&typeof t.configurazione==='object'
+    ?t.configurazione
+    :{};
 
-  let rows=Array.isArray(cfg.partecipanti)
-    ? cfg.partecipanti
-    : [];
+  let rows=Array.isArray(cfg.partecipanti)?cfg.partecipanti:[];
 
   if(!rows.length&&Array.isArray(t?.partecipanti)){
     rows=t.partecipanti;
@@ -155,12 +147,9 @@ async function getParticipants(t){
       if(!r.error&&Array.isArray(r.data)){
         const id=String(t.id);
 
-        rows=r.data.filter(x=>
-          Object.keys(x||{}).some(k=>
-            /torneo.?id|id.?torneo|tournament.?id/i.test(k) &&
-            String(x[k])===id
-          )
-        );
+        rows=r.data.filter(x=>Object.keys(x||{}).some(k=>
+          /torneo.?id|id.?torneo|tournament.?id/i.test(k)&&String(x[k])===id
+        ));
       }
     }
   }
@@ -174,24 +163,15 @@ async function getParticipants(t){
     if(!phone||seen.has(phone))continue;
 
     seen.add(phone);
-
-    out.push({
-      name:participantName(p),
-      phone
-    });
+    out.push({name:participantName(p),phone});
   }
 
   return out;
 }
 
 function buildWhatsAppMessage(t){
-  const link=
-    location.origin+
-    '/Bove.html?idTorneo='+
-    encodeURIComponent(t.id);
-
-  const note=
-    "Presentarsi 15 minuti prima dell'orario della propria partita.";
+  const link=location.origin+'/Bove.html?idTorneo='+encodeURIComponent(t.id);
+  const note="Presentarsi 15 minuti prima dell'orario della propria partita.";
 
   return `🎾 TORNEO ${t.nome||''}
 
@@ -208,18 +188,15 @@ ${note}
 
 Buon torneo! 🎾`;
 }
-
-function copyText(text){
+      function copyText(text){
   if(navigator.clipboard?.writeText){
     return navigator.clipboard.writeText(text);
   }
 
   const ta=document.createElement('textarea');
-
   ta.value=text;
   ta.style.position='fixed';
   ta.style.opacity='0';
-
   document.body.appendChild(ta);
   ta.select();
   document.execCommand('copy');
@@ -248,101 +225,94 @@ async function whatsappAuto(){
         <h1>WhatsApp</h1>
         <p>${esc(t.nome)} · ${participants.length} partecipanti approvati</p>
       </div>
-
-      <button class="btn" id="waBack">
-        ← Torna al torneo
-      </button>
+      <button class="btn" id="waBack">← Torna al torneo</button>
     </div>
 
     <div class="card feature-card">
       <div class="card-head">
         <div>
           <h2>Gruppo WhatsApp del torneo</h2>
-          <span class="notice">
-            Partecipanti, messaggio e tabellone preparati automaticamente
-          </span>
+          <span class="notice">Partecipanti, messaggio e tabellone preparati automaticamente</span>
         </div>
       </div>
 
       <div class="card-body">
-
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-          <button type="button" class="btn primary" id="waCopyNumbers">
-            📋 Copia tutti i numeri
-          </button>
+          <button type="button" class="btn primary" id="waCreateGroup">➕ Crea gruppo WhatsApp</button>
+          <button type="button" class="btn" id="waCopyNumbers">📋 Copia tutti i numeri</button>
+          <button type="button" class="btn" id="waOpen">📱 Apri WhatsApp</button>
+        </div>
 
-          <button type="button" class="btn" id="waOpen">
-            📱 Apri WhatsApp
-          </button>
+        <div class="notice" style="margin-bottom:18px">
+          <strong>Crea gruppo:</strong> copia automaticamente tutti i numeri dei partecipanti e apre WhatsApp. La creazione del gruppo e l'aggiunta dei partecipanti vengono completate direttamente in WhatsApp.
         </div>
 
         <label>Messaggio del gruppo</label>
 
         <textarea id="waText" class="input" rows="10">${esc(msg)}</textarea>
 
-        <h3 style="margin-top:20px">
-          Partecipanti approvati
-        </h3>
+        <h3 style="margin-top:20px">Partecipanti approvati</h3>
 
         <div class="feature-list">
-          ${
-            participants.length
-              ? participants.map((p,i)=>`
-                <div
-                  class="list-item"
-                  style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"
-                >
-                  <div style="flex:1">
-                    <strong>
-                      ${i+1}. ${esc(p.name)}
-                    </strong>
-
-                    <small style="display:block;margin-top:3px">
-                      +${esc(p.phone)}
-                    </small>
-                  </div>
-
-                  <button
-                    type="button"
-                    class="btn small"
-                    data-wa-copy="${esc(p.phone)}"
-                  >
-                    📋 Copia
-                  </button>
+          ${participants.length
+            ?participants.map((p,i)=>`
+              <div class="list-item" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div style="flex:1">
+                  <strong>${i+1}. ${esc(p.name)}</strong>
+                  <small style="display:block;margin-top:3px">+${esc(p.phone)}</small>
                 </div>
-              `).join('')
-              : `
-                <div class="empty">
-                  Nessun numero di telefono trovato nei partecipanti approvati.
-                </div>
-              `
-          }
+                <button type="button" class="btn small" data-wa-copy="${esc(p.phone)}">📋 Copia</button>
+              </div>
+            `).join('')
+            :'<div class="empty">Nessun numero di telefono trovato nei partecipanti approvati.</div>'}
         </div>
 
         <div class="notice" style="margin-top:18px">
-          <strong>Come funziona:</strong>
-          copia i numeri, apri WhatsApp, crea il gruppo e aggiungi i partecipanti.
-          Poi invia il messaggio già preparato.
+          <strong>Come funziona:</strong> premi “Crea gruppo WhatsApp”, completa la creazione del gruppo in WhatsApp e poi invia il messaggio già preparato.
         </div>
-
       </div>
     </div>
   `;
-    document.getElementById('waBack')?.addEventListener(
+
+  const copyNumbers=async()=>{
+    const numbers=participants.map(p=>'+'+p.phone).join('\n');
+
+    if(!numbers){
+      alert('Nessun numero di telefono trovato nei partecipanti approvati.');
+      return false;
+    }
+
+    await copyText(numbers);
+    return true;
+  };
+
+  document.getElementById('waBack')?.addEventListener(
     'click',
     ()=>window.openAdminPage?.('torneo')
+  );
+
+  document.getElementById('waCreateGroup')?.addEventListener(
+    'click',
+    async()=>{
+      try{
+        const copied=await copyNumbers();
+        if(!copied)return;
+
+        window.open('https://web.whatsapp.com/','_blank','noopener');
+        alert('Numeri copiati. In WhatsApp crea il nuovo gruppo e incolla i numeri nella selezione dei partecipanti.');
+      }catch(e){
+        console.error(e);
+        alert('Impossibile preparare il gruppo WhatsApp.');
+      }
+    }
   );
 
   document.getElementById('waCopyNumbers')?.addEventListener(
     'click',
     async()=>{
-      const numbers=participants
-        .map(p=>'+'+p.phone)
-        .join('\n');
-
       try{
-        await copyText(numbers);
-        alert('Numeri dei partecipanti copiati.');
+        const copied=await copyNumbers();
+        if(copied)alert('Numeri dei partecipanti copiati.');
       }catch(e){
         console.error(e);
         alert('Impossibile copiare i numeri.');
@@ -354,7 +324,6 @@ async function whatsappAuto(){
     b.addEventListener('click',async()=>{
       try{
         await copyText('+'+b.dataset.waCopy);
-
         b.textContent='✓ Copiato';
 
         setTimeout(()=>{
@@ -369,12 +338,12 @@ async function whatsappAuto(){
   document.getElementById('waOpen')?.addEventListener(
     'click',
     ()=>{
-      const text=
-        document.getElementById('waText')?.value||msg;
+      const text=document.getElementById('waText')?.value||msg;
 
       window.open(
         'https://wa.me/?text='+encodeURIComponent(text),
-        '_blank'
+        '_blank',
+        'noopener'
       );
     }
   );
@@ -384,14 +353,13 @@ const oldOpen=window.openAdminComPage;
 
 window.openAdminComPage=p=>
   p==='whatsapp'
-    ? whatsappAuto()
-    : oldOpen?.(p);
+    ?whatsappAuto()
+    :oldOpen?.(p);
 
 document.addEventListener(
   'click',
   e=>{
-    const b=
-      e.target?.closest?.('[data-com-page="whatsapp"]');
+    const b=e.target?.closest?.('[data-com-page="whatsapp"]');
 
     if(!b)return;
 
@@ -400,11 +368,7 @@ document.addEventListener(
 
     whatsappAuto().catch(err=>{
       console.error(err);
-
-      alert(
-        'Errore caricamento WhatsApp: '+
-        (err?.message||err)
-      );
+      alert('Errore caricamento WhatsApp: '+(err?.message||err));
     });
   },
   true
