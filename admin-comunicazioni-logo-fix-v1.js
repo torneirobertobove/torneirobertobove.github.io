@@ -1,4 +1,3 @@
-
 (()=>{'use strict';
 
 function bindSponsorLogoPreview(){
@@ -454,8 +453,7 @@ async function whatsappAuto(){
       }
     }
   );
-
-  document.querySelectorAll('[data-wa-copy]').forEach(b=>{
+    document.querySelectorAll('[data-wa-copy]').forEach(b=>{
     b.addEventListener('click',async()=>{
       try{
         await copyText('+'+b.dataset.waCopy);
@@ -521,5 +519,3 @@ document.addEventListener(
 );
 
 })();
-
-
