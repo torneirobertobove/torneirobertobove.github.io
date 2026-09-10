@@ -1,8 +1,9 @@
+
 (()=>{'use strict';function bindSponsorLogoPreview(){const input=document.getElementById('sponsorLogo');if(!input||input.dataset.logoPreviewBound)return;input.dataset.logoPreviewBound='1';const wrap=document.createElement('div');wrap.id='sponsorLogoPreview';wrap.style.cssText='margin-top:10px;width:180px;height:90px;border:1px solid rgba(148,163,184,.35);border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;';const img=document.createElement('img');img.alt='Anteprima logo sponsor';img.style.cssText='max-width:100%;max-height:100%;object-fit:contain;display:none;';wrap.appendChild(img);input.insertAdjacentElement('afterend',wrap);input.addEventListener('change',()=>{const file=input.files?.[0];if(!file){img.removeAttribute('src');img.style.display='none';return;}const allowed=['image/png','image/jpeg','image/webp','image/svg+xml'];if(!allowed.includes(file.type)){alert('Il logo deve essere un file PNG, JPG, WEBP o SVG.');input.value='';img.removeAttribute('src');img.style.display='none';return;}if(file.size>2*1024*1024){alert('Il logo è troppo grande. Usa un file massimo di 2 MB.');input.value='';img.removeAttribute('src');img.style.display='none';return;}const reader=new FileReader();reader.onload=()=>{img.src=String(reader.result||'');img.style.display='block';};reader.readAsDataURL(file);});}const observer=new MutationObserver(bindSponsorLogoPreview);observer.observe(document.body,{childList:true,subtree:true});bindSponsorLogoPreview();
 
 function selectedTournament(){const s=window.adminState||{};return window.getTorneoAdminCorrente?.()||((s.tornei||[]).find(t=>String(t.id)===String(s.torneoSelezionato))||null)}
 
-function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&','<':'<','>':'>','"':'"'}[m]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 function normalPhone(v){let x=String(v??'').trim().replace(/[^0-9+]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);if(x.startsWith('+'))return x.slice(1);if(x.startsWith('39')&&x.length>=11)return x;if(x.startsWith('3')&&x.length===10)return '39'+x;return x.replace(/^0+/,'')}
 
@@ -12,9 +13,12 @@ function participantName(p){return p?.nome_giocatore||p?.nome||p?.nominativo||[p
 
 async function getParticipants(t){const cfg=t?.configurazione&&typeof t.configurazione==='object'?t.configurazione:{};let rows=Array.isArray(cfg.partecipanti)?cfg.partecipanti:[];if(!rows.length&&Array.isArray(t?.partecipanti))rows=t.partecipanti;if(!rows.length){const sb=window.supabaseClient||window.sb;if(sb){const r=await sb.from('iscrizioni').select('*');if(!r.error&&Array.isArray(r.data)){const id=String(t.id);rows=r.data.filter(x=>Object.keys(x||{}).some(k=>/torneo.?id|id.?torneo|tournament.?id/i.test(k)&&String(x[k])===id))}}}const out=[];const seen=new Set();for(const p of rows){const phone=findPhone(p);if(!phone||seen.has(phone))continue;seen.add(phone);out.push({name:participantName(p),phone})}return out}
 
-function buildWhatsAppMessage(t){const link=location.origin+'/Bove.html?idTorneo='+encodeURIComponent(t.id);const note='Presentarsi 15 minuti prima dell'orario della propria partita.';return `🎾 TORNEO ${t.nome||''}
+function buildWhatsAppMessage(t){const link=location.origin+'/Bove.html?idTorneo='+encodeURIComponent(t.id);const note="Presentarsi 15 minuti prima dell'orario della propria partita.";return `🎾 TORNEO ${t.nome||''}
+
+NEXT POINT PADEL 
 
 Ciao!
+
 Il tabellone del torneo è disponibile.
 
 👉 ${link}
@@ -76,3 +80,4 @@ window.openAdminComPage=p=>p==='whatsapp'?whatsappAuto():oldOpen?.(p);
 document.addEventListener('click',e=>{const b=e.target?.closest?.('[data-com-page="whatsapp"]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();whatsappAuto().catch(err=>{console.error(err);alert('Errore caricamento WhatsApp: '+(err?.message||err))})},true);
 
 })();
+
