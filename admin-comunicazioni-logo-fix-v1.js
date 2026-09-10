@@ -60,14 +60,29 @@ function bindSponsorLogoPreview(){
   });
 }
 
-const observer=new MutationObserver(bindSponsorLogoPreview);
+function initSponsorLogoPreview(){
+  if(!document.body){
+    document.addEventListener(
+      'DOMContentLoaded',
+      bindSponsorLogoPreview,
+      {once:true}
+    );
+    return;
+  }
 
-observer.observe(document.body,{
-  childList:true,
-  subtree:true
-});
+  bindSponsorLogoPreview();
 
-bindSponsorLogoPreview();
+  const observer=new MutationObserver(()=>{
+    bindSponsorLogoPreview();
+  });
+
+  observer.observe(document.body,{
+    childList:true,
+    subtree:true
+  });
+}
+
+initSponsorLogoPreview();
 
 function selectedTournament(){
   const s=window.adminState||{};
@@ -143,10 +158,14 @@ function findPhone(obj){
 }
 
 function participantName(p){
+  const full=[
+    p?.nome,
+    p?.cognome
+  ].filter(Boolean).join(' ').trim();
+
   return p?.nome_giocatore||
-    p?.nome||
     p?.nominativo||
-    [p?.nome,p?.cognome].filter(Boolean).join(' ')||
+    full||
     p?.email||
     'Partecipante';
 }
@@ -206,11 +225,21 @@ async function getParticipants(t){
   return out;
 }
 
+function buildBoveLink(t){
+  try{
+    return new URL(
+      'Bove.html?idTorneo='+encodeURIComponent(t.id),
+      location.href
+    ).href;
+  }catch(e){
+    return location.origin+
+      '/Bove.html?idTorneo='+
+      encodeURIComponent(t.id);
+  }
+}
+
 function buildWhatsAppMessage(t){
-  const link=
-    location.origin+
-    '/Bove.html?idTorneo='+
-    encodeURIComponent(t.id);
+  const link=buildBoveLink(t);
 
   const note=
     "Presentarsi 15 minuti prima dell'orario della propria partita.";
@@ -252,6 +281,45 @@ function copyText(text){
   return Promise.resolve();
 }
 
+async function creaGruppoWhatsApp(t,participants,msg){
+  if(!participants.length){
+    alert(
+      'Non ci sono numeri di telefono dei partecipanti approvati.'
+    );
+
+    return false;
+  }
+
+  const numbers=participants
+    .map(p=>'+'+p.phone)
+    .join('\n');
+
+  await copyText(numbers);
+
+  try{
+    await copyText(msg);
+  }catch(e){
+    console.warn(
+      'Impossibile copiare il messaggio:',
+      e
+    );
+  }
+
+  window.open(
+    'https://web.whatsapp.com/',
+    '_blank',
+    'noopener'
+  );
+
+  alert(
+    'Gruppo WhatsApp preparato.\n\n'+
+    'I numeri dei partecipanti sono stati copiati.\n\n'+
+    'In WhatsApp crea il nuovo gruppo, seleziona i partecipanti e incolla il messaggio del torneo.'
+  );
+
+  return true;
+}
+
 async function whatsappAuto(){
   const t=selectedTournament();
 
@@ -283,7 +351,7 @@ async function whatsappAuto(){
         <div>
           <h2>Gruppo WhatsApp del torneo</h2>
           <span class="notice">
-            Partecipanti, messaggio e tabellone preparati automaticamente
+            Numeri e messaggio del torneo preparati automaticamente
           </span>
         </div>
       </div>
@@ -316,10 +384,10 @@ async function whatsappAuto(){
         </div>
 
         <div class="notice" style="margin-bottom:18px">
-          <strong>Crea gruppo:</strong>
-          copia automaticamente tutti i numeri dei partecipanti
-          e apre WhatsApp. La creazione del gruppo e l'aggiunta
-          dei partecipanti vengono completate direttamente in WhatsApp.
+          <strong>Crea gruppo WhatsApp:</strong>
+          i numeri di tutti i partecipanti approvati vengono
+          raccolti e copiati automaticamente. WhatsApp Web viene
+          aperto per completare la creazione del gruppo.
         </div>
 
         <label>Messaggio del gruppo</label>
@@ -371,9 +439,12 @@ async function whatsappAuto(){
           class="notice"
           style="margin-top:18px">
 
-          <strong>Come funziona:</strong>
-          premi “Crea gruppo WhatsApp”, completa la creazione
-          del gruppo in WhatsApp e poi invia il messaggio già preparato.
+          <strong>Procedura:</strong>
+          premi “Crea gruppo WhatsApp”.
+          I numeri vengono copiati automaticamente e WhatsApp Web
+          viene aperto. Completa in WhatsApp la creazione del gruppo
+          e l'aggiunta dei partecipanti, quindi copia il messaggio
+          mostrato sopra e invialo nel gruppo.
 
         </div>
 
@@ -408,20 +479,11 @@ async function whatsappAuto(){
     'click',
     async()=>{
       try{
-        const copied=await copyNumbers();
-
-        if(!copied)return;
-
-        window.open(
-          'https://web.whatsapp.com/',
-          '_blank',
-          'noopener'
+        await creaGruppoWhatsApp(
+          t,
+          participants,
+          document.getElementById('waText')?.value||msg
         );
-
-        alert(
-          'Numeri copiati. In WhatsApp crea il nuovo gruppo e incolla i numeri nella selezione dei partecipanti.'
-        );
-
       }catch(e){
         console.error(e);
 
@@ -466,19 +528,31 @@ async function whatsappAuto(){
 
       }catch(e){
         console.error(e);
+
+        alert(
+          'Impossibile copiare il numero.'
+        );
       }
     });
   });
 
   document.getElementById('waOpen')?.addEventListener(
     'click',
-    ()=>{
+    async()=>{
       const text=
         document.getElementById('waText')?.value||msg;
 
+      try{
+        await copyText(text);
+      }catch(e){
+        console.warn(
+          'Impossibile copiare il messaggio:',
+          e
+        );
+      }
+
       window.open(
-        'https://wa.me/?text='+
-        encodeURIComponent(text),
+        'https://web.whatsapp.com/',
         '_blank',
         'noopener'
       );
@@ -517,5 +591,7 @@ document.addEventListener(
   },
   true
 );
+
+window.creaGruppoWhatsApp=creaGruppoWhatsApp;
 
 })();
