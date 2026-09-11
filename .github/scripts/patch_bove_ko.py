@@ -2,6 +2,8 @@ from pathlib import Path
 import re
 p=Path('Bove.html')
 s=p.read_text(encoding='utf-8')
+
+# 1) Replace only the KO card renderer; preserve all winner/result logic.
 new_card='''function renderMatchCard(titolo, match, type, index, risultato) {
     const res = String(risultato || "-").split("-");
     const risultato1 = res[0] === "-" ? "" : (res[0] || "");
@@ -22,6 +24,8 @@ new_card='''function renderMatchCard(titolo, match, type, index, risultato) {
 }'''
 s,n=re.subn(r'function renderMatchCard\([\s\S]*?\n}\n(?=/\*|function )',new_card+'\n',s,count=1)
 if n!=1: raise SystemExit('renderMatchCard target not found')
+
+# 2) Add the single state updater used by the three KO input groups.
 if 'function updateKOField(type,index,field,valore)' not in s:
     fn='''function updateKOField(type,index,field,valore){
     ensureRules();
@@ -35,82 +39,66 @@ if 'function updateKOField(type,index,field,valore)' not in s:
 '''
     s=s.replace('function getWinner(match, res) {',fn+'function getWinner(match, res) {',1)
 
+# 3) State defaults.
 if 'qCamp:Array(4).fill("")' not in s:
-    pattern=r'(\n\s*fTopRes\s*:\s*"-",)(\s*\n\s*campioneTop\s*:\s*null,)'
-    repl=r'''\1
+    s,n=re.subn(r'(\n\s*fTopRes\s*:\s*"-",)(\s*\n\s*campioneTop\s*:\s*null,)',r'''\1
     qCamp:Array(4).fill(""),
     qTime:Array(4).fill(""),
     sTopCamp:Array(2).fill(""),
     sTopTime:Array(2).fill(""),
     fTopCamp:[""],
-    fTopTime:[""],\2'''
-    s,n=re.subn(pattern,repl,s,count=1)
-    if n!=1: raise SystemExit('state KO defaults not found')
+    fTopTime:[""],\2''',s,count=1)
+    if n!=1: raise SystemExit('state defaults target not found')
 
-sync_marker='''            qRes: Array.isArray(state.qRes)?state.qRes:["-","-","-","-"],
-            sTopRes: Array.isArray(state.sTopRes)?state.sTopRes:["-","-"],
-            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
-            finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
-sync_repl='''            qRes: Array.isArray(state.qRes)?state.qRes:["-","-","-","-"],
+# 4) Persist them in updateAndSync, immediately after fTopRes.
+if 'qCamp: Array.isArray(state.qCamp)?state.qCamp:[]' not in s:
+    s,n=re.subn(r'(\n\s*fTopRes:\s*typeof state\.fTopRes==="string"\?state\.fTopRes:"-",)',r'''\1
             qCamp: Array.isArray(state.qCamp)?state.qCamp:[],
             qTime: Array.isArray(state.qTime)?state.qTime:[],
-            sTopRes: Array.isArray(state.sTopRes)?state.sTopRes:["-","-"],
             sTopCamp: Array.isArray(state.sTopCamp)?state.sTopCamp:[],
             sTopTime: Array.isArray(state.sTopTime)?state.sTopTime:[],
-            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
             fTopCamp: Array.isArray(state.fTopCamp)?state.fTopCamp:[],
-            fTopTime: Array.isArray(state.fTopTime)?state.fTopTime:[],
-            finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
-if sync_marker not in s: raise SystemExit('updateAndSync KO point not found')
-s=s.replace(sync_marker,sync_repl,1)
+            fTopTime: Array.isArray(state.fTopTime)?state.fTopTime:[],''',s,count=1)
+    if n!=1: raise SystemExit('updateAndSync target not found')
 
-load_marker='''                if(
-                    typeof configurazione.fTopRes ===
-                    "string"
-                ){
-                    state.fTopRes =
+# 5) Restore saved KO fields when loading from Supabase.
+load_anchor='''                    state.fTopRes =
                         configurazione.fTopRes;
-                }
-'''
-load_repl=load_marker+'''                if(Array.isArray(configurazione.qCamp)) state.qCamp=[...configurazione.qCamp];
+                }'''
+if 'configurazione.qCamp' not in s:
+    if load_anchor not in s: raise SystemExit('loadState target not found')
+    s=s.replace(load_anchor,load_anchor+'''\n                if(Array.isArray(configurazione.qCamp)) state.qCamp=[...configurazione.qCamp];
                 if(Array.isArray(configurazione.qTime)) state.qTime=[...configurazione.qTime];
                 if(Array.isArray(configurazione.sTopCamp)) state.sTopCamp=[...configurazione.sTopCamp];
                 if(Array.isArray(configurazione.sTopTime)) state.sTopTime=[...configurazione.sTopTime];
                 if(Array.isArray(configurazione.fTopCamp)) state.fTopCamp=[...configurazione.fTopCamp];
-                if(Array.isArray(configurazione.fTopTime)) state.fTopTime=[...configurazione.fTopTime];
-'''
-if load_marker not in s: raise SystemExit('loadState final phase point not found')
-s=s.replace(load_marker,load_repl,1)
+                if(Array.isArray(configurazione.fTopTime)) state.fTopTime=[...configurazione.fTopTime];''',1)
 
-init_marker='''            if(
-                typeof state.fTopRes !==
-                "string"
-            ){
-                state.fTopRes =
+# 6) Normalize after initDefaults/load.
+init_anchor='''                state.fTopRes =
                     "-";
-            }
-'''
-init_repl=init_marker+'''            if(!Array.isArray(state.qCamp)) state.qCamp=Array(4).fill("");
+            }'''
+if 'if(!Array.isArray(state.qCamp))' not in s:
+    if init_anchor not in s: raise SystemExit('initDefaults target not found')
+    s=s.replace(init_anchor,init_anchor+'''\n            if(!Array.isArray(state.qCamp)) state.qCamp=Array(4).fill("");
             if(!Array.isArray(state.qTime)) state.qTime=Array(4).fill("");
             if(!Array.isArray(state.sTopCamp)) state.sTopCamp=Array(2).fill("");
             if(!Array.isArray(state.sTopTime)) state.sTopTime=Array(2).fill("");
             if(!Array.isArray(state.fTopCamp)) state.fTopCamp=[""];
-            if(!Array.isArray(state.fTopTime)) state.fTopTime=[""];
-'''
-if init_marker not in s: raise SystemExit('initDefaults KO normalization point not found')
-s=s.replace(init_marker,init_repl,1)
+            if(!Array.isArray(state.fTopTime)) state.fTopTime=[""];''',1)
 
-# Clear only the two existing final-phase reset blocks.
-reset_marker='''    state.fTopRes =
+# 7) Clear only the existing KO reset blocks.
+reset='''    state.fTopRes =
         "-";'''
-reset_repl=reset_marker+'''\n    state.qCamp=Array(4).fill("");
+if s.count(reset)<2: raise SystemExit('KO reset targets not found')
+if 'state.qCamp=Array(4).fill("");' not in s:
+    repl=reset+'''\n    state.qCamp=Array(4).fill("");
     state.qTime=Array(4).fill("");
     state.sTopCamp=Array(2).fill("");
     state.sTopTime=Array(2).fill("");
     state.fTopCamp=[""];
     state.fTopTime=[""];'''
-if s.count(reset_marker)<2: raise SystemExit('KO reset points not found')
-s=s.replace(reset_marker,reset_repl,2)
+    s=s.replace(reset,repl,2)
 
 p.write_text(s,encoding='utf-8')
 print('PATCH_OK')
