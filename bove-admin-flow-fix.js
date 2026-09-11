@@ -125,40 +125,20 @@
     return true;
   }
 
-  function chiudiMenuBove() {
-    if (typeof window.toggleMenu === 'function') { window.toggleMenu(); return; }
-    const menu = document.getElementById('menuComandi');
-    if (!menu) return;
-    menu.classList.remove('show');
-    menu.style.display = '';
-    menu.style.opacity = '';
-    menu.style.visibility = '';
-  }
-
   function installBoveControls() {
     const menu = document.getElementById('menuComandi');
     if (!menu || menu.dataset.managementReady === '1') return;
     menu.dataset.managementReady = '1';
     const save = [...menu.querySelectorAll('button')].find(b => /salva/i.test(b.textContent || ''));
-    if (save) { save.textContent = '💾 Salva Torneo'; save.onclick = salvaTorneoBove; }
-    const add = (id, text, fn) => {
-      if (document.getElementById(id)) return;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.id = id;
-      b.textContent = text;
-      b.onclick = fn;
-      menu.appendChild(b);
-    };
-    add('boveChiudiMenu', '✖️ Chiudi', chiudiMenuBove);
-    add('boveArchiviaTorneo', '📦 Archivia Torneo', archiviaTorneoBove);
-    add('boveEliminaTorneo', '🗑️ Elimina Torneo', eliminaTorneoBove);
+    if (save) {
+      save.textContent = '💾 Salva Torneo';
+      save.onclick = salvaTorneoBove;
+    }
   }
 
   window.salvaTorneoBove = salvaTorneoBove;
   window.archiviaTorneoBove = archiviaTorneoBove;
   window.eliminaTorneoBove = eliminaTorneoBove;
-  window.updateAndSync = salvaTorneoBove;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', installBoveControls, { once: true });
