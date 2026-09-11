@@ -24,15 +24,35 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>\\\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]));
 function style(){if($('adminFlowV25Style'))return;const s=document.createElement('style');s.id='adminFlowV25Style';s.textContent='#adminFlowV18{position:fixed;inset:0;background:rgba(5,8,12,.78);z-index:99999;display:grid;place-items:center;padding:24px}#adminFlowV18 .af-card{width:min(800px,96vw);max-height:92vh;overflow:auto;background:#151b22;color:#eef2f6;border:1px solid #445;border-radius:18px;padding:24px}#adminFlowV18 .af-step{display:none}#adminFlowV18 .af-step.active{display:block}#adminFlowV18 .af-grid,#adminFlowV18 .af-formulas,#adminFlowV18 .af-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}#adminFlowV18 input,#adminFlowV18 select,#adminFlowV18 textarea{width:100%;box-sizing:border-box;background:#0b1016;color:#fff;border:1px solid #445;border-radius:9px;padding:11px;margin:5px 0 12px}#adminFlowV18 .af-formula{padding:12px;border:1px solid #445;border-radius:10px;background:#0d131a;color:#fff;font-weight:700;text-align:left;cursor:pointer}#adminFlowV18 .af-formula.sel{border-color:#4da3ff}#adminFlowV18 .af-summary{margin-top:14px;padding:14px;background:#0b1016;border:1px solid #334;border-radius:10px;line-height:1.7}#adminFlowV18 .af-actions{display:flex;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid #334}#adminFlowV18 button{cursor:pointer;border:1px solid #445;background:#252d37;color:#fff;border-radius:9px;padding:10px 14px;font-weight:700}#adminFlowV18 .primary{background:#4da3ff;color:#07111a;border-color:#4da3ff}@media(max-width:650px){#adminFlowV18 .af-grid,#adminFlowV18 .af-formulas,#adminFlowV18 .af-config-grid{grid-template-columns:1fr}}';document.head.appendChild(s)}
 function defaults(key){const c=CONFIG[key]||CONFIG.manuale,o={formula:key};(c.fields||[]).forEach(f=>o[f[0]]=f[2]==='number'?(f[0].startsWith('sCampo')||f[0]==='fCampo'?'':f[3]):f[2]==='select'?f[3][0][0]:'');return o}
+/*
+ * Historical automatic configuration recovered from Bove.html.
+ * Only values actually supported by the historical engine are calculated.
+ * Americano/Mexicano/King/Short keep their engine defaults because the old
+ * engine starts them dynamically (totaleTurni=0 or turno=1) and does not
+ * define a fixed historical number of rounds.
+ */
 function historicalConfig(key,posti){
   const o=defaults(key);
   const n=Math.max(1,Number(posti)||8);
   const gruppi=Math.max(1,Math.ceil(n/4));
   switch(key){
-    case 'italiana': o.turni=3;o.campi=gruppi*2;break;
-    case 'gironiFinale': o.numeroGironi=gruppi;o.squadrePerGirone=4;o.formulaFinale='eliminazione';break;
-    case 'eliminazione': o.turni=Math.max(1,Math.ceil(Math.log2(n)));o.ripescaggi='no';break;
-    case 'svizzero': o.turni=5;o.criterio='punti';break;
+    case 'italiana':
+      o.turni=3;
+      o.campi=gruppi*2;
+      break;
+    case 'gironiFinale':
+      o.numeroGironi=gruppi;
+      o.squadrePerGirone=4;
+      o.formulaFinale='eliminazione';
+      break;
+    case 'eliminazione':
+      o.turni=Math.max(1,Math.ceil(Math.log2(n)));
+      o.ripescaggi='no';
+      break;
+    case 'svizzero':
+      o.turni=5;
+      o.criterio='punti';
+      break;
   }
   return o;
 }
