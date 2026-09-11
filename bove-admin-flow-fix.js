@@ -38,6 +38,45 @@
 
   preserveTournamentResults();
 
+  function installKOPersistenceFix() {
+    try {
+      if (window.__BOVE_KO_FIELD_PATCHED__) return;
+      if (typeof state === 'undefined') return;
+
+      window.__BOVE_KO_FIELD_PATCHED__ = true;
+
+      window.updateKOField = function(type, index, field, valore) {
+        const keyMap = {
+          Q: { camp: 'qCamp', time: 'qTime' },
+          S: { camp: 'sTopCamp', time: 'sTopTime' },
+          F: { camp: 'fTopCamp', time: 'fTopTime' }
+        };
+
+        if (!keyMap[type] || !['camp','time'].includes(field)) return;
+
+        const key = keyMap[type][field];
+        if (!Array.isArray(state[key])) state[key] = [];
+
+        state[key][index] = String(valore ?? '').trim();
+
+        /*
+         * Salvataggio locale immediato.
+         * Non chiamiamo updateAndSync ad ogni carattere: durante la digitazione
+         * le richieste Supabase asincrone potevano arrivare fuori ordine e
+         * sovrascrivere un valore più recente con uno precedente.
+         * Il pulsante "Salva Torneo" esegue il salvataggio remoto definitivo.
+         */
+        try {
+          localStorage.setItem('torneoState', JSON.stringify(state));
+        } catch (e) {}
+      };
+    } catch (e) {
+      console.error('Errore patch persistenza campi/orari KO:', e);
+    }
+  }
+
+  installKOPersistenceFix();
+
   function openRequestedRules() {
     try {
       const params = new URLSearchParams(window.location.search);
