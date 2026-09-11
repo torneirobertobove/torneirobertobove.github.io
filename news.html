@@ -11,7 +11,6 @@
 </head>
 <body>
 <div class="page"><div class="topbar"><div class="brand">NEXT POINT PADEL</div><a class="back" href="2Page.html">← Torna alla Home</a></div><section class="hero"><h1>News e Comunicazioni</h1><p>Le ultime comunicazioni pubblicate dal club.</p></section><main id="newsList"><div class="status">Caricamento news...</div></main></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 'use strict';
 function esc(v){return String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m))}
@@ -20,13 +19,14 @@ function render(items){const r=document.getElementById('newsList');if(!items.len
 async function loadNews(){
  const r=document.getElementById('newsList');
  try{
-  if(typeof window.supabaseClient!=='undefined'&&window.supabaseClient){
-   const {data,error}=await window.supabaseClient.from('tornei').select('id,nome,configurazione,pubblicato').eq('pubblicato',true);
-   if(error)throw error;
-   const all=[];(data||[]).forEach(t=>{const n=t?.configurazione?.news;if(Array.isArray(n))n.forEach(x=>all.push({...x,torneoNome:t.nome||''}))});
-   all.sort((a,b)=>new Date(b.data||0)-new Date(a.data||0));render(all);return;
-  }
-  throw new Error('Client Supabase non disponibile nella pagina pubblica');
+  const sb=window.supabaseClient||window.sb;
+  if(!sb||typeof sb.from!=='function')throw new Error('Client Supabase non disponibile');
+  const {data,error}=await sb.from('tornei').select('id,nome,configurazione,pubblicato').eq('pubblicato',true);
+  if(error)throw error;
+  const all=[];
+  (data||[]).forEach(t=>{const n=t?.configurazione?.news;if(Array.isArray(n))n.forEach(x=>all.push({...x,torneoNome:t.nome||''}))});
+  all.sort((a,b)=>new Date(b.data||0)-new Date(a.data||0));
+  render(all);
  }catch(e){console.error('Errore caricamento News:',e);r.innerHTML='<div class="status error">Impossibile caricare le comunicazioni in questo momento.</div>'}
 }
 loadNews();
