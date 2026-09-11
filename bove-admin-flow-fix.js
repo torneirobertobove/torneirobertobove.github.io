@@ -15,6 +15,7 @@
       }
     } catch (e) { console.error('Errore ripristino formula neutra:', e); }
   }
+
   function preserveTournamentResults() {
     try {
       if (typeof generaPartiteGironi !== 'function' || typeof state === 'undefined') return;
@@ -23,76 +24,189 @@
       window.__BOVE_RESULTS_PATCHED__ = true;
       generaPartiteGironi = function () {
         const saved = {};
-        ['A','B','C','D','E','F','G'].forEach(g => ['res','time','camp'].forEach(suffix => { const key=g+suffix; if(Array.isArray(state[key])&&state[key].length)saved[key]=state[key].slice(); }));
+        ['A','B','C','D','E','F','G'].forEach(g => ['res','time','camp'].forEach(suffix => {
+          const key = g + suffix;
+          if (Array.isArray(state[key]) && state[key].length) saved[key] = state[key].slice();
+        }));
         original();
-        Object.keys(saved).forEach(key => { if(Array.isArray(state[key])&&state[key].length===saved[key].length)state[key]=saved[key]; });
+        Object.keys(saved).forEach(key => {
+          if (Array.isArray(state[key]) && state[key].length === saved[key].length) state[key] = saved[key];
+        });
       };
     } catch (e) { console.error('Errore protezione risultati torneo:', e); }
   }
+
   preserveTournamentResults();
+
   function openRequestedRules() {
     try {
-      const params=new URLSearchParams(window.location.search); if(params.get('apriRegole')!=='true')return;
-      restoreNeutralFormulaFromAdmin(); if(typeof window.openRules==='function')window.openRules();
-    } catch(e){console.error('Errore apertura configurazione formula:',e)}
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('apriRegole') !== 'true') return;
+      restoreNeutralFormulaFromAdmin();
+      if (typeof window.openRules === 'function') window.openRules();
+    } catch (e) { console.error('Errore apertura configurazione formula:', e); }
   }
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(openRequestedRules,0));
 
-  function captureKOFieldsBeforeSave(s){
-    if(!s) return;
-    const capture=(selector,campKey,timeKey,count)=>{
-      const rows=[...document.querySelectorAll(selector+' tr')].filter(row=>row.querySelector('.campo-cell input')||row.querySelector('.orario-cell input'));
-      if(!Array.isArray(s[campKey])) s[campKey]=Array(count).fill('');
-      if(!Array.isArray(s[timeKey])) s[timeKey]=Array(count).fill('');
-      for(let i=0;i<count;i++){
-        const row=rows[i];
-        if(!row) continue;
-        const camp=row.querySelector('.campo-cell input');
-        const time=row.querySelector('.orario-cell input');
-        if(camp) s[campKey][i]=camp.value||'';
-        if(time) s[timeKey][i]=time.value||'';
+  document.addEventListener('DOMContentLoaded', () => setTimeout(openRequestedRules, 0));
+
+  function stabilizeAdminMenu() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const adminFlow = !!params.get('idTorneo') || params.get('apriRegole') === 'true' || !!params.get('torneo');
+      if (!adminFlow || !document.body) return;
+
+      const restore = () => {
+        if (document.body.classList.contains('user-mode')) {
+          document.body.classList.remove('user-mode');
+        }
+        const hamburger = document.querySelector('.menu-button');
+        if (hamburger) {
+          hamburger.disabled = false;
+          hamburger.style.removeProperty('opacity');
+        }
+        const menu = document.getElementById('menuComandi');
+        if (menu) {
+          menu.querySelectorAll('button').forEach(button => {
+            button.disabled = false;
+            button.style.removeProperty('opacity');
+          });
+        }
+      };
+
+      restore();
+
+      if (window.__BOVE_ADMIN_MENU_STABLE__) return;
+      window.__BOVE_ADMIN_MENU_STABLE__ = true;
+      const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            if (document.body.classList.contains('user-mode')) restore();
+          }
+        }
+      });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) { console.error('Errore stabilizzazione menu admin:', e); }
+  }
+
+  function captureKOFieldsBeforeSave(s) {
+    if (!s) return;
+    const capture = (selector, campKey, timeKey, count) => {
+      const rows = [...document.querySelectorAll(selector + ' tr')]
+        .filter(row => row.querySelector('.campo-cell input') || row.querySelector('.orario-cell input'));
+      if (!Array.isArray(s[campKey])) s[campKey] = Array(count).fill('');
+      if (!Array.isArray(s[timeKey])) s[timeKey] = Array(count).fill('');
+      for (let i = 0; i < count; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const camp = row.querySelector('.campo-cell input');
+        const time = row.querySelector('.orario-cell input');
+        if (camp) s[campKey][i] = camp.value || '';
+        if (time) s[timeKey][i] = time.value || '';
       }
     };
-    capture('tbody#S','sTopCamp','sTopTime',2);
-    capture('tbody#finaleBox','fTopCamp','fTopTime',1);
+    capture('tbody#S', 'sTopCamp', 'sTopTime', 2);
+    capture('tbody#finaleBox', 'fTopCamp', 'fTopTime', 1);
   }
 
-  async function salvaTorneoBove(){
-    const client=window.supabaseClient||window.sb,s=typeof state!=='undefined'?state:null,id=s?.idTorneo||new URLSearchParams(location.search).get('idTorneo');
-    if(!client||!id){alert('Torneo non disponibile.');return false}
+  async function salvaTorneoBove() {
+    const client = window.supabaseClient || window.sb;
+    const s = typeof state !== 'undefined' ? state : null;
+    const id = s?.idTorneo || new URLSearchParams(location.search).get('idTorneo');
+    if (!client || !id) { alert('Torneo non disponibile.'); return false; }
     captureKOFieldsBeforeSave(s);
-    const snapshot=(()=>{try{return JSON.parse(JSON.stringify(s||{}))}catch(e){return {}}})();
-    const rules=snapshot.rules||{},payload={configurazione:snapshot,nome:snapshot.nomeTorneo||undefined,data_torneo:snapshot.dataTorneo||undefined,posti:Number(rules.numeroSquadre)||undefined,formula:rules.formulaScelta||snapshot.formula||undefined};
-    Object.keys(payload).forEach(k=>payload[k]===undefined&&delete payload[k]);
-    const {error}=await client.from('tornei').update(payload).eq('id',id);if(error){console.error(error);alert('Salvataggio torneo non riuscito: '+error.message);return false}
-    try{localStorage.setItem('torneoState',JSON.stringify(snapshot))}catch(e){}return true;
+    const snapshot = (() => { try { return JSON.parse(JSON.stringify(s || {})); } catch (e) { return {}; } })();
+    const rules = snapshot.rules || {};
+    const payload = {
+      configurazione: snapshot,
+      nome: snapshot.nomeTorneo || undefined,
+      data_torneo: snapshot.dataTorneo || undefined,
+      posti: Number(rules.numeroSquadre) || undefined,
+      formula: rules.formulaScelta || snapshot.formula || undefined
+    };
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+    const { error } = await client.from('tornei').update(payload).eq('id', id);
+    if (error) {
+      console.error(error);
+      alert('Salvataggio torneo non riuscito: ' + error.message);
+      return false;
+    }
+    try { localStorage.setItem('torneoState', JSON.stringify(snapshot)); } catch (e) {}
+    return true;
   }
-  async function archiviaTorneoBove(){
-    const client=window.supabaseClient||window.sb,s=typeof state!=='undefined'?state:null,id=s?.idTorneo||new URLSearchParams(location.search).get('idTorneo');
-    if(!client||!id){alert('Torneo non disponibile.');return false}if(!confirm('Confermi la chiusura definitiva e l\'archiviazione del torneo?'))return false;
-    if(!(await salvaTorneoBove()))return false;const {error}=await client.from('tornei').update({stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false}).eq('id',id);
-    if(error){alert('Archiviazione non riuscita: '+error.message);return false}if(s){s.stato='archiviato';s.iscrizioni_chiuse=true}alert('Torneo archiviato correttamente.');return true;
+
+  async function archiviaTorneoBove() {
+    const client = window.supabaseClient || window.sb;
+    const s = typeof state !== 'undefined' ? state : null;
+    const id = s?.idTorneo || new URLSearchParams(location.search).get('idTorneo');
+    if (!client || !id) { alert('Torneo non disponibile.'); return false; }
+    if (!confirm('Confermi la chiusura definitiva e l\'archiviazione del torneo?')) return false;
+    if (!(await salvaTorneoBove())) return false;
+    const { error } = await client.from('tornei').update({ stato: 'archiviato', iscrizioni_chiuse: true, pubblicato: false }).eq('id', id);
+    if (error) { alert('Archiviazione non riuscita: ' + error.message); return false; }
+    if (s) { s.stato = 'archiviato'; s.iscrizioni_chiuse = true; }
+    alert('Torneo archiviato correttamente.');
+    return true;
   }
-  async function eliminaTorneoBove(){
-    const client=window.supabaseClient||window.sb,id=(typeof state!=='undefined'?state?.idTorneo:null)||new URLSearchParams(location.search).get('idTorneo');
-    if(!client||!id){alert('Torneo non disponibile.');return false}if(!confirm('ATTENZIONE: eliminare definitivamente questo torneo e le relative iscrizioni?'))return false;
-    const r1=await client.from('iscrizioni').delete().eq('torneo_id',id);if(r1.error){alert('Eliminazione iscrizioni non riuscita: '+r1.error.message);return false}
-    const r2=await client.from('iscritti').delete().eq('torneo_id',id);if(r2.error){alert('Eliminazione partecipanti non riuscita: '+r2.error.message);return false}
-    const r3=await client.from('tornei').delete().eq('id',id);if(r3.error){alert('Eliminazione torneo non riuscita: '+r3.error.message);return false}
-    try{localStorage.removeItem('torneoState');localStorage.removeItem('savedTeams')}catch(e){}window.location.href='admin.html';return true;
+
+  async function eliminaTorneoBove() {
+    const client = window.supabaseClient || window.sb;
+    const id = (typeof state !== 'undefined' ? state?.idTorneo : null) || new URLSearchParams(location.search).get('idTorneo');
+    if (!client || !id) { alert('Torneo non disponibile.'); return false; }
+    if (!confirm('ATTENZIONE: eliminare definitivamente questo torneo e le relative iscrizioni?')) return false;
+    const r1 = await client.from('iscrizioni').delete().eq('torneo_id', id);
+    if (r1.error) { alert('Eliminazione iscrizioni non riuscita: ' + r1.error.message); return false; }
+    const r2 = await client.from('iscritti').delete().eq('torneo_id', id);
+    if (r2.error) { alert('Eliminazione partecipanti non riuscita: ' + r2.error.message); return false; }
+    const r3 = await client.from('tornei').delete().eq('id', id);
+    if (r3.error) { alert('Eliminazione torneo non riuscita: ' + r3.error.message); return false; }
+    try { localStorage.removeItem('torneoState'); localStorage.removeItem('savedTeams'); } catch (e) {}
+    window.location.href = 'admin.html';
+    return true;
   }
-  function chiudiMenuBove(){if(typeof window.toggleMenu==='function'){window.toggleMenu();return}const menu=document.getElementById('menuComandi');if(!menu)return;menu.classList.remove('show');menu.style.display='';menu.style.opacity='';menu.style.visibility=''}
-  function installBoveControls(){
-    const menu=document.getElementById('menuComandi');if(!menu||menu.dataset.managementReady==='1')return;menu.dataset.managementReady='1';
-    const save=[...menu.querySelectorAll('button')].find(b=>/salva/i.test(b.textContent||''));if(save){save.textContent='💾 Salva Torneo';save.onclick=salvaTorneoBove}
-    const add=(id,text,fn)=>{if(document.getElementById(id))return;const b=document.createElement('button');b.type='button';b.id=id;b.textContent=text;b.onclick=fn;menu.appendChild(b)};
-    add('boveChiudiMenu','✖️ Chiudi',chiudiMenuBove);add('boveArchiviaTorneo','📦 Archivia Torneo',archiviaTorneoBove);add('boveEliminaTorneo','🗑️ Elimina Torneo',eliminaTorneoBove);
+
+  function chiudiMenuBove() {
+    if (typeof window.toggleMenu === 'function') { window.toggleMenu(); return; }
+    const menu = document.getElementById('menuComandi');
+    if (!menu) return;
+    menu.classList.remove('show');
+    menu.style.display = '';
+    menu.style.opacity = '';
+    menu.style.visibility = '';
   }
-  window.salvaTorneoBove=salvaTorneoBove;
-  window.archiviaTorneoBove=archiviaTorneoBove;
-  window.eliminaTorneoBove=eliminaTorneoBove;
+
+  function installBoveControls() {
+    const menu = document.getElementById('menuComandi');
+    if (!menu || menu.dataset.managementReady === '1') return;
+    menu.dataset.managementReady = '1';
+    const save = [...menu.querySelectorAll('button')].find(b => /salva/i.test(b.textContent || ''));
+    if (save) { save.textContent = '💾 Salva Torneo'; save.onclick = salvaTorneoBove; }
+    const add = (id, text, fn) => {
+      if (document.getElementById(id)) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.id = id;
+      b.textContent = text;
+      b.onclick = fn;
+      menu.appendChild(b);
+    };
+    add('boveChiudiMenu', '✖️ Chiudi', chiudiMenuBove);
+    add('boveArchiviaTorneo', '📦 Archivia Torneo', archiviaTorneoBove);
+    add('boveEliminaTorneo', '🗑️ Elimina Torneo', eliminaTorneoBove);
+  }
+
+  window.salvaTorneoBove = salvaTorneoBove;
+  window.archiviaTorneoBove = archiviaTorneoBove;
+  window.eliminaTorneoBove = eliminaTorneoBove;
   window.updateAndSync = salvaTorneoBove;
 
-  const observeBove=()=>{installBoveControls();new MutationObserver(installBoveControls).observe(document.documentElement,{childList:true,subtree:true})};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeBove,{once:true});else observeBove();
+  const startBoveControls = () => {
+    stabilizeAdminMenu();
+    installBoveControls();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startBoveControls, { once: true });
+  } else {
+    startBoveControls();
+  }
 })();
