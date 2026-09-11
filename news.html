@@ -26,18 +26,20 @@ function textOf(n){return n?.testo||n?.text||n?.content||''}
 function imageOf(n){return n?.immagine||n?.image||n?.locandina||n?.poster||''}
 function linkOf(n){return n?.link||n?.url||''}
 function iconOf(type){const t=type.toLowerCase();if(t.includes('torneo'))return '🏆';if(t.includes('promo'))return '🔥';if(t.includes('evento'))return '📅';if(t.includes('ricordo'))return '📸';if(t.includes('prodott'))return '🎾';if(t.includes('articol'))return '📰';return '📢'}
+function orderOf(n,i){const v=Number(n?.ordine);return Number.isFinite(v)?v:i}
+function sortItems(items){return [...items].sort((a,b)=>{const fa=!!(a.inEvidenza||a.featured||a.evidenza),fb=!!(b.inEvidenza||b.featured||b.evidenza);if(fa!==fb)return fb-fa;const oa=orderOf(a,999999),ob=orderOf(b,999999);if(oa!==ob)return oa-ob;return new Date(dateOf(b)||0)-new Date(dateOf(a)||0)})}
 function render(){
 const filters=document.getElementById('filters'),hero=document.getElementById('hero'),grid=document.getElementById('grid');
 const types=['Tutti',...new Set(allItems.map(typeOf))];
 filters.innerHTML=types.map(t=>`<button class="filter ${t===activeType?'active':''}" data-type="${esc(t)}">${esc(t)}</button>`).join('');
 filters.classList.toggle('hidden',allItems.length===0);filters.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>{activeType=b.dataset.type;render()});
-const items=activeType==='Tutti'?allItems:allItems.filter(n=>typeOf(n)===activeType);hero.classList.add('hidden');grid.innerHTML='';
+const items=sortItems(activeType==='Tutti'?allItems:allItems.filter(n=>typeOf(n)===activeType));hero.classList.add('hidden');grid.innerHTML='';
 if(!items.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Non ci sono contenuti pubblicati in questa categoria.</div>';return}
 const featured=items.find(n=>n.inEvidenza||n.featured||n.evidenza)||items[0],rest=items.filter(n=>n!==featured);hero.classList.remove('hidden');
 hero.innerHTML=`<div class="hero-media">${imageOf(featured)?`<img src="${esc(imageOf(featured))}" alt="${esc(titleOf(featured))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="hero-placeholder" style="${imageOf(featured)?'display:none':''}">${iconOf(typeOf(featured))}</div></div><div class="hero-body"><span class="badge">${esc(typeOf(featured))}</span><h1>${esc(titleOf(featured))}</h1>${formatDate(dateOf(featured))?`<div class="date">${esc(formatDate(dateOf(featured)))}</div>`:''}<div class="text">${esc(textOf(featured))}</div>${linkOf(featured)?`<a class="hero-link" href="${esc(linkOf(featured))}" target="_blank" rel="noopener noreferrer">Scopri di più →</a>`:''}</div>`;
 grid.innerHTML=rest.map(n=>`<article class="card"><div class="media">${imageOf(n)?`<img src="${esc(imageOf(n))}" alt="${esc(titleOf(n))}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="placeholder" style="${imageOf(n)?'display:none':''}">${iconOf(typeOf(n))}</div></div><div class="body"><span class="badge">${esc(typeOf(n))}</span><h2>${esc(titleOf(n))}</h2><div class="text">${esc(textOf(n))}</div>${formatDate(dateOf(n))?`<div class="date">${esc(formatDate(dateOf(n)))}</div>`:''}${linkOf(n)?`<a class="hero-link" style="margin-top:12px" href="${esc(linkOf(n))}" target="_blank" rel="noopener noreferrer">Scopri di più →</a>`:''}</div></article>`).join('');
 }
-async function loadNews(){const status=document.getElementById('status');try{const {data,error}=await sb.from('tornei').select('configurazione');if(error)throw error;allItems=[];(data||[]).forEach(row=>{const list=Array.isArray(row?.configurazione?.news)?row.configurazione.news:[];list.forEach(n=>allItems.push(n))});allItems.sort((a,b)=>new Date(dateOf(b)||0)-new Date(dateOf(a)||0));status.classList.add('hidden');render()}catch(err){console.error('Errore caricamento News:',err);status.textContent='Impossibile caricare le news.'}}
+async function loadNews(){const status=document.getElementById('status');try{const {data,error}=await sb.from('tornei').select('configurazione');if(error)throw error;allItems=[];(data||[]).forEach(row=>{const list=Array.isArray(row?.configurazione?.news)?row.configurazione.news:[];list.forEach(n=>allItems.push(n))});allItems=sortItems(allItems);status.classList.add('hidden');render()}catch(err){console.error('Errore caricamento News:',err);status.textContent='Impossibile caricare le news.'}}
 loadNews();
 </script>
 </body>
