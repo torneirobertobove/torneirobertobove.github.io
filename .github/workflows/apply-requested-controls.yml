@@ -1,0 +1,39 @@
+name: Apply requested tournament controls
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.event.head_commit.message != 'Apply requested tournament controls'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire requested scripts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          mappings={
+            'Bove.html':['tournament-controls-v1.js'],
+            'admin.html':['tournament-controls-v1.js'],
+            'visitatore.html':['visitor-capacity-v1.js'],
+            'iscrizione.html':['registration-capacity-v1.js'],
+          }
+          for name,scripts in mappings.items():
+              p=Path(name)
+              s=p.read_text(encoding='utf-8')
+              for script in scripts:
+                  tag=f'<script src="{script}"></script>'
+                  if tag not in s:
+                      pos=s.lower().rfind('</body>')
+                      if pos < 0:
+                          raise SystemExit(f'No body tag in {name}')
+                      s=s[:pos]+tag+'\n'+s[pos:]
+              p.write_text(s,encoding='utf-8')
+          PY
+          git add Bove.html admin.html visitatore.html iscrizione.html
+          git rm .github/workflows/apply-requested-controls.yml
+          git commit -m 'Apply requested tournament controls'
+          git push
