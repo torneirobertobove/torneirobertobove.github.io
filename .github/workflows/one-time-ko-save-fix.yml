@@ -1,3 +1,4 @@
+# one-time surgical repair trigger
 name: One-time Bove KO save fix
 on:
   push:
@@ -88,115 +89,53 @@ jobs:
         </div>
     `;
 }'''
-
           new_card = '''function renderMatchCard(titolo, match, type, index, risultato) {
     const res = String(risultato || "-").split("-");
     const risultato1 = res[0] === "-" ? "" : (res[0] || "");
     const risultato2 = res[1] || "";
-
-    const campKey = {
-        Q: "qCamp",
-        S: "sTopCamp",
-        F: "fTopCamp"
-    }[type];
-
-    const timeKey = {
-        Q: "qTime",
-        S: "sTopTime",
-        F: "fTopTime"
-    }[type];
-
-    const camp = Array.isArray(state[campKey])
-        ? (state[campKey][index] || "")
-        : "";
-
-    const time = Array.isArray(state[timeKey])
-        ? (state[timeKey][index] || "")
-        : "";
-
+    const campKey = { Q:"qCamp", S:"sTopCamp", F:"fTopCamp" }[type];
+    const timeKey = { Q:"qTime", S:"sTopTime", F:"fTopTime" }[type];
+    const camp = Array.isArray(state[campKey]) ? (state[campKey][index] || "") : "";
+    const time = Array.isArray(state[timeKey]) ? (state[timeKey][index] || "") : "";
     const winner = getWinner(match, risultato);
     const stato = winner ? "Terminata" : "Da giocare";
-
     return `
 <tr>
-    <td class="campo-cell">
-        <input
-            value="${camp}"
-            oninput="updateKOField('${type}', ${index}, 'camp', this.value)"
-            style="width:45px"
-        >
-    </td>
-    <td class="orario-cell">
-        <input
-            type="time"
-            value="${time}"
-            oninput="updateKOField('${type}', ${index}, 'time', this.value)"
-        >
-    </td>
-    <td class="match-cell">
-        <div class="team-line">${formatCoppiaDisplay(match[0])}</div>
-        <div class="vs-line"><b>VS</b></div>
-        <div class="team-line">${formatCoppiaDisplay(match[1])}</div>
-    </td>
-    <td class="score-cell">
-        <input
-            value="${risultato1}"
-            oninput="updateKOResult('${type}', ${index}, this.value, 0)"
-        >
-    </td>
-    <td class="score-cell">
-        <input
-            value="${risultato2}"
-            oninput="updateKOResult('${type}', ${index}, this.value, 1)"
-        >
-    </td>
+    <td class="campo-cell"><input value="${camp}" oninput="updateKOField('${type}', ${index}, 'camp', this.value)" style="width:45px"></td>
+    <td class="orario-cell"><input type="time" value="${time}" oninput="updateKOField('${type}', ${index}, 'time', this.value)"></td>
+    <td class="match-cell"><div class="team-line">${formatCoppiaDisplay(match[0])}</div><div class="vs-line"><b>VS</b></div><div class="team-line">${formatCoppiaDisplay(match[1])}</div></td>
+    <td class="score-cell"><input value="${risultato1}" oninput="updateKOResult('${type}', ${index}, this.value, 0)"></td>
+    <td class="score-cell"><input value="${risultato2}" oninput="updateKOResult('${type}', ${index}, this.value, 1)"></td>
 </tr>`;
 }'''
-
-          if old_card not in s:
-              raise SystemExit('renderMatchCard target not found; aborting without changes')
+          if old_card not in s: raise SystemExit('renderMatchCard target not found')
           s = s.replace(old_card, new_card, 1)
 
           marker = '''function getWinner(match, res) {'''
           update_fn = '''function updateKOField(type,index,field,valore){
     ensureRules();
-
-    const keyMap={
-        Q:{camp:"qCamp",time:"qTime"},
-        S:{camp:"sTopCamp",time:"sTopTime"},
-        F:{camp:"fTopCamp",time:"fTopTime"}
-    };
-
-    if(!keyMap[type] || !["camp","time"].includes(field))
-        return;
-
+    const keyMap={Q:{camp:"qCamp",time:"qTime"},S:{camp:"sTopCamp",time:"sTopTime"},F:{camp:"fTopCamp",time:"fTopTime"}};
+    if(!keyMap[type] || !["camp","time"].includes(field)) return;
     const key=keyMap[type][field];
-    if(!Array.isArray(state[key]))
-        state[key]=[];
-
+    if(!Array.isArray(state[key])) state[key]=[];
     state[key][index]=String(valore ?? "").trim();
     updateAndSync();
 }
 '''
-          if update_fn not in s:
-              if marker not in s:
-                  raise SystemExit('updateKOField insertion point not found; aborting without changes')
+          if 'function updateKOField(type,index,field,valore)' not in s:
+              if marker not in s: raise SystemExit('updateKOField insertion point not found')
               s = s.replace(marker, update_fn + marker, 1)
 
-          # State defaults: add KO field/time arrays immediately after fTopRes.
           state_marker = '''    fTopRes = "-";'''
           state_insert = '''    fTopRes = "-",
-
     qCamp:Array(4).fill(""),
     qTime:Array(4).fill(""),
     sTopCamp:Array(2).fill(""),
     sTopTime:Array(2).fill(""),
     fTopCamp:[""],
     fTopTime:[""],'''
-          if state_marker in s and 'qCamp:Array(4).fill("")' not in s:
-              s = s.replace(state_marker, state_insert, 1)
+          if state_marker in s and 'qCamp:Array(4).fill("")' not in s: s = s.replace(state_marker, state_insert, 1)
 
-          # Persist KO field/time arrays in updateAndSync configuration.
           sync_marker = '''            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
             finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
           sync_repl = '''            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
@@ -207,18 +146,14 @@ jobs:
             fTopCamp: Array.isArray(state.fTopCamp)?state.fTopCamp:[],
             fTopTime: Array.isArray(state.fTopTime)?state.fTopTime:[],
             finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
-          if sync_marker not in s:
-              raise SystemExit('updateAndSync KO persistence point not found; aborting without changes')
+          if sync_marker not in s: raise SystemExit('updateAndSync point not found')
           s = s.replace(sync_marker, sync_repl, 1)
 
-          # Recover saved KO field/time arrays from remote configuration.
           load_marker = '''            "qRes","sTopRes","fTopRes","finalTop"'''
           load_repl = '''            "qRes","qCamp","qTime","sTopRes","sTopCamp","sTopTime","fTopRes","fTopCamp","fTopTime","finalTop"'''
-          if load_marker not in s:
-              raise SystemExit('loadState KO recovery point not found; aborting without changes')
+          if load_marker not in s: raise SystemExit('loadState point not found')
           s = s.replace(load_marker, load_repl, 1)
 
-          # Reset must clear the same six arrays.
           reset_marker = '''        fTopRes: "-",
         finalTop: [],'''
           reset_repl = '''        fTopRes: "-",
@@ -229,12 +164,10 @@ jobs:
         fTopCamp: [""],
         fTopTime: [""],
         finalTop: [],'''
-          if reset_marker not in s:
-              raise SystemExit('reset KO point not found; aborting without changes')
+          if reset_marker not in s: raise SystemExit('reset point not found')
           s = s.replace(reset_marker, reset_repl, 1)
 
           p.write_text(s, encoding='utf-8')
-          print('Bove KO field/time persistence patched exactly')
 
       - name: Commit and remove one-time workflow
         run: |
