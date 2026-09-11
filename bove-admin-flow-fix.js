@@ -45,7 +45,7 @@
     const rules=snapshot.rules||{},payload={configurazione:snapshot,nome:snapshot.nomeTorneo||undefined,data_torneo:snapshot.dataTorneo||undefined,posti:Number(rules.numeroSquadre)||undefined,formula:rules.formulaScelta||snapshot.formula||undefined};
     Object.keys(payload).forEach(k=>payload[k]===undefined&&delete payload[k]);
     const {error}=await client.from('tornei').update(payload).eq('id',id);if(error){console.error(error);alert('Salvataggio torneo non riuscito: '+error.message);return false}
-    try{localStorage.setItem('torneoState',JSON.stringify(snapshot))}catch(e){}alert('Torneo salvato su Supabase.');return true;
+    try{localStorage.setItem('torneoState',JSON.stringify(snapshot))}catch(e){}return true;
   }
   async function archiviaTorneoBove(){
     const client=window.supabaseClient||window.sb,s=typeof state!=='undefined'?state:null,id=s?.idTorneo||new URLSearchParams(location.search).get('idTorneo');
@@ -68,7 +68,14 @@
     const add=(id,text,fn)=>{if(document.getElementById(id))return;const b=document.createElement('button');b.type='button';b.id=id;b.textContent=text;b.onclick=fn;menu.appendChild(b)};
     add('boveChiudiMenu','✖️ Chiudi',chiudiMenuBove);add('boveArchiviaTorneo','📦 Archivia Torneo',archiviaTorneoBove);add('boveEliminaTorneo','🗑️ Elimina Torneo',eliminaTorneoBove);
   }
-  window.salvaTorneoBove=salvaTorneoBove;window.archiviaTorneoBove=archiviaTorneoBove;window.eliminaTorneoBove=eliminaTorneoBove;
+  window.salvaTorneoBove=salvaTorneoBove;
+  window.archiviaTorneoBove=archiviaTorneoBove;
+  window.eliminaTorneoBove=eliminaTorneoBove;
+
+  // Il tabellone usa updateAndSync() per ogni modifica. Lo instradiamo
+  // sul salvataggio Supabase già presente, senza modificare il motore del tabellone.
+  window.updateAndSync = salvaTorneoBove;
+
   const observeBove=()=>{installBoveControls();new MutationObserver(installBoveControls).observe(document.documentElement,{childList:true,subtree:true})};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeBove,{once:true});else observeBove();
 })();
