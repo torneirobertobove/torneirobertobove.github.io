@@ -1,0 +1,78 @@
+name: Implement tournament controls
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply requested changes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('Bove.html'); s=p.read_text(encoding='utf-8')
+          old='<button type="button" onclick="updateAndSync()"> 💾 Salva </button>'
+          new='<button type="button" onclick="toggleMenu()"> ✖️ Chiudi </button> <button type="button" onclick="salvaTorneoBove()"> 💾 Salva Torneo </button> <button type="button" onclick="archiviaTorneoBove()"> 📦 Archivia Torneo </button> <button type="button" onclick="eliminaTorneoBove()"> 🗑️ Elimina Torneo </button>'
+          if old not in s: raise SystemExit('Bove menu marker not found')
+          s=s.replace(old,new,1)
+          marker='async function updateAndSync(){'
+          helpers='''async function salvaTorneoBove(){const ok=await updateAndSync();if(ok)alert("Torneo salvato su Supabase.");return ok;}\nasync function archiviaTorneoBove(){const id=state?.idTorneo,client=window.supabaseClient||window.sb;if(!id||!client){alert("Torneo non disponibile.");return false}if(!confirm("Confermi l'archiviazione definitiva del torneo?"))return false;if(!(await updateAndSync()))return false;const {error}=await client.from("tornei").update({stato:"archiviato",iscrizioni_chiuse:true,pubblicato:false}).eq("id",id);if(error){alert("Archiviazione non riuscita: "+error.message);return false}state.stato="archiviato";state.iscrizioni_chiuse=true;try{localStorage.setItem("torneoState",JSON.stringify(state))}catch(e){}alert("Torneo archiviato correttamente.");return true;}\nasync function eliminaTorneoBove(){const id=state?.idTorneo,client=window.supabaseClient||window.sb;if(!id||!client){alert("Torneo non disponibile.");return false}if(!confirm("ATTENZIONE: eliminare definitivamente questo torneo?"))return false;const {error}=await client.from("tornei").delete().eq("id",id);if(error){alert("Eliminazione non riuscita: "+error.message);return false}try{localStorage.removeItem("torneoState");localStorage.removeItem("savedTeams")}catch(e){}alert("Torneo eliminato definitivamente.");window.location.href="admin.html";return true;}\n\n'''
+          if 'async function salvaTorneoBove()' not in s:
+              pos=s.find(marker)
+              if pos<0: raise SystemExit('updateAndSync marker not found')
+              s=s[:pos]+helpers+s[pos:]
+          p.write_text(s,encoding='utf-8')
+          p=Path('admin-functions.js'); s=p.read_text(encoding='utf-8')
+          marker='async function pubblicaTorneo()'
+          add='''async function salvaTorneoAdmin(){const t=getTorneoAdminCorrente();if(!t){alert("Seleziona prima un torneo");return false}const client=window.supabaseClient||window.sb;if(!client){alert("Connessione Supabase non disponibile.");return false}const cfg=t.configurazione&&typeof t.configurazione==='object'?{...t.configurazione}:{};const {data,error}=await client.from('tornei').update({nome:t.nome,data:t.data||null,data_torneo:t.data||null,posti:Number(t.posti)||null,descrizione:t.descrizione||null,formula:t.formula||null,configurazione:cfg}).eq('id',t.id).select('*').single();if(error){alert('Salvataggio torneo non riuscito: '+error.message);return false}Object.assign(t,data||{});salvaAdminState();if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();alert('Torneo salvato su Supabase.');return true;}\nasync function archiviaTorneoAdmin(){const t=getTorneoAdminCorrente();if(!t){alert("Seleziona prima un torneo");return false}if(!confirm('Confermi l\'archiviazione del torneo "'+(t.nome||'Torneo')+'"?'))return false;const client=window.supabaseClient||window.sb;if(!client){alert('Connessione Supabase non disponibile.');return false}const {data,error}=await client.from('tornei').update({stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false}).eq('id',t.id).select('*').single();if(error){alert('Archiviazione non riuscita: '+error.message);return false}Object.assign(t,data||{});salvaAdminState();await caricaTorneiSupabase();alert('Torneo archiviato correttamente.');return true;}\nwindow.salvaTorneoAdmin=salvaTorneoAdmin;window.archiviaTorneoAdmin=archiviaTorneoAdmin;\n'''
+          if 'async function salvaTorneoAdmin()' not in s:
+              pos=s.find(marker)
+              if pos<0: raise SystemExit('admin marker not found')
+              s=s[:pos]+add+s[pos:]
+          p.write_text(s,encoding='utf-8')
+          p=Path('admin-layout-v2.js'); s=p.read_text(encoding='utf-8')
+          old='<button class="btn action-tile" id="publicLink">🔗 <strong>Link pubblico</strong><span>Genera e copia collegamento</span></button>'
+          new=old+'<button class="btn action-tile" id="saveTournament">💾 <strong>Salva torneo</strong><span>Salva tutto su Supabase</span></button><button class="btn action-tile" id="archiveTournament">📦 <strong>Archivia torneo</strong><span>Sposta nell\'archivio</span></button><button class="btn action-tile" id="deleteTournament">🗑️ <strong>Elimina torneo</strong><span>Eliminazione definitiva</span></button>'
+          if old not in s: raise SystemExit('admin action marker not found')
+          s=s.replace(old,new,1)
+          oldbind="$('publicLink')?.addEventListener('click',()=>{if(!selected())return alert('Seleziona prima un torneo');window.generaLinkBove?.();window.copiaLinkBove?.()});"
+          newbind=oldbind+"$('saveTournament')?.addEventListener('click',()=>window.salvaTorneoAdmin?.());$('archiveTournament')?.addEventListener('click',()=>window.archiviaTorneoAdmin?.());$('deleteTournament')?.addEventListener('click',()=>window.eliminaTorneoAdmin?.(selected()?.id));"
+          if oldbind not in s: raise SystemExit('admin bind marker not found')
+          s=s.replace(oldbind,newbind,1)
+          s=s.replace("function badge(t){if(t?.stato==='chiuso'||t?.iscrizioni_chiuse)return","function badge(t){if(t?.stato==='archiviato')return '<span class=\"pill red\">📦 Archiviato</span>';if(t?.stato==='chiuso'||t?.iscrizioni_chiuse)return",1)
+          p.write_text(s,encoding='utf-8')
+          p=Path('torneo-flow-public-fix-v1.js'); s=p.read_text(encoding='utf-8')
+          s=s.replace("function chiuso(t){return t.iscrizioni_chiuse===true || t.stato==='chiuso';}","function chiuso(t){return t.iscrizioni_chiuse===true || ['chiuso','concluso','archiviato'].includes(String(t.stato||'').toLowerCase());}",1)
+          s=s.replace("select('id,nome,data,stato,pubblicato,iscrizioni_chiuse,formula,configurazione')","select('id,nome,data,posti,stato,pubblicato,iscrizioni_chiuse,formula,configurazione')",1)
+          old="<p>📌 ${closed?'Torneo concluso':'Iscrizioni aperte'}</p>"
+          new="<p>📌 ${closed?'Torneo concluso':'Iscrizioni aperte'}</p><div class=\"posti-torneo\" data-torneo-count=\"${id}\">Caricamento iscritti...</div>"
+          if old in s:s=s.replace(old,new,1)
+          needle='installMenu(aperti); installArchivio(chiusi);'
+          addcount="""installMenu(aperti); installArchivio(chiusi);\n async function aggiornaContatori(){const ids=[...(aperti||[]),...(chiusi||[])].map(t=>Number(t.id));if(!ids.length)return;const {data:rows}=await client.from('iscrizioni').select('torneo_id,stato').in('torneo_id',ids);const counts={};(rows||[]).forEach(r=>{if(String(r.stato||'').toLowerCase()==='rifiutato')return;counts[r.torneo_id]=(counts[r.torneo_id]||0)+1});[...document.querySelectorAll('[data-torneo-count]')].forEach(el=>{const id=Number(el.dataset.torneoCount),t=[...(aperti||[]),...(chiusi||[])].find(x=>Number(x.id)===id),max=(Number(t?.posti)||Number(t?.configurazione?.rules?.numeroSquadre)||8)*2,n=counts[id]||0,rem=Math.max(0,max-n);el.innerHTML=n>=max?'🔴 TORNEO COMPLETO':`👥 ${n}/${max} iscritti · ${rem} posti disponibili${rem>0&&rem<=3?` · <b>ULTIMI ${rem} POSTI</b>`:''}`})} await aggiornaContatori();"""
+          if needle not in s: raise SystemExit('public count marker not found')
+          s=s.replace(needle,addcount,1)
+          p.write_text(s,encoding='utf-8')
+          p=Path('iscrizione.html'); s=p.read_text(encoding='utf-8')
+          s=s.replace('function iscrizioniChiuse(){return torneo?.iscrizioni_chiuse===true||torneo?.stato==="chiuso"}','function iscrizioniChiuse(){return torneo?.iscrizioni_chiuse===true||["chiuso","concluso","archiviato"].includes(String(torneo?.stato||"").toLowerCase())}',1)
+          old='const squadre=getNumeroSquadre(),giocatori=squadre*2,chiuso=iscrizioniChiuse();boxTorneo.innerHTML=`<div class="info">'
+          new='const squadre=getNumeroSquadre(),giocatori=squadre*2,chiuso=iscrizioniChiuse();const {data:righe}=await sb.from("iscrizioni").select("id,stato").eq("torneo_id",torneo.id);const iscritti=(righe||[]).filter(r=>String(r.stato||"").toLowerCase()!=="rifiutato").length;const posti=Math.max(0,giocatori-iscritti);if(iscritti>=giocatori&&!chiuso){await sb.from("tornei").update({iscrizioni_chiuse:true,stato:"chiuso"}).eq("id",torneo.id);torneo.iscrizioni_chiuse=true;torneo.stato="chiuso";}boxTorneo.innerHTML=`<div class="info">'
+          if old not in s: raise SystemExit('registration marker not found')
+          s=s.replace(old,new,1)
+          s=s.replace('<br>👥 Posti disponibili: ${giocatori} giocatori<br><br>Stato: ${chiuso?', '<br>👥 Iscritti: ${iscritti}/${giocatori} giocatori<br>🟢 Posti disponibili: ${posti}${posti>0&&posti<=3?`<br><b>🔥 ULTIMI ${posti} POSTI</b>`:""}<br><br>Stato: ${chiuso||iscritti>=giocatori?',1)
+          s=s.replace('if(iscritti&&iscritti.length>=limite)','if(iscritti&&iscritti.filter(x=>String(x.stato||"").toLowerCase()!=="rifiutato").length>=limite)',1)
+          p.write_text(s,encoding='utf-8')
+      - name: Validate and commit
+        shell: bash
+        run: |
+          node --check admin-functions.js
+          node --check admin-layout-v2.js
+          node --check torneo-flow-public-fix-v1.js
+          git add Bove.html admin-functions.js admin-layout-v2.js torneo-flow-public-fix-v1.js iscrizione.html
+          git rm -f .github/workflows/implement-tournament-controls.yml
+          git commit -m 'Implement requested tournament controls and registration counters'
+          git push
