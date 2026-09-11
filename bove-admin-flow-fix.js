@@ -38,9 +38,29 @@
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(openRequestedRules,0));
 
+  function captureKOFieldsBeforeSave(s){
+    if(!s) return;
+    const capture=(selector,campKey,timeKey,count)=>{
+      const rows=[...document.querySelectorAll(selector+' tr')].filter(row=>row.querySelector('.campo-cell input')||row.querySelector('.orario-cell input'));
+      if(!Array.isArray(s[campKey])) s[campKey]=Array(count).fill('');
+      if(!Array.isArray(s[timeKey])) s[timeKey]=Array(count).fill('');
+      for(let i=0;i<count;i++){
+        const row=rows[i];
+        if(!row) continue;
+        const camp=row.querySelector('.campo-cell input');
+        const time=row.querySelector('.orario-cell input');
+        if(camp) s[campKey][i]=camp.value||'';
+        if(time) s[timeKey][i]=time.value||'';
+      }
+    };
+    capture('tbody#S','sTopCamp','sTopTime',2);
+    capture('tbody#finaleBox','fTopCamp','fTopTime',1);
+  }
+
   async function salvaTorneoBove(){
     const client=window.supabaseClient||window.sb,s=typeof state!=='undefined'?state:null,id=s?.idTorneo||new URLSearchParams(location.search).get('idTorneo');
     if(!client||!id){alert('Torneo non disponibile.');return false}
+    captureKOFieldsBeforeSave(s);
     const snapshot=(()=>{try{return JSON.parse(JSON.stringify(s||{}))}catch(e){return {}}})();
     const rules=snapshot.rules||{},payload={configurazione:snapshot,nome:snapshot.nomeTorneo||undefined,data_torneo:snapshot.dataTorneo||undefined,posti:Number(rules.numeroSquadre)||undefined,formula:rules.formulaScelta||snapshot.formula||undefined};
     Object.keys(payload).forEach(k=>payload[k]===undefined&&delete payload[k]);
@@ -71,9 +91,6 @@
   window.salvaTorneoBove=salvaTorneoBove;
   window.archiviaTorneoBove=archiviaTorneoBove;
   window.eliminaTorneoBove=eliminaTorneoBove;
-
-  // Il tabellone usa updateAndSync() per ogni modifica. Lo instradiamo
-  // sul salvataggio Supabase già presente, senza modificare il motore del tabellone.
   window.updateAndSync = salvaTorneoBove;
 
   const observeBove=()=>{installBoveControls();new MutationObserver(installBoveControls).observe(document.documentElement,{childList:true,subtree:true})};
