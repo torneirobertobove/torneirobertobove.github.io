@@ -92,6 +92,7 @@
       return false;
     }
     try { localStorage.setItem('torneoState', JSON.stringify(snapshot)); } catch (e) {}
+    alert('Torneo salvato correttamente.');
     return true;
   }
 
