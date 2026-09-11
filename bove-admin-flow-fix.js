@@ -124,7 +124,7 @@
     event.stopPropagation();
     if (saveInProgress) return;
     saveInProgress = true;
-    try { await salvaTorneoSupabase(); }
+    try { await salvaTorneoBove(); }
     finally { saveInProgress = false; }
   }, true);
 
