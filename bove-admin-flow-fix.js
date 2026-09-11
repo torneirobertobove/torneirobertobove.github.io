@@ -49,45 +49,6 @@
 
   document.addEventListener('DOMContentLoaded', () => setTimeout(openRequestedRules, 0));
 
-  function stabilizeAdminMenu() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const adminFlow = !!params.get('idTorneo') || params.get('apriRegole') === 'true' || !!params.get('torneo');
-      if (!adminFlow || !document.body) return;
-
-      const restore = () => {
-        if (document.body.classList.contains('user-mode')) {
-          document.body.classList.remove('user-mode');
-        }
-        const hamburger = document.querySelector('.menu-button');
-        if (hamburger) {
-          hamburger.disabled = false;
-          hamburger.style.removeProperty('opacity');
-        }
-        const menu = document.getElementById('menuComandi');
-        if (menu) {
-          menu.querySelectorAll('button').forEach(button => {
-            button.disabled = false;
-            button.style.removeProperty('opacity');
-          });
-        }
-      };
-
-      restore();
-
-      if (window.__BOVE_ADMIN_MENU_STABLE__) return;
-      window.__BOVE_ADMIN_MENU_STABLE__ = true;
-      const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-            if (document.body.classList.contains('user-mode')) restore();
-          }
-        }
-      });
-      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    } catch (e) { console.error('Errore stabilizzazione menu admin:', e); }
-  }
-
   function captureKOFieldsBeforeSave(s) {
     if (!s) return;
     const capture = (selector, campKey, timeKey, count) => {
@@ -199,14 +160,9 @@
   window.eliminaTorneoBove = eliminaTorneoBove;
   window.updateAndSync = salvaTorneoBove;
 
-  const startBoveControls = () => {
-    stabilizeAdminMenu();
-    installBoveControls();
-  };
-
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startBoveControls, { once: true });
+    document.addEventListener('DOMContentLoaded', installBoveControls, { once: true });
   } else {
-    startBoveControls();
+    installBoveControls();
   }
 })();
