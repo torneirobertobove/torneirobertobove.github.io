@@ -34,32 +34,86 @@ if 'function updateKOField(type,index,field,valore)' not in s:
 }
 '''
     s=s.replace('function getWinner(match, res) {',fn+'function getWinner(match, res) {',1)
+
+state_marker='    fTopRes:"-",\n    campioneTop:null,'
+state_repl='''    fTopRes:"-",
+    qCamp:Array(4).fill(""),
+    qTime:Array(4).fill(""),
+    sTopCamp:Array(2).fill(""),
+    sTopTime:Array(2).fill(""),
+    fTopCamp:[""],
+    fTopTime:[""],
+    campioneTop:null,'''
 if 'qCamp:Array(4).fill("")' not in s:
-    s,n=re.subn(r'(\n\s*fTopRes\s*:\s*"-",\s*)(\n\s*finalTop)',r'\1\n    qCamp:Array(4).fill(""),\n    qTime:Array(4).fill(""),\n    sTopCamp:Array(2).fill(""),\n    sTopTime:Array(2).fill(""),\n    fTopCamp:[""],\n    fTopTime:[""],\2',s,count=1)
-    if n!=1: raise SystemExit('state KO defaults not found')
-sync='''            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
+    if state_marker not in s: raise SystemExit('state KO defaults not found')
+    s=s.replace(state_marker,state_repl,1)
+
+sync_marker='''            qRes: Array.isArray(state.qRes)?state.qRes:["-","-","-","-"],
+            sTopRes: Array.isArray(state.sTopRes)?state.sTopRes:["-","-"],
+            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
+            finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
+sync_repl='''            qRes: Array.isArray(state.qRes)?state.qRes:["-","-","-","-"],
             qCamp: Array.isArray(state.qCamp)?state.qCamp:[],
             qTime: Array.isArray(state.qTime)?state.qTime:[],
+            sTopRes: Array.isArray(state.sTopRes)?state.sTopRes:["-","-"],
             sTopCamp: Array.isArray(state.sTopCamp)?state.sTopCamp:[],
             sTopTime: Array.isArray(state.sTopTime)?state.sTopTime:[],
+            fTopRes: typeof state.fTopRes==="string"?state.fTopRes:"-",
             fTopCamp: Array.isArray(state.fTopCamp)?state.fTopCamp:[],
             fTopTime: Array.isArray(state.fTopTime)?state.fTopTime:[],
             finalTop: Array.isArray(state.finalTop)?state.finalTop:[],'''
-s,n=re.subn(r'\s*fTopRes:\s*typeof state\.fTopRes==="string"\?state\.fTopRes:"-",\s*\n\s*finalTop:\s*Array\.isArray\(state\.finalTop\)\?state\.finalTop:\[\],',sync,s,count=1)
-if n!=1: raise SystemExit('updateAndSync KO point not found')
-load='"qRes","qCamp","qTime","sTopRes","sTopCamp","sTopTime","fTopRes","fTopCamp","fTopTime","finalTop"'
-if load not in s:
-    s,n=re.subn(r'"qRes"\s*,\s*"sTopRes"\s*,\s*"fTopRes"\s*,\s*"finalTop"',load,s,count=1)
-    if n!=1: raise SystemExit('loadState KO point not found')
-reset='''        fTopRes: "-",
-        qCamp: Array(4).fill(""),
-        qTime: Array(4).fill(""),
-        sTopCamp: Array(2).fill(""),
-        sTopTime: Array(2).fill(""),
-        fTopCamp: [""],
-        fTopTime: [""],
-        finalTop: [],'''
-s,n=re.subn(r'\s*fTopRes:\s*"-",\s*\n\s*finalTop:\s*\[\],',reset,s,count=1)
-if n!=1: raise SystemExit('reset KO point not found')
+if sync_marker not in s: raise SystemExit('updateAndSync KO point not found')
+s=s.replace(sync_marker,sync_repl,1)
+
+load_marker='''                if(
+                    typeof configurazione.fTopRes ===
+                    "string"
+                ){
+                    state.fTopRes =
+                        configurazione.fTopRes;
+                }
+'''
+load_repl=load_marker+'''                if(Array.isArray(configurazione.qCamp)) state.qCamp=[...configurazione.qCamp];
+                if(Array.isArray(configurazione.qTime)) state.qTime=[...configurazione.qTime];
+                if(Array.isArray(configurazione.sTopCamp)) state.sTopCamp=[...configurazione.sTopCamp];
+                if(Array.isArray(configurazione.sTopTime)) state.sTopTime=[...configurazione.sTopTime];
+                if(Array.isArray(configurazione.fTopCamp)) state.fTopCamp=[...configurazione.fTopCamp];
+                if(Array.isArray(configurazione.fTopTime)) state.fTopTime=[...configurazione.fTopTime];
+'''
+if load_marker not in s: raise SystemExit('loadState final phase point not found')
+s=s.replace(load_marker,load_repl,1)
+
+init_marker='''            if(
+                typeof state.fTopRes !==
+                "string"
+            ){
+                state.fTopRes =
+                    "-";
+            }
+'''
+init_repl=init_marker+'''            if(!Array.isArray(state.qCamp)) state.qCamp=Array(4).fill("");
+            if(!Array.isArray(state.qTime)) state.qTime=Array(4).fill("");
+            if(!Array.isArray(state.sTopCamp)) state.sTopCamp=Array(2).fill("");
+            if(!Array.isArray(state.sTopTime)) state.sTopTime=Array(2).fill("");
+            if(!Array.isArray(state.fTopCamp)) state.fTopCamp=[""];
+            if(!Array.isArray(state.fTopTime)) state.fTopTime=[""];
+'''
+if init_marker not in s: raise SystemExit('initDefaults KO normalization point not found')
+s=s.replace(init_marker,init_repl,1)
+
+# Clear KO field/time arrays wherever the existing final-phase reset clears KO results.
+reset_marker='''    state.fTopRes =
+        "-";
+'''
+reset_repl=reset_marker+'''    state.qCamp=Array(4).fill("");
+    state.qTime=Array(4).fill("");
+    state.sTopCamp=Array(2).fill("");
+    state.sTopTime=Array(2).fill("");
+    state.fTopCamp=[""];
+    state.fTopTime=[""];
+'''
+if s.count(reset_marker) < 2: raise SystemExit('KO reset points not found')
+s=s.replace(reset_marker,reset_repl,2)
+
 p.write_text(s,encoding='utf-8')
 print('PATCH_OK')
