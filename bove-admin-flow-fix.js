@@ -120,12 +120,16 @@
   }
 
   function chiudiMenuBove() {
+    if (typeof window.toggleMenu === 'function') {
+      window.toggleMenu();
+      return;
+    }
     const menu = document.getElementById('menuComandi');
     if (!menu) return;
     menu.classList.remove('show');
-    menu.style.display = 'none';
-    menu.style.opacity = '0';
-    menu.style.visibility = 'hidden';
+    menu.style.display = '';
+    menu.style.opacity = '';
+    menu.style.visibility = '';
   }
 
   function installBoveControls() {
