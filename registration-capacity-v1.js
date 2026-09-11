@@ -1,0 +1,11 @@
+(()=>{
+'use strict';
+const c=()=>window.supabaseClient||window.sb;
+const id=()=>new URLSearchParams(location.search).get('idTorneo')||new URLSearchParams(location.search).get('torneo');
+let torneo=null,limit=0,last=-1;
+async function load(){const db=c(),tid=id();if(!db||!tid)return;const {data:t,error}=await db.from('tornei').select('id,nome,posti,stato,iscrizioni_chiuse,configurazione').eq('id',tid).single();if(error||!t)return;torneo=t;const squadre=Number(t.posti)||Number(t.configurazione?.rules?.numeroSquadre)||Number(t.configurazione?.numeroSquadre)||8;limit=squadre*2;const {data:r}=await db.from('iscrizioni').select('id,stato').eq('torneo_id',tid);const n=(r||[]).filter(x=>String(x.stato||'').toLowerCase()!=='rifiutato').length;render(n);if(n>=limit&&!t.iscrizioni_chiuse){await db.from('tornei').update({iscrizioni_chiuse:true,stato:'chiuso'}).eq('id',tid);torneo.iscrizioni_chiuse=true;torneo.stato='chiuso';}}
+function render(n){if(n===last)return;last=n;let box=document.getElementById('liveTournamentCapacity');if(!box){box=document.createElement('div');box.id='liveTournamentCapacity';box.style.cssText='margin:12px 0;padding:12px 14px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:rgba(15,23,42,.72);color:inherit;font-weight:600';(document.querySelector('main')||document.querySelector('.container')||document.body).prepend(box)}const rem=Math.max(0,limit-n),full=n>=limit||torneo?.iscrizioni_chiuse;box.innerHTML=full?`🔴 <strong>TORNEO COMPLETO</strong><br><span>${n}/${limit} iscritti</span>`:`👥 <strong>${n}/${limit} iscritti</strong><br><span>${rem} posti disponibili${rem>0&&rem<=3?` · <b>ULTIMI ${rem} POSTI</b>`:''}</span>`;const submit=[...document.querySelectorAll('button[type="submit"],input[type="submit"]')];submit.forEach(b=>{b.disabled=full;b.title=full?'Torneo completo':''})}
+function guard(e){if(!torneo)return;const full=torneo.iscrizioni_chiuse||last>=limit;if(!full)return;e.preventDefault();e.stopImmediatePropagation();alert('Torneo completo: non ci sono più posti disponibili.');}
+function boot(){load();document.addEventListener('submit',guard,true);setInterval(load,15000)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
