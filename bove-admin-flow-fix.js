@@ -128,16 +128,25 @@
 
   function installBoveControls() {
     const menu = document.getElementById('menuComandi');
-    if (!menu || menu.dataset.managementReady === '1') return;
-    menu.dataset.managementReady = '1';
+    if (!menu) return;
+
     const save = [...menu.querySelectorAll('button')].find(b => /salva/i.test(b.textContent || ''));
     if (save) {
       save.disabled = false;
       save.removeAttribute('disabled');
       save.textContent = '💾 Salva Torneo';
-      save.onclick = async function () {
-        return await salvaTorneoSupabase();
-      };
+
+      if (save.dataset.saveManagementReady !== '1') {
+        save.dataset.saveManagementReady = '1';
+        save.addEventListener('click', async function (event) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return await salvaTorneoSupabase();
+        }, true);
+      }
+
+      save.removeAttribute('onclick');
+      save.onclick = null;
     }
   }
 
