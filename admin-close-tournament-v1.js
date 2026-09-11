@@ -66,11 +66,22 @@ function injectButton(){
   operations.appendChild(b);
 }
 
+function removeExtraArchiveButton(){
+  const button=document.getElementById('adminArchiveOpen');
+  if(button)button.remove();
+}
+
 function boot(){
+  removeExtraArchiveButton();
   if(install())injectButton();
-  setTimeout(()=>{install();injectButton()},100);
-  setTimeout(()=>{install();injectButton()},500);
+  setTimeout(()=>{removeExtraArchiveButton();install();injectButton()},100);
+  setTimeout(()=>{removeExtraArchiveButton();install();injectButton()},500);
+  const root=document.getElementById('appContent');
+  if(root&&!window.__BOVE_ARCHIVE_BUTTON_FIX__){
+    window.__BOVE_ARCHIVE_BUTTON_FIX__=true;
+    new MutationObserver(removeExtraArchiveButton).observe(root,{childList:true,subtree:true});
+  }
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-window.addEventListener('admin:rendered',()=>{install();injectButton()});
+window.addEventListener('admin:rendered',()=>{removeExtraArchiveButton();install();injectButton()});
 })();
