@@ -52,7 +52,8 @@
   function captureKOFieldsBeforeSave(s) {
     if (!s) return;
     const capture = (selector, campKey, timeKey, count) => {
-      const rows = [...document.querySelectorAll(selector + ' tr')].filter(row => row.querySelector('.campo-cell input') || row.querySelector('.orario-cell input'));
+      const rows = [...document.querySelectorAll(selector + ' tr')]
+        .filter(row => row.querySelector('.campo-cell input') || row.querySelector('.orario-cell input'));
       if (!Array.isArray(s[campKey])) s[campKey] = Array(count).fill('');
       if (!Array.isArray(s[timeKey])) s[timeKey] = Array(count).fill('');
       for (let i = 0; i < count; i++) {
@@ -76,10 +77,20 @@
     captureKOFieldsBeforeSave(s);
     const snapshot = (() => { try { return JSON.parse(JSON.stringify(s || {})); } catch (e) { return {}; } })();
     const rules = snapshot.rules || {};
-    const payload = { configurazione: snapshot, nome: snapshot.nomeTorneo || undefined, data_torneo: snapshot.dataTorneo || undefined, posti: Number(rules.numeroSquadre) || undefined, formula: rules.formulaScelta || snapshot.formula || undefined };
+    const payload = {
+      configurazione: snapshot,
+      nome: snapshot.nomeTorneo || undefined,
+      data_torneo: snapshot.dataTorneo || undefined,
+      posti: Number(rules.numeroSquadre) || undefined,
+      formula: rules.formulaScelta || snapshot.formula || undefined
+    };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
     const { error } = await client.from('tornei').update(payload).eq('id', id);
-    if (error) { console.error(error); alert('Salvataggio torneo non riuscito: ' + error.message); return false; }
+    if (error) {
+      console.error(error);
+      alert('Salvataggio torneo non riuscito: ' + error.message);
+      return false;
+    }
     try { localStorage.setItem('torneoState', JSON.stringify(snapshot)); } catch (e) {}
     alert('Torneo salvato correttamente.');
     return true;
@@ -115,29 +126,28 @@
     return true;
   }
 
-  let saveInProgress = false;
-
-  document.addEventListener('click', async function(event) {
-    const button = event.target && event.target.closest ? event.target.closest('#menuComandi button') : null;
-    if (!button || !/salva/i.test(button.textContent || '')) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (saveInProgress) return;
-    saveInProgress = true;
-    try { await salvaTorneoBove(); }
-    finally { saveInProgress = false; }
-  }, true);
-
-  function neutralizeSaveButton() {
+  function installBoveControls() {
     const menu = document.getElementById('menuComandi');
     if (!menu) return;
+
     const save = [...menu.querySelectorAll('button')].find(b => /salva/i.test(b.textContent || ''));
-    if (!save) return;
-    save.disabled = false;
-    save.removeAttribute('disabled');
-    save.textContent = '💾 Salva Torneo';
-    save.removeAttribute('onclick');
-    save.onclick = null;
+    if (save) {
+      save.disabled = false;
+      save.removeAttribute('disabled');
+      save.textContent = '💾 Salva Torneo';
+
+      if (save.dataset.saveManagementReady !== '1') {
+        save.dataset.saveManagementReady = '1';
+        save.addEventListener('click', async function (event) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return await salvaTorneoSupabase();
+        }, true);
+      }
+
+      save.removeAttribute('onclick');
+      save.onclick = null;
+    }
   }
 
   window.salvaTorneoBove = salvaTorneoBove;
@@ -145,8 +155,8 @@
   window.eliminaTorneoBove = eliminaTorneoBove;
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', neutralizeSaveButton, { once: true });
+    document.addEventListener('DOMContentLoaded', installBoveControls, { once: true });
   } else {
-    neutralizeSaveButton();
+    installBoveControls();
   }
 })();
