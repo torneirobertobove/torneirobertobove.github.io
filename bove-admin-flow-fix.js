@@ -136,10 +136,7 @@
       save.removeAttribute('disabled');
       save.textContent = '💾 Salva Torneo';
       save.onclick = async function () {
-        if (typeof window.salvaTorneoSupabase === 'function') {
-          return await window.salvaTorneoSupabase();
-        }
-        return await salvaTorneoBove();
+        return await salvaTorneoSupabase();
       };
     }
   }
