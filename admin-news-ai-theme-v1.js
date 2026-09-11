@@ -1,0 +1,9 @@
+(()=>{'use strict';
+const types={Comunicazione:'comunicazione',Torneo:'torneo',Promozione:'promozione',Evento:'evento',Ricordo:'ricordo',Prodotto:'prodotto',Articolo:'articolo'};
+function apply(){const sel=document.getElementById('naiType'),poster=document.querySelector('.nai-poster');if(!sel||!poster)return;Object.values(types).forEach(x=>poster.classList.remove('nai-'+x));poster.classList.add('nai-'+(types[sel.value]||'comunicazione'));}
+function install(){if(document.getElementById('naiThemeStyle'))return;const s=document.createElement('style');s.id='naiThemeStyle';s.textContent=`
+.nai-poster{transition:background .25s ease,box-shadow .25s ease}.nai-poster.nai-torneo{background:linear-gradient(135deg,#111827,#0f766e)}.nai-poster.nai-promozione{background:linear-gradient(135deg,#7f1d1d,#ea580c)}.nai-poster.nai-evento{background:linear-gradient(135deg,#172554,#2563eb)}.nai-poster.nai-ricordo{background:linear-gradient(135deg,#3b0764,#a21caf)}.nai-poster.nai-prodotto{background:linear-gradient(135deg,#052e16,#15803d)}.nai-poster.nai-articolo{background:linear-gradient(135deg,#1e293b,#475569)}.nai-poster.nai-comunicazione{background:linear-gradient(135deg,#0f172a,#0f766e)}
+.nai-poster.nai-promozione .nai-badge,.nai-poster.nai-torneo .nai-badge{font-size:13px;font-weight:900}.nai-poster.nai-promozione .nai-cta{color:#7f1d1d}.nai-poster.nai-prodotto .nai-cta{color:#14532d}.nai-poster.nai-ricordo .nai-cta{color:#581c87}
+`;document.head.appendChild(s)}
+function hook(){install();document.addEventListener('change',e=>{if(e.target?.id==='naiType')apply()});const obs=new MutationObserver(()=>apply());obs.observe(document.body,{childList:true,subtree:true});apply()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook,{once:true});else hook();})();
