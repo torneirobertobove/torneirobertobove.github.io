@@ -136,15 +136,7 @@
       save.removeAttribute('disabled');
       save.textContent = '💾 Salva Torneo';
       save.onclick = async function () {
-        if (typeof updateAndSync !== 'function') {
-          alert('Funzione di salvataggio non disponibile.');
-          return false;
-        }
-        const salvato = await updateAndSync();
-        if (salvato === true) {
-          alert('Torneo salvato correttamente.');
-        }
-        return salvato;
+        return await salvaTorneoBove();
       };
     }
   }
