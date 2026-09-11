@@ -52,8 +52,33 @@ async function archivia(){const c=client(),t=corrente();if(!c||!t){alert('Selezi
 async function elimina(){const c=client(),t=corrente();if(!c||!t){alert('Seleziona prima un torneo.');return false}if(!confirm('ATTENZIONE: eliminare definitivamente il torneo e le relative iscrizioni?'))return false;let r=await c.from('iscrizioni').delete().eq('torneo_id',t.id);if(r.error){alert('Eliminazione iscrizioni non riuscita: '+r.error.message);return false}r=await c.from('iscritti').delete().eq('torneo_id',t.id);if(r.error){alert('Eliminazione partecipanti non riuscita: '+r.error.message);return false}r=await c.from('tornei').delete().eq('id',t.id);if(r.error){alert('Eliminazione torneo non riuscita: '+r.error.message);return false}stato().tornei=(stato().tornei||[]).filter(x=>String(x.id)!==String(t.id));stato().torneoSelezionato=null;salvaAdminState();if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();return true}
 function archivio(){let b=document.getElementById('archivioTorneiAdmin');if(!b){b=document.createElement('div');b.id='archivioTorneiAdmin';b.style.cssText='position:fixed;top:70px;right:18px;z-index:9999;display:none;max-width:430px;width:min(430px,calc(100vw - 36px));max-height:72vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px;color:#fff;box-shadow:0 18px 50px rgba(0,0,0,.35)';document.body.appendChild(b)}return b}
 function renderArchivio(){const b=archivio(),arr=(stato().tornei||[]).filter(t=>String(t.stato||'').toLowerCase()==='archiviato'),groups={};arr.forEach(t=>{const d=new Date(t.data_torneo||t.data||t.created_at||Date.now()),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),g=String(d.getDate()).padStart(2,'0');(groups[y]??=[]).push({t,m,g})});let h='<div style="display:flex;justify-content:space-between;align-items:center"><b>📦 Archivio Tornei</b><button id="chiudiArchivioAdmin" style="border:0;background:none;color:#fff;font-size:18px;cursor:pointer">✕</button></div>';Object.keys(groups).sort((a,b)=>b-a).forEach(y=>{h+=`<div style="margin-top:12px;font-weight:800">${y}</div>`;const ms={};groups[y].forEach(x=>(ms[x.m]??=[]).push(x));Object.keys(ms).sort((a,b)=>b-a).forEach(m=>{h+=`<div style="margin:6px 0 4px;opacity:.75">Mese ${m}</div>`;ms[m].sort((a,b)=>b.g-a.g).forEach(x=>{h+=`<button data-arch-id="${String(x.t.id).replace(/"/g,'&quot;')}" style="display:block;width:100%;text-align:left;margin:4px 0;padding:9px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;cursor:pointer">${x.g}/${m}/${y} — ${String(x.t.nome||'Torneo').replace(/</g,'&lt;')}</button>`})})});b.innerHTML=h;b.querySelector('#chiudiArchivioAdmin').onclick=()=>b.style.display='none';b.querySelectorAll('[data-arch-id]').forEach(x=>x.onclick=()=>location.href='Bove.html?idTorneo='+encodeURIComponent(x.dataset.archId))}
-function inject(){const root=document.getElementById('appContent');if(!root)return;let bar=document.getElementById('adminTournamentControls');if(!bar){bar=document.createElement('div');bar.id='adminTournamentControls';bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px';root.prepend(bar)}const t=corrente();bar.innerHTML='';if(!t){bar.style.display='none';return}bar.style.display='flex';const mk=(id,text,fn)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className='btn action-tile';b.textContent=text;b.onclick=fn;bar.appendChild(b)};mk('adminSaveTournament','💾 Salva Torneo',salva);mk('adminArchiveTournament','📦 Archivia Torneo',archivia);mk('adminDeleteTournament','🗑️ Elimina Torneo',elimina);mk('adminArchiveOpen','📦 Archivio Tornei',()=>{const b=archivio();renderArchivio();b.style.display=b.style.display==='none'?'block':'none'});contatore()}
+function inject(){
+  const t=corrente();
+  const root=document.querySelector('.content')||document.getElementById('appContent');
+  if(!root)return;
+  let bar=document.getElementById('adminTournamentControls');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='adminTournamentControls';
+    bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:0 0 14px';
+    root.prepend(bar);
+  }else if(bar.parentElement!==root){
+    root.prepend(bar);
+  }
+  const selector=document.getElementById('torneoSelector');
+  if(!t){bar.style.display='none';return}
+  if(!selector){bar.style.display='none';return}
+  bar.style.display='flex';
+  if(bar.dataset.bound==='1'){contatore();return}
+  bar.dataset.bound='1';
+  const mk=(id,text,fn)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className='btn action-tile';b.textContent=text;b.onclick=fn;bar.appendChild(b)};
+  mk('adminSaveTournament','💾 Salva Torneo',salva);
+  mk('adminArchiveTournament','📦 Archivia Torneo',archivia);
+  mk('adminDeleteTournament','🗑️ Elimina Torneo',elimina);
+  mk('adminArchiveOpen','📦 Archivio Tornei',()=>{const b=archivio();renderArchivio();b.style.display=b.style.display==='none'?'block':'none'});
+  contatore();
+}
 window.salvaTorneoAdmin=salva;window.archiviaTorneoAdmin=archivia;window.eliminaTorneoAdmin=elimina;
-function boot(){inject();setInterval(inject,2000)}
+function boot(){inject()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
