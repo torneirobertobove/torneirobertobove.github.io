@@ -84,4 +84,38 @@ function boot(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('admin:rendered',()=>{removeExtraArchiveButton();install();injectButton()});
+
+/* STABILIZZAZIONE BANNER CONTROLLI TORNEO: il banner vive fuori da #appContent,
+   così renderCleanAdmin() non lo distrugge e non può farlo apparire/scomparire. */
+(function(){
+  const KEY='__TOURNAMENT_CONTROLS_STABLE__';
+  function patchBar(bar){
+    if(!bar||bar.dataset[KEY]==='1')return;
+    bar.dataset[KEY]='1';
+    const desc=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+    if(desc?.get&&desc?.set){
+      Object.defineProperty(bar,'innerHTML',{configurable:true,get(){return desc.get.call(this)},set(v){if(v==='')return;desc.set.call(this,v)}});
+    }
+    const append=bar.appendChild.bind(bar);
+    bar.appendChild=function(node){
+      const role=node?.dataset?.role;
+      if(role){const old=bar.querySelector('[data-role="'+role+'"]');if(old)return old}
+      return append(node);
+    };
+  }
+  function stabilize(){
+    const bar=document.getElementById('adminTournamentControls');
+    const host=document.querySelector('.content');
+    const app=document.getElementById('appContent');
+    if(!bar||!host)return;
+    if(bar.parentElement!==host)host.insertBefore(bar,app||host.firstChild);
+    patchBar(bar);
+    bar.style.display=document.getElementById('torneoSelector')?'flex':'none';
+  }
+  const observer=new MutationObserver(()=>requestAnimationFrame(stabilize));
+  observer.observe(document.body,{childList:true,subtree:true});
+  stabilize();
+  setTimeout(stabilize,100);
+  setTimeout(stabilize,500);
+})();
 })();
