@@ -81,4 +81,9 @@ function inject(){
 window.salvaTorneoAdmin=salva;window.archiviaTorneoAdmin=archivia;window.eliminaTorneoAdmin=elimina;
 function boot(){inject()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+window.addEventListener('admin:render',()=>requestAnimationFrame(inject));
+window.addEventListener('admin:rendered',()=>requestAnimationFrame(inject));
+const controlsObserver=new MutationObserver(()=>requestAnimationFrame(inject));
+function watchControls(){const app=document.getElementById('appContent');if(app)controlsObserver.observe(app,{childList:true,subtree:true});}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watchControls,{once:true});else watchControls();
 })();
