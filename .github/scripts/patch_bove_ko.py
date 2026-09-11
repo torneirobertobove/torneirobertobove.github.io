@@ -35,18 +35,17 @@ if 'function updateKOField(type,index,field,valore)' not in s:
 '''
     s=s.replace('function getWinner(match, res) {',fn+'function getWinner(match, res) {',1)
 
-state_marker='    fTopRes:"-",\n    campioneTop:null,'
-state_repl='''    fTopRes:"-",
+if 'qCamp:Array(4).fill("")' not in s:
+    pattern=r'(\n\s*fTopRes\s*:\s*"-",)(\s*\n\s*campioneTop\s*:\s*null,)'
+    repl=r'''\1
     qCamp:Array(4).fill(""),
     qTime:Array(4).fill(""),
     sTopCamp:Array(2).fill(""),
     sTopTime:Array(2).fill(""),
     fTopCamp:[""],
-    fTopTime:[""],
-    campioneTop:null,'''
-if 'qCamp:Array(4).fill("")' not in s:
-    if state_marker not in s: raise SystemExit('state KO defaults not found')
-    s=s.replace(state_marker,state_repl,1)
+    fTopTime:[""],\2'''
+    s,n=re.subn(pattern,repl,s,count=1)
+    if n!=1: raise SystemExit('state KO defaults not found')
 
 sync_marker='''            qRes: Array.isArray(state.qRes)?state.qRes:["-","-","-","-"],
             sTopRes: Array.isArray(state.sTopRes)?state.sTopRes:["-","-"],
@@ -101,18 +100,16 @@ init_repl=init_marker+'''            if(!Array.isArray(state.qCamp)) state.qCamp
 if init_marker not in s: raise SystemExit('initDefaults KO normalization point not found')
 s=s.replace(init_marker,init_repl,1)
 
-# Clear KO field/time arrays wherever the existing final-phase reset clears KO results.
+# Clear only the two existing final-phase reset blocks.
 reset_marker='''    state.fTopRes =
-        "-";
-'''
-reset_repl=reset_marker+'''    state.qCamp=Array(4).fill("");
+        "-";'''
+reset_repl=reset_marker+'''\n    state.qCamp=Array(4).fill("");
     state.qTime=Array(4).fill("");
     state.sTopCamp=Array(2).fill("");
     state.sTopTime=Array(2).fill("");
     state.fTopCamp=[""];
-    state.fTopTime=[""];
-'''
-if s.count(reset_marker) < 2: raise SystemExit('KO reset points not found')
+    state.fTopTime=[""];'''
+if s.count(reset_marker)<2: raise SystemExit('KO reset points not found')
 s=s.replace(reset_marker,reset_repl,2)
 
 p.write_text(s,encoding='utf-8')
