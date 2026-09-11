@@ -47,7 +47,7 @@
     } catch (e) { console.error('Errore apertura configurazione formula:', e); }
   }
 
-  document.addEventListener('DOMContentLoaded', () => setTimeout(openRequestedRules, 0));
+  document.addEventListener('DOMContentLoaded', openRequestedRules, { once: true });
 
   function captureKOFieldsBeforeSave(s) {
     if (!s) return;
