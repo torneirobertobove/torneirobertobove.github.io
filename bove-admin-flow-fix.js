@@ -64,8 +64,8 @@
         if (time) s[timeKey][i] = time.value || '';
       }
     };
-    capture('tbody#S', 'sCamp', 'sTime', 2);
-    capture('tbody#finaleBox', 'fCamp', 'fTime', 1);
+    capture('tbody#S', 'sTopCamp', 'sTopTime', 2);
+    capture('tbody#finaleBox', 'fTopCamp', 'fTopTime', 1);
   }
 
   async function salvaTorneoBove() {
