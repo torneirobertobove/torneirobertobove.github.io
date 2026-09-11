@@ -9,8 +9,9 @@ function currentDraft(){
  const type=q('#naiType')?.value||'Comunicazione';
  const title=q('#naiTitle')?.value||'';
  const data=[q('#naiDate')?.value,q('#naiTime')?.value,q('#naiLocation')?.value,q('#naiPairs')?.value,q('#naiLevel')?.value,q('#naiFee')?.value,q('#naiDeadline')?.value,q('#naiOffer')?.value,q('#naiProduct')?.value,q('#naiPrice')?.value].filter(Boolean);
- const generated=window.__NAI_LAST_GENERATED__||null;
- return {type,title,data,generated};
+ const poster=q('#naiPreview')?.querySelector('.nai-poster');
+ const copy=poster?.querySelector('.nai-copy');
+ return {type,title,data,generated:{title:copy?.querySelector('h2')?.textContent||'',text:copy?.querySelector('p')?.textContent||'',cta:copy?.querySelector('.nai-cta')?.textContent||''}};
 }
 function brief(){
  const d=currentDraft();
@@ -18,9 +19,11 @@ function brief(){
  return `CREA LOCANDINA PADEL — NEXT POINT PADEL\n\nTipo: ${d.type}\nTitolo: ${g.title||d.title||'Da definire'}\n\nDati da mostrare:\n${d.data.map(x=>'- '+clean(x)).join('\n')||'- Nessun dato aggiuntivo'}\n\nTesto:\n${g.text||'Scrivere un testo breve e leggibile, senza inventare date, prezzi o nomi.'}\n\nCTA: ${g.cta||q('#naiCta')?.value||'Scopri di più'}\n\nStile: professionale, sportivo, moderno, elegante, alta leggibilità, fotografia/visual padel, formato verticale per social e sito. Usare esclusivamente elementi gratuiti Canva.`;
 }
 async function copyText(text){try{await navigator.clipboard.writeText(text);return true}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(x){}ta.remove();return ok}}
-async function saveDesignUrl(url){const t=selected();if(!t||!url)return false;const sb=window.supabaseClient||window.sb;if(!sb)return false;const c=cfg(t),items=Array.isArray(c.news)?c.news:[],id=window.__NAI_EDITING_ID__;
- if(!id)return false;
- const news=items.map(n=>String(n.id)===String(id)?{...n,canvaEditUrl:url,canvaUrl:url}:n);
+async function saveDesignUrl(url){const t=selected();if(!t||!url)return false;const sb=window.supabaseClient||window.sb;if(!sb)return false;const c=cfg(t),items=Array.isArray(c.news)?c.news:[],title=clean(q('#naiTitle')?.value)||clean(q('#naiPreview h2')?.textContent);
+ if(!title)return false;
+ const match=items.find(n=>clean(n.titolo)===title);
+ if(!match)return false;
+ const news=items.map(n=>String(n.id)===String(match.id)?{...n,canvaEditUrl:url,canvaUrl:url}:n);
  const {data,error}=await sb.from('tornei').update({configurazione:{...c,news}}).eq('id',t.id).select('id,configurazione').maybeSingle();
  if(!error&&data){t.configurazione=data.configurazione||{...c,news};try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}return true}return false;
 }
@@ -32,8 +35,7 @@ function panel(){
  pub.parentNode.appendChild(wrap);
  q('#naiCanvaOpen').onclick=async()=>{const ok=await copyText(brief());q('#naiCanvaStatus').textContent=ok?'Brief copiato. Canva sta per essere aperto: incollalo nel prompt/design brief.':'Apri Canva e usa il brief mostrato nella sezione.';window.open('https://www.canva.com/create/posters/','_blank','noopener,noreferrer')};
  q('#naiCanvaCopy').onclick=async()=>{const ok=await copyText(brief());q('#naiCanvaStatus').textContent=ok?'Brief copiato negli appunti.':'Impossibile copiare automaticamente: seleziona il testo dal browser.'};
- q('#naiCanvaSave').onclick=async()=>{const url=clean(q('#naiCanvaUrl')?.value);if(!/^https:\/\/(www\.)?canva\.com\//i.test(url)){q('#naiCanvaStatus').textContent='Inserisci un link Canva valido.';return}q('#naiCanvaSave').disabled=true;q('#naiCanvaStatus').textContent='Collegamento in corso…';const ok=await saveDesignUrl(url);q('#naiCanvaSave').disabled=false;q('#naiCanvaStatus').textContent=ok?'Progetto Canva collegato alla News.':'Salvataggio non riuscito: salva prima la News, poi ricollega il progetto.'};
+ q('#naiCanvaSave').onclick=async()=>{const url=clean(q('#naiCanvaUrl')?.value);if(!/^https:\/\/(www\.)?canva\.com\//i.test(url)){q('#naiCanvaStatus').textContent='Inserisci un link Canva valido.';return}q('#naiCanvaSave').disabled=true;q('#naiCanvaStatus').textContent='Collegamento in corso…';const ok=await saveDesignUrl(url);q('#naiCanvaSave').disabled=false;q('#naiCanvaStatus').textContent=ok?'Progetto Canva collegato alla News.':'Salvataggio non riuscito: salva prima la News con lo stesso titolo, poi collega il progetto Canva.'};
 }
-function sync(){const gen=window.__NAI_LAST_GENERATED__;if(gen)window.__NAI_LAST_GENERATED__=gen;panel()}
-const obs=new MutationObserver(()=>{if(q('#naiPublish'))sync()});obs.observe(document.body,{childList:true,subtree:true});window.addEventListener('admin:render',sync);setTimeout(sync,500);
+const obs=new MutationObserver(()=>{if(q('#naiPublish'))panel()});obs.observe(document.body,{childList:true,subtree:true});window.addEventListener('admin:render',panel);setTimeout(panel,500);
 })();
