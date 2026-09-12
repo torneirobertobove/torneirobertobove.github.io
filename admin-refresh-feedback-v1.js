@@ -1,4 +1,5 @@
-(()=>{'use strict';
+(()=>{
+'use strict';
 function install(){
   const fn=window.refreshCleanAdmin;
   if(typeof fn!=='function'||fn.__refreshFeedback)return false;
@@ -33,7 +34,7 @@ function bindRefreshButtonNotice(){
   if(document.documentElement.dataset.refreshButtonNoticeBound)return;
   document.documentElement.dataset.refreshButtonNoticeBound='1';
   document.addEventListener('click',e=>{
-    const b=e.target.closest?.('#refreshTournaments');
+    const b=e.target.closest?.('#refreshTournaments,#topRefresh,#sideRefresh');
     if(b)showRefreshNotice();
   });
 }
