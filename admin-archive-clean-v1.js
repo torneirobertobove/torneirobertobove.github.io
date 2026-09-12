@@ -24,17 +24,12 @@ function clearConsultation(){
   window.__ARCHIVE_CONSULTATION_ID__=null;
   if(id!=null && String(s.torneoSelezionato)===String(id))s.torneoSelezionato=null;
   window.adminState=s;
-  /* Non cancellare padel_admin_state: contiene anche adminLoggato e l'elenco
-   * dei tornei. La consultazione deve azzerare solo la selezione corrente. */
   if(typeof window.salvaAdminState==='function')window.salvaAdminState();
   window.iscrizioniTorneo=[];
   const bar=document.getElementById('archiveConsultationBar');
   if(bar)bar.remove();
   const panel=document.getElementById('archiveCleanPanel');
   if(panel)panel.style.display='none';
-  /* Il renderer reale del pannello è la funzione render() privata di
-   * admin-layout-v2.js. Il pulsante Torneo la richiama direttamente; usarlo
-   * qui evita di lasciare nel DOM il vecchio torneo appena consultato. */
   const torneoBtn=document.querySelector('[data-page="torneo"]');
   if(torneoBtn){
     try{torneoBtn.click();return}catch(e){}
@@ -52,7 +47,6 @@ async function openArchivedTournament(id,panel){
   window.__ARCHIVE_CONSULTATION_ID__=String(torneo.id);
   s.torneoSelezionato=torneo.id;
   window.adminState=s;
-  /* La selezione dell'archivio vive solo in memoria: non viene persistita. */
   if(typeof window.caricaRichiesteIscrizione==='function'){
     try{await window.caricaRichiesteIscrizione()}catch(e){console.error('Errore caricamento iscrizioni archivio:',e)}
   }
