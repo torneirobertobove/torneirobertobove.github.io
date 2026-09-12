@@ -21,8 +21,8 @@ function showRefreshNotice(){
   if(!n){
     n=document.createElement('div');
     n.id='refreshPressNotice';
-    n.textContent='↻ Aggiorna premuto';
-    n.style.cssText='position:fixed;top:20px;right:20px;z-index:99999;padding:10px 16px;border-radius:10px;background:#111827;color:#fff;font:600 13px Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.22);opacity:0;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease;pointer-events:none;';
+    n.textContent='↻ Aggiornamento in corso…';
+    n.style.cssText='position:fixed;top:20px;right:20px;z-index:2147483647;padding:10px 16px;border-radius:10px;background:#111827;color:#fff;font:600 13px Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.22);opacity:0;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease;pointer-events:none;';
     document.body.appendChild(n);
   }
   clearTimeout(window.__refreshPressNoticeTimer);
@@ -34,9 +34,9 @@ function bindRefreshButtonNotice(){
   if(document.documentElement.dataset.refreshButtonNoticeBound)return;
   document.documentElement.dataset.refreshButtonNoticeBound='1';
   document.addEventListener('click',e=>{
-    const b=e.target.closest?.('#refreshTournaments,#topRefresh,#sideRefresh');
+    const b=e.target instanceof Element?e.target.closest('#refreshTournaments,#topRefresh,#sideRefresh'):null;
     if(b)showRefreshNotice();
-  });
+  },true);
 }
 function boot(){install();bindRefreshButtonNotice();setTimeout(install,100);setTimeout(install,500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
