@@ -148,6 +148,40 @@
     }
   }
 
+  function patchRenderClassForMatchOrder() {
+    try {
+      if (typeof window.renderClass !== 'function' || window.__BOVE_CLASSIFICATION_ORDER_PATCHED__) return;
+
+      const originalRenderClass = window.renderClass;
+      window.__BOVE_CLASSIFICATION_ORDER_PATCHED__ = true;
+
+      window.renderClass = function () {
+        const saved = {};
+        const calcOrder = [0, 2, 4, 5, 3, 1];
+
+        ['A','B','C','D','E','F','G'].forEach(tag => {
+          const key = tag + 'res';
+          if (typeof state !== 'undefined' && Array.isArray(state[key]) && state[key].length === 6) {
+            saved[key] = state[key].slice();
+            state[key] = calcOrder.map(i => saved[key][i]);
+          }
+        });
+
+        try {
+          return originalRenderClass.apply(this, arguments);
+        } finally {
+          Object.keys(saved).forEach(key => {
+            if (typeof state !== 'undefined') state[key] = saved[key];
+          });
+        }
+      };
+    } catch (e) {
+      console.error('Errore patch ordine risultati classifiche:', e);
+    }
+  }
+
+  patchRenderClassForMatchOrder();
+
   function patchRenderKOForPersistence() {
     try {
       if (typeof window.renderKO !== 'function' || window.__BOVE_KO_STRUCTURE_PATCHED__) return;
