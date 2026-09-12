@@ -68,6 +68,25 @@
     capture('tbody#finaleBox', 'fCamp', 'fTime', 1);
   }
 
+  function restoreKOFieldsAfterRender(s) {
+    if (!s) return;
+    const restore = (selector, campKey, timeKey, count) => {
+      const rows = [...document.querySelectorAll(selector + ' tr')].filter(row => row.querySelector('.campo-cell input') || row.querySelector('.orario-cell input'));
+      const camps = Array.isArray(s[campKey]) ? s[campKey] : [];
+      const times = Array.isArray(s[timeKey]) ? s[timeKey] : [];
+      for (let i = 0; i < count; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const camp = row.querySelector('.campo-cell input');
+        const time = row.querySelector('.orario-cell input');
+        if (camp && camps[i] != null) camp.value = camps[i];
+        if (time && times[i] != null) time.value = times[i];
+      }
+    };
+    restore('tbody#S', 'sCamp', 'sTime', 2);
+    restore('tbody#finaleBox', 'fCamp', 'fTime', 1);
+  }
+
   function persistKOStructure() {
     try {
       if (typeof state === 'undefined' || typeof getFinalQualified !== 'function' || typeof getWinner !== 'function') return;
@@ -137,8 +156,11 @@
       window.__BOVE_KO_STRUCTURE_PATCHED__ = true;
 
       window.renderKO = function () {
+        const s = typeof state !== 'undefined' ? state : null;
+        captureKOFieldsBeforeSave(s);
         const result = originalRenderKO.apply(this, arguments);
         persistKOStructure();
+        restoreKOFieldsAfterRender(s);
         return result;
       };
     } catch (e) {
