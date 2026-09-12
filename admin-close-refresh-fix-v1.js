@@ -1,16 +1,22 @@
 (()=>{'use strict';
+function clearArchivedSelection(){
+  const s=window.adminState||{};
+  const t=(s.tornei||[]).find(x=>String(x.id)===String(s.torneoSelezionato));
+  if(!t||String(t.stato||'').toLowerCase()!=='archiviato')return false;
+  s.torneoSelezionato=null;
+  if(Array.isArray(window.iscrizioniTorneo))window.iscrizioniTorneo=[];
+  if(Array.isArray(window.partecipantiTorneo))window.partecipantiTorneo=[];
+  if(Array.isArray(window.coppieTorneo))window.coppieTorneo=[];
+  try{localStorage.setItem('padel_admin_state',JSON.stringify(s))}catch(e){}
+  return true;
+}
 function install(){
   const fn=window.chiudiTorneoStato;
   if(typeof fn!=='function'||fn.__cleanArchiveRefresh)return false;
   const wrapped=async function(){
     const result=await fn.apply(this,arguments);
     if(result===true){
-      window.adminState=window.adminState||{};
-      window.adminState.torneoSelezionato=null;
-      if(Array.isArray(window.iscrizioniTorneo))window.iscrizioniTorneo=[];
-      if(Array.isArray(window.partecipantiTorneo))window.partecipantiTorneo=[];
-      if(Array.isArray(window.coppieTorneo))window.coppieTorneo=[];
-      try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState))}catch(e){}
+      clearArchivedSelection();
       window.location.reload();
     }
     return result;
@@ -29,6 +35,25 @@ function install(){
   }
   return true;
 }
-function boot(){if(!install()){setTimeout(install,100);setTimeout(install,500)}}
+function installRenderGuard(){
+  const render=window.renderCleanAdmin;
+  if(typeof render!=='function'||render.__archiveRenderGuard)return false;
+  const wrapped=function(){
+    clearArchivedSelection();
+    return render.apply(this,arguments);
+  };
+  wrapped.__archiveRenderGuard=true;
+  window.renderCleanAdmin=wrapped;
+  clearArchivedSelection();
+  return true;
+}
+function boot(){
+  install();
+  installRenderGuard();
+  setTimeout(install,100);
+  setTimeout(install,500);
+  setTimeout(installRenderGuard,100);
+  setTimeout(installRenderGuard,500);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
