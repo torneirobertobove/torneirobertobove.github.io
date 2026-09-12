@@ -12,7 +12,7 @@ async function chiudiTorneoStato(){
     alert('Il torneo è già concluso.');
     return true;
   }
-  if(!confirm('Confermi la chiusura del torneo "'+(t.nome||'Torneo')+'"?\n\nLo stato verrà impostato su CONCLUSO e le iscrizioni verranno chiuse.'))return false;
+  if(!confirm('Confermi la chiusura del torneo \"'+(t.nome||'Torneo')+'\"?\n\nLo stato verrà impostato su CONCLUSO e le iscrizioni verranno chiuse.'))return false;
   const client=getClient();
   if(!client){alert('Connessione Supabase non disponibile.');return false}
   try{
@@ -34,6 +34,40 @@ async function chiudiTorneoStato(){
 }
 window.chiudiTorneoStato=chiudiTorneoStato;
 
+async function riapriIscrizioniTorneo(){
+  const t=getSelectedTournament();
+  if(!t){alert('Seleziona prima un torneo.');return false}
+  const stato=String(t.stato||'').toLowerCase();
+  if(stato==='concluso'||stato==='archiviato'){
+    alert('Un torneo concluso o archiviato non può essere riaperto.');
+    return false;
+  }
+  if(!t.iscrizioni_chiuse){
+    alert('Le iscrizioni sono già aperte.');
+    return true;
+  }
+  if(!confirm('Vuoi riaprire le iscrizioni del torneo \"'+(t.nome||'Torneo')+'\"?'))return false;
+  const client=getClient();
+  if(!client){alert('Connessione Supabase non disponibile.');return false}
+  try{
+    const {data,error}=await client.from('tornei').update({iscrizioni_chiuse:false,stato:'attivo',pubblicato:true}).eq('id',t.id).select('*').single();
+    if(error)throw error;
+    if(Array.isArray(window.adminState?.tornei)){
+      const i=window.adminState.tornei.findIndex(x=>String(x.id)===String(t.id));
+      if(i>=0)window.adminState.tornei[i]=data||{...t,iscrizioni_chiuse:false,stato:'attivo',pubblicato:true};
+    }
+    try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}
+    alert('Iscrizioni riaperte. Il torneo è nuovamente ATTIVO.');
+    if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
+    return true;
+  }catch(e){
+    console.error('Errore riapertura iscrizioni:',e);
+    alert('Riapertura iscrizioni non riuscita: '+(e?.message||e));
+    return false;
+  }
+}
+window.riapriIscrizioniTorneo=riapriIscrizioniTorneo;
+
 function install(){
   const render=window.renderCleanAdmin;
   if(typeof render!=='function')return false;
@@ -52,18 +86,36 @@ function injectButton(){
   const root=document.getElementById('appContent');
   if(!root)return;
   const operations=[...root.querySelectorAll('.action-grid')].find(x=>x.querySelector('#publish')&&x.querySelector('#closeReg'));
-  if(!operations||operations.querySelector('#closeTournament'))return;
+  if(!operations)return;
   const t=getSelectedTournament();
   if(!t)return;
   const closed=String(t.stato||'').toLowerCase()==='concluso';
-  const b=document.createElement('button');
-  b.type='button';
-  b.className='btn action-tile';
-  b.id='closeTournament';
+  let b=document.getElementById('closeTournament');
+  if(!b){
+    b=document.createElement('button');
+    b.type='button';
+    b.className='btn action-tile';
+    b.id='closeTournament';
+    operations.appendChild(b);
+  }
   b.innerHTML=closed?'🏁 <strong>Torneo concluso</strong><span>Stato: concluso</span>':'🏁 <strong>Chiudi torneo</strong><span>Imposta lo stato su concluso</span>';
-  if(closed)b.disabled=true;
-  else b.addEventListener('click',chiudiTorneoStato);
-  operations.appendChild(b);
+  b.disabled=closed;
+  if(!b.dataset.bound){b.dataset.bound='1';b.addEventListener('click',chiudiTorneoStato)}
+
+  let r=document.getElementById('reopenReg');
+  const iscrizioniChiuse=t.iscrizioni_chiuse===true||String(t.stato||'').toLowerCase()==='chiuso';
+  if(iscrizioniChiuse&&!closed&&String(t.stato||'').toLowerCase()!=='archiviato'){
+    if(!r){
+      r=document.createElement('button');
+      r.type='button';
+      r.className='btn action-tile';
+      r.id='reopenReg';
+      operations.appendChild(r);
+    }
+    r.innerHTML='🟢 <strong>Riapri iscrizioni</strong><span>Rendi il torneo nuovamente attivo</span>';
+    r.disabled=false;
+    if(!r.dataset.bound){r.dataset.bound='1';r.addEventListener('click',riapriIscrizioniTorneo)}
+  }else if(r){r.remove()}
 }
 
 function removeExtraArchiveButton(){
