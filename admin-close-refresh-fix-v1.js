@@ -1,5 +1,6 @@
 (()=>{'use strict';
 function clearArchivedSelection(){
+  if(window.__ARCHIVE_CONSULTATION__)return false;
   const s=window.adminState||{};
   const t=(s.tornei||[]).find(x=>String(x.id)===String(s.torneoSelezionato));
   if(!t||String(t.stato||'').toLowerCase()!=='archiviato')return false;
@@ -16,6 +17,7 @@ function install(){
   const wrapped=async function(){
     const result=await fn.apply(this,arguments);
     if(result===true){
+      window.__ARCHIVE_CONSULTATION__=false;
       clearArchivedSelection();
       window.location.reload();
     }
@@ -39,7 +41,7 @@ function installRenderGuard(){
   const render=window.renderCleanAdmin;
   if(typeof render!=='function'||render.__archiveRenderGuard)return false;
   const wrapped=function(){
-    clearArchivedSelection();
+    if(!window.__ARCHIVE_CONSULTATION__)clearArchivedSelection();
     return render.apply(this,arguments);
   };
   wrapped.__archiveRenderGuard=true;
