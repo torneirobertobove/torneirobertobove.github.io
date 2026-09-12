@@ -30,6 +30,13 @@ function clearConsultation(){
   if(bar)bar.remove();
   const panel=document.getElementById('archiveCleanPanel');
   if(panel)panel.style.display='none';
+  /* Il renderer reale del pannello è la funzione render() privata di
+   * admin-layout-v2.js. Il pulsante Torneo la richiama direttamente; usarlo
+   * qui evita di lasciare nel DOM il vecchio torneo appena consultato. */
+  const torneoBtn=document.querySelector('[data-page="torneo"]');
+  if(torneoBtn){
+    try{torneoBtn.click();return}catch(e){}
+  }
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
 }
 
