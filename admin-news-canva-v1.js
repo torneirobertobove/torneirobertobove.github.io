@@ -54,10 +54,25 @@ function drawPadelVisual(x){
  player(225,660,1.0,false);player(820,590,.82,true);
  x.fillStyle='#fff';x.globalAlpha=.85;[[760,360],[470,610],[900,690]].forEach(([bx,by])=>{x.beginPath();x.arc(bx,by,10,0,Math.PI*2);x.fill()});x.restore();
 }
-function posterCanvas(){
+const POSTER_IMAGE_URL='locandina.jpg';
+let posterPhotoPromise=null;
+function loadPosterPhoto(){
+ if(posterPhotoPromise)return posterPhotoPromise;
+ posterPhotoPromise=new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=POSTER_IMAGE_URL;});
+ return posterPhotoPromise;
+}
+function drawPosterPhoto(ctx,img){
+ const area={x:0,y:180,w:1080,h:570};
+ ctx.save();ctx.beginPath();ctx.rect(area.x,area.y,area.w,area.h);ctx.clip();
+ const scale=Math.max(area.w/img.width,area.h/img.height),w=img.width*scale,h=img.height*scale,dx=area.x+(area.w-w)/2,dy=area.y+(area.h-h)/2;
+ ctx.drawImage(img,dx,dy,w,h);
+ const overlay=ctx.createLinearGradient(0,180,0,750);overlay.addColorStop(0,'rgba(0,0,0,.08)');overlay.addColorStop(.55,'rgba(0,0,0,.12)');overlay.addColorStop(1,'rgba(2,6,23,.86)');ctx.fillStyle=overlay;ctx.fillRect(area.x,area.y,area.w,area.h);
+ ctx.restore();
+}
+async function posterCanvas(){
  const d=currentDraft(),g=d.generated||{},c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');
  const grad=x.createLinearGradient(0,0,1080,1350);grad.addColorStop(0,'#0f766e');grad.addColorStop(.52,'#172033');grad.addColorStop(1,'#020617');x.fillStyle=grad;x.fillRect(0,0,c.width,c.height);
- drawPadelVisual(x);
+ const photo=await loadPosterPhoto();if(photo)drawPosterPhoto(x,photo);else drawPadelVisual(x);
  x.globalAlpha=.12;for(let i=0;i<12;i++){x.beginPath();x.arc(900-i*75,180+i*95,180,0,Math.PI*2);x.strokeStyle='#fff';x.lineWidth=5;x.stroke()}x.globalAlpha=1;
  x.fillStyle='rgba(255,255,255,.15)';x.roundRect(65,65,950,80,40);x.fill();x.fillStyle='#fff';x.font='800 30px Arial';x.fillText('NEXT POINT PADEL',95,116);
  x.fillStyle='#fff';x.font='800 64px Arial';let y=265;wrapText(x,g.title||d.title||'NEWS NEXT POINT PADEL',900).slice(0,3).forEach(l=>{x.fillText(l,65,y);y+=72});
@@ -67,14 +82,14 @@ function posterCanvas(){
  x.fillStyle='rgba(255,255,255,.6)';x.font='400 20px Arial';x.fillText('www.nextpointpadel.it',65,1300);
  return c;
 }
-function createFreePoster(download=true){const c=posterCanvas(),url=c.toDataURL('image/png');window.dispatchEvent(new CustomEvent('nai:poster-created',{detail:{dataUrl:url}}));const a=document.createElement('a');a.href=url;a.download='locandina-next-point-padel.png';if(download){document.body.appendChild(a);a.click();a.remove()}return url}
+async function createFreePoster(download=true){const c=await posterCanvas(),url=c.toDataURL('image/png');window.dispatchEvent(new CustomEvent('nai:poster-created',{detail:{dataUrl:url}}));const a=document.createElement('a');a.href=url;a.download='locandina-next-point-padel.png';if(download){document.body.appendChild(a);a.click();a.remove()}return url}
 async function createAutomaticTournamentPoster(){
  const status=q('#naiCanvaStatus'),auto=q('#naiAutoPoster'),generate=q('#naiGenerate');
  if(!selected()){if(status)status.textContent='Seleziona prima un torneo.';return}
  auto.disabled=true;if(status)status.textContent='Preparo automaticamente i dati del torneo…';
  autoFillTournament();
  if(generate){generate.click();let tries=0;await new Promise(resolve=>{const timer=setInterval(()=>{tries++;if(!generate.disabled||tries>80){clearInterval(timer);resolve()}},100)});}
- createFreePoster(true);if(status)status.textContent='Locandina automatica creata: dati del torneo, contenuto e visual padel inseriti. Pubblica la News per salvarla definitivamente.';auto.disabled=false;
+ await createFreePoster(true);if(status)status.textContent='Locandina automatica creata con locandina.jpg: dati del torneo e contenuto inseriti. Pubblica la News per salvarla definitivamente.';auto.disabled=false;
 }
 async function saveDesignUrl(url){const t=selected();if(!t||!url)return false;const sb=window.supabaseClient||window.sb;if(!sb)return false;const c=cfg(t),items=Array.isArray(c.news)?c.news:[],d=currentDraft(),generatedTitle=clean(d.generated?.title),inputTitle=clean(d.title);const match=items.find(n=>clean(n.titolo)===generatedTitle||clean(n.titolo)===inputTitle);if(!match)return false;const news=items.map(n=>String(n.id)===String(match.id)?{...n,canvaEditUrl:url,canvaUrl:url}:n);const {data,error}=await sb.from('tornei').update({configurazione:{...c,news}}).eq('id',t.id).select('id,configurazione').maybeSingle();if(!error&&data){t.configurazione=data.configurazione||{...c,news};try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}return true}return false}
 function panel(){
@@ -83,7 +98,7 @@ function panel(){
  wrap.innerHTML='<div style="font-weight:800;margin-bottom:5px">🎨 Locandina gratuita automatica</div><div style="font-size:12px;opacity:.82;line-height:1.45">Un solo click può preparare i dati del torneo, generare il contenuto e creare una locandina PNG gratuita con visual padel. Nessun servizio a pagamento necessario.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" id="naiAutoPoster">⚡ Crea locandina dal torneo</button><button class="btn" id="naiFreePoster">✨ Crea PNG dal contenuto</button><button class="btn" id="naiCanvaOpen">🎨 Apri Canva</button><button class="btn" id="naiCanvaCopy">📋 Copia brief</button></div><div style="display:flex;gap:8px;margin-top:10px"><input id="naiCanvaUrl" class="input" placeholder="Incolla qui il link del progetto Canva"><button class="btn" id="naiCanvaSave">Collega</button></div><div id="naiCanvaStatus" class="notice" style="margin-top:8px"></div>';
  pub.parentNode.appendChild(wrap);
  q('#naiAutoPoster').onclick=createAutomaticTournamentPoster;
- q('#naiFreePoster').onclick=()=>{createFreePoster(true);q('#naiCanvaStatus').textContent='Locandina PNG creata, inserita nella News e scaricata gratuitamente. Pubblica la News per salvarla definitivamente.'};
+ q('#naiFreePoster').onclick=async()=>{await createFreePoster(true);q('#naiCanvaStatus').textContent='Locandina PNG creata, inserita nella News e scaricata gratuitamente. Pubblica la News per salvarla definitivamente.'};
  q('#naiCanvaOpen').onclick=async()=>{const ok=await copyText(brief());q('#naiCanvaStatus').textContent=ok?'Brief copiato. Canva sta per essere aperto: incollalo nel progetto.':'Apri Canva e usa il brief della News.';window.open('https://www.canva.com/create/posters/','_blank','noopener,noreferrer')};
  q('#naiCanvaCopy').onclick=async()=>{const ok=await copyText(brief());q('#naiCanvaStatus').textContent=ok?'Brief copiato negli appunti.':'Impossibile copiare automaticamente: usa il pulsante del browser.'};
  q('#naiCanvaSave').onclick=async()=>{const url=clean(q('#naiCanvaUrl')?.value);if(!/^https:\/\/(www\.)?canva\.com\//i.test(url)){q('#naiCanvaStatus').textContent='Inserisci un link Canva valido.';return}q('#naiCanvaSave').disabled=true;q('#naiCanvaStatus').textContent='Collegamento in corso…';const ok=await saveDesignUrl(url);q('#naiCanvaSave').disabled=false;q('#naiCanvaStatus').textContent=ok?'Progetto Canva collegato alla News.':'Salvataggio non riuscito: pubblica prima la News e poi collega il progetto.'};
