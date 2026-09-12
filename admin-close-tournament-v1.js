@@ -8,22 +8,22 @@ function escapeHtml(v){return String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;',
 async function chiudiTorneoStato(){
   const t=getSelectedTournament();
   if(!t){alert('Seleziona prima un torneo.');return false}
-  if(String(t.stato||'').toLowerCase()==='concluso'){
-    alert('Il torneo è già concluso.');
+  if(String(t.stato||'').toLowerCase()==='archiviato'){
+    alert('Il torneo è già archiviato.');
     return true;
   }
-  if(!confirm('Confermi la chiusura del torneo \"'+(t.nome||'Torneo')+'\"?\n\nLo stato verrà impostato su CONCLUSO e le iscrizioni verranno chiuse.'))return false;
+  if(!confirm('Confermi la chiusura del torneo \"'+(t.nome||'Torneo')+'\"?\n\nIl torneo verrà archiviato, le iscrizioni verranno chiuse e non sarà più pubblicato.'))return false;
   const client=getClient();
   if(!client){alert('Connessione Supabase non disponibile.');return false}
   try{
-    const {data,error}=await client.from('tornei').update({stato:'concluso',iscrizioni_chiuse:true}).eq('id',t.id).select('*').single();
+    const {data,error}=await client.from('tornei').update({stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false}).eq('id',t.id).select('*').single();
     if(error)throw error;
     if(Array.isArray(window.adminState?.tornei)){
       const i=window.adminState.tornei.findIndex(x=>String(x.id)===String(t.id));
-      if(i>=0)window.adminState.tornei[i]=data||{...t,stato:'concluso',iscrizioni_chiuse:true};
+      if(i>=0)window.adminState.tornei[i]=data||{...t,stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false};
     }
     try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}
-    alert('Torneo chiuso correttamente. Stato: CONCLUSO.');
+    alert('Torneo chiuso e archiviato correttamente.');
     if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
     return true;
   }catch(e){
@@ -89,7 +89,7 @@ function injectButton(){
   if(!operations)return;
   const t=getSelectedTournament();
   if(!t)return;
-  const closed=String(t.stato||'').toLowerCase()==='concluso';
+  const closed=String(t.stato||'').toLowerCase()==='archiviato';
   let b=document.getElementById('closeTournament');
   if(!b){
     b=document.createElement('button');
@@ -98,7 +98,7 @@ function injectButton(){
     b.id='closeTournament';
     operations.appendChild(b);
   }
-  b.innerHTML=closed?'🏁 <strong>Torneo concluso</strong><span>Stato: concluso</span>':'🏁 <strong>Chiudi torneo</strong><span>Imposta lo stato su concluso</span>';
+  b.innerHTML=closed?'🏁 <strong>Torneo archiviato</strong><span>Stato: archiviato</span>':'🏁 <strong>Chiudi torneo</strong><span>Archivia il torneo e chiude le iscrizioni</span>';
   b.disabled=closed;
   if(!b.dataset.bound){b.dataset.bound='1';b.addEventListener('click',chiudiTorneoStato)}
 
