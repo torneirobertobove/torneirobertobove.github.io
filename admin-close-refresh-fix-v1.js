@@ -17,7 +17,18 @@ function install(){
   };
   wrapped.__cleanArchiveRefresh=true;
   window.chiudiTorneoStato=wrapped;
+  if(!window.__CLEAN_ARCHIVE_REFRESH_CAPTURE__){
+    window.__CLEAN_ARCHIVE_REFRESH_CAPTURE__=true;
+    document.addEventListener('click',e=>{
+      const b=e.target?.closest?.('#closeTournament');
+      if(!b)return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      window.chiudiTorneoStato();
+    },true);
+  }
   return true;
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(!install()){setTimeout(install,100);setTimeout(install,500)}},{once:true});else{if(!install()){setTimeout(install,100);setTimeout(install,500)}}
+function boot(){if(!install()){setTimeout(install,100);setTimeout(install,500)}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
