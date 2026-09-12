@@ -8,4 +8,37 @@ window.logoutAdmin=async function(){
   try{localStorage.removeItem('padel_admin_state')}catch(e){}
   window.location.replace('https://torneirobertobove.github.io/');
 };
+
+/* FIX LINK BOVE: normalizza e persiste solo ID numerici */
+(function(){
+  function patchLinkBove(){
+    if(typeof window.generaLinkBove!=='function'||window.__BOVE_LINK_PATCHED__)return;
+    const originale=window.generaLinkBove;
+    window.__BOVE_LINK_PATCHED__=true;
+    window.generaLinkBove=function(){
+      const r=originale.apply(this,arguments);
+      try{
+        const input=document.getElementById('linkBoveGenerato');
+        const value=input?.value||'';
+        const m=value.match(/[?&]idTorneo=([^&#]+)/);
+        const id=m?decodeURIComponent(m[1]):'';
+        if(id&&Number.isFinite(Number(id))){
+          const corretto=location.origin+'/Bove.html?idTorneo='+encodeURIComponent(Number(id));
+          if(input)input.value=corretto;
+          localStorage.setItem('padel_admin_generated_link',corretto);
+        }else{
+          localStorage.removeItem('padel_admin_generated_link');
+        }
+      }catch(e){
+        console.warn('Fix link Bove:',e);
+      }
+      return r;
+    };
+  }
+  patchLinkBove();
+  const t=setInterval(()=>{
+    patchLinkBove();
+    if(window.__BOVE_LINK_PATCHED__)clearInterval(t);
+  },100);
+})();
 })();
