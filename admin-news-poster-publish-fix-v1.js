@@ -1,0 +1,41 @@
+(()=>{
+'use strict';
+const q=s=>document.querySelector(s);
+const selected=()=>window.getTorneoAdminCorrente?.()||((window.adminState?.tornei||[]).find(t=>String(t.id)===String(window.adminState?.torneoSelezionato))||null);
+function cfgOf(v){if(v&&typeof v==='object')return v;if(typeof v==='string'){try{return JSON.parse(v)||{}}catch(e){}}return {}}
+async function publishPoster(){
+ const b=q('#naiManualPublish');
+ const canvas=q('#naiManualCanvas');
+ if(!canvas)return;
+ const t=selected();
+ if(!t){alert('Seleziona prima un torneo.');return}
+ const sb=window.supabaseClient||window.sb;
+ if(!sb){alert('Connessione Supabase non disponibile.');return}
+ if(b){b.disabled=true;b.textContent='⏳ Pubblicazione...'}
+ try{
+  const out=document.createElement('canvas');out.width=720;out.height=900;
+  out.getContext('2d').drawImage(canvas,0,0,out.width,out.height);
+  let url=out.toDataURL('image/jpeg',0.55);
+  if(url.length>650000)url=out.toDataURL('image/jpeg',0.4);
+  const fresh=await sb.from('tornei').select('id,configurazione').eq('id',t.id).maybeSingle();
+  if(fresh.error||!fresh.data)throw new Error(fresh.error?.message||'Torneo non trovato');
+  const cfg=cfgOf(fresh.data.configurazione);
+  const items=Array.isArray(cfg.news)?cfg.news:[];
+  const item={id:'poster-'+Date.now(),tipo:'Locandina',titolo:'Locandina',testo:'',link:'',immagine:url,inEvidenza:true,pubblicataVisitatore:true,data:new Date().toISOString(),ordine:items.length,aiMode:'manual-poster'};
+  const next=[...items.map(n=>({...n,inEvidenza:false})),item];
+  const write=await sb.from('tornei').update({configurazione:{...cfg,news:next}}).eq('id',t.id);
+  if(write.error)throw new Error(write.error.message);
+  const verify=await sb.from('tornei').select('id,configurazione').eq('id',t.id).maybeSingle();
+  if(verify.error||!verify.data)throw new Error(verify.error?.message||'Verifica salvataggio fallita');
+  const saved=cfgOf(verify.data.configurazione);
+  const ok=Array.isArray(saved.news)&&saved.news.some(n=>String(n.id)===String(item.id)&&typeof n.immagine==='string'&&n.immagine.startsWith('data:image/'));
+  if(!ok)throw new Error('La locandina non risulta presente nel torneo dopo il salvataggio.');
+  t.configurazione=saved;
+  try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}
+  const status=q('#naiManualStatus');if(status)status.textContent='Locandina pubblicata nelle News dei visitatori.';
+ }catch(e){console.error('Pubblicazione locandina:',e);alert('Pubblicazione locandina non riuscita: '+(e?.message||e));}
+ finally{if(b){b.disabled=false;b.textContent='Pubblica ai visitatori'}}
+}
+function bind(){const b=q('#naiManualPublish');if(!b)return;if(b.dataset.posterPublishFix==='1')return;b.dataset.posterPublishFix='1';b.onclick=publishPoster}
+new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});setTimeout(bind,500);window.addEventListener('admin:render',bind);window.__NAI_POSTER_PUBLISH_FIX__=true;
+})();
