@@ -66,7 +66,8 @@ function installSponsor(client){
 async function run(){
  if(typeof supabase==='undefined')return;
  const client=supabase.createClient(URL_SUPABASE,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
- installSponsor(client);
+ const isIscrizionePage=location.pathname.toLowerCase().endsWith('/iscrizione.html')||location.pathname.toLowerCase().endsWith('iscrizione.html');
+ if(!isIscrizionePage)installSponsor(client);
  const box=document.getElementById('lista-tornei'); if(!box)return;
  const {data,error}=await client.from('tornei').select('id,nome,data,stato,pubblicato,iscrizioni_chiuse,formula,configurazione').order('data',{ascending:true});
  if(error){console.error('[PUBLIC TOURNAMENTS]',error);box.innerHTML='<div class="torneo-item">❌ Errore caricamento tornei</div>';return;}
