@@ -15,6 +15,28 @@ function install(){
   window.refreshCleanAdmin=wrapped;
   return true;
 }
-function boot(){install();setTimeout(install,100);setTimeout(install,500)}
+function showRefreshNotice(){
+  let n=document.getElementById('refreshPressNotice');
+  if(!n){
+    n=document.createElement('div');
+    n.id='refreshPressNotice';
+    n.textContent='↻ Aggiorna premuto';
+    n.style.cssText='position:fixed;top:20px;right:20px;z-index:99999;padding:10px 16px;border-radius:10px;background:#111827;color:#fff;font:600 13px Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.22);opacity:0;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease;pointer-events:none;';
+    document.body.appendChild(n);
+  }
+  clearTimeout(window.__refreshPressNoticeTimer);
+  n.style.opacity='1';
+  n.style.transform='translateY(0)';
+  window.__refreshPressNoticeTimer=setTimeout(()=>{n.style.opacity='0';n.style.transform='translateY(-6px)'},1800);
+}
+function bindRefreshButtonNotice(){
+  if(document.documentElement.dataset.refreshButtonNoticeBound)return;
+  document.documentElement.dataset.refreshButtonNoticeBound='1';
+  document.addEventListener('click',e=>{
+    const b=e.target.closest?.('#refreshTournaments');
+    if(b)showRefreshNotice();
+  });
+}
+function boot(){install();bindRefreshButtonNotice();setTimeout(install,100);setTimeout(install,500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
