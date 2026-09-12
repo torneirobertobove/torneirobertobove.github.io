@@ -4,22 +4,11 @@ function install(){
   if(typeof fn!=='function'||fn.__refreshFeedback)return false;
   const wrapped=async function(){
     const buttons=[document.getElementById('topRefresh'),document.getElementById('sideRefresh')].filter(Boolean);
+    const original=buttons.map(b=>({b,text:b.textContent,disabled:b.disabled}));
     buttons.forEach(b=>{b.disabled=true;b.textContent='↻ Aggiornamento…';b.setAttribute('aria-busy','true')});
-    try{
-      const s=window.adminState||{};
-      const selected=Array.isArray(s.tornei)?s.tornei.find(t=>String(t.id)===String(s.torneoSelezionato)):null;
-      const archivedSelected=selected&&String(selected.stato||'').toLowerCase()==='archiviato';
-      if(window.__ARCHIVE_CONSULTATION__||window.__ARCHIVE_CONSULTATION_ID__||archivedSelected){
-        s.torneoSelezionato=null;
-        window.adminState=s;
-        window.__ARCHIVE_CONSULTATION__=false;
-        window.__ARCHIVE_CONSULTATION_ID__=null;
-        window.iscrizioniTorneo=[];
-        if(typeof window.salvaAdminState==='function')window.salvaAdminState();
-      }
-      return await fn.apply(this,arguments)
-    }finally{
-      requestAnimationFrame(()=>buttons.forEach(b=>{b.disabled=false;b.textContent='↻ Aggiorna';b.removeAttribute('aria-busy')}));
+    try{return await fn.apply(this,arguments)}
+    finally{
+      requestAnimationFrame(()=>original.forEach(x=>{x.b.disabled=x.disabled;x.b.textContent=x.text;x.b.removeAttribute('aria-busy')}));
     }
   };
   wrapped.__refreshFeedback=true;
