@@ -20,7 +20,11 @@ function currentTournament(){
 }
 function openArchivedBoard(t){
   if(!t||t.id==null)return;
-  window.open('Bove.html?idTorneo='+encodeURIComponent(t.id),'_blank','noopener');
+  const url='Bove.html?idTorneo='+encodeURIComponent(t.id);
+  /* Chiude la consultazione solo nell'Admin: il torneo resta archiviato
+   * e Bove viene aperto con lo stesso id, senza creare copie o riattivarlo. */
+  if(typeof window.clearArchiveConsultation==='function')window.clearArchiveConsultation();
+  window.open(url,'_blank','noopener');
 }
 /* Handler reale usato da admin-layout-v2.js dal pulsante #bracket. */
 window.apriTabelloneAdmin=function(){
