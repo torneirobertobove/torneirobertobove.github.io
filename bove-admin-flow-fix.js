@@ -36,7 +36,27 @@
     } catch (e) { console.error('Errore protezione risultati torneo:', e); }
   }
 
+  function applyClassificationArrowColors() {
+    try {
+      if (document.getElementById('bove-classification-arrow-colors')) return;
+      const style = document.createElement('style');
+      style.id = 'bove-classification-arrow-colors';
+      style.textContent = `
+        .qual-arrow-up {
+          color: #22c55e !important;
+          font-weight: 700 !important;
+        }
+        .qual-arrow-down {
+          color: #ef4444 !important;
+          font-weight: 700 !important;
+        }
+      `;
+      document.head.appendChild(style);
+    } catch (e) { console.error('Errore colori frecce classifica:', e); }
+  }
+
   preserveTournamentResults();
+  applyClassificationArrowColors();
 
   function openRequestedRules() {
     try {
