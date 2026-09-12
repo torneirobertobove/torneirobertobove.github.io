@@ -6,8 +6,10 @@ function install(){
     const buttons=[document.getElementById('topRefresh'),document.getElementById('sideRefresh')].filter(Boolean);
     buttons.forEach(b=>{b.disabled=true;b.textContent='↻ Aggiornamento…';b.setAttribute('aria-busy','true')});
     try{
-      if(window.__ARCHIVE_CONSULTATION__){
-        const s=window.adminState||{};
+      const s=window.adminState||{};
+      const selected=Array.isArray(s.tornei)?s.tornei.find(t=>String(t.id)===String(s.torneoSelezionato)):null;
+      const archivedSelected=selected&&String(selected.stato||'').toLowerCase()==='archiviato';
+      if(window.__ARCHIVE_CONSULTATION__||window.__ARCHIVE_CONSULTATION_ID__||archivedSelected){
         s.torneoSelezionato=null;
         window.adminState=s;
         window.__ARCHIVE_CONSULTATION__=false;
