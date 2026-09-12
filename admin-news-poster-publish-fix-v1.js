@@ -36,6 +36,17 @@ async function publishPoster(){
  }catch(e){console.error('Pubblicazione locandina:',e);alert('Pubblicazione locandina non riuscita: '+(e?.message||e));}
  finally{if(b){b.disabled=false;b.textContent='Pubblica ai visitatori'}}
 }
-function bind(){const b=q('#naiManualPublish');if(!b)return;if(b.dataset.posterPublishFix==='1')return;b.dataset.posterPublishFix='1';b.onclick=publishPoster}
-new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});setTimeout(bind,500);window.addEventListener('admin:render',bind);window.__NAI_POSTER_PUBLISH_FIX__=true;
+function bind(){const b=q('#naiManualPublish');if(!b)return;if(b.dataset.posterPublishFix!=='1')b.dataset.posterPublishFix='1';b.onclick=publishPoster}
+new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});
+setTimeout(bind,500);
+setInterval(bind,1000);
+window.addEventListener('admin:render',bind);
+document.addEventListener('click',e=>{
+ const b=e.target?.closest?.('#naiManualPublish');
+ if(!b)return;
+ e.preventDefault();
+ e.stopImmediatePropagation();
+ publishPoster();
+},true);
+window.__NAI_POSTER_PUBLISH_FIX__=true;
 })();
