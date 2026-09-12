@@ -45,9 +45,12 @@ function renderArchivePanel(){
   });
   panel.innerHTML=html;
   panel.querySelector('#archiveCleanClose')?.addEventListener('click',()=>panel.style.display='none');
-  panel.querySelectorAll('.archiveCleanItem').forEach(b=>b.addEventListener('click',()=>{
+  panel.querySelectorAll('.archiveCleanItem').forEach(b=>b.addEventListener('click',async()=>{
     const id=b.dataset.id;
-    if(typeof window.selezionaTorneoAdmin==='function')window.selezionaTorneoAdmin(id);
+    const torneo=archived().find(t=>String(t.id)===String(id));
+    if(!torneo)return;
+    window.__ARCHIVE_CONSULTATION__=true;
+    if(typeof window.selezionaTorneoAdmin==='function')await window.selezionaTorneoAdmin(id);
     panel.style.display='none';
   }));
   return panel;
