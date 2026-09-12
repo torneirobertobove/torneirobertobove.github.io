@@ -26,6 +26,10 @@ function clearConsultation(){
   window.adminState=s;
   try{localStorage.removeItem('padel_admin_state')}catch(e){}
   window.iscrizioniTorneo=[];
+  const bar=document.getElementById('archiveConsultationBar');
+  if(bar)bar.remove();
+  const panel=document.getElementById('archiveCleanPanel');
+  if(panel)panel.style.display='none';
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
 }
 
