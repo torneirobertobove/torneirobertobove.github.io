@@ -24,7 +24,9 @@ function clearConsultation(){
   window.__ARCHIVE_CONSULTATION_ID__=null;
   if(id!=null && String(s.torneoSelezionato)===String(id))s.torneoSelezionato=null;
   window.adminState=s;
-  try{localStorage.removeItem('padel_admin_state')}catch(e){}
+  /* Non cancellare padel_admin_state: contiene anche adminLoggato e l'elenco
+   * dei tornei. La consultazione deve azzerare solo la selezione corrente. */
+  if(typeof window.salvaAdminState==='function')window.salvaAdminState();
   window.iscrizioniTorneo=[];
   const bar=document.getElementById('archiveConsultationBar');
   if(bar)bar.remove();
@@ -40,8 +42,6 @@ function clearConsultation(){
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
 }
 
-/* Esposta per permettere alle azioni di consultazione di chiudere correttamente
- * la modalità archivio senza modificare lo stato del torneo su Supabase. */
 window.clearArchiveConsultation=clearConsultation;
 
 async function openArchivedTournament(id,panel){
