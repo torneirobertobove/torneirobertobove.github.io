@@ -16,6 +16,22 @@ function removeDuplicateArchiveButtons(){
   });
 }
 
+async function openArchivedTournament(id,panel){
+  const torneo=archived().find(t=>String(t.id)===String(id));
+  if(!torneo)return;
+  window.__ARCHIVE_CONSULTATION__=true;
+  window.__ARCHIVE_CONSULTATION_ID__=String(torneo.id);
+  const s=state();
+  s.torneoSelezionato=torneo.id;
+  window.adminState=s;
+  try{localStorage.setItem('padel_admin_state',JSON.stringify(s))}catch(e){}
+  if(typeof window.caricaRichiesteIscrizione==='function'){
+    try{await window.caricaRichiesteIscrizione()}catch(e){console.error('Errore caricamento iscrizioni archivio:',e)}
+  }
+  if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
+  panel.style.display='none';
+}
+
 function renderArchivePanel(){
   let panel=document.getElementById('archiveCleanPanel');
   if(!panel){
@@ -45,14 +61,7 @@ function renderArchivePanel(){
   });
   panel.innerHTML=html;
   panel.querySelector('#archiveCleanClose')?.addEventListener('click',()=>panel.style.display='none');
-  panel.querySelectorAll('.archiveCleanItem').forEach(b=>b.addEventListener('click',async()=>{
-    const id=b.dataset.id;
-    const torneo=archived().find(t=>String(t.id)===String(id));
-    if(!torneo)return;
-    window.__ARCHIVE_CONSULTATION__=true;
-    if(typeof window.selezionaTorneoAdmin==='function')await window.selezionaTorneoAdmin(id);
-    panel.style.display='none';
-  }));
+  panel.querySelectorAll('.archiveCleanItem').forEach(b=>b.addEventListener('click',()=>openArchivedTournament(b.dataset.id,panel)));
   return panel;
 }
 
@@ -80,7 +89,7 @@ function hideArchivedFromSelectors(){
   const list=archived().map(t=>String(t.id));
   document.querySelectorAll('select').forEach(sel=>{
     [...sel.options].forEach(opt=>{
-      if(list.includes(String(opt.value)))opt.remove();
+      if(list.includes(String(opt.value))&&String(opt.value)!==String(state().torneoSelezionato))opt.remove();
     });
   });
 }
