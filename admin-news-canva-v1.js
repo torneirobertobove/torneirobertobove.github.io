@@ -62,24 +62,44 @@ function loadPosterPhoto(){
  return posterPhotoPromise;
 }
 function drawPosterPhoto(ctx,img){
- const area={x:0,y:180,w:1080,h:570};
+ const area={x:0,y:235,w:1080,h:560};
  ctx.save();ctx.beginPath();ctx.rect(area.x,area.y,area.w,area.h);ctx.clip();
  const scale=Math.max(area.w/img.width,area.h/img.height),w=img.width*scale,h=img.height*scale,dx=area.x+(area.w-w)/2,dy=area.y+(area.h-h)/2;
  ctx.drawImage(img,dx,dy,w,h);
- const overlay=ctx.createLinearGradient(0,180,0,750);overlay.addColorStop(0,'rgba(0,0,0,.08)');overlay.addColorStop(.55,'rgba(0,0,0,.12)');overlay.addColorStop(1,'rgba(2,6,23,.86)');ctx.fillStyle=overlay;ctx.fillRect(area.x,area.y,area.w,area.h);
+ const overlay=ctx.createLinearGradient(0,235,0,795);overlay.addColorStop(0,'rgba(2,6,23,.02)');overlay.addColorStop(.55,'rgba(2,6,23,.04)');overlay.addColorStop(1,'rgba(2,6,23,.82)');ctx.fillStyle=overlay;ctx.fillRect(area.x,area.y,area.w,area.h);
  ctx.restore();
+}
+function drawPosterText(ctx,text,x,y,maxWidth,maxLines,fontSize,lineHeight,weight='600',color='rgba(255,255,255,.92)'){
+ ctx.fillStyle=color;ctx.font=`${weight} ${fontSize}px Arial`;const lines=wrapText(ctx,text,maxWidth).slice(0,maxLines);lines.forEach((line,i)=>ctx.fillText(line,x,y+i*lineHeight));return y+lines.length*lineHeight;
 }
 async function posterCanvas(){
  const d=currentDraft(),g=d.generated||{},c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');
- const grad=x.createLinearGradient(0,0,1080,1350);grad.addColorStop(0,'#0f766e');grad.addColorStop(.52,'#172033');grad.addColorStop(1,'#020617');x.fillStyle=grad;x.fillRect(0,0,c.width,c.height);
- const photo=await loadPosterPhoto();if(photo)drawPosterPhoto(x,photo);else drawPadelVisual(x);
- x.globalAlpha=.12;for(let i=0;i<12;i++){x.beginPath();x.arc(900-i*75,180+i*95,180,0,Math.PI*2);x.strokeStyle='#fff';x.lineWidth=5;x.stroke()}x.globalAlpha=1;
- x.fillStyle='rgba(255,255,255,.15)';x.roundRect(65,65,950,80,40);x.fill();x.fillStyle='#fff';x.font='800 30px Arial';x.fillText('NEXT POINT PADEL',95,116);
- x.fillStyle='#fff';x.font='800 64px Arial';let y=265;wrapText(x,g.title||d.title||'NEWS NEXT POINT PADEL',900).slice(0,3).forEach(l=>{x.fillText(l,65,y);y+=72});
- x.fillStyle='rgba(255,255,255,.86)';x.font='600 30px Arial';const info=d.data.map(clean).filter(Boolean).slice(0,7);y+=35;info.forEach(v=>{const lines=wrapText(x,v,880);lines.slice(0,2).forEach(l=>{x.fillText(l,70,y);y+=39});y+=7});
- x.fillStyle='rgba(255,255,255,.82)';x.font='400 26px Arial';y=Math.max(y+25,760);wrapText(x,g.text||'',880).slice(0,7).forEach(l=>{x.fillText(l,70,y);y+=36});
- const cta=g.cta||q('#naiCta')?.value||'Scopri di più';x.fillStyle='#fff';x.roundRect(65,1175,Math.min(520,Math.max(280,x.measureText(cta).width+80)),78,39);x.fill();x.fillStyle='#172033';x.font='800 28px Arial';x.fillText(cta,105,1224);
- x.fillStyle='rgba(255,255,255,.6)';x.font='400 20px Arial';x.fillText('www.nextpointpadel.it',65,1300);
+ const grad=x.createLinearGradient(0,0,1080,1350);grad.addColorStop(0,'#071b2a');grad.addColorStop(.52,'#0b3040');grad.addColorStop(1,'#031018');x.fillStyle=grad;x.fillRect(0,0,c.width,c.height);
+ const photo=await loadPosterPhoto();
+ if(photo)drawPosterPhoto(x,photo);else drawPadelVisual(x);
+ x.fillStyle='rgba(3,16,24,.94)';x.fillRect(0,0,1080,235);
+ x.fillStyle='rgba(255,255,255,.10)';x.fillRect(0,230,1080,5);
+ x.fillStyle='#fff';x.font='800 28px Arial';x.fillText('NEXT POINT PADEL',70,78);
+ x.fillStyle='rgba(255,255,255,.68)';x.font='600 18px Arial';x.fillText('TORNEO',70,112);
+ let title=clean(g.title||d.title||'TORNEO NEXT POINT PADEL');
+ x.font='800 58px Arial';const titleLines=wrapText(x,title,940).slice(0,2);titleLines.forEach((line,i)=>x.fillText(line,70,165+i*60));
+ const date=clean(q('#naiDate')?.value),time=clean(q('#naiTime')?.value),location=clean(q('#naiLocation')?.value);
+ const meta=[date,time,location].filter(Boolean).join('  •  ');
+ if(meta){x.fillStyle='rgba(255,255,255,.88)';x.font='600 22px Arial';x.fillText(meta,70,220)}
+ const info=[];
+ const pairs=clean(q('#naiPairs')?.value),level=clean(q('#naiLevel')?.value),fee=clean(q('#naiFee')?.value),deadline=clean(q('#naiDeadline')?.value);
+ if(pairs)info.push(`${pairs} squadre`);
+ if(level)info.push(level);
+ if(fee)info.push(fee);
+ if(deadline)info.push(`Iscrizioni entro ${deadline}`);
+ x.fillStyle='rgba(255,255,255,.94)';x.roundRect(55,830,970,205,26);x.fill();
+ x.fillStyle='#082331';x.font='800 24px Arial';x.fillText('INFORMAZIONI TORNEO',85,875);
+ x.fillStyle='rgba(8,35,49,.82)';x.font='600 27px Arial';let iy=920;info.slice(0,4).forEach(v=>{const lines=wrapText(x,v,880).slice(0,1);lines.forEach(line=>{x.fillText('• '+line,88,iy);iy+=38})});
+ const text=clean(g.text||q('#naiOffer')?.value||'');
+ if(text){x.fillStyle='rgba(255,255,255,.90)';x.font='400 23px Arial';wrapText(x,text,900).slice(0,2).forEach((line,i)=>x.fillText(line,70,1080+i*31))}
+ const cta=clean(g.cta||q('#naiCta')?.value||'Scopri di più');
+ const ctaW=Math.min(650,Math.max(320,x.measureText(cta).width+90));x.fillStyle='#fff';x.roundRect(55,1150,ctaW,76,38);x.fill();x.fillStyle='#082331';x.font='800 27px Arial';x.fillText(cta,100,1199);
+ x.fillStyle='rgba(255,255,255,.62)';x.font='400 19px Arial';x.fillText('NEXT POINT PADEL',70,1288);
  return c;
 }
 async function createFreePoster(download=true){const c=await posterCanvas(),url=c.toDataURL('image/png');window.dispatchEvent(new CustomEvent('nai:poster-created',{detail:{dataUrl:url}}));const a=document.createElement('a');a.href=url;a.download='locandina-next-point-padel.png';if(download){document.body.appendChild(a);a.click();a.remove()}return url}
