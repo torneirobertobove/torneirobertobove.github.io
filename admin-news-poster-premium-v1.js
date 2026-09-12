@@ -1,40 +1,195 @@
-/* ADMIN NEWS PREMIUM POSTER V1 — creatività social gratuita, fotografica e premium. */
+/* ADMIN NEWS POSTER PREMIUM V2 — editor manuale completo. */
 (()=>{
 'use strict';
 const q=s=>document.querySelector(s);
-const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
-const selected=()=>window.getTorneoAdminCorrente?.()||((window.adminState?.tornei||[]).find(t=>String(t.id)===String(window.adminState?.torneoSelezionato))||null);
-const cfg=t=>t?.configurazione&&typeof t.configurazione==='object'?{...t.configurazione}:{};
 const POSTER_IMAGE_URL='locandina.jpg';
+const W=1080,H=1350;
 let photoPromise=null;
-function loadPhoto(){if(photoPromise)return photoPromise;photoPromise=new Promise(resolve=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=POSTER_IMAGE_URL;});return photoPromise}
-function wrap(ctx,text,w){const lines=[];let line='';for(const word of String(text||'').split(/\s+/)){const test=line?line+' '+word:word;if(ctx.measureText(test).width<=w)line=test;else{if(line)lines.push(line);line=word}}if(line)lines.push(line);return lines}
-function rr(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
-const ICON_SVGS={
-calendar:`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b9fff2"/><stop offset="1" stop-color="#4bc9b7"/></linearGradient></defs><rect x="8" y="8" width="80" height="80" rx="24" fill="#062b35" fill-opacity=".94" stroke="#8de8d8" stroke-opacity=".42"/><rect x="23" y="24" width="50" height="49" rx="10" fill="url(#g)"/><path d="M23 39h50" stroke="#062b35" stroke-width="5"/><path d="M34 18v13M62 18v13" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M34 49h7v7h-7zM45 49h7v7h-7zM56 49h7v7h-7zM34 60h7v7h-7zM45 60h7v7h-7z" fill="#fff"/></svg>`,
-clock:`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><radialGradient id="g"><stop stop-color="#d9fff8"/><stop offset="1" stop-color="#55cdbc"/></radialGradient></defs><rect x="8" y="8" width="80" height="80" rx="24" fill="#062b35" fill-opacity=".94" stroke="#8de8d8" stroke-opacity=".42"/><circle cx="48" cy="48" r="27" fill="url(#g)"/><circle cx="48" cy="48" r="22" fill="#08313a"/><path d="M48 31v18l12 8" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="48" cy="48" r="4" fill="#8de8d8"/></svg>`,
-pin:`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d5fff7"/><stop offset="1" stop-color="#49c6b4"/></linearGradient></defs><rect x="8" y="8" width="80" height="80" rx="24" fill="#062b35" fill-opacity=".94" stroke="#8de8d8" stroke-opacity=".42"/><path d="M48 74s21-22 21-38a21 21 0 1 0-42 0c0 16 21 38 21 38z" fill="url(#g)"/><circle cx="48" cy="36" r="8" fill="#073039" stroke="#fff" stroke-width="4"/><path d="M37 65c7 5 15 7 22 0" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/></svg>`,
-teams:`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d8fff8"/><stop offset="1" stop-color="#50cabb"/></linearGradient></defs><rect x="8" y="8" width="80" height="80" rx="24" fill="#062b35" fill-opacity=".94" stroke="#8de8d8" stroke-opacity=".42"/><circle cx="35" cy="35" r="12" fill="url(#g)"/><circle cx="61" cy="35" r="12" fill="#7fe3d4" fill-opacity=".78"/><path d="M18 68c2-12 9-18 18-18s16 6 18 18" fill="#fff"/><path d="M45 68c2-10 8-15 16-15s14 5 17 15" fill="#bafff4" fill-opacity=".8"/></svg>`,
-ticket:`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e0fff9"/><stop offset="1" stop-color="#55cbbb"/></linearGradient></defs><rect x="8" y="8" width="80" height="80" rx="24" fill="#062b35" fill-opacity=".94" stroke="#8de8d8" stroke-opacity=".42"/><path d="M21 34a7 7 0 0 0 0 14v13h54V48a7 7 0 0 0 0-14V26H21z" fill="url(#g)"/><path d="M50 28v40" stroke="#083039" stroke-width="4" stroke-dasharray="5 5"/><circle cx="35" cy="40" r="5" fill="#fff" fill-opacity=".85"/><path d="M34 55h10" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`
-};
-const iconCache={};
-function loadIcon(type){if(iconCache[type])return Promise.resolve(iconCache[type]);return new Promise(resolve=>{const img=new Image();img.onload=()=>{iconCache[type]=img;resolve(img)};img.onerror=()=>resolve(null);img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(ICON_SVGS[type]||'');});}
-async function loadIcons(){const out={};await Promise.all(Object.keys(ICON_SVGS).map(async type=>{out[type]=await loadIcon(type)}));return out}
-function info(ctx,x,y,iconImg,label,value){if(iconImg)ctx.drawImage(iconImg,x,y,44,44);ctx.fillStyle='rgba(255,255,255,.48)';ctx.font='700 13px Arial';ctx.fillText(label.toUpperCase(),x+58,y+15);ctx.fillStyle='#fff';ctx.font='800 21px "Arial Black",Arial';wrap(ctx,value,190).slice(0,2).forEach((s,i)=>ctx.fillText(s,x+58,y+42+i*25))}
-function tournamentData(t){const c=cfg(t),r=c.rules||c.regole||{};return{title:clean(t?.nome||t?.nomeTorneo||c.nomeTorneo),date:clean(t?.data_torneo||t?.data||t?.dataTorneo||c.data_torneo||c.data||r.data),time:clean(t?.ora_inizio||t?.ora||t?.oraInizio||c.ora_inizio||c.ora||r.start),location:clean(t?.luogo||t?.location||t?.sede||c.luogo||c.location||c.sede),teams:clean(r.numeroSquadre||c.numeroSquadre||t?.numeroSquadre),level:clean(r.livello||c.livello||t?.livello),fee:clean(t?.quota||t?.quotaIscrizione||c.quota||c.quotaIscrizione),deadline:clean(t?.scadenza_iscrizioni||t?.scadenza||c.scadenza_iscrizioni||c.scadenza),description:clean(t?.descrizione||c.descrizione)}}
-function fillTournament(){const t=selected();if(!t)return false;const d=tournamentData(t);const set=(id,v)=>{const e=q('#'+id);if(e&&v)e.value=v};set('naiType','Torneo');set('naiTitle',d.title);set('naiDate',d.date);set('naiTime',d.time);set('naiLocation',d.location);set('naiPairs',d.teams);set('naiLevel',d.level);set('naiFee',d.fee);set('naiDeadline',d.deadline);set('naiOffer',d.description);return true}
-async function poster(){const c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');x.imageSmoothingEnabled=true;const photo=await loadPhoto();if(photo){const s=Math.max(c.width/photo.width,c.height/photo.height),w=photo.width*s,h=photo.height*s;x.drawImage(photo,(1080-w)/2,(1350-h)/2,w,h)}else{x.fillStyle='#071b2a';x.fillRect(0,0,1080,1350)}
-const top=x.createLinearGradient(0,0,0,500);top.addColorStop(0,'rgba(2,10,18,.98)');top.addColorStop(.68,'rgba(2,10,18,.72)');top.addColorStop(1,'rgba(2,10,18,.04)');x.fillStyle=top;x.fillRect(0,0,1080,520);
-const bottom=x.createLinearGradient(0,790,0,1350);bottom.addColorStop(0,'rgba(2,10,18,0)');bottom.addColorStop(.28,'rgba(2,10,18,.62)');bottom.addColorStop(1,'rgba(2,10,18,.99)');x.fillStyle=bottom;x.fillRect(0,790,1080,560);
-const accent='#8de8d8';x.fillStyle=accent;x.fillRect(64,58,82,5);x.fillStyle='#fff';x.font='900 25px "Arial Black",Arial';x.fillText('NEXT POINT PADEL',64,98);x.fillStyle='rgba(255,255,255,.48)';x.font='700 14px Arial';x.fillText('PADEL  •  TORNEI  •  COMMUNITY',64,124);
-const d={title:clean(q('#naiTitle')?.value),date:clean(q('#naiDate')?.value),time:clean(q('#naiTime')?.value),location:clean(q('#naiLocation')?.value),teams:clean(q('#naiPairs')?.value),level:clean(q('#naiLevel')?.value),fee:clean(q('#naiFee')?.value),deadline:clean(q('#naiDeadline')?.value)};const g=q('#naiPreview')?.querySelector('.nai-copy');const title=clean(g?.querySelector('h2')?.textContent||d.title||'TORNEO NEXT POINT PADEL').toUpperCase();x.fillStyle='#fff';x.font='900 72px "Arial Black",Arial';wrap(x,title,930).slice(0,2).forEach((s,i)=>x.fillText(s,64,215+i*78));
-const meta=[d.date,d.time,d.location].filter(Boolean).join('  /  ');if(meta){rr(x,64,350,Math.min(930,x.measureText(meta).width+52),52,26,'rgba(4,20,29,.76)','rgba(141,232,216,.65)');x.fillStyle=accent;x.font='800 19px Arial';x.fillText(meta,88,383)}
-rr(x,54,880,972,254,30,'rgba(3,16,25,.82)','rgba(255,255,255,.18)');const icons=await loadIcons();const items=[];if(d.date)items.push(['calendar','DATA',d.date]);if(d.time)items.push(['clock','ORA',d.time]);if(d.location)items.push(['pin','LOCATION',d.location]);if(d.teams)items.push(['teams','FORMAT',d.teams+' squadre']);if(d.fee)items.push(['ticket','QUOTA',d.fee]);if(d.level)items.push(['teams','LIVELLO',d.level]);items.slice(0,6).forEach((it,i)=>info(x,78+(i%2)*480,910+Math.floor(i/2)*70,icons[it[0]],it[1],it[2]));
-if(d.deadline){x.fillStyle=accent;x.font='800 15px Arial';x.fillText('ISCRIZIONI ENTRO',64,1172);x.fillStyle='#fff';x.font='900 26px "Arial Black",Arial';x.fillText(d.deadline,64,1202)}
-const text=clean(g?.querySelector('p')?.textContent||q('#naiOffer')?.value);if(text){x.fillStyle='rgba(255,255,255,.74)';x.font='400 19px Arial';wrap(x,text,650).slice(0,2).forEach((s,i)=>x.fillText(s,64,1240+i*25))}
-const cta=clean(g?.querySelector('.nai-cta')?.textContent||q('#naiCta')?.value||'ISCRIVITI ORA').toUpperCase();const cw=Math.min(360,Math.max(250,cta.length*15+70));rr(x,1080-cw-54,1170,cw,70,35,accent);x.fillStyle='#06202a';x.font='900 23px "Arial Black",Arial';x.textAlign='center';x.fillText(cta,1080-cw/2-54,1214);x.textAlign='left';x.fillStyle='rgba(255,255,255,.45)';x.font='600 14px Arial';x.fillText('NEXT POINT PADEL  •  TORNEI & NEWS',64,1322);x.fillStyle=accent;x.fillRect(950,1315,66,3);return c}
-async function createPremium(download=true){const c=await poster(),url=c.toDataURL('image/png');window.dispatchEvent(new CustomEvent('nai:poster-created',{detail:{dataUrl:url}}));if(download){const a=document.createElement('a');a.href=url;a.download='locandina-next-point-padel-premium.png';document.body.appendChild(a);a.click();a.remove()}return url}
-async function automatic(){const status=q('#naiCanvaStatus'),generate=q('#naiGenerate');if(!selected()){if(status)status.textContent='Seleziona prima un torneo.';return}const b=q('#naiAutoPoster');if(b)b.disabled=true;if(status)status.textContent='Creo la creatività premium del torneo…';fillTournament();if(generate){generate.click();let n=0;await new Promise(resolve=>{const timer=setInterval(()=>{n++;if(!generate.disabled||n>80){clearInterval(timer);resolve()}},100)})}await createPremium(true);if(status)status.textContent='Locandina premium creata gratuitamente e inserita nella News.';if(b)b.disabled=false}
-function hook(){const a=q('#naiAutoPoster'),f=q('#naiFreePoster');if(!a||!f)return;if(a.dataset.premiumBound==='1')return;a.dataset.premiumBound='1';f.dataset.premiumBound='1';a.onclick=automatic;f.onclick=async()=>{await createPremium(true);q('#naiCanvaStatus').textContent='Locandina premium creata gratuitamente e inserita nella News.'}}
-const obs=new MutationObserver(hook);obs.observe(document.body,{childList:true,subtree:true});window.addEventListener('admin:render',hook);setTimeout(hook,700);window.__NAI_PREMIUM_POSTER__=true;
+let layers=[];
+let nextId=1;
+
+function loadPhoto(){
+  if(photoPromise)return photoPromise;
+  photoPromise=new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>resolve(null);
+    img.src=POSTER_IMAGE_URL;
+  });
+  return photoPromise;
+}
+
+function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function defaults(){
+  return {text:'',x:540,y:200,size:64,color:'#ffffff',align:'center',weight:'700'};
+}
+
+function addLayer(data={}){
+  layers.push({...defaults(),...data,id:nextId++});
+  renderLayerList();
+  drawPreview();
+}
+
+function removeLayer(id){
+  layers=layers.filter(l=>l.id!==id);
+  renderLayerList();
+  drawPreview();
+}
+
+function updateLayer(id,key,value){
+  const l=layers.find(x=>x.id===id);if(!l)return;
+  if(['x','y','size'].includes(key)){
+    const n=Number(value);
+    l[key]=Number.isFinite(n)?n:0;
+  }else l[key]=value;
+  drawPreview();
+}
+
+function moveLayer(id,dx,dy){
+  const l=layers.find(x=>x.id===id);if(!l)return;
+  l.x=Math.max(0,Math.min(W,l.x+dx));
+  l.y=Math.max(0,Math.min(H,l.y+dy));
+  renderLayerList();
+  drawPreview();
+}
+
+function input(label,type,value,handler,extra=''){
+  return `<label style="display:flex;flex-direction:column;gap:4px;font-size:11px;opacity:.9">${label}<input type="${type}" value="${esc(value)}" ${extra} style="width:100%;box-sizing:border-box"></label>`;
+}
+
+function renderLayerList(){
+  const box=q('#naiManualLayers');if(!box)return;
+  if(!layers.length){
+    box.innerHTML='<div style="padding:16px;border:1px dashed rgba(255,255,255,.2);border-radius:12px;text-align:center;opacity:.7">Nessun testo. Premi <b>+ Aggiungi testo</b> per iniziare.</div>';
+    return;
+  }
+  box.innerHTML=layers.map((l,i)=>`
+    <div class="nai-manual-layer" data-id="${l.id}" style="border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px;margin-top:10px;background:rgba(0,0,0,.16)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <b>Testo ${i+1}</b>
+        <button type="button" class="btn nai-layer-delete" data-id="${l.id}" style="padding:5px 9px">Elimina</button>
+      </div>
+      <textarea class="nai-layer-text" data-id="${l.id}" rows="2" placeholder="Scrivi qui il testo..." style="width:100%;box-sizing:border-box;resize:vertical">${esc(l.text)}</textarea>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px">
+        ${input('X','number',l.x)}
+        ${input('Y','number',l.y)}
+        ${input('Dimensione','number',l.size,'','min="8" max="300"')}
+      </div>
+      <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-top:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px">Colore<input class="nai-layer-color" data-id="${l.id}" type="color" value="${esc(l.color)}" style="width:100%;height:34px;padding:2px"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px">Allineamento<select class="nai-layer-align" data-id="${l.id}" style="width:100%;height:34px"><option value="left" ${l.align==='left'?'selected':''}>Sinistra</option><option value="center" ${l.align==='center'?'selected':''}>Centro</option><option value="right" ${l.align==='right'?'selected':''}>Destra</option></select></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px">Peso<select class="nai-layer-weight" data-id="${l.id}" style="width:100%;height:34px"><option value="400" ${String(l.weight)==='400'?'selected':''}>Normale</option><option value="600" ${String(l.weight)==='600'?'selected':''}>Semigrassetto</option><option value="700" ${String(l.weight)==='700'?'selected':''}>Grassetto</option><option value="900" ${String(l.weight)==='900'?'selected':''}>Molto grassetto</option></select></label>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+        <button type="button" class="btn nai-move" data-id="${l.id}" data-dx="-10" data-dy="0">←</button>
+        <button type="button" class="btn nai-move" data-id="${l.id}" data-dx="10" data-dy="0">→</button>
+        <button type="button" class="btn nai-move" data-id="${l.id}" data-dx="0" data-dy="-10">↑</button>
+        <button type="button" class="btn nai-move" data-id="${l.id}" data-dx="0" data-dy="10">↓</button>
+      </div>
+    </div>`).join('');
+
+  box.querySelectorAll('.nai-layer-text').forEach(e=>e.addEventListener('input',()=>updateLayer(Number(e.dataset.id),'text',e.value)));
+  box.querySelectorAll('.nai-layer-color').forEach(e=>e.addEventListener('input',()=>updateLayer(Number(e.dataset.id),'color',e.value)));
+  box.querySelectorAll('.nai-layer-align').forEach(e=>e.addEventListener('change',()=>updateLayer(Number(e.dataset.id),'align',e.value)));
+  box.querySelectorAll('.nai-layer-weight').forEach(e=>e.addEventListener('change',()=>updateLayer(Number(e.dataset.id),'weight',e.value)));
+  box.querySelectorAll('.nai-layer-delete').forEach(e=>e.addEventListener('click',()=>removeLayer(Number(e.dataset.id))));
+  box.querySelectorAll('.nai-move').forEach(e=>e.addEventListener('click',()=>moveLayer(Number(e.dataset.id),Number(e.dataset.dx),Number(e.dataset.dy))));
+  box.querySelectorAll('input[type="number"]').forEach((e,idx)=>{
+    const parent=e.closest('.nai-manual-layer');
+    const id=Number(parent.dataset.id);
+    const key=['x','y','size'][idx%3];
+    e.addEventListener('input',()=>updateLayer(id,key,e.value));
+  });
+}
+
+async function drawPreview(){
+  const canvas=q('#naiManualCanvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=W;canvas.height=H;
+  const photo=await loadPhoto();
+  if(photo){
+    const scale=Math.max(W/photo.width,H/photo.height),w=photo.width*scale,h=photo.height*scale;
+    ctx.drawImage(photo,(W-w)/2,(H-h)/2,w,h);
+  }else{
+    ctx.fillStyle='#071b2a';ctx.fillRect(0,0,W,H);
+  }
+  layers.forEach(l=>drawLayer(ctx,l));
+}
+
+function drawLayer(ctx,l){
+  if(!l.text)return;
+  ctx.save();
+  ctx.fillStyle=l.color||'#fff';
+  ctx.font=`${l.weight||700} ${Math.max(8,Number(l.size)||64)}px Arial`;
+  ctx.textAlign=l.align||'center';
+  ctx.textBaseline='middle';
+  const lines=String(l.text).split('\n');
+  const lineHeight=Math.max(10,Number(l.size)||64)*1.15;
+  const startY=Number(l.y)||0-(lines.length-1)*lineHeight/2;
+  lines.forEach((line,i)=>ctx.fillText(line,Number(l.x)||0,startY+i*lineHeight));
+  ctx.restore();
+}
+
+async function generate(download=true){
+  const canvas=q('#naiManualCanvas');if(!canvas)return null;
+  await drawPreview();
+  const url=canvas.toDataURL('image/png');
+  window.dispatchEvent(new CustomEvent('nai:poster-created',{detail:{dataUrl:url,manual:true}}));
+  if(download){
+    const a=document.createElement('a');a.href=url;a.download='locandina-next-point-padel-manuale.png';document.body.appendChild(a);a.click();a.remove();
+  }
+  const status=q('#naiManualStatus');if(status)status.textContent='Locandina generata correttamente.';
+  return url;
+}
+
+function resetEditor(){
+  layers=[];nextId=1;renderLayerList();drawPreview();
+  const status=q('#naiManualStatus');if(status)status.textContent='Editor azzerato.';
+}
+
+function panel(){
+  if(q('#naiManualPosterPanel'))return;
+  const anchor=q('#naiCanvaPanel')||q('#naiPublish');
+  if(!anchor)return;
+  const wrap=document.createElement('div');
+  wrap.id='naiManualPosterPanel';
+  wrap.style.cssText='margin-top:16px;padding:16px;border:1px solid rgba(141,232,216,.28);border-radius:16px;background:rgba(2,16,24,.58);box-shadow:0 12px 35px rgba(0,0,0,.18)';
+  wrap.innerHTML=`
+    <div style="font-size:19px;font-weight:900">Editor manuale locandina</div>
+    <div style="font-size:12px;opacity:.78;line-height:1.5;margin-top:4px">Qui decidi tu tutto il testo. Il programma non inserisce automaticamente nome torneo, data, ora, luogo, quota, scadenza o altri testi.</div>
+    <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,520px);gap:18px;align-items:start;margin-top:14px">
+      <div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn primary" id="naiManualAdd">＋ Aggiungi testo</button>
+          <button type="button" class="btn" id="naiManualGenerate">Genera PNG</button>
+          <button type="button" class="btn" id="naiManualReset">Azzera</button>
+        </div>
+        <div id="naiManualLayers"></div>
+        <div id="naiManualStatus" class="notice" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:800;margin-bottom:7px">ANTEPRIMA 1080 × 1350</div>
+        <div style="width:100%;max-width:520px;margin:auto;background:#020b12;border-radius:12px;overflow:hidden;box-shadow:0 15px 35px rgba(0,0,0,.3)"><canvas id="naiManualCanvas" width="1080" height="1350" style="display:block;width:100%;height:auto"></canvas></div>
+      </div>
+    </div>`;
+  if(anchor.id==='naiCanvaPanel')anchor.parentNode.insertBefore(wrap,anchor.nextSibling);else anchor.parentNode.insertBefore(wrap,anchor.nextSibling);
+
+  q('#naiManualAdd').onclick=()=>addLayer();
+  q('#naiManualGenerate').onclick=()=>generate(true);
+  q('#naiManualReset').onclick=resetEditor;
+  renderLayerList();
+  drawPreview();
+
+  // I vecchi pulsanti automatici restano disponibili per il vecchio generatore Canva,
+  // ma non vengono più usati dal nuovo editor manuale.
+}
+
+function hook(){panel();}
+const obs=new MutationObserver(hook);
+obs.observe(document.body,{childList:true,subtree:true});
+window.addEventListener('admin:render',hook);
+setTimeout(hook,700);
+window.__NAI_PREMIUM_POSTER__=true;
+window.__NAI_MANUAL_POSTER__=true;
 })();
