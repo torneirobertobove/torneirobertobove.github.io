@@ -68,12 +68,93 @@
     capture('tbody#finaleBox', 'fCamp', 'fTime', 1);
   }
 
+  function persistKOStructure() {
+    try {
+      if (typeof state === 'undefined' || typeof getFinalQualified !== 'function' || typeof getWinner !== 'function') return;
+      if (!state.rules) return;
+
+      const teams = getFinalQualified();
+      if (!Array.isArray(teams) || teams.length < 2) {
+        state.quarti = [];
+        state.semiTop = [];
+        return;
+      }
+
+      let semifinali = [];
+
+      if (state.rules.usaQuarti === true) {
+        if (teams.length < 8) {
+          state.quarti = [];
+          state.semiTop = [];
+          return;
+        }
+
+        const quarti = [
+          [teams[0], teams[7]],
+          [teams[3], teams[4]],
+          [teams[1], teams[6]],
+          [teams[2], teams[5]]
+        ];
+
+        state.quarti = quarti.map(match => [...match]);
+
+        const vincitori = [];
+        quarti.forEach((match, index) => {
+          const vincitore = getWinner(match, Array.isArray(state.qRes) ? state.qRes[index] : '-');
+          if (vincitore) vincitori.push(vincitore);
+        });
+
+        if (vincitori.length === 4) {
+          semifinali = [
+            [vincitori[0], vincitori[1]],
+            [vincitori[2], vincitori[3]]
+          ];
+        }
+      } else {
+        state.quarti = [];
+
+        if (teams.length >= 4) {
+          semifinali = [
+            [teams[0], teams[3]],
+            [teams[1], teams[2]]
+          ];
+        } else if (teams.length === 2) {
+          semifinali = [teams];
+        }
+      }
+
+      state.semiTop = semifinali.map(match => [...match]);
+    } catch (e) {
+      console.error('Errore persistenza struttura fase finale:', e);
+    }
+  }
+
+  function patchRenderKOForPersistence() {
+    try {
+      if (typeof window.renderKO !== 'function' || window.__BOVE_KO_STRUCTURE_PATCHED__) return;
+
+      const originalRenderKO = window.renderKO;
+      window.__BOVE_KO_STRUCTURE_PATCHED__ = true;
+
+      window.renderKO = function () {
+        const result = originalRenderKO.apply(this, arguments);
+        persistKOStructure();
+        return result;
+      };
+    } catch (e) {
+      console.error('Errore patch renderKO fase finale:', e);
+    }
+  }
+
+  patchRenderKOForPersistence();
+
   async function salvaTorneoBove() {
     const client = window.supabaseClient || window.sb;
     const s = typeof state !== 'undefined' ? state : null;
     const id = s?.idTorneo || new URLSearchParams(location.search).get('idTorneo');
     if (!client || !id) { alert('Torneo non disponibile.'); return false; }
     captureKOFieldsBeforeSave(s);
+    persistKOStructure();
     const snapshot = (() => { try { return JSON.parse(JSON.stringify(s || {})); } catch (e) { return {}; } })();
     const rules = snapshot.rules || {};
     const payload = { configurazione: snapshot, nome: snapshot.nomeTorneo || undefined, data_torneo: snapshot.dataTorneo || undefined, posti: Number(rules.numeroSquadre) || undefined, formula: rules.formulaScelta || snapshot.formula || undefined };
