@@ -14,9 +14,20 @@ function archivedConsultation(){
   const t=(s.tornei||[]).find(x=>String(x.id)===String(id));
   return t&&String(t.stato||'').toLowerCase()==='archiviato'?t:null;
 }
+function currentTournament(){
+  const s=window.adminState||{};
+  return (s.tornei||[]).find(x=>String(x.id)===String(s.torneoSelezionato))||null;
+}
 function openArchivedBoard(t){
+  if(!t||t.id==null)return;
   window.open('Bove.html?idTorneo='+encodeURIComponent(t.id),'_blank','noopener');
 }
+/* Handler reale usato da admin-layout-v2.js dal pulsante #bracket. */
+window.apriTabelloneAdmin=function(){
+  const t=archivedConsultation()||currentTournament();
+  if(!t){alert('Seleziona prima un torneo');return;}
+  openArchivedBoard(t);
+};
 function enableArchiveBoardActions(){
   const t=archivedConsultation();
   if(!t)return;
