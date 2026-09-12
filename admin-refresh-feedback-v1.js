@@ -1,15 +1,28 @@
 (()=>{
 'use strict';
+function exitArchiveConsultation(){
+  if(!window.__ARCHIVE_CONSULTATION__)return;
+  window.__ARCHIVE_CONSULTATION__=false;
+  window.__ARCHIVE_CONSULTATION_ID__=null;
+  if(window.adminState)window.adminState.torneoSelezionato=null;
+  window.iscrizioniTorneo=[];
+  try{localStorage.removeItem('padel_admin_state')}catch(e){}
+}
 function install(){
   const fn=window.refreshCleanAdmin;
   if(typeof fn!=='function'||fn.__refreshFeedback)return false;
   const wrapped=async function(){
-    const buttons=[document.getElementById('topRefresh'),document.getElementById('sideRefresh')].filter(Boolean);
+    const buttons=[document.getElementById('topRefresh'),document.getElementById('sideRefresh'),document.getElementById('refreshTournaments')].filter(Boolean);
     const original=buttons.map(b=>({b,text:b.textContent,disabled:b.disabled}));
     buttons.forEach(b=>{b.disabled=true;b.textContent='↻ Aggiornamento…';b.setAttribute('aria-busy','true')});
-    try{return await fn.apply(this,arguments)}
-    finally{
-      requestAnimationFrame(()=>original.forEach(x=>{x.b.disabled=x.disabled;x.b.textContent=x.text;x.b.removeAttribute('aria-busy')}));
+    exitArchiveConsultation();
+    try{
+      const result=await fn.apply(this,arguments);
+      if(typeof window.caricaTorneiSupabase==='function')await window.caricaTorneiSupabase();
+      window.dispatchEvent(new Event('admin:refresh-complete'));
+      return result;
+    }finally{
+      requestAnimationFrame(()=>original.forEach(x=>{if(x.b.isConnected){x.b.disabled=x.disabled;x.b.textContent=x.text;x.b.removeAttribute('aria-busy')}}));
     }
   };
   wrapped.__refreshFeedback=true;
