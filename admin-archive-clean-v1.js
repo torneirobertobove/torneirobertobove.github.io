@@ -33,6 +33,10 @@ function clearConsultation(){
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
 }
 
+/* Esposta per permettere alle azioni di consultazione di chiudere correttamente
+ * la modalità archivio senza modificare lo stato del torneo su Supabase. */
+window.clearArchiveConsultation=clearConsultation;
+
 async function openArchivedTournament(id,panel){
   const torneo=archived().find(t=>String(t.id)===String(id));
   if(!torneo)return;
