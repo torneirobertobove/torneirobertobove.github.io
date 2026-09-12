@@ -3,7 +3,6 @@
 
 function getClient(){return window.supabaseClient||window.sb||null}
 function getSelectedTournament(){const s=window.adminState||{};return (s.tornei||[]).find(t=>String(t.id)===String(s.torneoSelezionato))||null}
-function escapeHtml(v){return String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]))}
 
 async function chiudiTorneoStato(){
   const t=getSelectedTournament();
@@ -12,7 +11,7 @@ async function chiudiTorneoStato(){
     alert('Il torneo è già archiviato.');
     return true;
   }
-  if(!confirm('Confermi la chiusura del torneo \"'+(t.nome||'Torneo')+'\"?\n\nIl torneo verrà archiviato, le iscrizioni verranno chiuse e non sarà più pubblicato.'))return false;
+  if(!confirm('Confermi la chiusura definitiva del torneo "'+(t.nome||'Torneo')+'"?\n\nIl torneo verrà archiviato, le iscrizioni chiuse e non sarà più pubblicato.'))return false;
   const client=getClient();
   if(!client){alert('Connessione Supabase non disponibile.');return false}
   try{
@@ -23,12 +22,12 @@ async function chiudiTorneoStato(){
       if(i>=0)window.adminState.tornei[i]=data||{...t,stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false};
     }
     try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}
-    alert('Torneo chiuso e archiviato correttamente.');
+    alert('Torneo archiviato correttamente. Stato: ARCHIVIATO.');
     if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
     return true;
   }catch(e){
-    console.error('Errore chiusura torneo:',e);
-    alert('Chiusura torneo non riuscita: '+(e?.message||e));
+    console.error('Errore archiviazione torneo:',e);
+    alert('Archiviazione torneo non riuscita: '+(e?.message||e));
     return false;
   }
 }
@@ -46,7 +45,7 @@ async function riapriIscrizioniTorneo(){
     alert('Le iscrizioni sono già aperte.');
     return true;
   }
-  if(!confirm('Vuoi riaprire le iscrizioni del torneo \"'+(t.nome||'Torneo')+'\"?'))return false;
+  if(!confirm('Vuoi riaprire le iscrizioni del torneo "'+(t.nome||'Torneo')+'"?'))return false;
   const client=getClient();
   if(!client){alert('Connessione Supabase non disponibile.');return false}
   try{
@@ -98,7 +97,7 @@ function injectButton(){
     b.id='closeTournament';
     operations.appendChild(b);
   }
-  b.innerHTML=closed?'🏁 <strong>Torneo archiviato</strong><span>Stato: archiviato</span>':'🏁 <strong>Chiudi torneo</strong><span>Archivia il torneo e chiude le iscrizioni</span>';
+  b.innerHTML=closed?'🏁 <strong>Torneo archiviato</strong><span>Stato: archiviato</span>':'🏁 <strong>Chiudi torneo</strong><span>Archivia definitivamente il torneo</span>';
   b.disabled=closed;
   if(!b.dataset.bound){b.dataset.bound='1';b.addEventListener('click',chiudiTorneoStato)}
 
@@ -137,8 +136,6 @@ function boot(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('admin:rendered',()=>{removeExtraArchiveButton();install();injectButton()});
 
-/* STABILIZZAZIONE BANNER CONTROLLI TORNEO: il banner vive fuori da #appContent,
-   così renderCleanAdmin() non lo distrugge e non può farlo apparire/scomparire. */
 (function(){
   const KEY='__TOURNAMENT_CONTROLS_STABLE__';
   function patchBar(bar){
