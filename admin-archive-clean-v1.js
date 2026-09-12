@@ -4,6 +4,7 @@
 const state=()=>window.adminState||{};
 const archived=()=> (state().tornei||[]).filter(t=>String(t.stato||'').toLowerCase()==='archiviato');
 const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+const CONSULT_KEY='__ARCHIVE_CONSULTATION__';
 
 function monthName(m){return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][m]||''}
 function dateOf(t){const d=new Date(t.data_torneo||t.data||t.created_at||Date.now());return Number.isNaN(d.getTime())?new Date(0):d}
@@ -16,20 +17,46 @@ function removeDuplicateArchiveButtons(){
   });
 }
 
+function clearConsultation(){
+  const s=state();
+  const id=window.__ARCHIVE_CONSULTATION_ID__;
+  window.__ARCHIVE_CONSULTATION__=false;
+  window.__ARCHIVE_CONSULTATION_ID__=null;
+  if(id!=null && String(s.torneoSelezionato)===String(id))s.torneoSelezionato=null;
+  window.adminState=s;
+  try{localStorage.removeItem('padel_admin_state')}catch(e){}
+  window.iscrizioniTorneo=[];
+  if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
+}
+
 async function openArchivedTournament(id,panel){
   const torneo=archived().find(t=>String(t.id)===String(id));
   if(!torneo)return;
+  const s=state();
   window.__ARCHIVE_CONSULTATION__=true;
   window.__ARCHIVE_CONSULTATION_ID__=String(torneo.id);
-  const s=state();
   s.torneoSelezionato=torneo.id;
   window.adminState=s;
-  try{localStorage.setItem('padel_admin_state',JSON.stringify(s))}catch(e){}
+  /* La selezione dell'archivio vive solo in memoria: non viene persistita. */
   if(typeof window.caricaRichiesteIscrizione==='function'){
     try{await window.caricaRichiesteIscrizione()}catch(e){console.error('Errore caricamento iscrizioni archivio:',e)}
   }
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
   panel.style.display='none';
+  ensureConsultationBar();
+}
+
+function ensureConsultationBar(){
+  if(!window.__ARCHIVE_CONSULTATION__)return;
+  let bar=document.getElementById('archiveConsultationBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='archiveConsultationBar';
+    bar.style.cssText='position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10001;display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;background:#111827;color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:0 10px 28px rgba(0,0,0,.22);font:600 13px Arial,sans-serif';
+    bar.innerHTML='<span>📦 Consultazione torneo archiviato — sola visualizzazione</span><button id="archiveConsultationExit" type="button" style="border:0;border-radius:7px;padding:6px 10px;background:#fff;color:#111827;font-weight:700;cursor:pointer">Esci</button>';
+    document.body.appendChild(bar);
+    bar.querySelector('#archiveConsultationExit').addEventListener('click',clearConsultation);
+  }
 }
 
 function renderArchivePanel(){
@@ -83,20 +110,21 @@ function ensureButton(){
       p.style.display=p.style.display==='none'||!p.style.display?'block':'none';
     });
   }
+  ensureConsultationBar();
 }
 
 function hideArchivedFromSelectors(){
   const list=archived().map(t=>String(t.id));
   document.querySelectorAll('select').forEach(sel=>{
     [...sel.options].forEach(opt=>{
-      if(list.includes(String(opt.value))&&String(opt.value)!==String(state().torneoSelezionato))opt.remove();
+      if(list.includes(String(opt.value)))opt.remove();
     });
   });
 }
 
 function refresh(){
   ensureButton();
-  hideArchivedFromSelectors();
+  if(!window.__ARCHIVE_CONSULTATION__)hideArchivedFromSelectors();
   if(document.getElementById('archiveCleanPanel')?.style.display==='block')renderArchivePanel();
 }
 
@@ -115,4 +143,5 @@ function boot(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('admin:rendered',refresh);
 window.addEventListener('admin:render',refresh);
+window.addEventListener('admin:refresh-complete',()=>{if(window.__ARCHIVE_CONSULTATION__)clearConsultation()});
 })();
