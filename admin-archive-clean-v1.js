@@ -128,10 +128,29 @@ function hideArchivedFromSelectors(){
     [...sel.options].forEach(opt=>{
       if(list.includes(String(opt.value)))opt.remove();
     });
+    if(sel.id==='torneoSelector' && list.includes(String(sel.value)))sel.value='';
   });
 }
 
+function patchAdminRender(){
+  if(typeof window.renderCleanAdmin!=='function'||window.__ARCHIVE_SELECTOR_RENDER_PATCH__)return;
+  const original=window.renderCleanAdmin;
+  window.__ARCHIVE_SELECTOR_RENDER_PATCH__=true;
+  window.renderCleanAdmin=function(){
+    const result=original.apply(this,arguments);
+    if(!window.__ARCHIVE_CONSULTATION__){
+      requestAnimationFrame(()=>{
+        hideArchivedFromSelectors();
+        setTimeout(hideArchivedFromSelectors,0);
+        setTimeout(hideArchivedFromSelectors,50);
+      });
+    }
+    return result;
+  };
+}
+
 function refresh(){
+  patchAdminRender();
   ensureButton();
   if(!window.__ARCHIVE_CONSULTATION__)hideArchivedFromSelectors();
   if(document.getElementById('archiveCleanPanel')?.style.display==='block')renderArchivePanel();
