@@ -148,6 +148,42 @@
     }
   }
 
+  const CALC_ORDER = [0, 2, 4, 5, 3, 1];
+
+  function reorderGroupResultsForCalc(results) {
+    if (!Array.isArray(results) || results.length !== 6) return results;
+    return CALC_ORDER.map(i => results[i]);
+  }
+
+  function patchCalcForMatchOrder() {
+    try {
+      if (typeof window.calc !== 'function' || window.__BOVE_CALC_ORDER_PATCHED__) return;
+
+      const originalCalc = window.calc;
+      window.__BOVE_CALC_ORDER_PATCHED__ = true;
+
+      window.calc = function (squadre, risultati) {
+        let normalized = risultati;
+
+        if (typeof state !== 'undefined' && Array.isArray(risultati)) {
+          const isGroupResults = ['A','B','C','D','E','F','G'].some(tag =>
+            risultati === state[tag + 'res']
+          );
+
+          if (isGroupResults) {
+            normalized = reorderGroupResultsForCalc(risultati);
+          }
+        }
+
+        return originalCalc.call(this, squadre, normalized);
+      };
+    } catch (e) {
+      console.error('Errore patch ordine calc classifiche:', e);
+    }
+  }
+
+  patchCalcForMatchOrder();
+
   function patchRenderClassForMatchOrder() {
     try {
       if (typeof window.renderClass !== 'function' || window.__BOVE_CLASSIFICATION_ORDER_PATCHED__) return;
@@ -157,7 +193,7 @@
 
       window.renderClass = function () {
         const saved = {};
-        const calcOrder = [0, 2, 4, 5, 3, 1];
+        const calcOrder = CALC_ORDER;
 
         ['A','B','C','D','E','F','G'].forEach(tag => {
           const key = tag + 'res';
@@ -181,6 +217,41 @@
   }
 
   patchRenderClassForMatchOrder();
+
+  function patchGetFinalQualifiedForMatchOrder() {
+    try {
+      if (typeof window.getFinalQualified !== 'function' || window.__BOVE_FINAL_QUALIFIED_ORDER_PATCHED__) return;
+
+      const originalGetFinalQualified = window.getFinalQualified;
+      window.__BOVE_FINAL_QUALIFIED_ORDER_PATCHED__ = true;
+
+      window.getFinalQualified = function () {
+        const saved = {};
+
+        if (typeof state !== 'undefined') {
+          ['A','B','C','D','E','F','G'].forEach(tag => {
+            const key = tag + 'res';
+            if (Array.isArray(state[key]) && state[key].length === 6) {
+              saved[key] = state[key].slice();
+              state[key] = reorderGroupResultsForCalc(saved[key]);
+            }
+          });
+        }
+
+        try {
+          return originalGetFinalQualified.apply(this, arguments);
+        } finally {
+          Object.keys(saved).forEach(key => {
+            if (typeof state !== 'undefined') state[key] = saved[key];
+          });
+        }
+      };
+    } catch (e) {
+      console.error('Errore patch qualificazioni ordine risultati:', e);
+    }
+  }
+
+  patchGetFinalQualifiedForMatchOrder();
 
   function patchRenderKOForPersistence() {
     try {
