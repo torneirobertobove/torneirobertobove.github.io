@@ -5,8 +5,9 @@ const clean=()=>{
   const s=window.adminState||{};
   const ids=new Set((s.tornei||[]).filter(isArchived).map(t=>String(t.id)));
   document.querySelectorAll('#torneoSelector').forEach(sel=>{
+    const wasArchived=ids.has(String(sel.value));
     [...sel.options].forEach(o=>{if(ids.has(String(o.value)))o.remove()});
-    sel.value='';
+    if(wasArchived)sel.value='';
   });
 };
 const patch=()=>{
