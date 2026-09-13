@@ -8,6 +8,20 @@ const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function monthName(m){return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][m]||''}
 function dateOf(t){const d=new Date(t.data_torneo||t.data||t.created_at||Date.now());return Number.isNaN(d.getTime())?new Date(0):d}
 
+/* Un torneo archiviato non può mai rimanere selezionato nella normale Gestione torneo.
+ * L'oggetto resta intatto in adminState e quindi continua a comparire esclusivamente
+ * nell'Archivio Tornei. */
+function normalizeArchivedSelection(){
+  if(window.__ARCHIVE_CONSULTATION__)return;
+  const s=state();
+  const t=(s.tornei||[]).find(x=>String(x.id)===String(s.torneoSelezionato));
+  if(!t||String(t.stato||'').toLowerCase()!=='archiviato')return;
+  s.torneoSelezionato=null;
+  window.adminState=s;
+  if(typeof window.salvaAdminState==='function')window.salvaAdminState();
+  window.iscrizioniTorneo=[];
+}
+
 function removeDuplicateArchiveButtons(){
   document.querySelectorAll('#adminArchiveOpen,[data-admin-archive],button').forEach(el=>{
     if(el.id==='archiveCleanButton')return;
@@ -42,6 +56,7 @@ function clearConsultation(){
   /* Sicurezza: se un renderer successivo ha ripopolato il select con un archiviato,
      il pannello deve comunque restare senza selezione. */
   requestAnimationFrame(()=>{
+    normalizeArchivedSelection();
     const sel=document.getElementById('torneoSelector');
     if(sel)sel.value='';
     hideArchivedFromSelectors();
@@ -148,12 +163,12 @@ function patchAdminRender(){
   const original=window.renderCleanAdmin;
   window.__ARCHIVE_SELECTOR_RENDER_PATCH__=true;
   window.renderCleanAdmin=function(){
+    if(!window.__ARCHIVE_CONSULTATION__)normalizeArchivedSelection();
     const result=original.apply(this,arguments);
     if(!window.__ARCHIVE_CONSULTATION__){
       requestAnimationFrame(()=>{
+        normalizeArchivedSelection();
         hideArchivedFromSelectors();
-        setTimeout(hideArchivedFromSelectors,0);
-        setTimeout(hideArchivedFromSelectors,50);
       });
     }
     return result;
@@ -162,6 +177,7 @@ function patchAdminRender(){
 
 function refresh(){
   patchAdminRender();
+  if(!window.__ARCHIVE_CONSULTATION__)normalizeArchivedSelection();
   ensureButton();
   if(!window.__ARCHIVE_CONSULTATION__)hideArchivedFromSelectors();
   if(document.getElementById('archiveCleanPanel')?.style.display==='block')renderArchivePanel();
