@@ -4,7 +4,6 @@
 const state=()=>window.adminState||{};
 const archived=()=> (state().tornei||[]).filter(t=>String(t.stato||'').toLowerCase()==='archiviato');
 const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
-const CONSULT_KEY='__ARCHIVE_CONSULTATION__';
 
 function monthName(m){return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][m]||''}
 function dateOf(t){const d=new Date(t.data_torneo||t.data||t.created_at||Date.now());return Number.isNaN(d.getTime())?new Date(0):d}
@@ -19,22 +18,34 @@ function removeDuplicateArchiveButtons(){
 
 function clearConsultation(){
   const s=state();
-  const id=window.__ARCHIVE_CONSULTATION_ID__;
-  window.__ARCHIVE_CONSULTATION__=false;
-  window.__ARCHIVE_CONSULTATION_ID__=null;
-  if(id!=null && String(s.torneoSelezionato)===String(id))s.torneoSelezionato=null;
+
+  /* Uscita dalla consultazione: NON tocca tornei, Supabase o login. */
+  s.torneoSelezionato=null;
   window.adminState=s;
   if(typeof window.salvaAdminState==='function')window.salvaAdminState();
   window.iscrizioniTorneo=[];
-  const bar=document.getElementById('archiveConsultationBar');
-  if(bar)bar.remove();
-  const panel=document.getElementById('archiveCleanPanel');
-  if(panel)panel.style.display='none';
-  const torneoBtn=document.querySelector('[data-page="torneo"]');
-  if(torneoBtn){
-    try{torneoBtn.click();return}catch(e){}
+  window.__ARCHIVE_CONSULTATION__=false;
+  window.__ARCHIVE_CONSULTATION_ID__=null;
+
+  /* Elimina ogni elemento grafico lasciato dalla consultazione. */
+  document.getElementById('archiveConsultationBar')?.remove();
+  const archivePanel=document.getElementById('archiveCleanPanel');
+  if(archivePanel)archivePanel.style.display='none';
+  const oldArchive=document.getElementById('archivioTorneiAdmin');
+  if(oldArchive)oldArchive.style.display='none';
+
+  /* Ricostruisce direttamente la pagina Gestione torneo senza torneo selezionato. */
+  if(typeof window.renderCleanAdmin==='function'){
+    window.renderCleanAdmin();
   }
-  if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
+
+  /* Sicurezza: se un renderer successivo ha ripopolato il select con un archiviato,
+     il pannello deve comunque restare senza selezione. */
+  requestAnimationFrame(()=>{
+    const sel=document.getElementById('torneoSelector');
+    if(sel)sel.value='';
+    hideArchivedFromSelectors();
+  });
 }
 
 window.clearArchiveConsultation=clearConsultation;
