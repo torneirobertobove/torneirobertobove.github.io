@@ -49,4 +49,68 @@ function bind(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
 else bind();
+
+/* PUBBLICAZIONE AUTOMATICA DEL NUOVO TORNEO
+ * Il wizard crea correttamente il torneo, ma il salvataggio storico lo lasciava
+ * in bozza/non pubblicato. Questo blocco interviene solo sui nuovi ID creati
+ * durante la sessione Admin e li rende immediatamente visibili ai visitatori.
+ */
+async function pubblicaNuovoTorneo(id){
+  const sb=window.supabaseClient||window.sb;
+  if(!sb||!id)return;
+  const r=await sb.from('tornei').update({pubblicato:true,stato:'attivo'}).eq('id',id);
+  if(r.error){console.error('Pubblicazione automatica torneo non riuscita:',r.error);return}
+  const lista=window.adminState?.tornei;
+  if(Array.isArray(lista)){
+    const t=lista.find(x=>String(x.id)===String(id));
+    if(t){t.pubblicato=true;t.stato='attivo'}
+  }
+  if(window.adminState){try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState))}catch(e){}}
+  if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
+}
+function avviaPubblicazioneAutomatica(){
+  let inizializzato=false;
+  const giaVisti=new Set();
+  const inizializza=()=>{
+    const lista=window.adminState?.tornei;
+    if(!Array.isArray(lista)||!lista.length)return false;
+    lista.forEach(t=>giaVisti.add(String(t.id)));
+    inizializzato=true;
+    return true;
+  };
+  const controlla=()=>{
+    if(!inizializzato&&!inizializza())return;
+    const lista=window.adminState?.tornei;
+    if(!Array.isArray(lista))return;
+    lista.forEach(t=>{
+      const id=String(t.id);
+      if(giaVisti.has(id))return;
+      giaVisti.add(id);
+      if(t.stato==='bozza'||t.pubblicato!==true)pubblicaNuovoTorneo(t.id);
+    });
+  };
+  const originale=window.caricaTorneiSupabase;
+  if(typeof originale==='function'&&!originale.__autoPublishWrapped){
+    const wrapper=async function(){
+      const prima=new Set((window.adminState?.tornei||[]).map(t=>String(t.id)));
+      const result=await originale.apply(this,arguments);
+      const lista=window.adminState?.tornei||[];
+      inizializzato=true;
+      lista.forEach(t=>{
+        const id=String(t.id);
+        if(!prima.has(id)&&(!t.pubblicato||t.stato==='bozza'))pubblicaNuovoTorneo(t.id);
+        giaVisti.add(id);
+      });
+      return result;
+    };
+    wrapper.__autoPublishWrapped=true;
+    window.caricaTorneiSupabase=wrapper;
+    setTimeout(controlla,300);
+  }else{
+    inizializzato=inizializza();
+  }
+  setInterval(controlla,500);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',avviaPubblicazioneAutomatica,{once:true});
+else avviaPubblicazioneAutomatica();
 })();

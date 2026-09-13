@@ -8,8 +8,8 @@ function apply(){injectCss();const t=selected();if(!t)return;const closed=!!t.is
 const publish=document.getElementById('publish');if(publish){publish.disabled=published||archived;setState(publish,published?'done':archived?'locked':'ready',published?'✓ Pubblicato':archived?'🔒 Archiviato':'● Attivo')}
 const close=document.getElementById('closeReg');if(close){close.disabled=closed||archived;setState(close,closed?'locked':archived?'locked':'ready',closed?'🔒 Chiuso':'● Attivo')}
 const pairsBtn=document.getElementById('pairs');if(pairsBtn){pairsBtn.disabled=archived;setState(pairsBtn,pairs?'done':archived?'locked':'ready',pairs?'✓ Salvate':'● Attivo')}
-const bracket=document.getElementById('bracket');if(bracket){bracket.disabled=!archived&&!(pairs&&formula);setState(bracket,archived?'ready':(pairs&&formula?'ready':'locked'),archived?'👁 Consultazione':(pairs&&formula?'● Pronto':'🔒 Configurare'))}
-const calendar=document.getElementById('calendar');if(calendar){calendar.disabled=!archived&&!(pairs&&formula);setState(calendar,archived?'ready':(pairs&&formula?'ready':'locked'),archived?'👁 Consultazione':(pairs&&formula?'● Pronto':'🔒 Configurare'))}
+const bracket=document.getElementById('bracket');if(bracket){bracket.disabled=archived;setState(bracket,archived?'locked':(pairs&&formula?'ready':'locked'),archived?'🔒 Archiviato':(pairs&&formula?'● Pronto':'🔒 Configurare'))}
+const calendar=document.getElementById('calendar');if(calendar){calendar.disabled=archived;setState(calendar,archived?'locked':(pairs&&formula?'ready':'locked'),archived?'🔒 Archiviato':(pairs&&formula?'● Pronto':'🔒 Configurare'))}
 const link=document.getElementById('publicLink');if(link){link.disabled=archived;setState(link,archived?'locked':published?'done':'ready',archived?'🔒 Archiviato':published?'✓ Pubblicato':'● Attivo')}
 const tiles=document.querySelectorAll('.action-tile');tiles.forEach(b=>{if(b.dataset.page==='dati'||b.dataset.page==='iscritti'||b.dataset.page==='partecipanti'){b.disabled=archived;setState(b,archived?'locked':'ready',archived?'🔒 Archiviato':'● Attivo')}});
 }

@@ -8,20 +8,6 @@ const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function monthName(m){return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][m]||''}
 function dateOf(t){const d=new Date(t.data_torneo||t.data||t.created_at||Date.now());return Number.isNaN(d.getTime())?new Date(0):d}
 
-/* Un torneo archiviato non può mai rimanere selezionato nella normale Gestione torneo.
- * L'oggetto resta intatto in adminState e quindi continua a comparire esclusivamente
- * nell'Archivio Tornei. */
-function normalizeArchivedSelection(){
-  if(window.__ARCHIVE_CONSULTATION__)return;
-  const s=state();
-  const t=(s.tornei||[]).find(x=>String(x.id)===String(s.torneoSelezionato));
-  if(!t||String(t.stato||'').toLowerCase()!=='archiviato')return;
-  s.torneoSelezionato=null;
-  window.adminState=s;
-  if(typeof window.salvaAdminState==='function')window.salvaAdminState();
-  window.iscrizioniTorneo=[];
-}
-
 function removeDuplicateArchiveButtons(){
   document.querySelectorAll('#adminArchiveOpen,[data-admin-archive],button').forEach(el=>{
     if(el.id==='archiveCleanButton')return;
@@ -30,68 +16,20 @@ function removeDuplicateArchiveButtons(){
   });
 }
 
-function clearConsultation(){
-  const s=state();
-
-  /* Uscita dalla consultazione: NON tocca tornei, Supabase o login. */
-  s.torneoSelezionato=null;
-  window.adminState=s;
-  if(typeof window.salvaAdminState==='function')window.salvaAdminState();
-  window.iscrizioniTorneo=[];
-  window.__ARCHIVE_CONSULTATION__=false;
-  window.__ARCHIVE_CONSULTATION_ID__=null;
-
-  /* Elimina ogni elemento grafico lasciato dalla consultazione. */
-  document.getElementById('archiveConsultationBar')?.remove();
-  const archivePanel=document.getElementById('archiveCleanPanel');
-  if(archivePanel)archivePanel.style.display='none';
-  const oldArchive=document.getElementById('archivioTorneiAdmin');
-  if(oldArchive)oldArchive.style.display='none';
-
-  /* Ricostruisce direttamente la pagina Gestione torneo senza torneo selezionato. */
-  if(typeof window.renderCleanAdmin==='function'){
-    window.renderCleanAdmin();
-  }
-
-  /* Sicurezza: se un renderer successivo ha ripopolato il select con un archiviato,
-     il pannello deve comunque restare senza selezione. */
-  requestAnimationFrame(()=>{
-    normalizeArchivedSelection();
-    const sel=document.getElementById('torneoSelector');
-    if(sel)sel.value='';
-    hideArchivedFromSelectors();
-  });
-}
-
-window.clearArchiveConsultation=clearConsultation;
-
 async function openArchivedTournament(id,panel){
   const torneo=archived().find(t=>String(t.id)===String(id));
   if(!torneo)return;
-  const s=state();
   window.__ARCHIVE_CONSULTATION__=true;
   window.__ARCHIVE_CONSULTATION_ID__=String(torneo.id);
+  const s=state();
   s.torneoSelezionato=torneo.id;
   window.adminState=s;
+  try{localStorage.setItem('padel_admin_state',JSON.stringify(s))}catch(e){}
   if(typeof window.caricaRichiesteIscrizione==='function'){
     try{await window.caricaRichiesteIscrizione()}catch(e){console.error('Errore caricamento iscrizioni archivio:',e)}
   }
   if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
   panel.style.display='none';
-  ensureConsultationBar();
-}
-
-function ensureConsultationBar(){
-  if(!window.__ARCHIVE_CONSULTATION__)return;
-  let bar=document.getElementById('archiveConsultationBar');
-  if(!bar){
-    bar=document.createElement('div');
-    bar.id='archiveConsultationBar';
-    bar.style.cssText='position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10001;display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;background:#111827;color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:0 10px 28px rgba(0,0,0,.22);font:600 13px Arial,sans-serif';
-    bar.innerHTML='<span>📦 Consultazione torneo archiviato — sola visualizzazione</span><button id="archiveConsultationExit" type="button" style="border:0;border-radius:7px;padding:6px 10px;background:#fff;color:#111827;font-weight:700;cursor:pointer">Esci</button>';
-    document.body.appendChild(bar);
-    bar.querySelector('#archiveConsultationExit').addEventListener('click',clearConsultation);
-  }
 }
 
 function renderArchivePanel(){
@@ -145,41 +83,20 @@ function ensureButton(){
       p.style.display=p.style.display==='none'||!p.style.display?'block':'none';
     });
   }
-  ensureConsultationBar();
 }
 
 function hideArchivedFromSelectors(){
   const list=archived().map(t=>String(t.id));
   document.querySelectorAll('select').forEach(sel=>{
     [...sel.options].forEach(opt=>{
-      if(list.includes(String(opt.value)))opt.remove();
+      if(list.includes(String(opt.value))&&String(opt.value)!==String(state().torneoSelezionato))opt.remove();
     });
-    if(sel.id==='torneoSelector' && list.includes(String(sel.value)))sel.value='';
   });
 }
 
-function patchAdminRender(){
-  if(typeof window.renderCleanAdmin!=='function'||window.__ARCHIVE_SELECTOR_RENDER_PATCH__)return;
-  const original=window.renderCleanAdmin;
-  window.__ARCHIVE_SELECTOR_RENDER_PATCH__=true;
-  window.renderCleanAdmin=function(){
-    if(!window.__ARCHIVE_CONSULTATION__)normalizeArchivedSelection();
-    const result=original.apply(this,arguments);
-    if(!window.__ARCHIVE_CONSULTATION__){
-      requestAnimationFrame(()=>{
-        normalizeArchivedSelection();
-        hideArchivedFromSelectors();
-      });
-    }
-    return result;
-  };
-}
-
 function refresh(){
-  patchAdminRender();
-  if(!window.__ARCHIVE_CONSULTATION__)normalizeArchivedSelection();
   ensureButton();
-  if(!window.__ARCHIVE_CONSULTATION__)hideArchivedFromSelectors();
+  hideArchivedFromSelectors();
   if(document.getElementById('archiveCleanPanel')?.style.display==='block')renderArchivePanel();
 }
 
@@ -198,5 +115,4 @@ function boot(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('admin:rendered',refresh);
 window.addEventListener('admin:render',refresh);
-window.addEventListener('admin:refresh-complete',()=>{if(window.__ARCHIVE_CONSULTATION__)clearConsultation()});
 })();

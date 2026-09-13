@@ -15,31 +15,15 @@ async function chiudiTorneoStato(){
   const client=getClient();
   if(!client){alert('Connessione Supabase non disponibile.');return false}
   try{
-    const payload={stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false};
-    const {error:updateError}=await client.from('tornei').update(payload).eq('id',t.id);
-    if(updateError)throw updateError;
-
-    const {data:verifica,error:verifyError}=await client.from('tornei').select('id,nome,stato,iscrizioni_chiuse,pubblicato').eq('id',t.id).maybeSingle();
-    if(verifyError)throw verifyError;
-    if(!verifica||String(verifica.stato||'').toLowerCase()!=='archiviato'){
-      throw new Error('Supabase non ha confermato lo stato ARCHIVIATO.');
-    }
-
+    const {data,error}=await client.from('tornei').update({stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false}).eq('id',t.id).select('*').single();
+    if(error)throw error;
     if(Array.isArray(window.adminState?.tornei)){
       const i=window.adminState.tornei.findIndex(x=>String(x.id)===String(t.id));
-      if(i>=0)window.adminState.tornei[i]={...window.adminState.tornei[i],...verifica};
+      if(i>=0)window.adminState.tornei[i]=data||{...t,stato:'archiviato',iscrizioni_chiuse:true,pubblicato:false};
     }
-    window.adminState.torneoSelezionato=null;
-    window.iscrizioniTorneo=[];
-    window.partecipantiTorneo=[];
-    window.coppieTorneo=[];
     try{localStorage.setItem('padel_admin_state',JSON.stringify(window.adminState||{}))}catch(e){}
     alert('Torneo archiviato correttamente. Stato: ARCHIVIATO.');
-    if(typeof window.caricaTorneiSupabase==='function'){
-      await window.caricaTorneiSupabase();
-    }else if(typeof window.renderCleanAdmin==='function'){
-      window.renderCleanAdmin();
-    }
+    if(typeof window.renderCleanAdmin==='function')window.renderCleanAdmin();
     return true;
   }catch(e){
     console.error('Errore archiviazione torneo:',e);
